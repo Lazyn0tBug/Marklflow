@@ -635,6 +635,7 @@ export default function App() {
                 <ReadingPreview
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
+                  theme={currentDoc.theme}
                   isDark={isDark}
                   fontSize={currentDoc.theme.fontSize || 15}
                   lineHeight={currentDoc.theme.lineHeight || 1.75}
@@ -651,6 +652,7 @@ export default function App() {
                 <A4PagePreview
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
+                  theme={currentDoc.theme}
                   meta={currentDoc.meta}
                   fontSize={currentDoc.theme.fontSize || 15}
                   lineHeight={currentDoc.theme.lineHeight || 1.75}

@@ -1,3 +1,5 @@
+import { documentStyle } from '../../core/render/documentPresentation';
+import { DEFAULT_THEME, type ThemeSpec } from '../../core/model/document';
 /**
  * MarkFlow (墨流) A4 物理分页排版预览组件
  * 对应设计方案第 7.3 节与第 4.5.4 节
@@ -17,6 +19,7 @@ interface A4PagePreviewProps {
   meta: DocumentMeta;
   fontSize: number;
   lineHeight: number;
+  theme?: ThemeSpec;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: (ratio: number, scrollTop: number) => void;
 }
@@ -27,6 +30,7 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
   meta,
   fontSize,
   lineHeight,
+  theme,
   containerRef: externalContainerRef,
   onScroll,
 }) => {
@@ -130,8 +134,9 @@ export const A4PagePreview: React.FC<A4PagePreviewProps> = ({
 
             {/* 正文区域 */}
             <div
-              className="flex-1 doc-rendered"
+              className="flex-1 mf-document-shell mf-doc"
               style={{
+          ...documentStyle(theme || {...DEFAULT_THEME,fontSize,lineHeight}),
                 fontSize: `${fontSize}px`,
                 lineHeight: lineHeight,
               }}

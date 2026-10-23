@@ -1,3 +1,5 @@
+import { documentStyle } from '../../core/render/documentPresentation';
+import { DEFAULT_THEME, type ThemeSpec } from '../../core/model/document';
 /**
  * MarkFlow (墨流) 流式阅读预览组件
  * 对应设计方案第 4.5.4 节与第 7 章
@@ -16,6 +18,7 @@ interface ReadingPreviewProps {
   isDark: boolean;
   fontSize: number;
   lineHeight: number;
+  theme?: ThemeSpec;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: (ratio: number, scrollTop: number) => void;
   maxWidth?: number | 'full';
@@ -27,6 +30,7 @@ export const ReadingPreview: React.FC<ReadingPreviewProps> = ({
   isDark,
   fontSize,
   lineHeight,
+  theme,
   containerRef: externalContainerRef,
   onScroll,
   maxWidth = 1024,
@@ -79,8 +83,9 @@ export const ReadingPreview: React.FC<ReadingPreviewProps> = ({
       className="flex-1 h-full overflow-y-auto px-8 py-10 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 transition-colors select-text"
     >
       <div
-        className="mx-auto doc-rendered w-full"
+        className="mx-auto mf-document-shell mf-doc w-full"
         style={{
+          ...documentStyle(theme || {...DEFAULT_THEME,fontSize,lineHeight}),
           maxWidth: maxWidth === 'full' ? '100%' : `${maxWidth}px`,
           fontSize: `${fontSize}px`,
           lineHeight: lineHeight,
