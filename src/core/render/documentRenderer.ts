@@ -7,8 +7,8 @@ export interface DocumentArtifact {html:string;diagnostics:RenderDiagnostic[]}
 let serial:Promise<unknown>=Promise.resolve(),sequence=0;
 export function throwIfAborted(signal?:AbortSignal):void {if(signal?.aborted)throw new DOMException('已取消','AbortError')}
 export function uniqueSvgIds(root:HTMLElement):void {
- const prefix='mf_svg_'+(++sequence)+'_';
  for(const svg of root.querySelectorAll('svg')){
+  const prefix='mf_svg_'+(++sequence)+'_';
   const ids=new Map<string,string>();
   for(const el of [svg,...svg.querySelectorAll('[id]')])if(el.id){ids.set(el.id,prefix+ids.size);el.id=ids.get(el.id)!}
   for(const el of [svg,...svg.querySelectorAll('*')])for(const attr of [...el.attributes]){

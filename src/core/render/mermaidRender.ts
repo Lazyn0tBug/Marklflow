@@ -3,7 +3,7 @@ import { escapeHtml, sanitizeDocumentHtml } from './htmlPolicy';
 let queue:Promise<unknown>=Promise.resolve();
 let nextId=0;
 export function initMermaid(_isDark=false) {
- mermaid.initialize({startOnLoad:false,theme:'default',securityLevel:'strict',flowchart:{htmlLabels:false},fontFamily:'system-ui'});
+ mermaid.initialize({startOnLoad:false,theme:'default',securityLevel:'strict',htmlLabels:false,flowchart:{htmlLabels:false},fontFamily:'system-ui'});
 }
 export function renderMermaidDiagram(code:string,_isDark=false):Promise<string> {
  const task=async()=>{
@@ -14,6 +14,7 @@ export function renderMermaidDiagram(code:string,_isDark=false):Promise<string> 
   host.style.cssText='position:fixed;left:-20000px;top:0;width:900px;visibility:hidden';
   host.innerHTML=svg;document.body.append(host);
   try {
+   if(host.querySelector('foreignObject'))throw new Error('Unsupported HTML labels in generated SVG');
    for(const el of host.querySelectorAll('svg *')) {
     if(el.tagName.toLowerCase()==='style')continue;
     const style=getComputedStyle(el);

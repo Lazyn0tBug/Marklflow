@@ -1,264 +1,80 @@
-import { inspectDocx } from './outputCapabilities';
-/**
- * MarkFlow (墨流) 原生 DOCX 导出协调器
- * 使用 docx 库直接在浏览器端构建原生 OpenXML 文档与 Blob
- * 保证在 Word 与 WPS 中原生可编辑
- */
-
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  BorderStyle,
-  AlignmentType,
-} from 'docx';
-import { DocumentRecord } from '../model/document';
-
-export async function exportDocumentToDocx(input: DocumentRecord, options: { allowSourceFallback?: boolean } = {}): Promise<Blob> {
-  const doc = structuredClone(input);
-  const issues = inspectDocx(doc.markdown);
-  if (issues.length && !options.allowSourceFallback) throw new Error(issues.map(i => i.nodeId + ": " + i.message).join("\\n"));
-  const lines = doc.markdown.split('\n');
-  const docChildren: (Paragraph | Table)[] = [];
-
-  // 1. 文档头部
-  docChildren.push(
-    new Paragraph({
-      text: doc.meta.title || 'MarkFlow 文档',
-      heading: HeadingLevel.TITLE,
-      spacing: { after: 200 },
-    })
-  );
-
-  docChildren.push(
-    new Paragraph({
-      children: [
-        new TextRun({ text: `编制作者：${doc.meta.author || 'MarkFlow 用户'}    `, color: '666666', size: 20 }),
-        new TextRun({ text: `修订时间：${new Date(doc.meta.updatedAt).toLocaleDateString('zh-CN')}`, color: '666666', size: 20 }),
-      ],
-      spacing: { after: 300 },
-    })
-  );
-
-  let inCode = false;
-  let codeLines: string[] = [];
-  let inTable = false;
-  let tableRowsData: string[][] = [];
-
-  const flushTable = () => {
-    if (inTable && tableRowsData.length > 0) {
-      const rows = tableRowsData.map((rowCells, rIdx) => {
-        const isHeader = rIdx === 0;
-        return new TableRow({
-          tableHeader: isHeader,
-          children: rowCells.map((cellText) => {
-            return new TableCell({
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: cellText.trim(),
-                      bold: isHeader,
-                      size: isHeader ? 22 : 20,
-                    }),
-                  ],
-                }),
-              ],
-              shading: isHeader ? { fill: 'F3F4F6' } : undefined,
-              margins: { top: 120, bottom: 120, left: 140, right: 140 },
-            });
-          }),
-        });
-      });
-
-      docChildren.push(
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows,
-        })
-      );
-
-      docChildren.push(new Paragraph({ spacing: { after: 150 } }));
-      tableRowsData = [];
-      inTable = false;
-    }
+import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat} from 'docx';
+import type {DocumentRecord} from '../model/document';
+import {inspectDocx} from './outputCapabilities';
+import {renderDocument,assertArtifact} from '../render/documentRenderer';
+import {collectAssets} from './documentAssets';
+import {documentStyle} from '../render/documentPresentation';
+import {waitForLayout,withDeadline} from './documentPrint';
+type Run=TextRun|ImageRun|ExternalHyperlink;
+interface InlineStyle {bold?:boolean;italics?:boolean;strike?:boolean;font?:string}
+async function rasterImage(source:string,width:number,height:number):Promise<Uint8Array>{
+ const image=new Image();image.src=source;await withDeadline(image.decode(),'DOCX 图片转换超时');
+ const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*2));canvas.height=Math.max(1,Math.ceil(height*2));
+ const ctx=canvas.getContext('2d');if(!ctx)throw new Error('DOCX 图片转换不可用');ctx.drawImage(image,0,0,canvas.width,canvas.height);
+ const base64=canvas.toDataURL('image/png').split(',')[1];return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+}
+async function picture(el:Element):Promise<ImageRun>{
+ const box=el.getBoundingClientRect(),scale=Math.min(1,640/Math.max(1,box.width),850/Math.max(1,box.height));
+ const width=Math.max(1,box.width*scale),height=Math.max(1,box.height*scale);
+ if(el.tagName.toLowerCase()==='svg'){
+  const clone=el.cloneNode(true) as SVGElement;clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.setAttribute('width',String(Math.max(1,box.width)));clone.setAttribute('height',String(Math.max(1,box.height)));
+  const xml=new XMLSerializer().serializeToString(clone),data=new TextEncoder().encode(xml);
+  const source='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
+  const fallback=await rasterImage(source,width,height);
+  return new ImageRun({type:'svg',data,transformation:{width,height},fallback:{type:'png',data:fallback}});
+ }
+ const png=await rasterImage((el as HTMLImageElement).src,width,height);
+ return new ImageRun({type:'png',data:png,transformation:{width,height}});
+}
+async function inline(node:Node,style:InlineStyle={}):Promise<Run[]>{
+ if(node.nodeType===Node.TEXT_NODE){const text=node.textContent||'';return node.parentElement?.closest('pre')?text.split('\n').flatMap((part,i)=>i?[new TextRun({break:1}),new TextRun({...style,text:part})]:[new TextRun({...style,text:part})]):[new TextRun({...style,text})]}
+ if(!(node instanceof Element))return [];
+ const tag=node.tagName.toLowerCase();
+ if(tag==='svg'||tag==='img')return [await picture(node)];
+ if(tag==='br')return [new TextRun({break:1})];
+ const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',font:tag==='code'?'Consolas':style.font};
+ const runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,next)))).flat();
+ if(tag==='a'&&node.getAttribute('href')&&!node.getAttribute('href')!.startsWith('#'))return [new ExternalHyperlink({link:node.getAttribute('href')!,children:runs})];
+ return runs;
+}
+export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSourceFallback?:boolean;allowRemoteAssets?:boolean}={}):Promise<Blob>{
+ const doc=structuredClone(input),issues=inspectDocx(doc.markdown);
+ if(issues.length&&!options.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
+ const artifact=await renderDocument(doc.markdown,'svg');assertArtifact(artifact);
+ const assets=await collectAssets(artifact.html,doc.assets,options.allowRemoteAssets);
+ const root=document.createElement('article');root.className='mf-document-shell mf-doc';for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
+ root.style.cssText+=';position:fixed;left:-20000px;top:0;width:640px;visibility:hidden';
+ root.innerHTML=assets.html;document.body.append(root);
+ try{
+  await waitForLayout(root);const children:(Paragraph|Table)[]=[];
+  const paragraph=async(el:Element,extra:object={})=>new Paragraph({children:await inline(el),spacing:{after:120},...extra});
+  const blocks=async(nodes:Element[],level=0)=>{
+   for(const node of nodes){
+    const tag=node.tagName.toLowerCase();
+    if(/^h[1-6]$/.test(tag)){const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];children.push(await paragraph(node,{heading:headings[Number(tag[1])-1]}))}
+    else if(tag==='table'){
+     const rows:TableRow[]=[];
+     for(const row of Array.from(node.querySelectorAll('tr'))){
+      const cells:TableCell[]=[];
+      for(const cell of Array.from(row.children))cells.push(new TableCell({children:[await paragraph(cell)],shading:cell.tagName==='TH'?{fill:'F3F4F6'}:undefined}));
+      rows.push(new TableRow({tableHeader:row.parentElement?.tagName==='THEAD',children:cells}));
+     }children.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows}));
+    }else if(tag==='ul'||tag==='ol'){
+     for(const li of Array.from(node.children)){
+      const own=li.cloneNode(true) as Element;for(const nested of own.querySelectorAll('ul,ol'))nested.remove();
+      children.push(await paragraph(own,{numbering:{reference:tag==='ol'?'mf-numbers':'mf-bullets',level:Math.min(8,level)}}));
+      for(const nested of Array.from(li.children))if(/^(UL|OL)$/.test(nested.tagName))await blocks([nested],level+1);
+     }
+    }else if(node.classList.contains('mf-page-break'))children.push(new Paragraph({pageBreakBefore:true}));
+    else if(['p','pre','blockquote','figure'].includes(tag)||node.classList.contains('mf-math'))children.push(await paragraph(node,{alignment:node.classList.contains('mf-math')?AlignmentType.CENTER:undefined}));
+    else if(tag==='hr')children.push(new Paragraph({text:'—'}));
+    else if(node.children.length)await blocks(Array.from(node.children),level);
+    else if(node.textContent)children.push(await paragraph(node));
+   }
   };
-
-  const flushCode = () => {
-    if (inCode && codeLines.length > 0) {
-      docChildren.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: codeLines.join('\n'),
-              font: 'Courier New',
-              size: 18,
-            }),
-          ],
-          shading: { fill: 'F8FAFC' },
-          border: {
-            left: { style: BorderStyle.SINGLE, size: 6, color: '0D9488' },
-          },
-          spacing: { before: 120, after: 120 },
-        })
-      );
-      codeLines = [];
-      inCode = false;
-    }
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-    const trimmed = rawLine.trim();
-
-    // 分页符
-    if (trimmed === '---pagebreak---') {
-      flushTable();
-      flushCode();
-      docChildren.push(
-        new Paragraph({
-          pageBreakBefore: true,
-        })
-      );
-      continue;
-    }
-
-    // 代码块
-    if (trimmed.startsWith('```')) {
-      flushTable();
-      if (inCode) {
-        flushCode();
-      } else {
-        inCode = true;
-      }
-      continue;
-    }
-
-    if (inCode) {
-      codeLines.push(rawLine);
-      continue;
-    }
-
-    // 表格
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      const cells = trimmed.slice(1, -1).split('|').map((c) => c.trim());
-      const isAlignRow = cells.every((c) => /^:?-+:?$/.test(c));
-      if (!isAlignRow) {
-        inTable = true;
-        tableRowsData.push(cells);
-      }
-      continue;
-    } else if (inTable) {
-      flushTable();
-    }
-
-    // 独立公式 $$ ... $$
-    if (trimmed.startsWith('$$') && trimmed.endsWith('$$') && trimmed.length > 4) {
-      const latex = trimmed.slice(2, -2).trim();
-      docChildren.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: `[公式]  ${latex}`, italics: true, color: '0F766E', bold: true }),
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 140, after: 140 },
-        })
-      );
-      continue;
-    }
-
-    // 标题 #
-    const headingMatch = rawLine.match(/^(#{1,6})\s+(.+)$/);
-    if (headingMatch) {
-      const level = headingMatch[1].length;
-      const text = headingMatch[2].replace(/[*_`]/g, '').trim();
-      let hLevel: (typeof HeadingLevel)[keyof typeof HeadingLevel] = HeadingLevel.HEADING_1;
-      if (level === 2) hLevel = HeadingLevel.HEADING_2;
-      else if (level === 3) hLevel = HeadingLevel.HEADING_3;
-      else if (level >= 4) hLevel = HeadingLevel.HEADING_4;
-
-      docChildren.push(
-        new Paragraph({
-          text,
-          heading: hLevel,
-          spacing: { before: 240, after: 120 },
-        })
-      );
-      continue;
-    }
-
-    // 引用块 >
-    if (trimmed.startsWith('>')) {
-      const quoteText = rawLine.replace(/^\s*>\s?/, '');
-      docChildren.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: quoteText, italics: true, color: '475569' }),
-          ],
-          border: {
-            left: { style: BorderStyle.SINGLE, size: 8, color: '0D9488' },
-          },
-          indent: { left: 360 },
-          spacing: { before: 80, after: 80 },
-        })
-      );
-      continue;
-    }
-
-    // 列表项
-    const listMatch = rawLine.match(/^(\s*)([-*+]|\d+\.)\s+(.+)$/);
-    if (listMatch) {
-      const itemText = listMatch[3];
-      docChildren.push(
-        new Paragraph({
-          children: [new TextRun({ text: `• ${itemText}`, size: 21 })],
-          indent: { left: 400 },
-          spacing: { before: 40, after: 40 },
-        })
-      );
-      continue;
-    }
-
-    // 普通空行
-    if (!trimmed) {
-      continue;
-    }
-
-    // 普通段落
-    docChildren.push(
-      new Paragraph({
-        children: [new TextRun({ text: rawLine, size: 22 })],
-        spacing: { before: 80, after: 80 },
-      })
-    );
-  }
-
-  flushTable();
-  flushCode();
-
-  const wordDoc = new Document({
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              top: 1440, // 1 inch = 1440 dxa (~25mm)
-              bottom: 1440,
-              left: 1440,
-              right: 1440,
-            },
-          },
-        },
-        children: docChildren,
-      },
-    ],
-  });
-
-  return await Packer.toBlob(wordDoc);
+  await blocks(Array.from(root.children));
+  const m=doc.theme.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
+  const word=new WordDocument({styles:{default:{document:{run:{font:doc.theme.fontFamily==='mono'?'Consolas':doc.theme.fontFamily==='serif'?'SimSun':'Microsoft YaHei',size:Math.round(doc.theme.fontSize*1.5)},paragraph:{spacing:{line:Math.round(doc.theme.lineHeight*240)}}}}},numbering:{config:['mf-bullets','mf-numbers'].map(reference=>({reference,levels:Array.from({length:9},(_,level)=>({level,format:reference==='mf-bullets'?LevelFormat.BULLET:LevelFormat.DECIMAL,text:reference==='mf-bullets'?'•':'%'+(level+1)+'.',alignment:AlignmentType.LEFT}))}))},sections:[{properties:{page:{margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
+  return await Packer.toBlob(word);
+ }finally{root.remove()}
 }

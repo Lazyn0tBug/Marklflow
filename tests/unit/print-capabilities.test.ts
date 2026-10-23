@@ -9,8 +9,8 @@ it('uses validated paper margins without clipping content',()=>{
 });
 it('does not silently claim editable or visual DOCX formulas',async()=>{
  const doc=createNewDocument('复杂输出');doc.markdown='公式 $x^2$\n\n<img src="x">';
- const report=inspectDocx(doc.markdown);expect(report.length).toBeGreaterThan(0);expect(report.every(i=>i.adaptation==='unsupported')).toBe(true);
- await expect(exportDocumentToDocx(doc)).rejects.toThrow('LaTeX');
+ const report=inspectDocx(doc.markdown);expect(report.length).toBeGreaterThan(0);expect(report.some(i=>i.adaptation==='static')).toBe(true);
+ await expect(exportDocumentToDocx(doc)).rejects.toThrow('图片');
 });
 it('reports readiness timeouts rather than successful output',async()=>{
  await expect(withDeadline(new Promise(()=>{}),'未就绪',5)).rejects.toThrow('未就绪');

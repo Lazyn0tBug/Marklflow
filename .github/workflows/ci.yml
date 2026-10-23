@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, html]
   pull_request:
   workflow_dispatch:
 
@@ -40,6 +40,10 @@ jobs:
         if: steps.install.outcome == 'success'
         run: bun run --bun lint
 
+      - name: Unit and contract tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: bun run test:unit
+
       # Report build errors even when typechecking failed; the job still fails.
       - name: Build production assets
         id: build
@@ -54,6 +58,25 @@ jobs:
           test -s dist/index.html
           test -n "$(find dist/assets -type f -name '*.js' -print -quit)"
           git diff --exit-code -- package.json bun.lock
+
+      - name: Install test browser
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: bun run --bun playwright install --with-deps chromium
+
+      - name: Production HTML end-to-end tests
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        run: bun run test:e2e
+
+      - name: Upload browser evidence
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: html-evidence-${{ github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload production build
         if: ${{ success() && steps.verify.outcome == 'success' }}

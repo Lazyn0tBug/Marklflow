@@ -9,9 +9,9 @@ export function inspectDocx(markdown:string):OutputIssue[]{
  const issues:OutputIssue[]=[];
  visit(tree,node=>{
   const id='line-'+(node.position?.start.line||0);
-  if(node.type==='html')issues.push({nodeId:id,adaptation:'unsupported',message:'原始HTML/布局未提供DOCX映射；保留源码文本需明确接受'});
-  if(node.type==='math'||node.type==='inlineMath')issues.push({nodeId:id,adaptation:'unsupported',message:'当前DOCX尚无公式图片适配；本次会保留LaTeX文本，不是可编辑公式'});
-  if(node.type==='image')issues.push({nodeId:id,adaptation:'unsupported',message:'当前DOCX尚无图片适配；本次保留图片引用源文'});
-  if(node.type==='code'&&/^(mermaid|dot|graphviz)$/.test(node.lang||''))issues.push({nodeId:id,adaptation:'unsupported',message:'当前DOCX图表将保留围栏源码，不是图像'});
+  if(node.type==='html')issues.push({nodeId:id,adaptation:'mapped',message:'原始HTML采用安全语义重排，Grid/容器布局和交互不保留'});
+  if(node.type==='math'||node.type==='inlineMath')issues.push({nodeId:id,adaptation:'static',message:'公式输出SVG/PNG图片，不是Word原生可编辑公式'});
+  if(node.type==='image')issues.push({nodeId:id,adaptation:'static',message:'图片封装进DOCX，外部资源须先收集完成'});
+  if(node.type==='code'&&/^(mermaid|dot|graphviz)$/.test(node.lang||''))issues.push({nodeId:id,adaptation:'static',message:'图表输出SVG/PNG图片，不保留运行交互'});
  });return issues;
 }

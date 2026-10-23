@@ -103,7 +103,7 @@ export function renderDotToSVG(dotSource: string): string {
     const graph = parseDotToGraph(dotSource);
     const nodeList = Array.from(graph.nodes.values());
     if (nodeList.length === 0) {
-      return `<div class="p-3 text-xs text-amber-500 bg-amber-50 rounded">未检测到有效的 DOT 节点定义</div>`;
+      return `<div class="mf-diagnostic markflow-dot-error">未检测到有效的 DOT 节点定义</div>`;
     }
 
     const isLR = graph.rankdir === 'LR';
@@ -259,7 +259,7 @@ export function renderDotToSVG(dotSource: string): string {
       </div>
     `;
   } catch (err) {
-    return `<div class="p-3 text-xs text-red-500 bg-red-50 rounded">Graphviz 解析失败: ${String(err)}</div>`;
+    return `<div class="mf-diagnostic markflow-dot-error">Graphviz 解析失败: ${escapeHtml(String(err))}</div>`;
   }
 }
 

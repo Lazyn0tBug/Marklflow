@@ -25,3 +25,13 @@ describe('H1 boundaries',()=>{
   for(const v of ['red;}</style><script>x</script>','oklch(50% .1 2)','rgb(var(--x))'])expect(()=>documentColor(v)).toThrow();
  });
 });
+
+it('does not allow application classes or forged navigation metadata in raw HTML',()=>{
+ const html=parseMarkdownToHtml('<div class="fixed inset-0 mf-columns" data-line="99999" data-heading-id="fake"><p>正文</p></div>');
+ expect(html).not.toContain('fixed');expect(html).not.toContain('inset-0');expect(html).not.toContain('99999');expect(html).not.toContain('data-heading-id="fake"');expect(html).toContain('mf-columns');
+});
+
+it('retains paired inline semantic tags without repairing each token separately',()=>{
+ const root=document.createElement('div');root.innerHTML=parseMarkdownToHtml('段落 <span style="color:rgb(1,2,3)">彩色文字</span> 结尾');
+ expect(root.querySelector('p span')?.textContent).toBe('彩色文字');
+});

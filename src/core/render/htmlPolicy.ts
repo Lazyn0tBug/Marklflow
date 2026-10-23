@@ -1,6 +1,8 @@
 import DOMPurify from 'dompurify';
 import { parse, walk, generate, lexer } from 'css-tree';
 import { z } from 'zod';
+// Keep document hooks isolated from Mermaid's own DOMPurify instance.
+const documentPurify=DOMPurify(window);
 export function escapeHtml(v:string):string {
  return v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 }
@@ -25,18 +27,20 @@ function cleanStyle(value:string):string {
   });return out.join(';');
  }catch{return ''}
 }
-DOMPurify.addHook('uponSanitizeAttribute',(_node,data)=>{
+documentPurify.addHook('uponSanitizeAttribute',(_node,data)=>{
  const name=data.attrName.toLowerCase();
+ if(name==='class'){data.attrValue=data.attrValue.split(/\s+/).filter(v=>/^(mf-|markflow-|language-)/.test(v)).join(' ');if(!data.attrValue)data.keepAttr=false}
+ if(['fill','stroke','filter','clip-path','mask','marker-start','marker-mid','marker-end'].includes(name)&&data.attrValue.includes('url(')){try{walk(parse(data.attrValue,{context:'value'}),n=>{if(n.type==='Url'&&!n.value.startsWith('#'))data.keepAttr=false})}catch{data.keepAttr=false}}
  if(_node.nodeName.toLowerCase()==='use'&&['href','xlink:href'].includes(name)&&!data.attrValue.startsWith('#'))data.keepAttr=false;
  if(name==='style'){data.attrValue=cleanStyle(data.attrValue);if(!data.attrValue)data.keepAttr=false}
- if(['href','xlink:href','src'].includes(name)&&!safeUrl(data.attrValue,name==='src'))data.keepAttr=false;
+ if(['href','xlink:href','src'].includes(name)&&!safeUrl(data.attrValue,name==='src'||_node.nodeName.toLowerCase()==='image'))data.keepAttr=false;
 });
-export function sanitizeDocumentHtml(html:string):string {
- return DOMPurify.sanitize(html,{
+export function sanitizeDocumentHtml(html:string,allowGeneratedData=true):string {
+ return documentPurify.sanitize(html,{
   USE_PROFILES:{html:true,svg:true,svgFilters:true,mathMl:true},
   ADD_TAGS:['use','mjx-container'],
   FORBID_TAGS:['script','style','iframe','object','embed','form','input','textarea','select','button','link','meta','base','foreignObject','video','audio','canvas'],
-  FORBID_ATTR:['srcset','srcdoc','autofocus','contenteditable','formaction','ping'],ALLOW_DATA_ATTR:true,
+  FORBID_ATTR:['srcset','srcdoc','autofocus','contenteditable','formaction','ping'],ALLOW_DATA_ATTR:allowGeneratedData,
  });
 }
 export function documentColor(value:string):string {

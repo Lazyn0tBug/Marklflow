@@ -27,7 +27,7 @@ export function extractOutline(markdown:string):HeadingItem[] {
  visit(tree,'heading',n=>{const text=textOf(n),line=n.position!.start.line;out.push({id:createHeadingId(line-1,text),level:n.depth,text,line})});return out;
 }
 export function parseMarkdownToHtml(markdown:string,options:ParseOptions={}):string {
- const offset=options.startLineIndex||0,mode=options.mathMode||'mathml';
+ const offset=options.startLineIndex||0,mode=options.mathMode||'mathml',nonce=crypto.randomUUID();
  const math=(v:string,d:boolean)=>mode==='svg'?latexToSVG(v,d):latexToMathML(v,d);
  const processor=reader().use(()=>(tree:Root)=>{
   visit(tree,'paragraph',(node,index,parent)=>{
@@ -38,21 +38,23 @@ export function parseMarkdownToHtml(markdown:string,options:ParseOptions={}):str
  }).use(remarkRehype,{allowDangerousHtml:true,handlers:{
   heading(state,node){
    const line=node.position!.start.line+offset,id=createHeadingId(line-1,textOf(node));
-   const result:Element={type:'element',tagName:'h'+node.depth,properties:{id,dataHeadingId:id,dataLine:line},children:state.all(node)};
+   const result:Element={type:'element',tagName:'h'+node.depth,properties:{id,dataHeadingId:id,dataLine:line,dataMfOrigin:nonce},children:state.all(node)};
    state.patch(node,result);return result;
   },
   code(_state,node){
    const lang=(node.lang||'plaintext').toLowerCase(),line=node.position!.start.line+offset;
-   const position='data-line="'+line+'" data-source-end="'+(node.position!.end.line+offset)+'"';
+   const position='data-mf-origin="'+nonce+'" data-line="'+line+'" data-source-end="'+(node.position!.end.line+offset)+'"';
    const html=lang==='mermaid'?'<figure class="mf-diagram" '+position+' data-mermaid-code="'+encodeURIComponent(node.value)+'"><figcaption>Mermaid 渲染中</figcaption></figure>':/^(dot|graphviz)$/.test(lang)?'<figure class="mf-diagram" '+position+'>'+renderDotToSVG(node.value)+'</figure>':'<pre class="mf-code" '+position+'><code class="language-'+escapeHtml(lang)+'">'+escapeHtml(node.value)+'\n</code></pre>';
    return {type:'raw' as const,value:html};
   },
-  math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-line="'+(node.position!.start.line+offset)+'">'+math(node.value,true)+'</div>'}},
+  math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-mf-origin="'+nonce+'" data-line="'+(node.position!.start.line+offset)+'">'+math(node.value,true)+'</div>'}},
   inlineMath(_state,node){return {type:'raw' as const,value:math(node.value,false)}},
  }}).use(rehypeRaw).use(()=>(tree)=>{
   visit(tree,'element',(node:Element)=>{
-   if(node.position&&!node.properties.dataLine)node.properties.dataLine=node.position.start.line+offset;
-   if(node.position)node.properties.dataSourceEnd=node.position.end.line+offset;
+   const trusted=node.properties.dataMfOrigin===nonce;
+   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode'].includes(key)))delete node.properties[key];
+   if(node.position&&!trusted)node.properties.dataLine=node.position.start.line+offset;
+   if(node.position&&!trusted)node.properties.dataSourceEnd=node.position.end.line+offset;
    if(node.tagName==='table')node.properties.className=['mf-table'];
   });
  }).use(rehypeStringify);

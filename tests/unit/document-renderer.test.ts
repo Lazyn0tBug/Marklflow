@@ -16,3 +16,11 @@ it('freezes source before an async export yields',async()=>{
  const promise=generateExportHtml(doc);doc.markdown='# 新版本';
  const html=await promise;expect(html).toContain('旧版本');expect(html).not.toContain('新版本');
 });
+
+it('scopes every SVG separately within the same document',async()=>{
+ const {uniqueSvgIds}=await import('../../src/core/render/documentRenderer');
+ const root=document.createElement('div');root.innerHTML=Array(2).fill('<svg><defs><path id="same" d="M0 0"/></defs><use href="#same"/></svg>').join('');
+ uniqueSvgIds(root);
+ expect(new Set(Array.from(root.querySelectorAll('[id]')).map(n=>n.id)).size).toBe(2);
+ for(const svg of root.querySelectorAll('svg'))expect(svg.querySelector('use')?.getAttribute('href')).toBe('#'+svg.querySelector('path')?.id);
+});
