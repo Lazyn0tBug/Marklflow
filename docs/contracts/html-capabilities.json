@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "features": [
+    {
+      "id": "semantic-markdown",
+      "authorEntry": "CommonMark/GFM",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        }
+      }
+    },
+    {
+      "id": "safe-raw-html",
+      "authorEntry": "approved semantic HTML",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        }
+      }
+    },
+    {
+      "id": "responsive-document",
+      "authorEntry": "managed document template",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        }
+      }
+    },
+    {
+      "id": "math",
+      "authorEntry": "LaTeX",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "static",
+          "status": "unverified"
+        }
+      }
+    },
+    {
+      "id": "diagrams",
+      "authorEntry": "mermaid/dot fence",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "static",
+          "status": "unverified"
+        }
+      }
+    },
+    {
+      "id": "single-file-assets",
+      "authorEntry": "Markdown images and generated SVG",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        }
+      }
+    },
+    {
+      "id": "print-a4",
+      "authorEntry": "document print settings",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "outputs": {
+        "html": {
+          "adaptation": "native",
+          "status": "unverified"
+        },
+        "print": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        },
+        "docx": {
+          "adaptation": "mapped",
+          "status": "unverified"
+        }
+      }
+    }
+  ]
+}
