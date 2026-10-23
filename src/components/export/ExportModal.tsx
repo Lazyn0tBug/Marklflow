@@ -45,11 +45,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       }
 
       if (selectedFormat === 'editable-html') {
-        const html = generateExportHtml(doc, { includeEditablePayload: true, mathMode });
+        const html = await generateExportHtml(doc, { includeEditablePayload: true, mathMode });
         downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.markflow.html`);
         setExportSuccess(`已成功下载可编辑 HTML，含全量 Markdown 载荷`);
       } else if (selectedFormat === 'reading-html') {
-        const html = generateExportHtml(doc, { includeEditablePayload: false, mathMode });
+        const html = await generateExportHtml(doc, { includeEditablePayload: false, mathMode });
         downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.html`);
         setExportSuccess(`已成功生成静态阅读 HTML`);
       } else if (selectedFormat === 'docx') {

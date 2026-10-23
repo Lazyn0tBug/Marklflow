@@ -38,27 +38,11 @@ export function clearMathCaches(): void {
 /**
  * 等待 MathJax 准备就绪
  */
-export async function ensureMathJaxReady(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
 
-  if (window.MathJax?.tex2mml && window.MathJax?.tex2svg) {
-    return true;
-  }
-
-  if (window.MathJax?.startup?.promise) {
-    try {
-      await window.MathJax.startup.promise;
-      return !!(window.MathJax?.tex2mml && window.MathJax?.tex2svg);
-    } catch {
-      return false;
-    }
-  }
-
-  for (let i = 0; i < 25; i++) {
-    if (window.MathJax?.tex2mml && window.MathJax?.tex2svg) return true;
-    await new Promise((r) => setTimeout(r, 40));
-  }
-  return !!(window.MathJax?.tex2mml && window.MathJax?.tex2svg);
+export async function ensureMathJaxReady():Promise<boolean>{
+ if(typeof window==='undefined')return false;
+ try{await window.MathJax?.startup?.promise}catch{return false}
+ return !!(window.MathJax?.tex2mmlPromise&&window.MathJax?.tex2svgPromise);
 }
 
 /**
@@ -258,4 +242,27 @@ function escapeXml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+
+export async function prepareMath(expressions:{value:string;display:boolean}[],mode:'mathml'|'svg'):Promise<void> {
+ if(!expressions.length)return;
+ if(!await ensureMathJaxReady())throw new Error('MathJax 尚未就绪，不能以源码回退作为完成结果');
+ clearMathCaches();
+ for(const expression of expressions){
+  const key=(expression.display?'block:':'inline:')+expression.value.trim();
+  const engine=window.MathJax!;
+  if(mode==='svg'){
+   if(!engine.tex2svgPromise)throw new Error('MathJax SVG Promise API 不可用');
+   const node=await engine.tex2svgPromise(expression.value,{display:expression.display});
+   const html=cleanSvgHtml(node.outerHTML,expression.display);
+   if(/data-mjx-error|<merror|mjx-merror/.test(html))throw new Error('公式解析失败：'+expression.value);
+   svgCache.set(key,html);
+  }else{
+   if(!engine.tex2mmlPromise)throw new Error('MathJax MathML Promise API 不可用');
+   const html=await engine.tex2mmlPromise(expression.value,{display:expression.display});
+   if(/<merror|data-mjx-error/.test(html))throw new Error('公式解析失败：'+expression.value);
+   mmlCache.set(key,expression.display?html:'<span class="markflow-inline-math">'+html+'</span>');
+  }
+ }
 }

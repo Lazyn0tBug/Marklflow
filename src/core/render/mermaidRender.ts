@@ -1,41 +1,32 @@
-/**
- * MarkFlow (墨流) Mermaid 图表渲染适配器
- */
-
 import mermaid from 'mermaid';
 import { escapeHtml, sanitizeDocumentHtml } from './htmlPolicy';
-
-let isInitialized = false;
-
-export function initMermaid(isDark: boolean = false) {
-  try {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: isDark ? 'dark' : 'default',
-      securityLevel: 'strict',
-      flowchart: { htmlLabels: false },
-      fontFamily: 'inherit',
-    });
-    isInitialized = true;
-  } catch (err) {
-    console.warn('Mermaid initialization warning:', err);
-  }
+let queue:Promise<unknown>=Promise.resolve();
+let nextId=0;
+export function initMermaid(_isDark=false) {
+ mermaid.initialize({startOnLoad:false,theme:'default',securityLevel:'strict',flowchart:{htmlLabels:false},fontFamily:'system-ui'});
 }
-
-export async function renderMermaidDiagram(code: string, isDark: boolean = false): Promise<string> {
-  if (!isInitialized) {
-    initMermaid(isDark);
-  }
-
-  const id = 'mermaid_' + Math.random().toString(36).substring(2, 10);
+export function renderMermaidDiagram(code:string,_isDark=false):Promise<string> {
+ const task=async()=>{
+  initMermaid();
+  const {svg}=await mermaid.render('mf_mermaid_'+(++nextId),code.trim());
+  // Inline computed SVG presentation before removing generated style rules.
+  const host=document.createElement('div');
+  host.style.cssText='position:fixed;left:-20000px;top:0;width:900px;visibility:hidden';
+  host.innerHTML=svg;document.body.append(host);
   try {
-    const { svg } = await mermaid.render(id, code.trim());
-    return `<div class="my-4 flex justify-center overflow-x-auto p-3 rounded-lg bg-neutral-50/50 dark:bg-neutral-800/20 border border-neutral-200 dark:border-neutral-700/50">${sanitizeDocumentHtml(svg)}</div>`;
-  } catch (err) {
-    return `<div class="p-3 my-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
-      <div class="font-semibold mb-1">Mermaid 语法解析提示</div>
-      <pre class="font-mono text-[11px] whitespace-pre-wrap">${escapeHtml(code.trim())}</pre>
-      <div class="text-[10px] text-amber-500 mt-1">${escapeHtml(String(err))}</div>
-    </div>`;
-  }
+   for(const el of host.querySelectorAll('svg *')) {
+    if(el.tagName.toLowerCase()==='style')continue;
+    const style=getComputedStyle(el);
+    for(const property of ['fill','stroke','stroke-width','font-family','font-size','font-weight','text-anchor','dominant-baseline','opacity','stroke-dasharray']) {
+     const v=style.getPropertyValue(property);
+     if(v&&!v.includes('url('))el.setAttribute(property,v);
+    }
+   }
+   return sanitizeDocumentHtml(host.innerHTML);
+  } finally {host.remove()}
+ };
+ const result=queue.then(task,task);queue=result.catch(()=>undefined);return result;
+}
+export function mermaidError(code:string,error:unknown):string {
+ return '<pre class="mf-diagnostic">'+escapeHtml('Mermaid 无法渲染：'+String(error)+'\n'+code)+'</pre>';
 }

@@ -77,3 +77,11 @@ export function generateMarkdownTable(cols: number = 3, rows: number = 3): strin
 
   return `\n${headerLine}\n${alignLine}\n${dataLines.join('\n')}\n`;
 }
+
+
+export function mathExpressions(markdown:string):{value:string;display:boolean}[] {
+ const out:{value:string;display:boolean}[]=[];
+ visit(reader().parse(markdown),node=>{
+  if(node.type==='math'||node.type==='inlineMath')out.push({value:node.value,display:node.type==='math'});
+ });return out;
+}

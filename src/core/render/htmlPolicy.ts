@@ -27,12 +27,14 @@ function cleanStyle(value:string):string {
 }
 DOMPurify.addHook('uponSanitizeAttribute',(_node,data)=>{
  const name=data.attrName.toLowerCase();
+ if(_node.nodeName.toLowerCase()==='use'&&['href','xlink:href'].includes(name)&&!data.attrValue.startsWith('#'))data.keepAttr=false;
  if(name==='style'){data.attrValue=cleanStyle(data.attrValue);if(!data.attrValue)data.keepAttr=false}
  if(['href','xlink:href','src'].includes(name)&&!safeUrl(data.attrValue,name==='src'))data.keepAttr=false;
 });
 export function sanitizeDocumentHtml(html:string):string {
  return DOMPurify.sanitize(html,{
   USE_PROFILES:{html:true,svg:true,svgFilters:true,mathMl:true},
+  ADD_TAGS:['use','mjx-container'],
   FORBID_TAGS:['script','style','iframe','object','embed','form','input','textarea','select','button','link','meta','base','foreignObject','video','audio','canvas'],
   FORBID_ATTR:['srcset','srcdoc','autofocus','contenteditable','formaction','ping'],ALLOW_DATA_ATTR:true,
  });
