@@ -1,3 +1,5 @@
+import { printFrozenHtml } from '../../core/export/documentPrint';
+import { inspectDocx } from '../../core/export/outputCapabilities';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
@@ -22,6 +24,7 @@ export type ExportFormat = 'editable-html' | 'reading-html' | 'docx' | 'print-pd
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode }) => {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('editable-html');
   const [fileName, setFileName] = useState<string>(doc.meta.title || 'MarkFlow-Document');
+  const [allowSourceFallback, setAllowSourceFallback] = useState(false);
   const [allowRemoteAssets, setAllowRemoteAssets] = useState(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
@@ -36,12 +39,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
     try {
       if (selectedFormat === 'print-pdf') {
-        // 调用系统级打印
-        setIsExporting(false);
+        const frozen = await generateExportHtml(doc, { mathMode, allowRemoteAssets });
+        await printFrozenHtml(frozen);
         onClose();
-        setTimeout(() => {
-          window.print();
-        }, 150);
         return;
       }
 
@@ -54,7 +54,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
         downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.html`);
         setExportSuccess(`已成功生成静态阅读 HTML`);
       } else if (selectedFormat === 'docx') {
-        const blob = await exportDocumentToDocx(doc);
+        const blob = await exportDocumentToDocx(doc, { allowSourceFallback });
         downloadBlob(blob, `${safeName}.docx`);
         setExportSuccess(`已成功导出原生 DOCX 文档 (OpenXML)`);
       } else if (selectedFormat === 'markdown') {
@@ -83,6 +83,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
       <div className="w-full max-w-2xl rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col">
+        {selectedFormat === 'docx' && inspectDocx(doc.markdown).length > 0 && <section className="m-4 text-xs text-amber-200" aria-label="DOCX 兼容性提示"><ul>{inspectDocx(doc.markdown).map((issue,i)=><li key={i}>{issue.nodeId}：{issue.message}</li>)}</ul><label className="flex gap-2 mt-2"><input type="checkbox" checked={allowSourceFallback} onChange={e=>setAllowSourceFallback(e.target.checked)}/>接受保留源码文本的降级</label></section>}
         <label className="m-4 flex gap-2 text-xs"><input type="checkbox" checked={allowRemoteAssets} onChange={e=>setAllowRemoteAssets(e.target.checked)}/>允许联网收集文档外部图片（受 CORS 限制）</label>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/40">
@@ -223,10 +224,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>• 公式采用 <strong>{mathMode.toUpperCase()}</strong> 渲染；源载荷支持再次导入 MarkFlow 无损重构。</div>
               )}
               {selectedFormat === 'print-pdf' && (
-                <div>• 建议在系统打印对话框中将“边距”设置为“无”或“默认”，以匹配 MarkFlow A4 纸张仿真。</div>
+                <div>• 打印使用冻结文档，等待图片/字体就绪；系统打印设置及实际分页须另行核对。</div>
               )}
               {selectedFormat === 'docx' && (
-                <div>• 段落与表格映射为 Word 原生对象；复杂数学公式转换为格式化标注以保证高兼容性。</div>
+                <div>• 段落与表格映射为 Word 原生对象；公式/图片/图表适配尚未完成，须明确接受保留源码的降级；不承诺视觉一致。</div>
               )}
               {selectedFormat === 'reading-html' && (
                 <div>• 页面内嵌自包含 CSS 与公式渲染，接收方无需安装任何插件或字体库即可阅读。</div>

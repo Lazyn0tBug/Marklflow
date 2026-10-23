@@ -651,6 +651,7 @@ export default function App() {
             {showPreview && previewMode === 'a4' && (
               <div className={`h-full flex flex-col ${showEditor ? 'w-1/2' : 'w-full'}`}>
                 <A4PagePreview
+                  assets={currentDoc.assets}
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
                   theme={currentDoc.theme}

@@ -1,16 +1,16 @@
 .mf-document-shell{box-sizing:border-box;background:#fff;color:#1f2937;min-width:0}
 .mf-doc{box-sizing:border-box;color:var(--mf-ink,#1f2937);background:var(--mf-paper,#fff);font-family:var(--mf-font,system-ui,"Microsoft YaHei","PingFang SC",sans-serif);font-size:var(--mf-size,15px);line-height:var(--mf-leading,1.75);overflow-wrap:anywhere;min-width:0;text-align:start}
-.mf-doc :where(h1,h2,h3,h4,h5,h6){color:inherit;line-height:1.35;font-weight:650;break-after:avoid;margin:1.4em 0 .6em}
-.mf-doc h1{font-size:2em}.mf-doc h2{font-size:1.5em}.mf-doc h3{font-size:1.25em}.mf-doc :where(h4,h5,h6){font-size:1.1em}
-.mf-doc :where(p,figure,blockquote,pre,table){margin:.85em 0}.mf-doc :where(ul,ol){padding-inline-start:1.6em;margin:.75em 0}.mf-doc ul{list-style:disc}.mf-doc ol{list-style:decimal}.mf-doc li{margin:.25em 0}
+.mf-doc h1,.mf-doc h2,.mf-doc h3,.mf-doc h4,.mf-doc h5,.mf-doc h6{color:inherit;line-height:1.35;font-weight:650;break-after:avoid;margin:1.4em 0 .6em}
+.mf-doc h1{font-size:2em}.mf-doc h2{font-size:1.5em}.mf-doc h3{font-size:1.25em}.mf-doc h4,.mf-doc h5,.mf-doc h6{font-size:1.1em}
+.mf-doc p,.mf-doc figure,.mf-doc blockquote,.mf-doc pre,.mf-doc table{margin:.85em 0}.mf-doc ul,.mf-doc ol{padding-inline-start:1.6em;margin:.75em 0}.mf-doc ul{list-style:disc}.mf-doc ol{list-style:decimal}.mf-doc li{margin:.25em 0}
 .mf-doc blockquote{border-inline-start:2px solid var(--mf-primary,#0d9488);padding:.5em 1em;background:#f0f7f5;color:#37594f}
 .mf-doc a{color:var(--mf-primary,#0d9488);text-decoration:underline}
-.mf-doc table{border-collapse:collapse;width:100%;font-size:.92em}.mf-doc :where(th,td){border:1px solid #d1d5db;padding:.5em .65em}.mf-doc th{font-weight:650;background:#f3f4f6}.mf-doc [align=left]{text-align:left}.mf-doc [align=right]{text-align:right}.mf-doc [align=center]{text-align:center}
-.mf-doc :where(pre,code){font-family:Consolas,"Cascadia Code","Microsoft YaHei",monospace}.mf-doc code{font-size:.9em;background:#f3f4f6;padding:.12em .3em;border-radius:3px}
+.mf-doc table{border-collapse:collapse;width:100%;font-size:.92em}.mf-doc th,.mf-doc td{border:1px solid #d1d5db;padding:.5em .65em}.mf-doc th{font-weight:650;background:#f3f4f6}.mf-doc [align=left]{text-align:left}.mf-doc [align=right]{text-align:right}.mf-doc [align=center]{text-align:center}
+.mf-doc pre,.mf-doc code{font-family:Consolas,"Cascadia Code","Microsoft YaHei",monospace}.mf-doc code{font-size:.9em;background:#f3f4f6;padding:.12em .3em;border-radius:3px}
 .mf-doc pre{max-width:100%;overflow:auto;padding:1em;background:#f1f5f9;color:#1e293b;line-height:1.6;tab-size:2;white-space:pre}.mf-doc pre code{background:none;padding:0;color:inherit}
-.mf-doc :where(img,svg){max-width:100%;height:auto}.mf-doc figure{min-width:0}.mf-doc figcaption{font-size:.85em;color:#5f6874}
+.mf-doc img,.mf-doc svg{max-width:100%;height:auto}.mf-doc figure{min-width:0}.mf-doc figcaption{font-size:.85em;color:#5f6874}
 .mf-doc math{font-family:"STIX Two Math","Cambria Math","Latin Modern Math",serif;font-size:1.05em}.mf-doc math[display=block]{display:block;margin:1em 0;overflow:auto;text-align:center}
-.mf-doc :where(.mf-math,.mf-diagram){max-width:100%;overflow:auto;margin:1em 0}.mf-doc .mf-diagram svg{display:block;margin:auto}
+.mf-doc .mf-math,.mf-doc .mf-diagram{max-width:100%;overflow:auto;margin:1em 0}.mf-doc .mf-diagram svg{display:block;margin:auto}
 .mf-doc .markflow-inline-math{display:inline;vertical-align:baseline}.mf-doc mjx-container{display:inline-block;vertical-align:middle}.mf-doc mjx-container[display=true]{display:block;text-align:center}.mf-doc mjx-assistive-mml{display:none}
 .mf-doc .mf-diagnostic{padding:.7em;border:1px solid #b45309;background:#fffbeb;color:#78350f;white-space:pre-wrap}
 .mf-doc hr{border:0;border-top:1px solid #d1d5db;margin:1.5em 0}.mf-doc .mf-page-break{break-after:page;page-break-after:always;border-top:1px dashed #94a3b8}
@@ -18,7 +18,7 @@
 /* The document queries its own content area, never the workbench viewport. */
 .mf-document-shell{container-name:mf-document;container-type:inline-size}
 .mf-doc .mf-columns{gap:clamp(.75rem,2cqi,1.5rem)}
-@container mf-document (max-width:44rem){.mf-doc .mf-columns{grid-template-columns:minmax(0,1fr)}.mf-doc h1{font-size:1.7em}.mf-doc :where(th,td){padding:.35em .45em}}
+@container mf-document (max-width:44rem){.mf-doc .mf-columns{grid-template-columns:minmax(0,1fr)}.mf-doc h1{font-size:1.7em}.mf-doc th,.mf-doc td{padding:.35em .45em}}
 @media(max-width:480px){body>.mf-document-shell{margin:0!important;padding:16px!important}}
-.mf-doc .mf-table{display:table}.mf-doc .mf-table-scroll{max-width:100%;overflow-x:auto}.mf-doc :where(.mf-math,.mf-diagram){overscroll-behavior-inline:contain}
-.mf-doc :where(.mf-code,.mf-diagram,.mf-math){overflow-anchor:auto}
+.mf-doc .mf-table{display:table}.mf-doc .mf-table-scroll{max-width:100%;overflow-x:auto}.mf-doc .mf-math,.mf-doc .mf-diagram{overscroll-behavior-inline:contain}
+.mf-doc .mf-code,.mf-doc .mf-diagram,.mf-doc .mf-math{overflow-anchor:auto}

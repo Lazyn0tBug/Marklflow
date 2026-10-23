@@ -26,6 +26,7 @@
     "mathjax": "3.2.2",
     "mermaid": "^12.2.0",
     "motion": "^12.23.24",
+    "pagedjs": "0.4.3",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "rehype-raw": "7.0.0",

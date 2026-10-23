@@ -1,3 +1,4 @@
+import { inspectDocx } from './outputCapabilities';
 /**
  * MarkFlow (墨流) 原生 DOCX 导出协调器
  * 使用 docx 库直接在浏览器端构建原生 OpenXML 文档与 Blob
@@ -19,7 +20,10 @@ import {
 } from 'docx';
 import { DocumentRecord } from '../model/document';
 
-export async function exportDocumentToDocx(doc: DocumentRecord): Promise<Blob> {
+export async function exportDocumentToDocx(input: DocumentRecord, options: { allowSourceFallback?: boolean } = {}): Promise<Blob> {
+  const doc = structuredClone(input);
+  const issues = inspectDocx(doc.markdown);
+  if (issues.length && !options.allowSourceFallback) throw new Error(issues.map(i => i.nodeId + ": " + i.message).join("\\n"));
   const lines = doc.markdown.split('\n');
   const docChildren: (Paragraph | Table)[] = [];
 
