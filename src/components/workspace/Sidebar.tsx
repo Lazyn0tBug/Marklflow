@@ -1,3 +1,4 @@
+import { verifyAssets } from '../../core/export/documentAssets';
 /**
  * MarkFlow (墨流) 左栏工作区与大纲组件
  * 对应设计方案第 4.5.2 节：多文档列表、批量导入、可编辑 HTML 还原与实时大纲树
@@ -72,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const file = files[i];
       const reader = new FileReader();
 
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const content = event.target?.result as string;
         if (!content) return;
 
@@ -80,9 +81,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (file.name.endsWith('.html') || file.name.endsWith('.htm')) {
           const restoredDoc = extractPayloadFromHtml(content);
           if (restoredDoc) {
+            try { await verifyAssets(restoredDoc.assets); } catch (error) { alert(String(error)); return; }
             onImportDoc(restoredDoc);
             return;
           }
+          alert('HTML 没有有效源载荷或结构不受支持；不会按 Markdown 导入。');
+          return;
         }
 
         // 普通 Markdown 文件导入

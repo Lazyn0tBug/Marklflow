@@ -22,6 +22,7 @@ export type ExportFormat = 'editable-html' | 'reading-html' | 'docx' | 'print-pd
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode }) => {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('editable-html');
   const [fileName, setFileName] = useState<string>(doc.meta.title || 'MarkFlow-Document');
+  const [allowRemoteAssets, setAllowRemoteAssets] = useState(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
@@ -45,11 +46,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       }
 
       if (selectedFormat === 'editable-html') {
-        const html = await generateExportHtml(doc, { includeEditablePayload: true, mathMode });
+        const html = await generateExportHtml(doc, { includeEditablePayload: true, mathMode, allowRemoteAssets });
         downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.markflow.html`);
         setExportSuccess(`已成功下载可编辑 HTML，含全量 Markdown 载荷`);
       } else if (selectedFormat === 'reading-html') {
-        const html = await generateExportHtml(doc, { includeEditablePayload: false, mathMode });
+        const html = await generateExportHtml(doc, { includeEditablePayload: false, mathMode, allowRemoteAssets });
         downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.html`);
         setExportSuccess(`已成功生成静态阅读 HTML`);
       } else if (selectedFormat === 'docx') {
@@ -82,6 +83,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
       <div className="w-full max-w-2xl rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col">
+        <label className="m-4 flex gap-2 text-xs"><input type="checkbox" checked={allowRemoteAssets} onChange={e=>setAllowRemoteAssets(e.target.checked)}/>允许联网收集文档外部图片（受 CORS 限制）</label>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/40">
           <div className="flex items-center gap-2.5">

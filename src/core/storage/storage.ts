@@ -1,3 +1,4 @@
+import { documentSchema } from '../model/documentSchema';
 /**
  * MarkFlow (墨流) 存储与源载荷管理器
  * 遵循无后端、无云端上传、本地 IndexedDB 持久化与单文件 HTML 往返导入规范
@@ -195,13 +196,16 @@ export function encodeSourcePayload(doc: DocumentRecord): string {
  */
 export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | null {
   try {
+    if (htmlContent.length > 50 * 1024 * 1024) return null;
     // 匹配 <script id="markflow-source-payload" ...>
     const match = htmlContent.match(/<script\s+id=["']markflow-source-payload["'][^>]*>([\s\S]*?)<\/script>/i);
     if (!match || !match[1]) return null;
 
     const base64Data = match[1].trim();
     const jsonStr = decodeURIComponent(atob(base64Data));
-    const parsed = JSON.parse(jsonStr);
+    const result = documentSchema.safeParse(JSON.parse(jsonStr));
+    if (!result.success) return null;
+    const parsed = result.data;
 
     if (parsed && parsed.schemaVersion === 1 && typeof parsed.markdown === 'string') {
       return {

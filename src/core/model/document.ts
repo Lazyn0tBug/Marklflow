@@ -26,7 +26,10 @@ export interface ThemeSpec {
   };
 }
 
+export interface DocumentAsset {source:string;mime:string;bytes:number;sha256:string;data:string;license?:string}
+
 export interface DocumentRecord {
+  assets?: DocumentAsset[];
   schemaVersion: 1;
   id: string;
   revision: number;
