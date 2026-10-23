@@ -15,3 +15,10 @@
 .mf-doc .mf-diagnostic{padding:.7em;border:1px solid #b45309;background:#fffbeb;color:#78350f;white-space:pre-wrap}
 .mf-doc hr{border:0;border-top:1px solid #d1d5db;margin:1.5em 0}.mf-doc .mf-page-break{break-after:page;page-break-after:always;border-top:1px dashed #94a3b8}
 .mf-doc details{margin:1em 0}.mf-doc summary{cursor:pointer}.mf-doc .mf-columns{display:grid;grid-template-columns:1fr 1fr;gap:1.25em}
+/* The document queries its own content area, never the workbench viewport. */
+.mf-document-shell{container-name:mf-document;container-type:inline-size}
+.mf-doc .mf-columns{gap:clamp(.75rem,2cqi,1.5rem)}
+@container mf-document (max-width:44rem){.mf-doc .mf-columns{grid-template-columns:minmax(0,1fr)}.mf-doc h1{font-size:1.7em}.mf-doc :where(th,td){padding:.35em .45em}}
+@media(max-width:480px){body>.mf-document-shell{margin:0!important;padding:16px!important}}
+.mf-doc .mf-table{display:table}.mf-doc .mf-table-scroll{max-width:100%;overflow-x:auto}.mf-doc :where(.mf-math,.mf-diagram){overscroll-behavior-inline:contain}
+.mf-doc :where(.mf-code,.mf-diagram,.mf-math){overflow-anchor:auto}

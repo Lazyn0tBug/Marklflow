@@ -8,3 +8,10 @@ it('shares document CSS and validates theme independently from app settings',()=
  expect(documentStyle(doc.theme)['--mf-size']).toBe(doc.theme.fontSize+'px');
  expect(()=>generateExportHtml({...doc,theme:{...doc.theme,primaryColor:'red;display:none'}})).toThrow();
 });
+
+it('exports approved layout semantics without workspace width settings',()=>{
+ const doc=createNewDocument('布局');doc.markdown='<div class="mf-columns"><section><p>左</p></section><section><p>右</p></section></div>';
+ const html=generateExportHtml(doc);
+ expect(html).toContain('mf-columns');expect(html).toContain('container-name:mf-document');
+ expect(html).not.toContain('contentMaxWidth');expect(html).not.toContain('1024px');
+});
