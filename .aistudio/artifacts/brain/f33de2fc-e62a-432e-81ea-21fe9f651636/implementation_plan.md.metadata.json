@@ -1,0 +1,6 @@
+{
+  "summary":  "MarkFlow (墨流) Markdown 编辑器与多格式排版工作台总体架构与版本规划实现方案 (0.1 至 0.9 开发与 1.0 审查验证)。包含三栏式专业界面、CodeMirror 6 与语法高亮、原生 MathML 与 SVG 双模式数学渲染、Mermaid/Graphviz 图表、A4 实时分页预览、可编辑单文件 HTML 与源载荷往返导入、浏览器打印 PDF、原生 DOCX 导出、离线 PWA 支持以及 0.1~0.9 全流程版本演进与 1.0 验收看板。",
+  "updatedAt":  "2026-10-23T09:44:37.487450036Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

@@ -1,0 +1,268 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-primary: #0d9488;
+    --color-primary-hover: #0f766e;
+    --paper-bg: #ffffff;
+    --paper-text: #171717;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  code, pre, kbd {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.45);
+}
+
+/* A4 Page styles for physical preview */
+.a4-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 20mm 20mm 25mm 20mm;
+  margin: 0 auto 24px auto;
+  background: white;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25), 0 0 1px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+  position: relative;
+  color: #1a1a1a;
+  overflow: hidden;
+}
+
+/* MathML & MathJax SVG Styling */
+math {
+  font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', serif;
+  font-size: 1.08em;
+  line-height: 1.2;
+}
+
+math[display="block"] {
+  display: block;
+  text-align: center;
+  margin: 1.2em 0;
+  overflow-x: auto;
+  padding: 0.5em 0;
+}
+
+/* MathJax Container & SVG inline display rules */
+mjx-container {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+mjx-container[jax="SVG"]:not([display="true"]),
+mjx-container:not([display="true"]) {
+  display: inline-block !important;
+  vertical-align: -0.25ex !important;
+  line-height: normal !important;
+  margin: 0 0.2em !important;
+}
+
+mjx-container[jax="SVG"]:not([display="true"]) svg,
+mjx-container:not([display="true"]) svg {
+  display: inline !important;
+  vertical-align: -0.25ex !important;
+  margin: 0 !important;
+}
+
+mjx-container[jax="SVG"][display="true"],
+mjx-container[display="true"] {
+  display: block !important;
+  text-align: center !important;
+  margin: 1.2em auto !important;
+  overflow-x: auto !important;
+}
+
+mjx-container[jax="SVG"][display="true"] svg,
+mjx-container[display="true"] svg {
+  display: inline-block !important;
+  margin: 0 auto !important;
+}
+
+.markflow-inline-math {
+  display: inline !important;
+  vertical-align: baseline !important;
+  white-space: normal !important;
+}
+
+.markflow-inline-math svg {
+  display: inline !important;
+  vertical-align: -0.25ex !important;
+}
+
+.markflow-inline-math-group {
+  display: inline !important;
+  vertical-align: baseline !important;
+  white-space: normal !important;
+}
+
+.markflow-inline-op {
+  display: inline-block !important;
+  vertical-align: -0.2ex !important;
+  margin: 0 0.08em !important;
+}
+
+/* 隐藏 MathJax 辅屏无障碍 MathML 副本，杜绝与 SVG 重复渲染 */
+mjx-assistive-mml,
+mjx-assistive-mml math {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Markdown preview typography */
+.doc-rendered {
+  line-height: 1.75;
+  color: inherit;
+}
+
+.doc-rendered h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  line-height: 1.25;
+  border-bottom: 1px solid rgba(125, 125, 125, 0.2);
+  padding-bottom: 0.3em;
+}
+
+.doc-rendered h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+  border-bottom: 1px solid rgba(125, 125, 125, 0.15);
+  padding-bottom: 0.25em;
+}
+
+.doc-rendered h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+  line-height: 1.35;
+}
+
+.doc-rendered h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.4em;
+}
+
+.doc-rendered p {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.doc-rendered blockquote {
+  border-left: 3px solid #0d9488;
+  padding-left: 1rem;
+  margin: 1em 0;
+  color: #71717a;
+  font-style: italic;
+}
+
+.doc-rendered ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.75em 0;
+}
+
+.doc-rendered ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.75em 0;
+}
+
+.doc-rendered li {
+  margin: 0.3em 0;
+}
+
+.doc-rendered table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.2em 0;
+  font-size: 0.9em;
+}
+
+.doc-rendered th,
+.doc-rendered td {
+  border: 1px solid rgba(125, 125, 125, 0.25);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.doc-rendered th {
+  background-color: rgba(125, 125, 125, 0.08);
+  font-weight: 600;
+}
+
+.doc-rendered hr {
+  border: 0;
+  height: 1px;
+  background: rgba(125, 125, 125, 0.25);
+  margin: 2em 0;
+}
+
+.doc-rendered img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 1em auto;
+  display: block;
+}
+
+/* Print CSS */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    overflow: visible !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .a4-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm 15mm 20mm 15mm;
+  }
+}

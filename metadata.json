@@ -1,0 +1,6 @@
+{
+  "name": "MarkFlow 墨流",
+  "description": "开箱即用、支持公式与图表、具备流式与 A4 分页预览、支持单文件 HTML 与 DOCX 导出的专业 Markdown 编辑工作台。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
