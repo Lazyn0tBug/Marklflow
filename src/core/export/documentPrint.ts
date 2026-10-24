@@ -10,12 +10,16 @@ export function withDeadline<T>(promise:Promise<T>,message:string,ms=20000):Prom
  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error(message)),ms);promise.then(v=>{clearTimeout(timer);resolve(v)},e=>{clearTimeout(timer);reject(e)})});
 }
 export async function waitForLayout(root:ParentNode,doc:Document=document):Promise<void>{
- await withDeadline(Promise.all(Array.from(root.querySelectorAll('img')).map(async image=>{
+ await withDeadline(Promise.all(Array.from(root.querySelectorAll('img,svg image')).map(async element=>{
+  const isHtmlImage=element.localName==='img';
+  const image=isHtmlImage?element as HTMLImageElement:new Image();
+  if(!isHtmlImage)image.src=element.getAttribute('href')||element.getAttribute('xlink:href')||'';
   if(typeof image.decode==='function')await image.decode();
   if(!image.complete||!image.naturalWidth)throw new Error('图片未就绪：'+image.getAttribute('src')?.slice(0,100));
  })),'图片就绪超时');
  if(doc.fonts)await withDeadline(doc.fonts.ready,'字体就绪超时');
- await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
+ const view=doc.defaultView||window;
+ await withDeadline(new Promise<void>(resolve=>view.requestAnimationFrame(()=>view.requestAnimationFrame(()=>resolve()))),'布局就绪超时');
 }
 export async function preparePrintFrame(html:string):Promise<HTMLIFrameElement>{
  const frame=document.createElement('iframe');frame.title='打印冻结文档';
@@ -29,5 +33,5 @@ export async function printFrozenHtml(html:string):Promise<void>{
  const frame=await preparePrintFrame(html);
  frame.contentWindow!.addEventListener('afterprint',()=>frame.remove(),{once:true});
  // Print readiness comes from load/decode/fonts/layout, never an arbitrary sleep.
- frame.contentWindow!.focus();frame.contentWindow!.print();
+ try{frame.contentWindow!.focus();frame.contentWindow!.print()}catch(error){frame.remove();throw error}
 }

@@ -24,7 +24,6 @@ import {
   deleteDocument,
   createNewDocument,
 } from './core/storage/storage';
-import { clearMathCaches } from './core/render/mathRender';
 import { extractOutline } from './core/parser/markdownParser';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
@@ -478,7 +477,6 @@ export default function App() {
   );
 
   const handleMathModeToggle = () => {
-    clearMathCaches();
     const nextMode = mathMode === 'mathml' ? 'svg' : 'mathml';
     setMathMode(nextMode);
     if (currentDoc) {
