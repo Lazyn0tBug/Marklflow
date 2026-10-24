@@ -141,5 +141,6 @@
         }
       }
     }
-  ]
+  ],
+  "evidenceIndex": "../acceptance/html-review-evidence.json"
 }

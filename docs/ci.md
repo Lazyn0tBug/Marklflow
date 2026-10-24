@@ -34,3 +34,6 @@ Action 固定到官方仓库提交；默认只读权限，checkout 不持久化�
 已加入Vitest契约/单元与Playwright生产构建测试，main/html推送或PR触发；CI安装独立Chromium，验证语义/负例、容器响应、图表/资源离线与源载荷往返、长文自动分页和DOCX静态化提示/媒体结构、打印资源就绪及失败路径。浏览器证据保存14天。前述“没有测试”为初始CI历史，现以本节/工作流为准，不宣称已配置ESLint或全浏览器/系统打印验收。
 
 本地：bun run test:unit；bun run --bun playwright install chromium；先build再bun run test:e2e。未推送，不存在本分支远端CI通过结论。
+
+
+R0–R4审查后，本地样例为37项单元/契约及19项Chromium测试，覆盖SVG资源/公式隔离、DOCX文本/编号/锚点、分页外壳隔离与容器、七种显隐组合、设置对话框、草稿恢复及双向同步。数量为本次快照，以实际测试收集为准。运行环境JSON与长表格/代码的独立HTML/PDF也进入test-results证据目录；CI既有上传覆盖这些文件。远端尚未执行本分支。

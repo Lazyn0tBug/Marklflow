@@ -71,7 +71,10 @@ export const Editor: React.FC<EditorProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 快捷键支持: Ctrl/Cmd + B, Ctrl/Cmd + I, Ctrl/Cmd + Z
-    if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'Home'||e.key === 'End')) {
+      e.preventDefault();const textarea=activeTextareaRef.current;if(!textarea)return;
+      const end=e.key==='End',position=end?value.length:0;textarea.setSelectionRange(position,position);textarea.scrollTo({top:end?textarea.scrollHeight:0,behavior:'instant'});
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
       e.preventDefault();
       insertTextAtCursor('**', '**', '粗体文本');
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
@@ -127,6 +130,8 @@ export const Editor: React.FC<EditorProps> = ({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
+            wrap="off"
+            aria-label="Markdown 编辑器"
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"

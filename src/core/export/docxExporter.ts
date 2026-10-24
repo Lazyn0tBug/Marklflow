@@ -45,10 +45,11 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
  return runs;
 }
 export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSourceFallback?:boolean;allowRemoteAssets?:boolean}={}):Promise<Blob>{
+ const frozenOptions={...options};
  const doc=documentSchema.parse(structuredClone(input)),issues=inspectDocx(doc.markdown);
- if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!options.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
+ if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
  const artifact=await renderDocument(doc.markdown,'svg');assertArtifact(artifact);
- const assets=await collectAssets(artifact.html,doc.assets,options.allowRemoteAssets);
+ const assets=await collectAssets(artifact.html,doc.assets,frozenOptions.allowRemoteAssets);
  const root=document.createElement('article');root.className='mf-document-shell mf-doc';
  for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
  const m=doc.theme.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);

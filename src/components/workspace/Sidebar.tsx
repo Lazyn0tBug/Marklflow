@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // 当当前视口中心章节发生变化时，平滑滚动大纲列表使其保持在视野内
   React.useEffect(() => {
-    if (activeHeadingId && activeItemRef.current) {
+    if (activeHeadingId && activeItemRef.current&&!activeItemRef.current.closest('[inert]')) {
       activeItemRef.current.scrollIntoView({
         block: 'nearest',
         behavior: 'smooth',
@@ -71,14 +71,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      if(file.size>50*1024*1024){alert('导入文件超过50MB限制');continue}
       const reader = new FileReader();
+      reader.onerror=()=>alert('文件读取失败：'+file.name);
 
       reader.onload = async (event) => {
         const content = event.target?.result as string;
         if (!content) return;
 
         // 尝试从可编辑 HTML 中提取源载荷
-        if (file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+        if (/\.html?$/i.test(file.name)) {
           const restoredDoc = extractPayloadFromHtml(content);
           if (restoredDoc) {
             try { await verifyAssets(restoredDoc.assets); } catch (error) { alert(String(error)); return; }
@@ -128,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-64 h-full flex flex-col bg-neutral-900 border-r border-neutral-800 text-neutral-200 select-none no-print relative shrink-0">
+    <aside className="w-full h-full flex flex-col bg-neutral-900 border-r border-neutral-800 text-neutral-200 select-none no-print relative shrink-0">
       {/* Sidebar Tabs & Collapse Trigger */}
       <div className="flex items-center border-b border-neutral-800 bg-neutral-950/60 p-1.5 gap-1">
         <button
@@ -279,6 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   const isActive = item.id === activeHeadingId;
                   return (
                     <button
+                      aria-current={isActive?'location':undefined}
                       key={item.id}
                       ref={isActive ? activeItemRef : null}
                       onClick={() => onScrollToHeading(item.id, item.line)}

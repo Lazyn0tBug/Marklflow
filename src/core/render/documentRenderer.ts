@@ -1,7 +1,7 @@
 import { mathExpressions,parseMarkdownDocument } from '../parser/markdownParser';
 import { prepareMath } from './mathRender';
 import { renderMermaidDiagram,mermaidError } from './mermaidRender';
-import { sanitizeDocumentHtml,escapeHtml } from './htmlPolicy';
+import { sanitizeDocumentHtml,escapeHtml,rewriteFragments } from './htmlPolicy';
 export interface RenderDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
 export interface DocumentArtifact {html:string;diagnostics:RenderDiagnostic[]}
 let serial:Promise<unknown>=Promise.resolve(),sequence=0;
@@ -12,8 +12,7 @@ export function uniqueSvgIds(root:HTMLElement):void {
   const ids=new Map<string,string>();
   for(const el of [svg,...svg.querySelectorAll('[id]')])if(el.id){ids.set(el.id,prefix+ids.size);el.id=ids.get(el.id)!}
   for(const el of [svg,...svg.querySelectorAll('*')])for(const attr of [...el.attributes]){
-   let value=attr.value;
-   for(const [old,id]of ids){if(value==='#'+old)value='#'+id;value=value.split('url(#'+old+')').join('url(#'+id+')')}
+   const value=rewriteFragments(attr.value,ids,attr.name);
    if(value!==attr.value)el.setAttribute(attr.name,value);
   }
  }
@@ -34,6 +33,7 @@ export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:Abort
   }
   throwIfAborted(signal);
   root.innerHTML=sanitizeDocumentHtml(root.innerHTML);uniqueSvgIds(root);
+  for(const use of root.querySelectorAll('svg use')){const href=use.getAttribute('href')||use.getAttribute('xlink:href');const svg=use.closest('svg');if(!href?.startsWith('#')||!Array.from(svg?.querySelectorAll('[id]')||[]).some(el=>el.id===href.slice(1)))diagnostics.push({nodeId:use.closest('[data-line]')?.getAttribute('data-line')||'svg',message:'SVG字形引用缺失或不是自包含引用',severity:'error'})}
   for(const image of root.querySelectorAll('img:not([src])'))diagnostics.push({nodeId:image.getAttribute('data-line')||'image',message:'图片来源被拒绝或缺失',severity:'error'});
   for(const el of root.querySelectorAll('.markflow-dot-error,[data-mjx-error],merror'))diagnostics.push({nodeId:el.closest('[data-line]')?.getAttribute('data-line')||'unknown',message:el.textContent||'渲染失败',severity:'error'});
   if(diagnostics.length){const notice=document.createElement('aside');notice.className='mf-diagnostic';notice.setAttribute('role','note');notice.innerHTML='<strong>内容兼容性提示</strong><ul>'+diagnostics.map(d=>'<li>'+escapeHtml(d.nodeId+'：'+d.message)+'</li>').join('')+'</ul>';root.prepend(notice)}

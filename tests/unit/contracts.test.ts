@@ -19,3 +19,8 @@ describe('HTML contract baseline', () => {
     expect(restored?.theme).toEqual(doc.theme);
   });
 });
+
+it('reads payload attributes in any order and rejects ambiguous duplicate payloads',()=>{
+ const doc=createNewDocument('属性');const payload='<script type="application/json" id="markflow-source-payload">'+encodeSourcePayload(doc)+'</script>';
+ expect(extractPayloadFromHtml(payload)?.markdown).toBe(doc.markdown);expect(extractPayloadFromHtml(payload+payload)).toBeNull();
+});

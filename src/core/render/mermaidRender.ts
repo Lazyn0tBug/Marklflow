@@ -8,12 +8,13 @@ export function initMermaid(_isDark=false) {
 export function renderMermaidDiagram(code:string,_isDark=false):Promise<string> {
  const task=async()=>{
   initMermaid();
-  const {svg}=await mermaid.render('mf_mermaid_'+(++nextId),code.trim());
   // Inline computed SVG presentation before removing generated style rules.
   const host=document.createElement('div');
   host.style.cssText='position:fixed;left:-20000px;top:0;width:900px;visibility:hidden';
-  host.innerHTML=svg;document.body.append(host);
+  host.dataset.mermaidHost='true';document.body.append(host);
   try {
+   const {svg}=await mermaid.render('mf_mermaid_'+(++nextId),code.trim(),host);
+   host.innerHTML=svg;
    if(host.querySelector('foreignObject'))throw new Error('Unsupported HTML labels in generated SVG');
    for(const el of host.querySelectorAll('svg *')) {
     if(el.tagName.toLowerCase()==='style')continue;

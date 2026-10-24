@@ -24,3 +24,13 @@ it('scopes every SVG separately within the same document',async()=>{
  expect(new Set(Array.from(root.querySelectorAll('[id]')).map(n=>n.id)).size).toBe(2);
  for(const svg of root.querySelectorAll('svg'))expect(svg.querySelector('use')?.getAttribute('href')).toBe('#'+svg.querySelector('path')?.id);
 });
+
+it('does not report complete SVG when a required glyph is missing',async()=>{
+ const result=await renderDocument('<svg><use href="#absent"/></svg>','mathml');expect(result.diagnostics.some(d=>d.severity==='error')).toBe(true);
+});
+
+it('freezes output options along with source before asynchronous work',async()=>{
+ const doc=createNewDocument('选项');doc.markdown='# 内容';const options={title:'冻结标题',includeEditablePayload:true};
+ const pending=generateExportHtml(doc,options);options.title='后续标题';options.includeEditablePayload=false;
+ const html=await pending;expect(html).toContain('<title>冻结标题</title>');expect(html).toContain('id="markflow-source-payload"');
+});

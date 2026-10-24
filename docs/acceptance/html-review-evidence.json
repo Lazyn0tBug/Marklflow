@@ -1,0 +1,577 @@
+{
+  "schemaVersion": 1,
+  "reviewBase": "aad838c",
+  "validatedSourceTreeSha256": "8f2790844acc870b004279f77a4444d1bbca456ff421052563bdacc72c1a370b",
+  "fingerprintRule": "sorted repo-relative file path UTF8 + NUL + file bytes + NUL; src/tests/workflows/contracts/package/lock/config/index; excludes review documents to avoid self-reference",
+  "environment": {
+    "id": "windows-chromium-156",
+    "browser": "156.0.8078.4",
+    "platform": "win32",
+    "date": "2026-10-24T00:28:14.008Z",
+    "probes": {
+      "grid": true,
+      "namedContainer": true,
+      "containerUnits": true,
+      "fluidUnits": true,
+      "oklch": true,
+      "cryptoDigest": true,
+      "dialog": true,
+      "fontStatus": "loaded"
+    },
+    "limits": "API/grammar detection is not glyph coverage, Word, physical print or cross-browser acceptance",
+    "bun": "1.4.2"
+  },
+  "checks": {
+    "lockedInstall": "passed-no-changes",
+    "typecheck": "passed",
+    "unitTests": 37,
+    "unitFiles": 9,
+    "chromiumTests": 19,
+    "build": "passed",
+    "remoteCI": "not-run-no-push",
+    "uiDetector": []
+  },
+  "pdfChecks": [
+    {
+      "file": "test-results/html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium/document.pdf",
+      "pages": 1,
+      "sizePoints": [
+        595.91998,
+        842.88
+      ],
+      "allExpectedTextPresent": true
+    },
+    {
+      "file": "test-results/review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium/long-document.pdf",
+      "pages": 8,
+      "sizePoints": [
+        595.91998,
+        842.88
+      ],
+      "allExpectedTextPresent": true
+    }
+  ],
+  "records": [
+    {
+      "featureId": "semantic-markdown",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "safe GFM, task state, mixed text, table and source headings",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "native Word structure is ZIP-verified; reader visual/editing not tested"
+    },
+    {
+      "featureId": "semantic-markdown",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "safe GFM, task state, mixed text, table and source headings",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "native Word structure is ZIP-verified; reader visual/editing not tested"
+    },
+    {
+      "featureId": "semantic-markdown",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "safe GFM, task state, mixed text, table and source headings",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "native Word structure is ZIP-verified; reader visual/editing not tested"
+    },
+    {
+      "featureId": "safe-raw-html",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "approved static semantics, source diagnostics, namespaced anchors",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "unsupported media/CSS or raw MathML DOCX are diagnosed; arbitrary author JS is disabled"
+    },
+    {
+      "featureId": "safe-raw-html",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "approved static semantics, source diagnostics, namespaced anchors",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "unsupported media/CSS or raw MathML DOCX are diagnosed; arbitrary author JS is disabled"
+    },
+    {
+      "featureId": "safe-raw-html",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "approved static semantics, source diagnostics, namespaced anchors",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "unsupported media/CSS or raw MathML DOCX are diagnosed; arbitrary author JS is disabled"
+    },
+    {
+      "featureId": "responsive-document",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "managed two-column to one-column and A4 container restoration",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "not arbitrary author CSS/subgrid/vertical layout"
+    },
+    {
+      "featureId": "responsive-document",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "managed two-column to one-column and A4 container restoration",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "not arbitrary author CSS/subgrid/vertical layout"
+    },
+    {
+      "featureId": "responsive-document",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "managed two-column to one-column and A4 container restoration",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "not arbitrary author CSS/subgrid/vertical layout"
+    },
+    {
+      "featureId": "math",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "MathJax 3.2.2 simple MathML/SVG, repeated macro definitions and per-document isolation",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "complex MathML/macros/forward references and all fonts are not exhaustively verified"
+    },
+    {
+      "featureId": "math",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "MathJax 3.2.2 simple MathML/SVG, repeated macro definitions and per-document isolation",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "complex MathML/macros/forward references and all fonts are not exhaustively verified"
+    },
+    {
+      "featureId": "math",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "static",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "MathJax 3.2.2 simple MathML/SVG, repeated macro definitions and per-document isolation",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "complex MathML/macros/forward references and all fonts are not exhaustively verified"
+    },
+    {
+      "featureId": "diagrams",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "Mermaid simple SVG, local glyph refs and cyclic limited DOT termination",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "not all Mermaid diagram types or full Graphviz grammar"
+    },
+    {
+      "featureId": "diagrams",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "Mermaid simple SVG, local glyph refs and cyclic limited DOT termination",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "not all Mermaid diagram types or full Graphviz grammar"
+    },
+    {
+      "featureId": "diagrams",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "static",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "Mermaid simple SVG, local glyph refs and cyclic limited DOT termination",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "not all Mermaid diagram types or full Graphviz grammar"
+    },
+    {
+      "featureId": "single-file-assets",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "raster and SVG-image resolution, image hashes/license and file offline roundtrip",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "system font fallback; no H2 font import/subsetting; no whole-app PWA claim"
+    },
+    {
+      "featureId": "single-file-assets",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "raster and SVG-image resolution, image hashes/license and file offline roundtrip",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "system font fallback; no H2 font import/subsetting; no whole-app PWA claim"
+    },
+    {
+      "featureId": "single-file-assets",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "raster and SVG-image resolution, image hashes/license and file offline roundtrip",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "system font fallback; no H2 font import/subsetting; no whole-app PWA claim"
+    },
+    {
+      "featureId": "print-a4",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "html",
+      "targetAdaptation": "native",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "Paged geometry, long table/code and actual headless A4 PDF text",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-regressions.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "native system print dialog, physical print and cross-reader output not tested"
+    },
+    {
+      "featureId": "print-a4",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "print",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "sample-verified",
+      "scope": "Paged geometry, long table/code and actual headless A4 PDF text",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-pagination.spec.ts"
+      ],
+      "selectableText": "PDF extraction checked for text samples",
+      "objectEditability": "not applicable to native author editing",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "first/last sample pages reviewed",
+      "limitations": "native system print dialog, physical print and cross-reader output not tested"
+    },
+    {
+      "featureId": "print-a4",
+      "mode": "markdown-static",
+      "stage": "H1",
+      "output": "docx",
+      "targetAdaptation": "mapped",
+      "environment": "windows-chromium-156",
+      "date": "2026-10-24",
+      "status": "structure-verified-reader-unverified",
+      "scope": "Paged geometry, long table/code and actual headless A4 PDF text",
+      "evidence": [
+        "tests/unit/",
+        "tests/e2e/html-compatibility.spec.ts",
+        "tests/e2e/review-docx.spec.ts"
+      ],
+      "selectableText": "DOM text or OpenXML text checked",
+      "objectEditability": "unverified in Word/WPS",
+      "interaction": "author scripts disabled; DOCX static/reflow accepted explicitly",
+      "visual": "selected UI/document screenshots reviewed; not a universal visual pass",
+      "limitations": "native system print dialog, physical print and cross-reader output not tested"
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "test-results/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+    },
+    {
+      "file": "test-results/html-compatibility-exports-deb18-ormula-and-diagram-pictures-chromium/document.docx",
+      "bytes": 21795,
+      "sha256": "84d2ad81799bb0005606cf9dfb46f1c9eed2785713cb8962156146191afcdd69"
+    },
+    {
+      "file": "test-results/html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium/document.pdf",
+      "bytes": 84184,
+      "sha256": "69003a08e0a2008a488a6306602c112469c2be26fee73cff4bf3dc9e6f266e8d"
+    },
+    {
+      "file": "test-results/html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium/editable.html",
+      "bytes": 165751,
+      "sha256": "a4c88189ea4edd7f65fdc7e74dbc2771dd2fd6f385a02b759856e84d81fb0fc9"
+    },
+    {
+      "file": "test-results/html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium/offline-html.png",
+      "bytes": 42053,
+      "sha256": "1b3035e3ef74d25529dbfb9809269259bebd1745f6260d185eaf66f3e2a0d500"
+    },
+    {
+      "file": "test-results/html-compatibility-paginat-586ae-nal-text-or-source-mappings-chromium/first-page.png",
+      "bytes": 59451,
+      "sha256": "a5bc70af72fadb6ad134badfe1c3383a53fc0030d4619773e0153f9890cee4fb"
+    },
+    {
+      "file": "test-results/review-docx-preserves-mixe-f551f--page-breaks-and-A4-in-DOCX-chromium/semantic.docx",
+      "bytes": 10729,
+      "sha256": "38266efde7685e058779e9978695330b148ad49881e1c117c58d4330a03a61e1"
+    },
+    {
+      "file": "test-results/review-environment-records-1461c--from-rendered-verification-chromium/runtime.json",
+      "bytes": 410,
+      "sha256": "fc3f3f40a37ea6e199050df602f3a70a58e35058f4503c5ab4932e4b8f0af4ca"
+    },
+    {
+      "file": "test-results/review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium/a4-last.png",
+      "bytes": 51579,
+      "sha256": "88e00dca52f8c48234a2af8091b8b36b575672c0273e1c020b74118a717ce18f"
+    },
+    {
+      "file": "test-results/review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium/a4-table-first.png",
+      "bytes": 33599,
+      "sha256": "a3d8ae44d8f4da8d7530d9bb1e52544356ef70cfb1bf7cc9168965356ff1341b"
+    },
+    {
+      "file": "test-results/review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium/long-document.html",
+      "bytes": 59692,
+      "sha256": "7bc560059e225b177795491cd3a72a01c0e7ce138f6777d3735ed4870897fcc7"
+    },
+    {
+      "file": "test-results/review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium/long-document.pdf",
+      "bytes": 50872,
+      "sha256": "1b91d44bf9d2c6fac0901da82bfba34df9ad182e2d67a1ac48f82a3ffb653b1c"
+    },
+    {
+      "file": "test-results/review-workbench-opens-hid-c0420-alog-and-closes-with-Escape-chromium/settings.png",
+      "bytes": 133043,
+      "sha256": "9c144bc8c6dd74b5c89147b442d497c6bf781d050b7c9062a80da8f0f8bf474e"
+    }
+  ],
+  "notVerified": [
+    "native system print dialog",
+    "physical print",
+    "Word/WPS reader visual and editing",
+    "other browsers and Tauri hosts",
+    "font glyph/axis/license coverage",
+    "all complex math and diagrams"
+  ],
+  "planned": [
+    "H2",
+    "H3",
+    "H4"
+  ]
+}

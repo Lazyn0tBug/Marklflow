@@ -30,7 +30,9 @@ export function cleanStyle(value:string):string {
 documentPurify.addHook('uponSanitizeAttribute',(_node,data)=>{
  const name=data.attrName.toLowerCase();
  if(name==='class'){data.attrValue=data.attrValue.split(/\s+/).filter(v=>/^(mf-|markflow-|language-)/.test(v)).join(' ');if(!data.attrValue)data.keepAttr=false}
- if(['fill','stroke','filter','clip-path','mask','marker-start','marker-mid','marker-end'].includes(name)&&data.attrValue.includes('url(')){try{walk(parse(data.attrValue,{context:'value'}),n=>{if(n.type==='Url'&&!n.value.startsWith('#'))data.keepAttr=false})}catch{data.keepAttr=false}}
+ if(['fill','stroke','filter','clip-path','mask','marker-start','marker-mid','marker-end'].includes(name)){
+  try{walk(parse(data.attrValue,{context:'value'}),n=>{if(n.type==='Url'&&!n.value.startsWith('#')||n.type==='Raw'||n.type==='Function'&&/^(var|env|attr)$/i.test(n.name))data.keepAttr=false})}catch{data.keepAttr=false}
+ }
  if(_node.nodeName.toLowerCase()==='use'&&['href','xlink:href'].includes(name)&&!data.attrValue.startsWith('#'))data.keepAttr=false;
  if(name==='style'){data.attrValue=cleanStyle(data.attrValue);if(!data.attrValue)data.keepAttr=false}
  if(['href','xlink:href','src'].includes(name)&&!safeUrl(data.attrValue,name==='src'||_node.nodeName.toLowerCase()==='image'))data.keepAttr=false;
@@ -68,6 +70,8 @@ export function inspectAuthorHtml(value:string,line:number):ContentDiagnostic[]{
   if(['style','link','iframe','object','embed','canvas','video','audio','input','textarea','select','button','form','foreignObject','animate','animateMotion','animateTransform','set'].includes(tag)||tag.includes('-'))add('当前静态模式不支持 '+tag+'，请提供静态语义替代','error');
   if(tag==='script')add('已移除作者 script；静态文档不执行脚本');
   for(const attr of Array.from(el.attributes)){
+   if(attr.name==='class'&&attr.value.split(/\s+/).some(v=>v&&!/^(mf-|markflow-|language-)/.test(v)))add('未注册的作者 CSS 类已移除，原文保留');
+   if(['srcset','srcdoc','contenteditable','autofocus','formaction','ping'].includes(attr.name))add('当前模式已移除属性 '+attr.name);
    if(/^on/i.test(attr.name))add('已移除事件属性 '+attr.name);
    if(['src','href','xlink:href'].includes(attr.name)&&!safeUrl(attr.value,attr.name==='src'||tag==='image'))add('已拒绝资源/链接 '+attr.name);
    if(attr.name==='style'){
@@ -76,4 +80,12 @@ export function inspectAuthorHtml(value:string,line:number):ContentDiagnostic[]{
   }
  }
  return diagnostics;
+}
+
+/** Rewrite fragment references with CSS parsing, including quoted URL() and escaped identifiers. */
+export function rewriteFragments(value:string,ids:Map<string,string>,attribute:string):string{
+ if(['href','xlink:href','xLinkHref'].includes(attribute)&&value.startsWith('#'))return '#'+(ids.get(value.slice(1))||value.slice(1));
+ if(['aria-labelledby','aria-describedby'].includes(attribute))return value.split(/\s+/).map(id=>ids.get(id)||id).join(' ');
+ if(!['fill','stroke','filter','clip-path','clipPath','mask','marker-start','marker-mid','marker-end','markerStart','markerMid','markerEnd','style'].includes(attribute))return value;
+ try{const tree=parse(value,{context:attribute==='style'?'declarationList':'value'});let changed=false;walk(tree,n=>{if(n.type==='Url'&&n.value.startsWith('#')&&ids.has(n.value.slice(1))){n.value='#'+ids.get(n.value.slice(1));changed=true}});return changed?generate(tree):value}catch{return value}
 }

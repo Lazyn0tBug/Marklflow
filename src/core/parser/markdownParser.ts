@@ -5,12 +5,12 @@ import remarkMath from 'remark-math';
 import remarkRehype from 'remark-rehype';
 import rehypeRaw from 'rehype-raw';
 import rehypeStringify from 'rehype-stringify';
-import { visit } from 'unist-util-visit';
+import { SKIP, visit } from 'unist-util-visit';
 import type { Root, RootContent } from 'mdast';
 import type { Element } from 'hast';
 import { latexToMathML, latexToSVG } from '../render/mathRender';
 import { renderDotToSVG } from '../render/graphvizRender';
-import { escapeHtml, sanitizeDocumentHtml, inspectAuthorHtml, type ContentDiagnostic } from '../render/htmlPolicy';
+import { escapeHtml, sanitizeDocumentHtml, inspectAuthorHtml, rewriteFragments, type ContentDiagnostic } from '../render/htmlPolicy';
 export interface HeadingItem {id:string;level:number;text:string;line:number}
 export interface ParseOptions {mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number}
 export function createHeadingId(lineIndex:number,text:string):string {
@@ -65,12 +65,13 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
   visit(tree,'element',(node:Element)=>{
    const trusted=node.properties.dataMfOrigin===nonce;
    if(!trusted&&node.properties.id)node.properties.id=authorIds.get(String(node.properties.id))!;
-   for(const [key,value]of Object.entries(node.properties)){if(typeof value!=='string'||key==='id')continue;let updated=value;for(const [old,id]of authorIds){if(updated==='#'+old)updated='#'+id;updated=updated.split('url(#'+old+')').join('url(#'+id+')')}node.properties[key]=updated}
+   for(const [key,value]of Object.entries(node.properties)){if(typeof value!=='string'||key==='id')continue;node.properties[key]=rewriteFragments(value,authorIds,key)}
    for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode'].includes(key)))delete node.properties[key];
    if(node.position&&!trusted)node.properties.dataLine=node.position.start.line+offset;
    if(node.position&&!trusted)node.properties.dataSourceEnd=node.position.end.line+offset;
    if(node.tagName==='table')node.properties.className=['mf-table'];
   });
+  visit(tree as import('hast').Root,'element',(node:Element,index:number|undefined,parent)=>{if(node.tagName==='table'&&parent&&index!==undefined){parent.children[index]={type:'element',tagName:'div',properties:{className:['mf-table-scroll']},children:[node]};return SKIP}});
  }).use(rehypeStringify);
  return {html:sanitizeDocumentHtml(String(processor.processSync(markdown))),diagnostics};
 }

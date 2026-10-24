@@ -6,7 +6,7 @@ import { inspectDocx } from '../../core/export/outputCapabilities';
  * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、浏览器打印 A4 PDF、原生 DOCX
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 import { generateExportHtml } from '../../core/export/htmlExporter';
@@ -29,6 +29,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
+  useEffect(()=>{if(isOpen){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setAllowSourceFallback(false);setAllowRemoteAssets(false)}},[isOpen,doc.id]);
   if (!isOpen) return null;
 
   const handleExport = async () => {
@@ -82,7 +83,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col">
+      <div className="w-full max-w-2xl max-h-[90dvh] rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col">
         {selectedFormat === 'docx' && inspectDocx(doc.markdown).length > 0 && <section className="m-4 text-xs text-amber-200" aria-label="DOCX 兼容性提示"><ul>{inspectDocx(doc.markdown).map((issue,i)=><li key={i}>{issue.nodeId}：{issue.message}</li>)}</ul><label className="flex gap-2 mt-2"><input type="checkbox" checked={allowSourceFallback} onChange={e=>setAllowSourceFallback(e.target.checked)}/>接受图片静态化及语义重排</label></section>}
         <label className="m-4 flex gap-2 text-xs"><input type="checkbox" checked={allowRemoteAssets} onChange={e=>setAllowRemoteAssets(e.target.checked)}/>允许联网收集文档外部图片（受 CORS 限制）</label>
         {/* Header */}
@@ -107,7 +108,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto min-h-0">
           {/* File Name */}
           <div>
             <label className="block text-xs font-medium text-neutral-300 mb-1.5">导出文件主名称</label>
@@ -143,7 +144,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                     <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-900/60 text-teal-300 font-mono">推荐</span>
                   </div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    独立自包含排版网页，同时内嵌 Base64 权威源载荷。双击可阅读，重新拖入可 100% 还原编辑。
+                    独立自包含排版网页，同时内嵌 Base64 权威源载荷。双击可阅读，通过工作区导入可恢复原始 Markdown 与受支持元数据。
                   </p>
                 </div>
               </button>
@@ -164,7 +165,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>
                   <div className="font-medium text-xs text-neutral-100">打印 / 保存为 A4 PDF</div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    调用浏览器无损物理打印通道，输出矢量化、文字可选取、分页准确的正式 A4 规格 PDF。
+                    准备 A4 文档后调用浏览器打印；实际分页、字体及 PDF 结果需在目标环境核对。
                   </p>
                 </div>
               </button>
@@ -185,7 +186,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>
                   <div className="font-medium text-xs text-neutral-100">Word 原生文档 (.docx)</div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    利用 docx 引擎生成真正 OpenXML 格式，原生标题、段落、列表与表格在 Word/WPS 中完全可编辑。
+                    利用 docx 引擎生成真正 OpenXML 格式，原生标题、段落、列表与表格映射为原生对象；Word/WPS 的显示效果需另行验证。
                   </p>
                 </div>
               </button>
@@ -263,7 +264,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             <button
               type="button"
               onClick={handleExport}
-              disabled={isExporting}
+              disabled={isExporting||(selectedFormat==='docx'&&inspectDocx(doc.markdown).some(i=>i.adaptation==='unsupported'))}
               className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 shadow-md shadow-teal-950/30"
             >
               <Download className="w-4 h-4" />

@@ -60,7 +60,7 @@ export async function getAllDocuments(): Promise<DocumentRecord[]> {
         if (!docs || docs.length === 0) {
           // 初始化首个示例报告
           const initialDoc = createInitialDocument();
-          saveDocument(initialDoc).then(() => resolve([initialDoc]));
+          saveDocument(initialDoc).then(() => resolve([initialDoc]),reject);
         } else {
           resolve(docs);
         }
@@ -100,12 +100,14 @@ export async function saveDocument(doc: DocumentRecord): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_DOCS, 'readwrite');
       const store = tx.objectStore(STORE_DOCS);
-      const req = store.put(updatedDoc);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
+      tx.oncomplete=()=>resolve();
+      tx.onabort=()=>reject(tx.error||new Error('存储事务已中止'));
+      tx.onerror=()=>reject(tx.error||new Error('存储事务失败'));
+      store.put(updatedDoc);
     });
-  } catch {
-    // fallback
+  } catch (error) {
+    if(dbInstance)throw error;
+    // Fallback is only used when IndexedDB is unavailable.
     const all = await getAllDocuments();
     const idx = all.findIndex((d) => d.id === doc.id);
     if (idx >= 0) {
@@ -126,11 +128,13 @@ export async function deleteDocument(docId: string): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_DOCS, 'readwrite');
       const store = tx.objectStore(STORE_DOCS);
-      const req = store.delete(docId);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
+      tx.oncomplete=()=>resolve();
+      tx.onabort=()=>reject(tx.error||new Error('删除事务已中止'));
+      tx.onerror=()=>reject(tx.error||new Error('删除事务失败'));
+      store.delete(docId);
     });
-  } catch {
+  } catch (error) {
+    if(dbInstance)throw error;
     const all = (await getAllDocuments()).filter((d) => d.id !== docId);
     localStorage.setItem('markflow_docs', JSON.stringify(all));
   }
@@ -197,11 +201,12 @@ export function encodeSourcePayload(doc: DocumentRecord): string {
 export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | null {
   try {
     if (htmlContent.length > 50 * 1024 * 1024) return null;
-    // 匹配 <script id="markflow-source-payload" ...>
-    const match = htmlContent.match(/<script\s+id=["']markflow-source-payload["'][^>]*>([\s\S]*?)<\/script>/i);
-    if (!match || !match[1]) return null;
-
-    const base64Data = match[1].trim();
+    const template=document.createElement('template');template.innerHTML=htmlContent;
+    const payloads=template.content.querySelectorAll('script[id="markflow-source-payload"]');
+    if(payloads.length!==1)return null;
+    const payload=payloads[0];
+    if(payload.hasAttribute('type')&&payload.getAttribute('type')!=='application/json')return null;
+    const base64Data=payload.textContent?.trim();if(!base64Data)return null;
     const jsonStr = decodeURIComponent(atob(base64Data));
     const result = documentSchema.safeParse(JSON.parse(jsonStr));
     if (!result.success) return null;

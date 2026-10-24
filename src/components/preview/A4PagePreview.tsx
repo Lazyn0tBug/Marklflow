@@ -17,7 +17,7 @@ export const A4PagePreview:React.FC<Props>=({markdown,mathMode,meta,fontSize,lin
    .catch(error=>{if(!controller.signal.aborted)setStatus('排版失败：'+String(error))});
   return()=>controller.abort();
  },[markdown,mathMode,meta,theme,fontSize,lineHeight,assets]);
- return <div ref={ref} className="mf-pagination flex-1 h-full overflow-auto bg-neutral-800 p-6 select-text" aria-label="A4 分页预览" onScroll={e=>{const el=e.currentTarget;onScroll?.(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight),el.scrollTop)}}>
+ return <div ref={ref} className="mf-pagination flex-1 h-full overflow-auto bg-neutral-800 p-6 select-text" aria-busy={status==='排版更新中'} data-pagination-state={status.startsWith('排版失败')?'error':status==='排版更新中'?'pending':'ready'} aria-label="A4 分页预览" onScroll={e=>{const el=e.currentTarget;onScroll?.(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight),el.scrollTop)}}>
   <p role="status" className="no-print text-xs text-neutral-300">{status}</p>
   {pages&&<><style>{pages.css}</style><div data-page-count={pages.total} dangerouslySetInnerHTML={{__html:pages.html}}/></>}
  </div>;

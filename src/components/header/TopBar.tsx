@@ -84,29 +84,17 @@ export const TopBar: React.FC<TopBarProps> = ({
   documentTitle,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
-  const widthMenuRef = useRef<HTMLDivElement>(null);
-
-  // 点击外部自动关闭宽度菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (widthMenuRef.current && !widthMenuRef.current.contains(event.target as Node)) {
-        setWidthMenuOpen(false);
-      }
-    };
-    if (widthMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [widthMenuOpen]);
+  const settingsRef=useRef<HTMLDialogElement>(null);
+  const settingsButtonRef=useRef<HTMLButtonElement>(null);
+  const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
+  useEffect(()=>{const dialog=settingsRef.current;if(widthMenuOpen&&!dialog?.open)dialog?.showModal();else if(!widthMenuOpen&&dialog?.open)dialog.close()},[widthMenuOpen]);
 
   return (
     <header className="h-13 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-3 md:px-4 text-neutral-100 gap-3 select-none shrink-0 no-print z-40">
       {/* Zone 1: 侧栏侧边触发 + 品牌 & 当前文档 */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
-          onClick={onToggleSidebar}
+          disabled={sidebarOpen&&visibleCount===1} aria-pressed={sidebarOpen} onClick={onToggleSidebar}
           className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
             sidebarOpen
               ? 'border-neutral-700 bg-neutral-800 text-teal-300'
@@ -140,7 +128,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center p-0.5 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-medium">
           {/* 编辑器开关 */}
           <button
-            onClick={onToggleEditor}
+            disabled={showEditor&&visibleCount===1} aria-pressed={showEditor} onClick={onToggleEditor}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               showEditor
                 ? 'bg-neutral-800 text-teal-300 shadow-xs'
@@ -159,7 +147,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
           {/* HTML 预览开关 */}
           <button
-            onClick={onTogglePreview}
+            disabled={showPreview&&visibleCount===1} aria-pressed={showPreview} onClick={onTogglePreview}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               showPreview
                 ? 'bg-neutral-800 text-teal-300 shadow-xs'
@@ -206,46 +194,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
-        {/* 视窗最大宽度配置下拉菜单 (默认 1024px) */}
-        <div className="relative" ref={widthMenuRef}>
-          <button
-            onClick={() => setWidthMenuOpen((prev) => !prev)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-800 text-xs text-neutral-300 transition-colors whitespace-nowrap cursor-pointer"
-            title="配置编辑器与 HTML 视窗最大宽度（默认 1024px）"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-neutral-400" />
-            <span>宽度: {maxWidth === 'full' ? '铺满' : `${maxWidth}px`}</span>
-            <ChevronDown className="w-3 h-3 text-neutral-400" />
-          </button>
-
-          {widthMenuOpen && (
-            <div className="absolute top-full mt-1.5 left-0 z-50 w-52 bg-neutral-900 border border-neutral-700/80 rounded-lg shadow-2xl py-1 text-xs select-none">
-              <div className="px-3 py-1.5 text-[10px] uppercase font-mono text-neutral-400 border-b border-neutral-800">
-                视窗内容最大宽度 (居中)
-              </div>
-              {WIDTH_OPTIONS.map((opt) => (
-                <button
-                  key={opt.label}
-                  onClick={() => {
-                    onMaxWidthChange(opt.value);
-                    setWidthMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 hover:bg-neutral-800 text-left transition-colors cursor-pointer ${
-                    maxWidth === opt.value
-                      ? 'text-teal-300 font-medium bg-neutral-800/60'
-                      : 'text-neutral-300'
-                  }`}
-                >
-                  <div className="flex flex-col">
-                    <span className="font-mono text-xs">{opt.label}</span>
-                    <span className="text-[10px] text-neutral-500">{opt.desc}</span>
-                  </div>
-                  {maxWidth === opt.value && <Check className="w-4 h-4 text-teal-400 shrink-0" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <button ref={settingsButtonRef} type="button" onClick={()=>setWidthMenuOpen(true)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300 whitespace-nowrap" aria-haspopup="dialog">
+          <SlidersHorizontal className="w-3.5 h-3.5"/>设置
+        </button>
+        <dialog ref={settingsRef} aria-labelledby="settings-title" onClose={()=>{setWidthMenuOpen(false);settingsButtonRef.current?.focus()}} className="m-auto w-80 max-w-[calc(100vw-32px)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60">
+          <h2 id="settings-title" className="text-base font-semibold mb-4">工作台设置</h2>
+          <label htmlFor="content-width" className="block text-sm mb-2">编辑器与 HTML 内容最大宽度</label>
+          <select id="content-width" value={maxWidth} onChange={e=>onMaxWidthChange(e.target.value==='full'?'full':Number(e.target.value))} className="w-full rounded border border-neutral-600 bg-neutral-950 p-2 text-sm">
+            {WIDTH_OPTIONS.map(opt=><option key={opt.label} value={opt.value}>{opt.label}</option>)}
+          </select>
+          <p className="text-xs text-neutral-400 mt-2">默认 1024px。仅影响工作台，不改变导出纸张。</p>
+          <button type="button" onClick={()=>setWidthMenuOpen(false)} className="mt-5 rounded bg-neutral-700 px-3 py-2 text-sm">完成</button>
+        </dialog>
 
         {/* 公式引擎切换 (MathML vs SVG) */}
         <button

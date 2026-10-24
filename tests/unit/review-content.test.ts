@@ -30,3 +30,8 @@ it('namespaces author anchors before DOM clobbering checks and rewrites links',(
  const root=document.createElement('div');root.innerHTML=parseMarkdownToHtml('<h2 id="target">目标</h2>\n\n[链接](#target)');
  expect(root.querySelector('h2')?.id).toBe('mf_author_target');expect(root.querySelector('a')?.getAttribute('href')).toBe('#mf_author_target');
 });
+
+it('rejects case-insensitive SVG external URL syntax and preserves quoted local defs',()=>{
+ const bad=sanitizeDocumentHtml('<svg><rect fill="URL(https://example.com/a)"/></svg>');expect(bad).not.toContain('https:');
+ const html=parseMarkdownToHtml('<svg><defs><linearGradient id="paint"><stop offset="0"/></linearGradient></defs><rect fill="url(\'#paint\')"/></svg>');expect(html).toContain('url(#mf_author_paint)');
+});

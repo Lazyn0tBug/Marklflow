@@ -21,3 +21,8 @@ it('blocks unsupported raw MathML even when static reflow is accepted',async()=>
  expect(inspectDocx(doc.markdown).some(i=>i.adaptation==='unsupported')).toBe(true);
  await expect(exportDocumentToDocx(doc,{allowSourceFallback:true})).rejects.toThrow('MathML');
 });
+
+it('inspects boolean reversed lists without confusing arbitrary data-value attributes',()=>{
+ expect(inspectDocx('<ol reversed><li>倒序</li></ol>').some(i=>i.adaptation==='unsupported')).toBe(true);
+ expect(inspectDocx('<div data-value="x">文本</div>').some(i=>i.adaptation==='unsupported')).toBe(false);
+});

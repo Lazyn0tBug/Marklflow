@@ -5,8 +5,9 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, ShieldCheck, Flag, Sparkles, X, RefreshCw } from 'lucide-react';
+import {renderDocument,assertArtifact} from '../../core/render/documentRenderer';
 import { DocumentRecord } from '../../core/model/document';
-import { parseMarkdownToHtml, extractOutline } from '../../core/parser/markdownParser';
+import { extractOutline } from '../../core/parser/markdownParser';
 
 interface RoadmapModalProps {
   isOpen: boolean;
@@ -27,62 +28,62 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
       phase: 'P0 / H0',
       title: '工程规范与基线验证',
       desc: '锁定 React 19/Vite/Tailwind v4 工具链，完成公式、图表、分页与导出原型基线验证。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.2',
       phase: 'P1',
       title: '三栏编辑器与交互基线',
       desc: '实现三栏布局、标题折叠、撤销/重做、格式快捷指令、中文输入法保护及字数统计。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.3',
       phase: 'P1 / P2',
       title: '工作区与草稿恢复',
       desc: '多文档会话管理、IndexedDB 本地自动保存、多文档切换及实时大纲树提取。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.4',
       phase: 'P2 / H1',
       title: '全要素排版与公式图表引擎',
       desc: '原生 MathML 优先渲染、MathJax SVG 切换、Mermaid 流程/时序图、Graphviz DOT 矢量图。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.5',
       phase: 'P3 / H1',
       title: 'A4 物理分页与源载荷 HTML 闭环',
-      desc: '210×297mm 纸张排版、页码指示、单文件含源载荷可编辑 HTML 导出与 100% 往返导入。',
-      status: 'completed',
+      desc: '210×297mm 纸张排版、页码指示、单文件含源载荷可编辑 HTML 导出与 源载荷往返导入（按样例验证）。',
+      status: 'verifying',
     },
     {
       version: '0.6',
       phase: 'P3 / P4',
       title: '系统级打印 PDF 与原生 DOCX',
       desc: '浏览器 @media print 无损打印 A4 PDF、docx 库构建原生 Word 段落与表格、能力降级诊断。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.7',
       phase: 'P4 / H1',
       title: 'PWA 离线能力与环境自包含',
       desc: 'Web App Manifest 配置、全离线字体与静态资产支持、断网独立使用、安装提示支持。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.8',
       phase: 'P0-P4 汇总',
       title: '综合排版健壮性与边界防护',
       desc: '超宽表格滚动保护、长公式自适应、渲染错误隔离、草稿未保存防丢失提示。',
-      status: 'completed',
+      status: 'verifying',
     },
     {
       version: '0.9',
       phase: 'Feature Freeze',
       title: '功能完整冻结候选版本 (当前)',
-      desc: '首版核心需求全部闭合，冻结功能开发；产出 0.9-RC2 候选版本，进入 1.0 审查验证流程。',
+      desc: '0.9候选版本正在审查；功能状态以版本证据和已知限制为准。',
       status: 'current',
     },
     {
@@ -107,76 +108,60 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
       category: '架构铁律',
       item: 'Markdown 原文权威真理原则',
       detail: '编辑事务直接驱动文档修订，禁止从展示 DOM 反向推导或猜测恢复 Markdown 原文。',
-      verified: true,
+      verified: false,
     },
     {
       id: 'g2',
       category: '零外部依赖',
       item: '开箱即用免安装环境',
       detail: '用户端无需安装 Node、Python、TeX、Pandoc 或 Graphviz CLI 即可完成所有公式、图表与导出。',
-      verified: true,
+      verified: false,
     },
     {
       id: 'g3',
       category: '公式双模',
       item: 'MathML 优先与 SVG 模式切换',
       detail: '支持原生轻量 MathML 与高保真矢量 SVG 一键切换，并在全局/文档配置中持久化。',
-      verified: true,
+      verified: false,
     },
     {
       id: 'g4',
       category: '数据完整性',
       item: '单文件 HTML 载荷 100% 往返还原',
       detail: '导出的可编辑 HTML 通过嵌入非执行 JSON 载荷，再次导入时准确恢复文档内容、标题与元数据。',
-      verified: true,
+      verified: false,
     },
     {
       id: 'g5',
       category: '排版物理保真',
       item: 'A4 纸张仿真与打印 PDF',
       detail: '提供物理尺寸比例仿真预览，浏览器打印对话框一键保存 A4 PDF，保留矢量与可选文字。',
-      verified: true,
+      verified: false,
     },
     {
       id: 'g6',
       category: 'Word 兼容',
       item: '原生 DOCX 结构映射',
       detail: '不以假 HTML 冒充 Word，使用 docx 生成纯正 OpenXML 文档，表格与段落原生可编辑。',
-      verified: true,
+      verified: false,
     },
     {
       id: 'g7',
       category: '数据隐私',
       item: '纯本地 IndexedDB 存储，不自动上传',
-      detail: '无账号体系，不将用户正文上传至任何第三方服务器，彻底杜绝数据泄露。',
-      verified: true,
+      detail: '无账号体系，不将用户正文上传至任何第三方服务器，外部资源访问受文档与网络策略约束。',
+      verified: false,
     },
   ];
 
-  const runDiagnostics = () => {
-    setTesting(true);
-    setTestLog([]);
-    const logs: string[] = [];
-
-    setTimeout(() => {
-      logs.push(`[${new Date().toLocaleTimeString()}] 开始执行当前文档 AST 解析与渲染校验...`);
-      logs.push(`- 当前文档 ID: ${currentDoc.id} (修订号 rev: ${currentDoc.revision})`);
-      logs.push(`- 原文体量: ${currentDoc.markdown.length} 字符, 预估行数: ${currentDoc.markdown.split('\n').length}`);
-
-      const outline = extractOutline(currentDoc.markdown);
-      logs.push(`✓ 大纲提取通过: 共捕获 ${outline.length} 级标题节点`);
-
-      const parsedHtml = parseMarkdownToHtml(currentDoc.markdown, { mathMode: 'mathml' });
-      logs.push(`✓ MathML 模式解析通过: 产物大小 ${(parsedHtml.length / 1024).toFixed(2)} KB`);
-
-      const parsedSvgHtml = parseMarkdownToHtml(currentDoc.markdown, { mathMode: 'svg' });
-      logs.push(`✓ SVG 模式解析通过: 产物大小 ${(parsedSvgHtml.length / 1024).toFixed(2)} KB`);
-
-      logs.push(`✓ 图表引擎就绪: Mermaid (v11) & Graphviz DOT 渲染器状态正常`);
-      logs.push(`✓ 0.9 冻结候选态全部项检测完毕，完全满足 1.0 准入验证基线！`);
-      setTestLog(logs);
-      setTesting(false);
-    }, 450);
+  const runDiagnostics=async()=>{
+    setTesting(true);setTestLog([]);const frozen=structuredClone(currentDoc),logs:string[]=[];
+    try{
+      logs.push('检查冻结修订 '+frozen.id+' / Rev '+frozen.revision);
+      logs.push('大纲标题：'+extractOutline(frozen.markdown).length);
+      for(const mode of ['mathml','svg'] as const){const artifact=await renderDocument(frozen.markdown,mode);assertArtifact(artifact);logs.push(mode+'：生成 '+artifact.html.length+' 字符，警告 '+artifact.diagnostics.length+' 项')}
+      logs.push('当前样本渲染检查完成。未执行离线、分页、DOCX阅读器或系统打印验收；不能据此放行1.0。');
+    }catch(error){logs.push('检查失败：'+String(error))}finally{setTestLog(logs);setTesting(false)}
   };
 
   return (
@@ -327,7 +312,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
                       </div>
                       <p className="text-[11px] text-neutral-400 leading-normal">{check.detail}</p>
                     </div>
-                    <span className="text-[10px] font-mono text-teal-400 shrink-0">100% 验收</span>
+                    <span className="text-[10px] font-mono text-teal-400 shrink-0">待独立验收</span>
                   </div>
                 ))}
               </div>
@@ -341,7 +326,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
                   <div>
                     <div className="font-semibold text-neutral-200">当前文档实时解析与就绪屏障测试</div>
                     <div className="text-[11px] text-neutral-400">
-                      针对当前编辑中的文档实时运行 AST、大纲、公式与图表解析，验证 1.0 输出一致性。
+                      针对当前编辑中的文档实时运行 AST、大纲、公式与图表解析，检查当前样本渲染；不代替各输出格式验收。
                     </div>
                   </div>
                   <button
@@ -372,7 +357,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
 
         {/* Modal Footer */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-neutral-800 bg-neutral-950/60 text-xs text-neutral-400">
-          <div>MarkFlow V0.9 候选审查状态：基线稳定 · 具备 1.0 交付条件</div>
+          <div>MarkFlow V0.9 候选审查状态：审查中 · 尚未作出 1.0 放行结论</div>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"

@@ -60,9 +60,13 @@ export default function App() {
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollSourceRef = useRef<'editor' | 'preview' | 'outline' | null>(null);
+  const expectedScroll=useRef<{editor:number|null;preview:number|null}>({editor:null,preview:null});
+  const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number)=>{const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));expectedScroll.current[pane]=clamped;el.scrollTop=clamped};
+  const isProgrammatic=(pane:'editor'|'preview',top:number)=>{const expected=expectedScroll.current[pane];expectedScroll.current[pane]=null;return expected!==null&&Math.abs(expected-top)<2};
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSaves=useRef(new Map<string,{timer:ReturnType<typeof setTimeout>;doc:DocumentRecord}>());
+  const activeRevision=useRef<{id:string;revision:number}|null>(null);
 
   // 初始化加载文档
   useEffect(() => {
@@ -78,9 +82,22 @@ export default function App() {
   // 当前活动文档
   const currentDoc = documents.find((d) => d.id === currentDocId) || documents[0];
 
+  activeRevision.current=currentDoc?{id:currentDoc.id,revision:currentDoc.revision}:null;
+  const persist=async(doc:DocumentRecord)=>{
+    try{await saveDocument(doc);if(activeRevision.current?.id===doc.id&&activeRevision.current.revision===doc.revision)setIsDirty(false)}
+    catch(error){alert('保存失败，请导出备份后重试：'+String(error))}
+  };
+  const queueSave=(doc:DocumentRecord)=>{
+    const prior=pendingSaves.current.get(doc.id);if(prior)clearTimeout(prior.timer);
+    const timer=setTimeout(()=>{pendingSaves.current.delete(doc.id);void persist(doc)},700);
+    pendingSaves.current.set(doc.id,{timer,doc});
+  };
+  useEffect(()=>{const guard=(event:BeforeUnloadEvent)=>{if(pendingSaves.current.size){event.preventDefault();event.returnValue=''}};window.addEventListener('beforeunload',guard);return()=>window.removeEventListener('beforeunload',guard)},[]);
+
   // 文档切换或加载时，确保大纲高亮同步指向当前有效章节
   useEffect(() => {
     if (currentDoc) {
+      setMathMode(currentDoc.options.mathMode);
       const outline = extractOutline(currentDoc.markdown);
       if (outline.length > 0) {
         setActiveHeadingId((prev) => {
@@ -91,7 +108,7 @@ export default function App() {
         setActiveHeadingId(null);
       }
     }
-  }, [currentDocId]);
+  }, [currentDocId, currentDoc?.markdown]);
 
   // Markdown 内容变更处理
   const handleMarkdownChange = useCallback(
@@ -120,15 +137,7 @@ export default function App() {
       setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
       setIsDirty(true);
 
-      // 防抖自动保存至 IndexedDB
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-      autoSaveTimerRef.current = setTimeout(() => {
-        saveDocument(updatedDoc).then(() => {
-          setIsDirty(false);
-        });
-      }, 700);
+      queueSave(updatedDoc);
     },
     [currentDoc]
   );
@@ -146,6 +155,7 @@ export default function App() {
     };
     setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
     setIsDirty(true);
+    queueSave(updatedDoc);
   };
 
   const handleRedo = () => {
@@ -161,6 +171,7 @@ export default function App() {
     };
     setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
     setIsDirty(true);
+    queueSave(updatedDoc);
   };
 
   // 统一工作台工具栏文本插入
@@ -192,10 +203,8 @@ export default function App() {
 
   const handleSaveImmediately = () => {
     if (!currentDoc) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    saveDocument(currentDoc).then(() => {
-      setIsDirty(false);
-    });
+    const pending=pendingSaves.current.get(currentDoc.id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(currentDoc.id);
+    void persist(currentDoc);
   };
 
   const handleCreateDoc = () => {
@@ -210,6 +219,7 @@ export default function App() {
   };
 
   const handleDeleteDoc = (id: string) => {
+    const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(() => {
       const remaining = documents.filter((d) => d.id !== id);
       setDocuments(remaining);
@@ -227,6 +237,14 @@ export default function App() {
       setRedoStack([]);
       setIsDirty(false);
     });
+  };
+
+  const handleDirectScroll=(pane:'editor'|'preview')=>{
+    if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current);
+    scrollSourceRef.current=pane;
+    for(const [name,el] of [['editor',editorTextareaRef.current],['preview',previewContainerRef.current]] as const){
+      if(el){expectedScroll.current[name]=name===pane?null:el.scrollTop;el.scrollTo({top:el.scrollTop,behavior:'instant'})}
+    }
   };
 
   // 1. 大纲选中 → 对应标题在编辑器、HTML 中居顶
@@ -280,13 +298,15 @@ export default function App() {
     (ratio: number, scrollTop: number) => {
       const textarea = editorTextareaRef.current;
       if (!textarea || !currentDoc) return;
+      if(isProgrammatic('editor',scrollTop))return;
 
       const docLines = currentDoc.markdown.split('\n');
       const totalLines = docLines.length;
 
       // 2.1 计算编辑器视口中心所在行，实时着重显示大纲视图所属章节
       const centerScrollTop = scrollTop + textarea.clientHeight / 2;
-      const centerLine = Math.min(totalLines, Math.max(1, Math.round(centerScrollTop / 24)));
+      const paddingTop=parseFloat(getComputedStyle(textarea).paddingTop)||0;
+      const centerLine = Math.min(totalLines, Math.max(1, Math.floor((centerScrollTop-paddingTop)/24)+1));
 
       const outline = extractOutline(currentDoc.markdown);
       if (outline.length > 0) {
@@ -321,18 +341,18 @@ export default function App() {
 
       // 边缘精准吸附
       if (scrollTop <= 2) {
-        preview.scrollTop = 0;
+        syncPosition(preview,'preview',0);
         return;
       }
       if (maxEditorScroll > 0 && scrollTop >= maxEditorScroll - 3) {
-        preview.scrollTop = maxPreviewScroll;
+        syncPosition(preview,'preview',maxPreviewScroll);
         return;
       }
 
       // 源码区块（Heading Anchors）精细插值定位
       const headingEls = Array.from(preview.querySelectorAll<HTMLElement>('[data-heading-id]'));
       if (headingEls.length === 0) {
-        preview.scrollTop = Math.round(ratio * maxPreviewScroll);
+        syncPosition(preview,'preview',Math.round(ratio * maxPreviewScroll));
         return;
       }
 
@@ -344,7 +364,7 @@ export default function App() {
         }))
         .sort((a, b) => a.line - b.line);
 
-      const topLine = Math.max(1, Math.round(scrollTop / 24) + 1);
+      const topLine = Math.max(1, Math.floor((scrollTop-paddingTop)/24) + 1);
       let targetPreviewTop = 0;
 
       if (topLine <= anchors[0].line) {
@@ -370,7 +390,7 @@ export default function App() {
         targetPreviewTop = prev.top + progress * (next.top - prev.top);
       }
 
-      preview.scrollTop = Math.min(maxPreviewScroll, Math.max(0, Math.round(targetPreviewTop)));
+      syncPosition(preview,'preview',Math.min(maxPreviewScroll, Math.max(0, Math.round(targetPreviewTop))));
     },
     [syncScroll, activeHeadingId, currentDoc]
   );
@@ -381,6 +401,7 @@ export default function App() {
       const preview = previewContainerRef.current;
       const textarea = editorTextareaRef.current;
       if (!preview || !currentDoc) return;
+      if(isProgrammatic('preview',scrollTop))return;
 
       // 3.1 计算 HTML 预览视口中心所在的章节标题，实时更新大纲着重高亮
       const containerRect = preview.getBoundingClientRect();
@@ -422,16 +443,16 @@ export default function App() {
 
       // 边缘精准吸附
       if (scrollTop <= 2) {
-        textarea.scrollTop = 0;
+        syncPosition(textarea,'editor',0);
         return;
       }
       if (maxPreviewScroll > 0 && scrollTop >= maxPreviewScroll - 3) {
-        textarea.scrollTop = maxEditorScroll;
+        syncPosition(textarea,'editor',maxEditorScroll);
         return;
       }
 
       if (headingEls.length === 0) {
-        textarea.scrollTop = Math.round(ratio * maxEditorScroll);
+        syncPosition(textarea,'editor',Math.round(ratio * maxEditorScroll));
         return;
       }
 
@@ -471,7 +492,7 @@ export default function App() {
       }
 
       const targetEditorTop = (targetLine - 1) * 24;
-      textarea.scrollTop = Math.min(maxEditorScroll, Math.max(0, Math.round(targetEditorTop)));
+      syncPosition(textarea,'editor',Math.min(maxEditorScroll, Math.max(0, Math.round(targetEditorTop))));
     },
     [syncScroll, activeHeadingId, currentDoc]
   );
@@ -482,34 +503,23 @@ export default function App() {
     if (currentDoc) {
       const updatedDoc: DocumentRecord = {
         ...currentDoc,
+        revision:currentDoc.revision+1,
         options: {
           ...currentDoc.options,
           mathMode: nextMode,
         },
       };
       setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
-      saveDocument(updatedDoc);
+      setIsDirty(true);
+      queueSave(updatedDoc);
     }
   };
 
-  // 保证至少保留一个内容视窗（编辑器或 HTML 预览）
-  const handleToggleEditor = () => {
-    if (showEditor && !showPreview) {
-      setShowPreview(true);
-      setShowEditor(false);
-    } else {
-      setShowEditor((prev) => !prev);
-    }
-  };
-
-  const handleTogglePreview = () => {
-    if (showPreview && !showEditor) {
-      setShowEditor(true);
-      setShowPreview(false);
-    } else {
-      setShowPreview((prev) => !prev);
-    }
-  };
+  // All three panes are independent; the final visible pane cannot be hidden.
+  const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
+  const handleToggleSidebar=()=>{if(!sidebarOpen||visibleCount>1)setSidebarOpen(v=>!v)};
+  const handleToggleEditor=()=>{if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
+  const handleTogglePreview=()=>{if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
   if (!currentDoc) {
     return (
@@ -529,7 +539,7 @@ export default function App() {
       {/* 3-Zone Top Bar */}
       <TopBar
         sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        onToggleSidebar={handleToggleSidebar}
         showEditor={showEditor}
         showPreview={showPreview}
         onToggleEditor={handleToggleEditor}
@@ -550,11 +560,11 @@ export default function App() {
       />
 
       {/* Main Workbench Layout */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 relative" data-workbench="true">
         {/* Collapsible Left Sidebar (大纲与多文档工作区) */}
         <div
-          className={`transition-[width] duration-200 ease-in-out flex shrink-0 ${
-            sidebarOpen ? 'w-64' : 'w-0'
+          data-view="outline" inert={!sidebarOpen} className={`transition-[width] duration-200 ease-in-out flex shrink-0 ${
+            sidebarOpen ? (!showEditor&&!showPreview?'w-full':'w-64') : 'w-0'
           } overflow-hidden relative`}
         >
           <Sidebar
@@ -572,7 +582,7 @@ export default function App() {
             onScrollToHeading={handleScrollToHeading}
             currentMarkdown={currentDoc.markdown}
             activeHeadingId={activeHeadingId}
-            onToggleCollapse={() => setSidebarOpen(false)}
+            onToggleCollapse={visibleCount>1?handleToggleSidebar:undefined}
           />
         </div>
 
@@ -591,7 +601,7 @@ export default function App() {
         )}
 
         {/* Center / Right Content Viewports based on showEditor & showPreview */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{display:showEditor||showPreview?undefined:'none',minWidth:(Number(showEditor)+Number(showPreview))*360}}>
           {/* Unified Workbench Toolbar across Editor & Preview */}
           {showEditor && (
             <WorkbenchToolbar
@@ -610,7 +620,7 @@ export default function App() {
           <div className="flex-1 flex overflow-hidden">
             {/* Editor Column */}
             {showEditor && (
-              <div className={`h-full flex flex-col ${showPreview ? 'w-1/2' : 'w-full'}`}>
+              <div data-view="editor" onWheelCapture={()=>handleDirectScroll('editor')} onPointerDownCapture={()=>handleDirectScroll('editor')} onKeyDownCapture={()=>handleDirectScroll('editor')} className="h-full flex-1 min-w-0 flex flex-col">
                 <Editor
                   value={currentDoc.markdown}
                   onChange={handleMarkdownChange}
@@ -629,7 +639,7 @@ export default function App() {
 
             {/* Preview Column: Reading View */}
             {showPreview && previewMode === 'flow' && (
-              <div className={`h-full flex flex-col ${showEditor ? 'w-1/2' : 'w-full'}`}>
+              <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
                 <ReadingPreview
                   assets={currentDoc.assets}
                   markdown={currentDoc.markdown}
@@ -647,7 +657,7 @@ export default function App() {
 
             {/* Preview Column: A4 Paginated View */}
             {showPreview && previewMode === 'a4' && (
-              <div className={`h-full flex flex-col ${showEditor ? 'w-1/2' : 'w-full'}`}>
+              <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
                 <A4PagePreview
                   assets={currentDoc.assets}
                   markdown={currentDoc.markdown}

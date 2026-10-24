@@ -1,0 +1,20 @@
+[
+  {
+    "file": "test-results/html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium/document.pdf",
+    "pages": 1,
+    "sizePoints": [
+      595.91998,
+      842.88
+    ],
+    "allExpectedTextPresent": true
+  },
+  {
+    "file": "test-results/review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium/long-document.pdf",
+    "pages": 8,
+    "sizePoints": [
+      595.91998,
+      842.88
+    ],
+    "allExpectedTextPresent": true
+  }
+]
