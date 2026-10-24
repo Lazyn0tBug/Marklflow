@@ -16,7 +16,7 @@ export function safeUrl(value:string,image=false):boolean {
  return !/^[a-z][\w+.-]*:|^\/\//i.test(v);
 }
 const styles=new Set(['text-align','vertical-align','display','width','height','max-width','min-width','font-size','font-family','font-weight','font-style','line-height','color','background-color','margin','margin-top','margin-bottom','margin-left','margin-right','padding','overflow','overflow-x','white-space','fill','stroke','stroke-width','opacity']);
-function cleanStyle(value:string):string {
+export function cleanStyle(value:string):string {
  try {
   const tree=parse(value,{context:'declarationList'}),out:string[]=[];
   if(tree.type!=='DeclarationList')return ''; 
@@ -39,7 +39,7 @@ export function sanitizeDocumentHtml(html:string,allowGeneratedData=true):string
  return documentPurify.sanitize(html,{
   USE_PROFILES:{html:true,svg:true,svgFilters:true,mathMl:true},
   ADD_TAGS:['use','mjx-container'],
-  FORBID_TAGS:['script','style','iframe','object','embed','form','input','textarea','select','button','link','meta','base','foreignObject','video','audio','canvas'],
+  FORBID_TAGS:['script','style','iframe','object','embed','form','input','textarea','select','button','link','meta','base','foreignObject','video','audio','canvas','animate','animateMotion','animateTransform','set'],
   FORBID_ATTR:['srcset','srcdoc','autofocus','contenteditable','formaction','ping'],ALLOW_DATA_ATTR:allowGeneratedData,
  });
 }
@@ -56,3 +56,24 @@ export const themeSchema=z.object({
  paperTheme:z.enum(['clean-white','warm-paper','dark-slate']),paperSize:z.literal('A4'),
  margins:z.object({top:z.number().min(0).max(60),bottom:z.number().min(0).max(60),left:z.number().min(0).max(60),right:z.number().min(0).max(60)}),
 });
+
+export interface ContentDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
+/** Inspect only author HTML; generated plugin markup uses the same sanitizer without author diagnostics. */
+export function inspectAuthorHtml(value:string,line:number):ContentDiagnostic[]{
+ const root=document.createElement('template');root.innerHTML=value;
+ const diagnostics:ContentDiagnostic[]=[];
+ const add=(message:string,severity:'error'|'warning'='warning')=>diagnostics.push({nodeId:'line-'+line,message,severity});
+ for(const el of root.content.querySelectorAll('*')){
+  const tag=el.localName;
+  if(['style','link','iframe','object','embed','canvas','video','audio','input','textarea','select','button','form','foreignObject','animate','animateMotion','animateTransform','set'].includes(tag)||tag.includes('-'))add('当前静态模式不支持 '+tag+'，请提供静态语义替代','error');
+  if(tag==='script')add('已移除作者 script；静态文档不执行脚本');
+  for(const attr of Array.from(el.attributes)){
+   if(/^on/i.test(attr.name))add('已移除事件属性 '+attr.name);
+   if(['src','href','xlink:href'].includes(attr.name)&&!safeUrl(attr.value,attr.name==='src'||tag==='image'))add('已拒绝资源/链接 '+attr.name);
+   if(attr.name==='style'){
+    try{if(generate(parse(attr.value,{context:'declarationList'})).replace(/;$/,'')!==cleanStyle(attr.value))add('部分 CSS 声明不在静态模式允许范围，已移除')}catch{add('无效 CSS 声明已移除')}
+   }
+  }
+ }
+ return diagnostics;
+}

@@ -10,7 +10,7 @@ import type { Root, RootContent } from 'mdast';
 import type { Element } from 'hast';
 import { latexToMathML, latexToSVG } from '../render/mathRender';
 import { renderDotToSVG } from '../render/graphvizRender';
-import { escapeHtml, sanitizeDocumentHtml } from '../render/htmlPolicy';
+import { escapeHtml, sanitizeDocumentHtml, inspectAuthorHtml, type ContentDiagnostic } from '../render/htmlPolicy';
 export interface HeadingItem {id:string;level:number;text:string;line:number}
 export interface ParseOptions {mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number}
 export function createHeadingId(lineIndex:number,text:string):string {
@@ -26,10 +26,20 @@ export function extractOutline(markdown:string):HeadingItem[] {
  const tree=reader().parse(markdown),out:HeadingItem[]=[];
  visit(tree,'heading',n=>{const text=textOf(n),line=n.position!.start.line;out.push({id:createHeadingId(line-1,text),level:n.depth,text,line})});return out;
 }
-export function parseMarkdownToHtml(markdown:string,options:ParseOptions={}):string {
+export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{html:string;diagnostics:ContentDiagnostic[]} {
+ const diagnostics:ContentDiagnostic[]=[];
  const offset=options.startLineIndex||0,mode=options.mathMode||'mathml',nonce=crypto.randomUUID();
  const math=(v:string,d:boolean)=>mode==='svg'?latexToSVG(v,d):latexToMathML(v,d);
  const processor=reader().use(()=>(tree:Root)=>{
+  visit(tree,'html',node=>{diagnostics.push(...inspectAuthorHtml(node.value,(node.position?.start.line||1)+offset))});
+  visit(tree,'listItem',node=>{
+   if(typeof node.checked==='boolean'){
+    const state=node.checked?'☑ 已完成：':'☐ 未完成：';
+    const first=node.children[0];
+    if(first?.type==='paragraph')first.children.unshift({type:'text',value:state});
+    node.checked=null;
+   }
+  });
   visit(tree,'paragraph',(node,index,parent)=>{
    if(node.children.length===1&&node.children[0].type==='text'&&node.children[0].value.trim()==='---pagebreak---'&&parent&&index!==undefined){
     parent.children[index]={type:'html',value:'<div class="mf-page-break" role="separator" aria-label="分页"></div>',position:node.position};
@@ -58,7 +68,10 @@ export function parseMarkdownToHtml(markdown:string,options:ParseOptions={}):str
    if(node.tagName==='table')node.properties.className=['mf-table'];
   });
  }).use(rehypeStringify);
- return sanitizeDocumentHtml(String(processor.processSync(markdown)));
+ return {html:sanitizeDocumentHtml(String(processor.processSync(markdown))),diagnostics};
+}
+export function parseMarkdownToHtml(markdown:string,options:ParseOptions={}):string {
+ return parseMarkdownDocument(markdown,options).html;
 }
 export function parseInline(text:string,mathMode:'mathml'|'svg'='mathml'):string {
  return parseMarkdownToHtml(text,{mathMode}).replace(/^<p[^>]*>([\s\S]*)<\/p>\s*$/,'$1');

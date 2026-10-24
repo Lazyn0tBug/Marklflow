@@ -139,7 +139,7 @@ export function renderDotToSVG(dotSource: string): string {
       const currLvl = levels.get(curr) || 0;
       for (const e of graph.edges) {
         if (e.from === curr) {
-          if (!levels.has(e.to) || levels.get(e.to)! < currLvl + 1) {
+          if (!levels.has(e.to)) {
             levels.set(e.to, currLvl + 1);
             queue.push(e.to);
           }

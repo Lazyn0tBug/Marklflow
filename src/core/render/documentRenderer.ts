@@ -1,7 +1,7 @@
-import { mathExpressions,parseMarkdownToHtml } from '../parser/markdownParser';
+import { mathExpressions,parseMarkdownDocument } from '../parser/markdownParser';
 import { prepareMath } from './mathRender';
 import { renderMermaidDiagram,mermaidError } from './mermaidRender';
-import { sanitizeDocumentHtml } from './htmlPolicy';
+import { sanitizeDocumentHtml,escapeHtml } from './htmlPolicy';
 export interface RenderDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
 export interface DocumentArtifact {html:string;diagnostics:RenderDiagnostic[]}
 let serial:Promise<unknown>=Promise.resolve(),sequence=0;
@@ -21,8 +21,9 @@ export function uniqueSvgIds(root:HTMLElement):void {
 export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:AbortSignal):Promise<DocumentArtifact> {
  const task=async()=>{
   throwIfAborted(signal);await prepareMath(mathExpressions(markdown),mode);throwIfAborted(signal);
-  const root=document.createElement('div');root.innerHTML=parseMarkdownToHtml(markdown,{mathMode:mode});
-  const diagnostics:RenderDiagnostic[]=[];
+  const parsed=parseMarkdownDocument(markdown,{mathMode:mode});
+  const root=document.createElement('div');root.innerHTML=parsed.html;
+  const diagnostics:RenderDiagnostic[]=[...parsed.diagnostics];
   for(const el of root.querySelectorAll<HTMLElement>('[data-mermaid-code]')){
    throwIfAborted(signal);
    const source=decodeURIComponent(el.dataset.mermaidCode!);
@@ -35,6 +36,7 @@ export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:Abort
   root.innerHTML=sanitizeDocumentHtml(root.innerHTML);uniqueSvgIds(root);
   for(const image of root.querySelectorAll('img:not([src])'))diagnostics.push({nodeId:image.getAttribute('data-line')||'image',message:'图片来源被拒绝或缺失',severity:'error'});
   for(const el of root.querySelectorAll('.markflow-dot-error,[data-mjx-error],merror'))diagnostics.push({nodeId:el.closest('[data-line]')?.getAttribute('data-line')||'unknown',message:el.textContent||'渲染失败',severity:'error'});
+  if(diagnostics.length){const notice=document.createElement('aside');notice.className='mf-diagnostic';notice.setAttribute('role','note');notice.innerHTML='<strong>内容兼容性提示</strong><ul>'+diagnostics.map(d=>'<li>'+escapeHtml(d.nodeId+'：'+d.message)+'</li>').join('')+'</ul>';root.prepend(notice)}
   return {html:root.innerHTML,diagnostics};
  };
  const result=serial.then(task,task);serial=result.catch(()=>undefined);return result;
