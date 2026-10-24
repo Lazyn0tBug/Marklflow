@@ -15,3 +15,9 @@ it('does not silently claim editable or visual DOCX formulas',async()=>{
 it('reports readiness timeouts rather than successful output',async()=>{
  await expect(withDeadline(new Promise(()=>{}),'未就绪',5)).rejects.toThrow('未就绪');
 });
+
+it('blocks unsupported raw MathML even when static reflow is accepted',async()=>{
+ const doc=createNewDocument('MathML');doc.markdown='<math><mfrac><mn>1</mn><mn>2</mn></mfrac></math>';
+ expect(inspectDocx(doc.markdown).some(i=>i.adaptation==='unsupported')).toBe(true);
+ await expect(exportDocumentToDocx(doc,{allowSourceFallback:true})).rejects.toThrow('MathML');
+});

@@ -25,3 +25,8 @@ it('renders cyclic DOT graphs without revisiting nodes forever',async()=>{
  const {renderDotToSVG}=await import('../../src/core/render/graphvizRender');
  const svg=renderDotToSVG('digraph G {\n A -> B;\n B -> A;\n}');expect(svg).toContain('<svg');
 });
+
+it('namespaces author anchors before DOM clobbering checks and rewrites links',()=>{
+ const root=document.createElement('div');root.innerHTML=parseMarkdownToHtml('<h2 id="target">目标</h2>\n\n[链接](#target)');
+ expect(root.querySelector('h2')?.id).toBe('mf_author_target');expect(root.querySelector('a')?.getAttribute('href')).toBe('#mf_author_target');
+});

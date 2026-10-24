@@ -60,8 +60,12 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
   math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-mf-origin="'+nonce+'" data-line="'+(node.position!.start.line+offset)+'">'+math(node.value,true)+'</div>'}},
   inlineMath(_state,node){return {type:'raw' as const,value:math(node.value,false)}},
  }}).use(rehypeRaw).use(()=>(tree)=>{
+  const authorIds=new Map<string,string>();
+  visit(tree,'element',(node:Element)=>{if(node.properties.id&&node.properties.dataMfOrigin!==nonce)authorIds.set(String(node.properties.id),'mf_author_'+encodeURIComponent(String(node.properties.id)))});
   visit(tree,'element',(node:Element)=>{
    const trusted=node.properties.dataMfOrigin===nonce;
+   if(!trusted&&node.properties.id)node.properties.id=authorIds.get(String(node.properties.id))!;
+   for(const [key,value]of Object.entries(node.properties)){if(typeof value!=='string'||key==='id')continue;let updated=value;for(const [old,id]of authorIds){if(updated==='#'+old)updated='#'+id;updated=updated.split('url(#'+old+')').join('url(#'+id+')')}node.properties[key]=updated}
    for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode'].includes(key)))delete node.properties[key];
    if(node.position&&!trusted)node.properties.dataLine=node.position.start.line+offset;
    if(node.position&&!trusted)node.properties.dataSourceEnd=node.position.end.line+offset;

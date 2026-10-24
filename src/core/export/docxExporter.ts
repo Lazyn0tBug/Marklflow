@@ -1,20 +1,22 @@
-import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat} from 'docx';
+import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat,Bookmark,InternalHyperlink,type ParagraphChild,type IParagraphOptions,type INumberingOptions,PageBreak} from 'docx';
+import {documentSchema} from '../model/documentSchema';
 import type {DocumentRecord} from '../model/document';
 import {inspectDocx} from './outputCapabilities';
 import {renderDocument,assertArtifact} from '../render/documentRenderer';
 import {collectAssets} from './documentAssets';
 import {documentStyle} from '../render/documentPresentation';
 import {waitForLayout,withDeadline} from './documentPrint';
-type Run=TextRun|ImageRun|ExternalHyperlink;
-interface InlineStyle {bold?:boolean;italics?:boolean;strike?:boolean;font?:string}
+type Run=ParagraphChild;
+interface InlineContext {bookmarks:Map<string,string>;width:number;height:number}
+interface InlineStyle {bold?:boolean;italics?:boolean;strike?:boolean;font?:string;superScript?:boolean;subScript?:boolean}
 async function rasterImage(source:string,width:number,height:number):Promise<Uint8Array>{
  const image=new Image();image.src=source;await withDeadline(image.decode(),'DOCX 图片转换超时');
  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*2));canvas.height=Math.max(1,Math.ceil(height*2));
  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('DOCX 图片转换不可用');ctx.drawImage(image,0,0,canvas.width,canvas.height);
  const base64=canvas.toDataURL('image/png').split(',')[1];return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
 }
-async function picture(el:Element):Promise<ImageRun>{
- const box=el.getBoundingClientRect(),scale=Math.min(1,640/Math.max(1,box.width),850/Math.max(1,box.height));
+async function picture(el:Element,context:InlineContext):Promise<ImageRun>{
+ const box=el.getBoundingClientRect(),scale=Math.min(1,context.width/Math.max(1,box.width),context.height/Math.max(1,box.height));
  const width=Math.max(1,box.width*scale),height=Math.max(1,box.height*scale);
  if(el.tagName.toLowerCase()==='svg'){
   const clone=el.cloneNode(true) as SVGElement;clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.setAttribute('width',String(Math.max(1,box.width)));clone.setAttribute('height',String(Math.max(1,box.height)));
@@ -26,55 +28,80 @@ async function picture(el:Element):Promise<ImageRun>{
  const png=await rasterImage((el as HTMLImageElement).src,width,height);
  return new ImageRun({type:'png',data:png,transformation:{width,height}});
 }
-async function inline(node:Node,style:InlineStyle={}):Promise<Run[]>{
+async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Promise<Run[]>{
  if(node.nodeType===Node.TEXT_NODE){const text=node.textContent||'';return node.parentElement?.closest('pre')?text.split('\n').flatMap((part,i)=>i?[new TextRun({break:1}),new TextRun({...style,text:part})]:[new TextRun({...style,text:part})]):[new TextRun({...style,text})]}
  if(!(node instanceof Element))return [];
  const tag=node.tagName.toLowerCase();
- if(tag==='svg'||tag==='img')return [await picture(node)];
+ if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
- const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',font:tag==='code'?'Consolas':style.font};
- const runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,next)))).flat();
- if(tag==='a'&&node.getAttribute('href')&&!node.getAttribute('href')!.startsWith('#'))return [new ExternalHyperlink({link:node.getAttribute('href')!,children:runs})];
+ const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',font:tag==='code'?'Consolas':style.font,superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};
+ const runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,context,next)))).flat();
+ if(tag==='a'&&node.getAttribute('href')){
+  const href=node.getAttribute('href')!;
+  if(href.startsWith('#')){const id=href.slice(1);let decoded=id;try{decoded=decodeURIComponent(id)}catch{}const anchor=context.bookmarks.get(id)||context.bookmarks.get(decoded);if(anchor)return [new InternalHyperlink({anchor,children:runs})]}
+  else return [new ExternalHyperlink({link:href,children:runs})];
+ }
+ if(node.id&&context.bookmarks.has(node.id))return [new Bookmark({id:context.bookmarks.get(node.id)!,children:runs})];
  return runs;
 }
 export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSourceFallback?:boolean;allowRemoteAssets?:boolean}={}):Promise<Blob>{
- const doc=structuredClone(input),issues=inspectDocx(doc.markdown);
- if(issues.length&&!options.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
+ const doc=documentSchema.parse(structuredClone(input)),issues=inspectDocx(doc.markdown);
+ if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!options.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
  const artifact=await renderDocument(doc.markdown,'svg');assertArtifact(artifact);
  const assets=await collectAssets(artifact.html,doc.assets,options.allowRemoteAssets);
- const root=document.createElement('article');root.className='mf-document-shell mf-doc';for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
- root.style.cssText+=';position:fixed;left:-20000px;top:0;width:640px;visibility:hidden';
- root.innerHTML=assets.html;document.body.append(root);
+ const root=document.createElement('article');root.className='mf-document-shell mf-doc';
+ for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
+ const m=doc.theme.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
+ const context:InlineContext={bookmarks:new Map(),width:(210-m.left-m.right)*96/25.4,height:(297-m.top-m.bottom)*96/25.4-20};
+ root.style.cssText+=';position:fixed;left:-20000px;top:0;width:'+context.width+'px;visibility:hidden';
+ root.innerHTML=assets.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');document.body.append(root);
  try{
-  await waitForLayout(root);const children:(Paragraph|Table)[]=[];
-  const paragraph=async(el:Element,extra:object={})=>new Paragraph({children:await inline(el),spacing:{after:120},...extra});
-  const blocks=async(nodes:Element[],level=0)=>{
-   for(const node of nodes){
-    const tag=node.tagName.toLowerCase();
-    if(/^h[1-6]$/.test(tag)){const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];children.push(await paragraph(node,{heading:headings[Number(tag[1])-1]}))}
-    else if(tag==='table'){
-     const rows:TableRow[]=[];
-     for(const row of Array.from(node.querySelectorAll('tr'))){
-      const cells:TableCell[]=[];
-      for(const cell of Array.from(row.children))cells.push(new TableCell({children:[await paragraph(cell)],shading:cell.tagName==='TH'?{fill:'F3F4F6'}:undefined}));
-      rows.push(new TableRow({tableHeader:row.parentElement?.tagName==='THEAD',children:cells}));
-     }children.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows}));
-    }else if(tag==='ul'||tag==='ol'){
-     for(const li of Array.from(node.children)){
-      const own=li.cloneNode(true) as Element;for(const nested of own.querySelectorAll('ul,ol'))nested.remove();
-      children.push(await paragraph(own,{numbering:{reference:tag==='ol'?'mf-numbers':'mf-bullets',level:Math.min(8,level)}}));
-      for(const nested of Array.from(li.children))if(/^(UL|OL)$/.test(nested.tagName))await blocks([nested],level+1);
-     }
-    }else if(node.classList.contains('mf-page-break'))children.push(new Paragraph({pageBreakBefore:true}));
-    else if(['p','pre','blockquote','figure'].includes(tag)||node.classList.contains('mf-math'))children.push(await paragraph(node,{alignment:node.classList.contains('mf-math')?AlignmentType.CENTER:undefined}));
-    else if(tag==='hr')children.push(new Paragraph({text:'—'}));
-    else if(node.children.length)await blocks(Array.from(node.children),level);
-    else if(node.textContent)children.push(await paragraph(node));
+  await waitForLayout(root);
+  for(const el of root.querySelectorAll('[id]'))if(!context.bookmarks.has(el.id))context.bookmarks.set(el.id,'mf_bookmark_'+context.bookmarks.size);
+  const numbering:INumberingOptions['config'][number][]=[];
+  const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];
+  const blockTags=new Set(['p','pre','blockquote','figure','figcaption','div','section','article','main','aside','header','footer','details','summary','ul','ol','table','h1','h2','h3','h4','h5','h6','hr']);
+  async function blocks(nodes:Node[],level=0,firstOptions:IParagraphOptions={}):Promise<(Paragraph|Table)[]>{
+   const out:(Paragraph|Table)[]=[];let pending:Node[]=[],first=true;
+   async function paragraph(nodes:Node[],extra:IParagraphOptions={},id?:string){
+    let children=(await Promise.all(nodes.map(n=>inline(n,context)))).flat();
+    if(id&&context.bookmarks.has(id))children=[new Bookmark({id:context.bookmarks.get(id)!,children})];
+    out.push(new Paragraph({children,spacing:{after:120},...(first?firstOptions:{}),...extra}));first=false;
    }
-  };
-  await blocks(Array.from(root.children));
-  const m=doc.theme.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
-  const word=new WordDocument({styles:{default:{document:{run:{font:doc.theme.fontFamily==='mono'?'Consolas':doc.theme.fontFamily==='serif'?'SimSun':'Microsoft YaHei',size:Math.round(doc.theme.fontSize*1.5)},paragraph:{spacing:{line:Math.round(doc.theme.lineHeight*240)}}}}},numbering:{config:['mf-bullets','mf-numbers'].map(reference=>({reference,levels:Array.from({length:9},(_,level)=>({level,format:reference==='mf-bullets'?LevelFormat.BULLET:LevelFormat.DECIMAL,text:reference==='mf-bullets'?'•':'%'+(level+1)+'.',alignment:AlignmentType.LEFT}))}))},sections:[{properties:{page:{margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
+   async function flush(){if(pending.some(n=>n.nodeType!==Node.TEXT_NODE||n.textContent?.trim()))await paragraph(pending);pending=[]}
+   for(const node of nodes){
+    if(!(node instanceof Element)){pending.push(node);continue}
+    const tag=node.localName;
+    if(!blockTags.has(tag)&&!node.classList.contains('mf-math')){pending.push(node);continue}
+    await flush();
+    if(/^h[1-6]$/.test(tag))await paragraph([...node.childNodes],{heading:headings[Number(tag[1])-1],keepNext:true},node.id);
+    else if(node.classList.contains('mf-page-break'))out.push(new Paragraph({children:[new PageBreak()]}));
+    else if(tag==='table'){
+     const caption=node.querySelector(':scope > caption');if(caption)await paragraph([...caption.childNodes]);
+     const rows:TableRow[]=[];
+     for(const row of Array.from((node as HTMLTableElement).rows)){
+      const cells:TableCell[]=[];
+      for(const cell of Array.from(row.cells)){
+       const alignment=cell.getAttribute('align');
+       const content=await blocks([...cell.childNodes],0,{alignment:alignment==='right'?AlignmentType.RIGHT:alignment==='center'?AlignmentType.CENTER:AlignmentType.LEFT});
+       if(!(content[content.length-1] instanceof Paragraph))content.push(new Paragraph({}));
+       cells.push(new TableCell({children:content,columnSpan:cell.colSpan,rowSpan:cell.rowSpan,shading:cell.localName==='th'?{fill:'F3F4F6'}:undefined}));
+      }
+      rows.push(new TableRow({tableHeader:row.parentElement?.localName==='thead',children:cells}));
+     }
+     if(rows.length)out.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows}));
+    }else if(tag==='ul'||tag==='ol'){
+     const ordered=tag==='ol',reference='mf_list_'+numbering.length,start=Math.max(1,Math.min(2147483647,Number(node.getAttribute('start'))||1));
+     numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:ordered?LevelFormat.DECIMAL:LevelFormat.BULLET,text:ordered?'%'+(i+1)+'.':'•',start,alignment:AlignmentType.LEFT}))});
+     for(const li of Array.from(node.children).filter(n=>n.localName==='li'))out.push(...await blocks([...li.childNodes],level+1,{numbering:{reference,level:Math.min(8,level)}}));
+    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph([...node.childNodes],{alignment:node.classList.contains('mf-math')?AlignmentType.CENTER:undefined},node.id);
+    else if(tag==='hr')await paragraph([document.createTextNode('—')]);
+    else {const nested=await blocks([...node.childNodes],level,first?firstOptions:{});out.push(...nested);if(nested.length)first=false}
+   }
+   await flush();return out;
+  }
+  const children=await blocks([...root.childNodes]);
+  const word=new WordDocument({styles:{default:{document:{run:{font:doc.theme.fontFamily==='mono'?'Consolas':doc.theme.fontFamily==='serif'?'SimSun':'Microsoft YaHei',size:Math.round(doc.theme.fontSize*1.5)},paragraph:{spacing:{line:Math.round(doc.theme.lineHeight*240)}}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:twips(210),height:twips(297)},margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
   return await Packer.toBlob(word);
  }finally{root.remove()}
 }

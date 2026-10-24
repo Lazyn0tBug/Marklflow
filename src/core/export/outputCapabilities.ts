@@ -9,6 +9,8 @@ export function inspectDocx(markdown:string):OutputIssue[]{
  const issues:OutputIssue[]=[];
  visit(tree,node=>{
   const id='line-'+(node.position?.start.line||0);
+  if(node.type==='html'&&/<(?:math|mfrac|msqrt|mrow)\b/i.test(node.value))issues.push({nodeId:id,adaptation:'unsupported',message:'原始MathML尚无DOCX适配器，请改用LaTeX公式或静态图像'});
+  if(node.type==='html'&&/\b(?:rowspan|reversed|value)\s*=/i.test(node.value))issues.push({nodeId:id,adaptation:'unsupported',message:'当前不支持原始HTML的跨行表格或逐项/倒序列表编号，请改用简单表格和顺序列表'});
   if(node.type==='html')issues.push({nodeId:id,adaptation:'mapped',message:'原始HTML采用安全语义重排，Grid/容器布局和交互不保留'});
   if(node.type==='math'||node.type==='inlineMath')issues.push({nodeId:id,adaptation:'static',message:'公式输出SVG/PNG图片，不是Word原生可编辑公式'});
   if(node.type==='image')issues.push({nodeId:id,adaptation:'static',message:'图片封装进DOCX，外部资源须先收集完成'});
