@@ -1,0 +1,30 @@
+{
+  "pages": 5,
+  "expectedPages": 5,
+  "sizesPoints": [
+    [
+      594.95996,
+      841.91998
+    ],
+    [
+      594.95996,
+      841.91998
+    ],
+    [
+      594.95996,
+      841.91998
+    ],
+    [
+      594.95996,
+      841.91998
+    ],
+    [
+      594.95996,
+      841.91998
+    ]
+  ],
+  "sourceAndFinalMarker": true,
+  "chineseTextExtractable": true,
+  "pdfSha256": "ad3f7631c3dc9dcf210b83c849b6df642b0744d5a586d08cc33e084450e84592",
+  "method": "Playwright headless PDF of frozen paginated delivery document; not user disk-save or physical print verification"
+}

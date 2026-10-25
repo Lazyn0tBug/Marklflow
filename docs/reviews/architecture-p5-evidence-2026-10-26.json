@@ -1,0 +1,45 @@
+{
+  "step": "p5",
+  "parentCommit": "8c45dcd55b7b5f3e8f51c665e459475d774760cb",
+  "checks": {
+    "checkExitCode": 0,
+    "managedSources": 166,
+    "unitTests": 309,
+    "chromiumExitCode": 0,
+    "chromiumTests": 73,
+    "duration": "2.9m"
+  },
+  "logSha256": {
+    "check": "662111129e41018d3dcdcb36a0a7f2fc8cca6eb3b9d22b1283ec9fb2c81d1b3b",
+    "chromium": "94ac46665d6bc83e578767286226d31f01f254813de3965101721f0b5e4ea928"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-p5-pdf-check.json": "68ffff4c5c05edbb54467dbc89504e1bc8c4f57acccefd345917b8a018ee702a",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "a256eca0d6da7bc22a9f24581f9eb7f0a9d7273f87df4c19c5b73f5b7d1eebbd",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "cc1431ae2829184cd0dc3eb946d363bc910e757e949d7e26ec9f7dbfa7f7066d",
+    "docs/reviews/architecture-p5-implementation-2026-10-26.md": "53c1a1eef7e9eb5a6c274fe56757cef8517180defe9ed6f22218751b1bd26bc4",
+    "src/application/exports/exportService.ts": "4c1de265d8905fff242df7e7adc590cc345372dd8c9f6bff0853e1490cbc22e5",
+    "src/components/export/ExportModal.tsx": "20d5ed148d5bf4c3f96179d2ff00df4cad4baf6f0e507736f455a7a79a9ebf96",
+    "src/core/export/documentPrint.ts": "6f4a4f3fe0c191a7e0b235d0669a72b67205960d2b8792c9e769e9f4f1925731",
+    "src/core/export/pdfExporter.ts": "353293f15a11ccbeb35cabd090d87e629d9c3802fdb2e7d454477ce4f61a4cc9",
+    "src/core/platform/web/exportService.ts": "1d46e659cd261fbea023eddd533a929904f2e2fd167e4e0cc30fcad630b4cdb0",
+    "src/core/render/documentPaginator.ts": "58660295d70175717678dd61dedaccfde920ce55c0b4d4313a1be4aec1d16d59",
+    "tests/e2e/html-compatibility.spec.ts": "0e7ed7eee7f1ac429f1e89a0c9a9778e0c4bdb98aeb7fa1fdcaf31348a2a28de",
+    "tests/e2e/pdf-export.spec.ts": "8da33faebd771eec2b370090d623104865295783f2753e200c28c0b5f1234a0e",
+    "tests/unit/export-service.test.ts": "011675deb8d2609404083f37bb3608c05da72c715a30cc70da96993de4d0e27f",
+    "tests/unit/pdf-export.test.ts": "6283b37a795228475fdef5489a0284cf5ac7158d582e09fc241edda25cbbdf93"
+  },
+  "protectedSha256": {
+    "package.json": "65eaa0c3921dfd49279d141d5bc2c4ce4d188ab9f5bcf6dc09dacc530cc46b1c",
+    "bun.lock": "31f1f1ada5cc72c8e4b17214b336d35997f318f63492a225d8d2d388259e3ed6",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}

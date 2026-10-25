@@ -1,5 +1,7 @@
 # 架构重构分步实施与验收计划
 
+本步实施补充（2026-10-26）：P5已审查验证，见[P5执行记录](../reviews/architecture-p5-implementation-2026-10-26.md)。历史进度条目以最新补充为准。
+
 本步实施补充（2026-10-26）：P4已审查验证，见[P4执行记录](../reviews/architecture-p4-implementation-2026-10-26.md)。历史进度条目以最新补充为准。
 
 本步实施补充（2026-10-26）：P3已审查验证，见[P3执行记录](../reviews/architecture-p3-implementation-2026-10-26.md)。历史进度条目以最新补充为准。

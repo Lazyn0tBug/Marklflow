@@ -8,7 +8,7 @@ import { inspectDocx } from '../../core/export/outputCapabilities';
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
+import { X, Download, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 
 interface ExportModalProps {
@@ -120,12 +120,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 }`}
               >
                 <div className="p-2 rounded bg-sky-500/10 text-sky-400 shrink-0 mt-0.5">
-                  <Printer className="w-4 h-4" />
+                  <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="font-medium text-xs text-neutral-100">打印 / 保存为 A4 PDF</div>
+                  <div className="font-medium text-xs text-neutral-100">PDF 文档（A4）</div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    准备 A4 文档后调用浏览器打印；实际分页、字体及 PDF 结果需在目标环境核对。
+                    使用 A4 排版，保留可选取、可检索的正文。
                   </p>
                 </div>
               </button>
@@ -189,7 +189,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>• 公式采用 <strong>{mathMode.toUpperCase()}</strong> 渲染；源载荷支持再次导入 MarkFlow 无损重构。</div>
               )}
               {selectedFormat === 'print-pdf' && (
-                <div>• 打印使用冻结文档，等待图片/字体就绪；系统打印设置及实际分页须另行核对。</div>
+                <div>• 按文档页面配置导出，工作台预览可保持关闭。</div>
               )}
               {selectedFormat === 'docx' && (
                 <div>• 段落与表格映射为 Word 原生对象；公式和图表以图片输出，原始HTML按语义重排；须明确接受，不能原生编辑公式或保留交互。</div>
@@ -232,7 +232,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
               className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 shadow-md shadow-teal-950/30"
             >
               <Download className="w-4 h-4" />
-              {isExporting ? '正在生成...' : selectedFormat === 'print-pdf' ? '唤起系统打印' : '立即导出并保存'}
+              {isExporting ? '正在生成...' : '立即导出并保存'}
             </button>
           </div>
         </div>

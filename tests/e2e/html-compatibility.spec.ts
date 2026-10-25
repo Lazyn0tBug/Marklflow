@@ -79,11 +79,11 @@ test('prepares the print frame only after assets are ready and cleans up after p
    if(event.target instanceof HTMLIFrameElement){const frame=event.target;frame.contentWindow!.print=()=>frame.setAttribute('data-test-printed','true')}
   },true);
  });
- await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/打印 \/ 保存为 A4 PDF/}).click();
- await page.getByRole('button',{name:'唤起系统打印',exact:true}).click();
- const frame=page.locator('iframe[title="打印冻结文档"]');await expect(frame).toHaveAttribute('data-test-printed','true');
- await expect(page.frameLocator('iframe[title="打印冻结文档"]').locator('article.mf-doc')).toContainText('正文结束');
- expect(await page.frameLocator('iframe[title="打印冻结文档"]').locator('img').evaluate(n=>(n as HTMLImageElement).complete&&(n as HTMLImageElement).naturalWidth>0)).toBe(true);
+ await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/PDF 文档/}).click();
+ await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
+ const frame=page.locator('iframe[title="PDF导出文档"]');await expect(frame).toHaveAttribute('data-test-printed','true');
+ await expect(page.frameLocator('iframe[title="PDF导出文档"]').locator('body')).toContainText('正文结束');
+ expect(await page.frameLocator('iframe[title="PDF导出文档"]').locator('img').evaluate(n=>(n as HTMLImageElement).complete&&(n as HTMLImageElement).naturalWidth>0)).toBe(true);
  await frame.evaluate(n=>(n as HTMLIFrameElement).contentWindow!.dispatchEvent(new Event('afterprint')));
  await expect(frame).toHaveCount(0);
 });

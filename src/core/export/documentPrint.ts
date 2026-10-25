@@ -22,7 +22,7 @@ export async function waitForLayout(root:ParentNode,doc:Document=document):Promi
  await withDeadline(new Promise<void>(resolve=>view.requestAnimationFrame(()=>view.requestAnimationFrame(()=>resolve()))),'布局就绪超时');
 }
 export async function preparePrintFrame(html:string):Promise<HTMLIFrameElement>{
- const frame=document.createElement('iframe');frame.title='打印冻结文档';
+ const frame=document.createElement('iframe');frame.title='PDF导出文档';frame.setAttribute('aria-hidden','true');
  frame.setAttribute('sandbox','allow-same-origin allow-modals');
  frame.style.cssText='position:fixed;left:-20000px;top:0;width:794px;height:1123px;border:0';
  const loaded=new Promise<void>((resolve,reject)=>{frame.onload=()=>resolve();frame.onerror=()=>reject(new Error('打印文档加载失败'))});
@@ -31,7 +31,8 @@ export async function preparePrintFrame(html:string):Promise<HTMLIFrameElement>{
 }
 export async function printFrozenHtml(html:string):Promise<void>{
  const frame=await preparePrintFrame(html);
- frame.contentWindow!.addEventListener('afterprint',()=>frame.remove(),{once:true});
+ const cleanup=()=>{frame.remove();window.removeEventListener('pagehide',cleanup)};
+ frame.contentWindow!.addEventListener('afterprint',cleanup,{once:true});window.addEventListener('pagehide',cleanup,{once:true});
  // Print readiness comes from load/decode/fonts/layout, never an arbitrary sleep.
- try{frame.contentWindow!.focus();frame.contentWindow!.print()}catch(error){frame.remove();throw error}
+ try{frame.contentWindow!.focus();frame.contentWindow!.print()}catch(error){cleanup();throw error}
 }
