@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, FileUp } from 'lucide-react';
 import { TopBar } from './components/header/TopBar';
 import { Sidebar } from './components/workspace/Sidebar';
 import { Editor } from './components/editor/Editor';
@@ -23,9 +23,10 @@ import {
   saveDocument,
   deleteDocument,
   createNewDocument,
+  extractPayloadFromHtml,
 } from './core/storage/storage';
 import { extractOutline } from './core/parser/markdownParser';
-import { isTauri, saveNativeFileInPlace, saveNativeFileAs } from './core/platform/desktop';
+import { isTauri, saveNativeFileInPlace, saveNativeFileAs, updateWindowTitle } from './core/platform/desktop';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
 function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number {
@@ -112,6 +113,15 @@ export default function App() {
       }
     }
   }, [currentDocId, currentDoc?.markdown]);
+
+  // 同步原生桌面窗口与 Web 页面标题
+  useEffect(() => {
+    if (currentDoc) {
+      void updateWindowTitle(currentDoc.meta.title, isDirty);
+    }
+  }, [currentDoc?.meta.title, isDirty]);
+
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
 
   // Markdown 内容变更处理
   const handleMarkdownChange = useCallback(
@@ -583,9 +593,84 @@ export default function App() {
   const charCount = currentDoc.markdown.length;
   const wordCount = currentDoc.markdown.trim().split(/\s+/).filter(Boolean).length;
   const lineCount = lines.length;
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingFile(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDraggingFile(false);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      if (file.size > 50 * 1024 * 1024) continue;
+      const text = await file.text();
+      if (!text) continue;
+
+      if (/\.html?$/i.test(file.name)) {
+        const restored = extractPayloadFromHtml(text);
+        if (restored) {
+          handleImportDoc(restored);
+          return;
+        }
+      }
+
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      const newDoc: DocumentRecord = {
+        schemaVersion: 1,
+        id: 'doc_' + Math.random().toString(36).substring(2, 9),
+        revision: 1,
+        markdown: text,
+        meta: {
+          title,
+          author: 'Dropped File',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        theme: {
+          fontFamily: 'sans',
+          fontSize: 15,
+          lineHeight: 1.75,
+          primaryColor: '#0d9488',
+          paperTheme: 'clean-white',
+          paperSize: 'A4',
+          margins: { top: 20, bottom: 25, left: 20, right: 20 },
+        },
+        options: {
+          syntaxProfile: 'commonmark-gfm-v1',
+          mathMode: 'mathml',
+        },
+      };
+      handleImportDoc(newDoc);
+      return;
+    }
+  };
 
   return (
-    <div className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`h-screen w-screen flex flex-col overflow-hidden relative ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}
+    >
+      {/* File Drag & Drop Overlay */}
+      {isDraggingFile && (
+        <div className="absolute inset-0 z-50 bg-neutral-950/85 backdrop-blur-xs flex flex-col items-center justify-center border-2 border-dashed border-teal-500 text-teal-300 pointer-events-none animate-in fade-in duration-150">
+          <FileUp className="w-12 h-12 mb-3 text-teal-400 animate-bounce" />
+          <div className="text-base font-semibold text-neutral-100">释放文件以在 MarkFlow 中打开</div>
+          <div className="text-xs text-neutral-400 mt-1">支持拖放 .md、.markdown、.txt 及可编辑 .html 文件</div>
+        </div>
+      )}
       {/* 3-Zone Top Bar */}
       <TopBar
         sidebarOpen={sidebarOpen}

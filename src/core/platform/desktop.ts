@@ -247,3 +247,19 @@ export async function exportPdfDirect(
     };
   }
 }
+
+/** 动态同步更新桌面窗口标题与 Web 页面标题 */
+export async function updateWindowTitle(title: string, isDirty: boolean): Promise<void> {
+  const displayTitle = `${isDirty ? '● ' : ''}${title || '未命名技术文档'} - MarkFlow 墨流`;
+  if (typeof document !== 'undefined') {
+    document.title = displayTitle;
+  }
+  if (isTauri()) {
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().setTitle(displayTitle);
+    } catch {
+      // Ignored if window capability is restricted
+    }
+  }
+}
