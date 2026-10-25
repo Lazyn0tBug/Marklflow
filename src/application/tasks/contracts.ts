@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {taskBudget} from './budget';
 import {documentSchema} from '../../core/model/documentSchema';
 const id=z.string().min(1).max(256),version=z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const taskKindSchema=z.enum(['preview.flow','preview.a4','export.md','export.mdBundle','export.html','export.docx','export.print']);
@@ -15,7 +16,10 @@ export type TaskStage=z.infer<typeof stageSchema>;
 export const executionIdentitySchema=z.object({executorId:id,executorGeneration:version,attempt:z.number().int().min(1).max(2),task:taskIdentitySchema}).strict();
 export type ExecutionIdentity=z.infer<typeof executionIdentitySchema>;
 const point=z.object({line:z.number().int().positive(),column:z.number().int().positive(),offset:version}).strict();
-export const artifactSchema=z.object({schemaVersion:z.literal(1),artifactId:id,mediaType:z.enum(['text/html','text/markdown','application/zip','application/json','application/vnd.openxmlformats-officedocument.wordprocessingml.document']),encoding:z.enum(['utf8','base64']),content:z.string(),sourceMap:z.array(z.object({nodeId:id,start:point,end:point}).strict().refine(range=>range.end.offset>=range.start.offset)).max(100000),resources:z.array(z.object({source:z.string().min(1).max(15*1024*1024),sha256:z.string().regex(/^[a-f0-9]{64}$/),bytes:version}).strict()).max(128),diagnostics:z.array(z.object({severity:z.enum(['warning','error']),message:z.string().max(8192)}).strict()).max(10000),engineFingerprint:id,layoutFingerprint:id,resourceFingerprint:id,policyFingerprint:id}).strict();
+export const artifactSchema=z.object({schemaVersion:z.literal(1),artifactId:id,mediaType:z.enum(['text/html','text/markdown','application/zip','application/json','application/vnd.openxmlformats-officedocument.wordprocessingml.document']),encoding:z.enum(['utf8','base64']),content:z.string().max(taskBudget.memory.activeArtifactBytes),sourceMap:z.array(z.object({nodeId:id,start:point,end:point}).strict().refine(range=>range.end.offset>=range.start.offset)).max(100000),resources:z.array(z.object({source:z.string().min(1).max(15*1024*1024),sha256:z.string().regex(/^[a-f0-9]{64}$/),bytes:version}).strict()).max(128),diagnostics:z.array(z.object({severity:z.enum(['warning','error']),message:z.string().max(8192)}).strict()).max(10000),engineFingerprint:id,layoutFingerprint:id,resourceFingerprint:id,policyFingerprint:id}).strict().superRefine((artifact,context)=>{
+ const binary=['application/zip','application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(artifact.mediaType);
+ if(binary!==(artifact.encoding==='base64')||binary&&!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(artifact.content))context.addIssue({code:'custom',message:'Artifact encoding mismatch'});
+});
 export type TaskArtifact=z.infer<typeof artifactSchema>;
 const messageBase={protocolVersion:z.literal(1),execution:executionIdentitySchema};
 export const executorMessageSchema=z.discriminatedUnion('type',[
@@ -36,6 +40,7 @@ export function snapshotRequest(input:unknown):TaskRequest{return taskRequestSch
 export interface TaskClock {now():number;schedule(delayMs:number,callback:()=>void):()=>void}
 export interface TaskExecutor {
  readonly id:string;readonly generation:number;readonly lane:'compute'|'dom';
+ readonly capabilities:{requiresDOM:boolean;isolation:'shared-realm'|'worker'|'process';rebuildable:boolean;concurrency:1};
  readonly cancellation:'cooperative'|'external';readonly supportedKinds:readonly TaskKind[];
  start(request:TaskRequest,execution:ExecutionIdentity,receive:(message:unknown)=>void,resources:ExecutionResources):void;
  stop(execution:ExecutionIdentity):void;

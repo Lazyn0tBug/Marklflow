@@ -8,3 +8,11 @@ void window;
 void document;
 // @ts-expect-error: Worker/pure compilation must never acquire Node process globals.
 void process;
+
+import type {TaskKind} from '../../src/application/tasks/contracts';
+import type {TaskHooks} from '../../src/application/tasks/supervisor';
+// @ts-expect-error: Only the finite preview and export kinds may enter governance.
+const arbitraryTask:TaskKind='plugin.custom';
+// @ts-expect-error: Preview publication must return undefined synchronously, never a Promise.
+const asynchronousPublish:TaskHooks['publish']=async()=>{};
+void arbitraryTask;void asynchronousPublish;

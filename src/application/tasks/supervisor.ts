@@ -12,15 +12,16 @@ export interface TaskHooks {
  validate(request:TaskRequest,artifact:TaskArtifact):Promise<void>;
  /** A synchronous atomic replacement; async and reentrant publication are forbidden. */
  publish(request:TaskRequest,artifact:TaskArtifact):undefined;
+ withdraw(kind:'preview.flow'|'preview.a4'):undefined;
 }
 export type Admission={status:'accepted';taskId:string;identity:TaskRequest['identity']}|{status:'busy'|'inactive'|'capacity'|'unsupported'};
 const bytes=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).byteLength;
 /** A2 composition, injected test/host ports only. No Worker, DOM, files or engine instances. */
 export class TaskSupervisor{
  private readonly identity=new IdentityGate();private readonly queue=new TaskQueue(this.identity);
- readonly resources=new ResourceLedger();private readonly pool:ExecutorPool;
+ private readonly resources=new ResourceLedger();private readonly pool:ExecutorPool;
  private tasks=new Map<string,Work>();private history:{taskId:string;state:TerminalState;reason:string|undefined;deliveryOutcome:DeliveryReceipt['outcome']|undefined}[]=[];
- private sequence=0;private publishing=false;private pumping=false;private views=new Map<string,string>();
+ private sequence=0;private publishing=false;private pumping=false;private views=new Map<string,string>();private viewAuthorizations=new Map<string,number>();private health:string[]=[];
  constructor(private readonly clock:TaskClock,private readonly hooks:TaskHooks){
   this.pool=new ExecutorPool(clock,this.resources,{message:message=>this.message(message),fault:(id,reason)=>{this.finish(id,'failed',reason);this.pool.stop(id)},stopTimeout:id=>this.finish(id,'timedOut','Execution stop not confirmed'),available:()=>{for(const id of this.tasks.keys())this.cleanup(id);this.pump()}});
  }
@@ -28,7 +29,7 @@ export class TaskSupervisor{
  open(documentId:string):number{this.mutation();return this.identity.open(documentId)}
  activate(documentId:string){this.mutation();const token=this.identity.activate(documentId);this.invalidatePreviews();return token}
  close(documentId:string):void{this.mutation();this.identity.close(documentId);this.invalidatePreviews()}
- revokeBefore(revision:number):void{this.mutation();this.identity.revokeBefore(revision);for(const [id,work]of this.tasks)if(!work.delivering&&!this.identity.authorized(work.request)){this.finish(id,'failed','Authorization revoked');this.pool.stop(id)}}
+ revokeBefore(revision:number):void{this.mutation();this.identity.revokeBefore(revision);for(const [id,work]of this.tasks)if(!work.delivering&&!this.identity.authorized(work.request)){this.finish(id,'failed','Authorization revoked');this.pool.stop(id)}for(const [kind,authorization]of this.viewAuthorizations)if(authorization<revision)this.withdrawView(kind)}
  install(executor:TaskExecutor):void{this.mutation();this.pool.install(executor);this.pump()}
  submit(input:unknown,lane:TaskExecutor['lane']):Admission{
   this.mutation();const request=snapshotRequest(input);
@@ -50,9 +51,10 @@ export class TaskSupervisor{
   if(isPreview(request.kind))for(const [old,work]of this.tasks)if(old!==id&&work.request.kind===request.kind&&work.request.identity.documentId===request.identity.documentId&&!isTerminal(work.life.state)&&work.life.state!=='cancelRequested'){this.finish(old,'superseded','Newer snapshot');this.pool.stop(old)}
   this.pump();return {status:'accepted',taskId:id,identity:{...request.identity}};
  }
+ suspendPreview(kind:'preview.flow'|'preview.a4'):void{this.mutation();this.identity.suspend(kind);for(const [id,work]of this.tasks)if(work.request.kind===kind&&work.life.state!=='cancelRequested'){this.finish(id,'superseded','View hidden');this.pool.stop(id)}this.queue.invalidatePreviews();this.withdrawView(kind)}
  private invalidatePreviews():void{
   this.queue.invalidatePreviews();for(const [id,work]of this.tasks)if(isPreview(work.request.kind)&&!this.identity.current(work.request)&&work.life.state!=='cancelRequested'){this.finish(id,'superseded','Inactive preview');this.pool.stop(id)}
-  for(const kind of [...this.views.keys()])this.releaseView(kind);
+  for(const kind of [...this.views.keys()])this.withdrawView(kind);
  }
  private pump():void{
   if(this.pumping||this.publishing)return;this.pumping=true;
@@ -83,6 +85,7 @@ export class TaskSupervisor{
   const work=this.tasks.get(id);if(!work||work.life.state!=='running')return;
   work.life.move('validating');work.validationPending=true;work.deadlines.validation();
   try{
+   if(isTerminal(work.life.state))return;
    const artifact=artifactSchema.parse(input),identity=work.request.identity;
    if(artifact.diagnostics.some(item=>item.severity==='error')||artifact.engineFingerprint!==identity.engineFingerprint||artifact.layoutFingerprint!==identity.layoutFingerprint||artifact.policyFingerprint!==identity.policyFingerprint||artifact.resourceFingerprint!==identity.resourceFingerprint)throw new Error('Artifact diagnostics or fingerprint mismatch');
    if(artifact.sourceMap.some(node=>node.end.offset>work.request.document.markdown.length)||new Set(artifact.sourceMap.map(node=>node.nodeId)).size!==artifact.sourceMap.length)throw new Error('Invalid source mapping');
@@ -90,7 +93,7 @@ export class TaskSupervisor{
    if(artifact.mediaType!==media[work.request.kind])throw new Error('Wrong artifact media type');
    if(artifact.resources.some(asset=>asset.bytes>taskBudget.input.singleImageBytes)||artifact.resources.reduce((sum,asset)=>sum+asset.bytes,0)>taskBudget.input.totalImageBytes)throw new Error('Artifact resources exceed budget');
    const allocation=bytes(artifact)*3;if(allocation>taskBudget.memory.activeArtifactBytes)throw new Error('Artifact byte budget exceeded');
-   this.resources.register({id:'output:'+id,kind:'artifact',owner:{kind:'task',id},group:'activeArtifact',bytes:allocation,taskId:id,snapshotId:identity.snapshotId,documentId:identity.documentId,sessionGeneration:identity.sessionGeneration,executorGeneration:0},()=>{work.candidate=undefined});work.candidate=artifact;
+   this.resources.register({id:'output:'+id,kind:'artifact',owner:{kind:'task',id},group:'activeArtifact',bytes:allocation,taskId:id,snapshotId:identity.snapshotId,documentId:identity.documentId,sessionGeneration:identity.sessionGeneration,executorGeneration:0},()=>{});work.candidate=artifact;
    await this.hooks.validate(snapshotRequest(work.request),artifactSchema.parse(artifact));
    if(work.life.readState()==='cancelRequested'){this.finish(id,'cancelled','Validation stopped');return}
    if(isTerminal(work.life.state)||work.deadlines.check())return;
@@ -100,7 +103,7 @@ export class TaskSupervisor{
     work.life.move('publishing');this.publishing=true;
     try{const result=this.hooks.publish(snapshotRequest(work.request),artifactSchema.parse(artifact));if(result!==undefined)throw new Error('Publication must be synchronous')}finally{this.publishing=false}
     this.releaseView(work.request.kind);
-    this.resources.transfer('output:'+id,{kind:'task',id},{kind:'view',id:work.request.kind},'activeArtifact');this.views.set(work.request.kind,'output:'+id);
+    this.resources.transfer('output:'+id,{kind:'task',id},{kind:'view',id:work.request.kind},'activeArtifact');this.views.set(work.request.kind,'output:'+id);this.viewAuthorizations.set(work.request.kind,work.request.authorization.revision);
     this.finish(id,'succeeded');
    }else{work.ready=true;work.deadlines.enter('artifactReady')}
   }catch(error){this.finish(id,work.life.readState()==='cancelRequested'?'cancelled':'failed',String(error))}finally{work.validationPending=false;if(isTerminal(work.life.state))this.cleanup(id);this.pump()}
@@ -111,12 +114,17 @@ export class TaskSupervisor{
   work.delivering=true;work.deadlines.enter('delivering');return true;
  }
  completeDelivery(id:string,input:unknown):void{
-  this.mutation();const work=this.tasks.get(id);if(!work?.delivering||isTerminal(work.life.state))return;
+  this.mutation();const work=this.tasks.get(id);if(!work?.delivering||isTerminal(work.life.state)||work.deadlines.check())return;
   const receipt=deliveryReceiptSchema.parse(input);if(receipt.artifactId!==work.candidate?.artifactId)throw new Error('Delivery artifact mismatch');
   const valid=work.request.kind==='export.print'?receipt.outcome==='handedOff':receipt.outcome==='dispatched'||receipt.outcome==='committed';
   work.deliveryOutcome=receipt.outcome;this.finish(id,valid?'succeeded':'failed',valid?undefined:receipt.message??'Delivery failed or unknown');
  }
- releaseView(kind:string):void{this.mutation();const id=this.views.get(kind);if(id){this.views.delete(kind);void this.resources.release(id,{kind:'view',id:kind})}}
+ private withdrawView(kind:string):void{
+  if(kind!=='preview.flow'&&kind!=='preview.a4')return;
+  try{this.publishing=true;const result=this.hooks.withdraw(kind);if(result!==undefined)throw new Error('Withdrawal must be synchronous')}catch(error){this.health.push(String(error));if(this.health.length>16)this.health.shift();return}finally{this.publishing=false}
+  this.releaseView(kind);
+ }
+ releaseView(kind:string):void{this.mutation();const id=this.views.get(kind);if(id){this.views.delete(kind);this.viewAuthorizations.delete(kind);void this.resources.release(id,{kind:'view',id:kind})}}
  private finish(id:string,state:TerminalState,reason?:string):void{
   const work=this.tasks.get(id);if(!work||isTerminal(work.life.state))return;
   work.life.move(state);work.reason=reason;work.deadlines.dispose();this.queue.finish(id);this.cleanup(id);
@@ -130,7 +138,7 @@ export class TaskSupervisor{
    this.history.push({taskId:id,state,reason:work.reason,deliveryOutcome:work.deliveryOutcome});if(this.history.length>16)this.history.shift();this.tasks.delete(id);this.pump();
   });
  }
- status(id:string){const work=this.tasks.get(id);return work?{taskId:id,state:work.life.state,reason:work.reason,deliveryOutcome:work.deliveryOutcome}:this.history.find(item=>item.taskId===id)}
+ status(id:string){const work=this.tasks.get(id);return work?{taskId:id,state:work.life.state,reason:work.reason,deliveryOutcome:work.deliveryOutcome}:(()=>{const record=this.history.find(item=>item.taskId===id);return record?{...record}:undefined})()}
  async retryCleanup(lane:TaskExecutor['lane']):Promise<void>{this.mutation();await this.pool.retryCleanup(lane)}
- stats(){return {pending:this.queue.size,trackedTasks:this.tasks.size,history:this.history.length,validationLeases:[...this.tasks.values()].filter(work=>work.validationPending).length,executors:this.pool.snapshot(),resources:this.resources.snapshot(),ownedBytes:this.resources.totalBytes}}
+ stats(){return {pending:this.queue.size,trackedTasks:this.tasks.size,history:this.history.length,health:[...this.health],validationLeases:[...this.tasks.values()].filter(work=>work.validationPending).length,executors:this.pool.snapshot(),resources:this.resources.snapshot(),ownedBytes:this.resources.totalBytes}}
 }

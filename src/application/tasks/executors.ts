@@ -10,6 +10,9 @@ export class ExecutorPool{
  private slots=new Map<TaskExecutor['lane'],Slot>();
  constructor(private readonly clock:TaskClock,readonly resources:ResourceLedger,private readonly events:ExecutorEvents){}
  install(executor:TaskExecutor):void{
+  if(!executor.id||!Number.isSafeInteger(executor.generation)||executor.generation<0)throw new Error('Invalid executor identity');
+  const capability=executor.capabilities;
+  if(capability.concurrency!==1||capability.requiresDOM&&executor.lane!=='dom'||capability.requiresDOM&&capability.isolation==='worker'||executor.cancellation==='external'&&capability.isolation==='shared-realm')throw new Error('Inconsistent executor capabilities');
   const old=this.slots.get(executor.lane);
   if(old&&(old.lease||old.state==='quarantined'||executor.generation<=old.executor.generation))throw new Error('Executor replacement requires released lease and newer generation');
   if([...this.slots.values()].some(slot=>slot.executor.id===executor.id&&slot!==old))throw new Error('Executor id already used');
@@ -30,6 +33,12 @@ export class ExecutorPool{
  private receive(slot:Slot,lease:Lease,raw:unknown):void{
   if(slot.lease!==lease||lease.settled)return;
   // Old messages cannot poison the current lease, even if the payload is otherwise malformed.
+  const header=raw&&typeof raw==='object'&&'execution'in raw?raw.execution:undefined;
+  if(header&&typeof header==='object'){
+   if('executorId'in header&&typeof header.executorId==='string'&&header.executorId!==lease.identity.executorId)return;
+   if('executorGeneration'in header&&typeof header.executorGeneration==='number'&&header.executorGeneration!==lease.identity.executorGeneration)return;
+   if('task'in header&&header.task&&typeof header.task==='object'&&'taskId'in header.task&&typeof header.task.taskId==='string'&&header.task.taskId!==lease.identity.task.taskId)return;
+  }
   const envelope=raw&&typeof raw==='object'&&'execution'in raw?executionIdentitySchema.safeParse(raw.execution):undefined;
   if(envelope?.success&&!sameExecution(envelope.data,lease.identity))return;
   const parsed=executorMessageSchema.safeParse(raw);

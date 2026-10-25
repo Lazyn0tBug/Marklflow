@@ -6,6 +6,7 @@ export class IdentityGate{
  private sessions=new Map<string,number>();private sequence=0;private epoch=0;private active:string|undefined;
  private expected=new Map<TaskRequest['kind'],TaskIdentity>();private restore=0;private authorizationFloor=0;
  open(documentId:string):number{
+  if(!documentId||documentId.length>256)throw new Error('Invalid document id');
   const current=this.sessions.get(documentId);if(current!==undefined)return current;
   if(this.sessions.size>=taskBudget.memory.sessions)throw new Error('Session capacity exceeded');
   const generation=++this.sequence;this.sessions.set(documentId,generation);return generation;
@@ -25,6 +26,7 @@ export class IdentityGate{
   this.expected.set(request.kind,{...request.identity});this.restore++;
  }
  current(request:TaskRequest):boolean{const expected=this.expected.get(request.kind);return this.authorized(request)&&this.activeMatches(request)&&!!expected&&sameIdentity(expected,request.identity)}
+ suspend(kind:'preview.flow'|'preview.a4'):void{this.expected.delete(kind);this.restore++}
  beginRestore(request:TaskRequest):RestoreIdentity{if(!this.current(request))throw new Error('Stale restore');return {restoreRequestId:++this.restore,task:{...request.identity},kind:request.kind}}
  restoreCurrent(token:RestoreIdentity):boolean{const expected=this.expected.get(token.kind);return token.restoreRequestId===this.restore&&this.active===token.task.documentId&&this.sessions.get(token.task.documentId)===token.task.sessionGeneration&&this.epoch===token.task.activationEpoch&&token.task.authorizationRevision>=this.authorizationFloor&&!!expected&&sameIdentity(token.task,expected)}
  get activeDocumentId(){return this.active}

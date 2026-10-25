@@ -24,3 +24,5 @@ it('attempts every cleanup, retains failures and allows an explicit retry',async
 it('does not mutate allocation ownership or counts after rejected operations',()=>{
  const ledger=new ResourceLedger();expect(()=>ledger.register(spec('negative',-1),()=>{})).toThrow();ledger.register(spec(),()=>{});expect(()=>ledger.register(spec(),()=>{})).toThrow();expect(()=>ledger.transfer('r',{kind:'task',id:'wrong'},{kind:'cache',id:'cache'},'cache')).toThrow();expect(ledger.totalBytes).toBe(8);
 });
+
+it('leaves original ownership intact when a destination group is full',()=>{const ledger=new ResourceLedger();ledger.register({...spec('active',taskBudget.memory.activeArtifactBytes),group:'activeArtifact'},()=>{});ledger.register(spec('moving'),()=>{});expect(()=>ledger.transfer('moving',owner,{kind:'view',id:'preview'},'activeArtifact')).toThrow('budget');expect(ledger.snapshot().find(entry=>entry.id==='moving')?.owner).toEqual(owner);expect(ledger.snapshot().find(entry=>entry.id==='moving')?.group).toBe('inFlight')});

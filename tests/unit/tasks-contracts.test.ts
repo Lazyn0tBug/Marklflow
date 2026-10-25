@@ -20,3 +20,5 @@ it('keeps task governance free of renderers, UI and native runtime access',()=>{
  for(const source of ["import '../../core/render/mathRender'","document.createElement('div')","import React from 'react'","import {readFile} from '@tauri-apps/plugin-fs'"])expect(checkModuleSource('src/application/tasks/sample.ts',source).length).toBeGreaterThan(0);
  expect(checkModuleSource('src/core/model/sample.ts',"import '../../application/tasks/contracts'").length).toBeGreaterThan(0);
 });
+
+it('validates binary encodings separately from selectable text output',()=>{expect(artifactSchema.safeParse({...artifact(),mediaType:'application/zip',encoding:'utf8'}).success).toBe(false);expect(artifactSchema.safeParse({...artifact(),mediaType:'application/zip',encoding:'base64',content:'not base64!'}).success).toBe(false);expect(artifactSchema.safeParse({...artifact(),mediaType:'application/zip',encoding:'base64',content:'UEs='}).success).toBe(true)});
