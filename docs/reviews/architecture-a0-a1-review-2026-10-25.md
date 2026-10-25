@@ -1,6 +1,6 @@
 # A0/A1 完整代码审查与修复记录
 
-日期：2026-10-25；分支：architecture-refactor；审查基线：c56e913；A0：32b5b0c。状态：审查/修复进行中。
+日期：2026-10-25；分支：architecture-refactor；审查基线：c56e913；A0：32b5b0c。状态：A0/A1审查修复及本地验证完成；后续架构阶段未启动。
 
 ## 范围与步骤
 
@@ -56,3 +56,18 @@ A01/A02已修正：复测默认输出test-results/architecture-measurement.json�
 真实Chromium同语料复测：3/9/23页，分页宿主0→0、样式5→5，12项耗时比较均通过。首次测量仅代表该工作负载在同进程中的首样本；应用启动已加载引擎，medium/large也共享此前状态，不宣称每项引擎冷启动。未测p95/最大规模/物理堆/真实字形。最终复测快照与比较另存，历史证据不变。
 
 复现：启动4175开发服务后执行 `bun scripts/measure-architecture-baseline.ts`，再执行 `bun run check:architecture-baseline test-results/architecture-measurement.json`。预算仅用于回归比较；生产准入、期限与缓存预算仍待A2/A4实施。
+
+## R4 综合收口与验收
+
+| 问题 | 级别 | 结果/提交 |
+| --- | --- | --- |
+| S01 后端切换、S02 恢复读取/释放、S04 同修订冲突 | P1 | 已修复，cd86c1b |
+| S03 共享值/非JSON备份、S05 应用失败反馈 | P2 | 已修复，cd86c1b |
+| B01 导入/环境门禁、B02 类型覆盖、W01 构建Worker | P2 | 已修复，40f1e82 |
+| A01 冻结证据覆盖、A02 比较与负语料门禁 | P2 | 已修复，bb95dc0 |
+
+最终锁定安装无变化；四环境类型、85项受管源码/配置覆盖、source/边界门禁、lint、20文件102项单元、生产构建、30项Chromium E2E全部通过。浏览器分布为28项应用/导出/存储生产测试、1项开发Worker、1项独立构建Worker；不将独立Worker夹具称为生产任务接入。
+
+[独立审查证据](../acceptance/architecture-a0-a1-review-evidence.json)记录检查、指纹、分支/标签保护及限制；[最终复测](../acceptance/architecture-a0-a1-review-runtime.json)在全部E2E结束后独立运行，12项耗时门槛通过。正例页数3/9/23、产物字节81643/155270/323139与A0一致；宿主0→0、样式5→5。复测源码为bb95dc0，dirty内容仅为审查文档/证据。所有引擎适配器、锁文件、vendor及历史A0/A1 JSON保持不变，其他分支和标签未移动。
+
+三份方案与原A1记录已补充修正说明，AC01/AC02具有本轮证据。存储恢复不含完整管理器或自动迁移；类型/模块门禁不是任意代码安全沙箱；未来Tauri仅保留领域端口，没有原生实现。A2期限/资源账本、A3故障终止调度、A4多Tab及内存缓存等不在本轮完成范围。现有configLoader/大块警告保留；未验证远端CI、其他浏览器、Word/WPS、实体打印、完整字形及最大规模。

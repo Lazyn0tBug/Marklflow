@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-25T07:29:08.854Z",
+  "sourceStatus": "M docs/design/architecture-implementation-acceptance-2026-10-25.md\n M docs/design/architecture-refactor-plan-2026-10-25.md\n M docs/design/architecture-stack-assessment-2026-10-25.md\n M docs/reviews/architecture-a1-implementation-2026-10-25.md",
+  "sourceFingerprints": {
+    "bun.lock": "a517268e662d34326732aefe4249bf27bc4bf642881eefb573ec8e38a6021119",
+    "package.json": "aae45f167736ab6ab8d1c925fc687ba6335a1ea487a24c3802064ecae3503d0e",
+    "scripts/architecture-baseline-contract.ts": "426729f184e57c76b6ca4c7c8e1067f7de09333fc3840b2415a5fbeb055bcf91",
+    "scripts/build-worker-probe.ts": "bddd0b6f6a098d2eaa9b1cfcb4c8ca8562916a9a226ba44c78930a0f7633e167",
+    "scripts/check-architecture-baseline.ts": "bc5c93a57714d4fb051c0ecd05ff148d7a3f7bfa6bda664b02d3191c75630e89",
+    "scripts/check-module-boundaries.ts": "3c1b95fa8a695018fb7e60a749d8d5b5503679a7c42a77116e39d549dc2f92da",
+    "scripts/check-source-policy.ts": "0091cdabb58f07a648e0c78372d4e4053ba485a808136413f5e048622dd1ce9f",
+    "scripts/check-type-coverage.ts": "641499395a01b77310320537bdab92b9c2680fddd09b2a19242adebf5ea0ce22",
+    "scripts/measure-architecture-baseline.ts": "bd9dfdab22ef560edcd09d98fe3868af5609286fcb0bddc14d29bdd191a8ee57",
+    "src/App.tsx": "cdd32ece6cfe07473be1ea49f78f5cb2d93790cc541b9dd76627f24d2815f33f",
+    "src/components/editor/Editor.tsx": "3b7171d9173c63042deb4d88af2f55f1ba701c65f9a34adb07edddf02405f79f",
+    "src/components/export/ExportModal.tsx": "39c9c513ed653896dd8384dc9cc464c31305785b645494e5ded6ed2224d24f78",
+    "src/components/footer/StatusBar.tsx": "b42593d0d953680a94ec70d782264ff285ca3390f12d3db36ea7fa6fe95006da",
+    "src/components/header/TopBar.tsx": "835bbe54d6b213d387391a21d7039a3cc75c8be6cb5500fa0fdb308a6b55c5e7",
+    "src/components/preview/A4PagePreview.tsx": "653cf4d48977c5362e79b993ff681b01c84740d8be2e1dba8f348b5adcd062a0",
+    "src/components/preview/ReadingPreview.tsx": "7c5218248aa8b97536ca4c40dc2e7d13b57e748b8b54d48e8d583a13082e3092",
+    "src/components/roadmap/RoadmapModal.tsx": "d72f71b02cdfa14e6332d63d6f87de519296fb7ec4a7b6c15bd1ab042e4f074f",
+    "src/components/toolbar/WorkbenchToolbar.tsx": "d30941b778e513d97c763414bf30b6f6ec39dd26a2a7e27c3ed552cef2c0ca1d",
+    "src/components/workspace/Sidebar.tsx": "4fd56be9021e07062157be92cd9f65de8d8d7ffc6ab061605ff1b0a821c23710",
+    "src/core/export/documentAssets.ts": "a84c74263ef1fc26d56a64b41c03d848f9df12bb1bbb17c27ba95542c6334588",
+    "src/core/export/documentPrint.ts": "82024dc44d54c3fdc0ce54f1dac22315b2dd01326599244fbd84db414c8f3883",
+    "src/core/export/docxExporter.ts": "690148d1047fe9ac549700426aadf54f2270cb6a74b3068575e3eab6f7dd5568",
+    "src/core/export/htmlExporter.ts": "66386a1f80ecfe07db2090c1132c5b1d72032d453f86908175cc237849eae5a0",
+    "src/core/export/outputCapabilities.ts": "25c44c0bbdee81aa74a8adcc9b48483e9813510a73962775f631ea048f444013",
+    "src/core/model/document.ts": "95e3b17650e1b282e621c5119e345a2cfab9aeea13debe9ae1435ab4de3c3c5a",
+    "src/core/model/documentRepository.ts": "7191fdee6596e7bc31d868ad008e7b029ab077fececab86691d9bdc8d9a227b5",
+    "src/core/model/documentSchema.ts": "1066f46860f77a7175886e6fe6af6aa3f8c5ccd67a9080a58b385255eb1fff42",
+    "src/core/model/recoveryEncoding.ts": "169d85a3d961a432658f4c69b1783dcf2bbdf3b02e005134465032d2c5cb293d",
+    "src/core/model/themeSchema.ts": "575b7125e8b95cc28c465dfdae0e6024509716a0322179a00ee38aced6a7948c",
+    "src/core/parse/markdown.ts": "b8b8ea46b35c24876379cdfb629c93f10f362df9a8f04b6f24239c021c0332a6",
+    "src/core/parser/markdownParser.ts": "e9df703c35f41eb347182ccbff6215f20de89915035ef30926c3988a48e49d30",
+    "src/core/platform/crypto.ts": "b73a00798bcd382fe18799eea14e94e7d78e720a43762467c59f7aa3971ef6b7",
+    "src/core/platform/externalApi.ts": "9d49d9dcf5ef8a17fa8dc5c8d432178567997902d7497f832c02344b41266248",
+    "src/core/platform/web/documentRepository.ts": "7f16e2ed42b381aaf37596c26500e7aff70c3c732e3d5ea0061d5de5063bdb06",
+    "src/core/policy/htmlRules.ts": "caab51b6844ff7e68e1c98d3340a5ff83f13530d833e6fcbbd63dcf2dca4e2be",
+    "src/core/render/documentPaginator.ts": "a21cbfa78f75925c8d22b9c466e186eb8c31df358161309af5cdd31563dc122b",
+    "src/core/render/documentPresentation.ts": "96b8f9fe29374ee8a3be31a856214eaa90fddbb010a00fd40199de0738ed074d",
+    "src/core/render/documentRenderer.ts": "de0babdea6bb87c26c2bf083ab4cf6fe3ffc699d41fac1ba73f7939d445e17dc",
+    "src/core/render/graphvizRender.ts": "ef31d1d5fe3178c9dd3c63f030d062581287c36772915a478073fec3c69c0910",
+    "src/core/render/htmlPolicy.ts": "fdd8d609526e1267f79952e7d3aed4bfb35ae1f598d025c53511fb45f09b47af",
+    "src/core/render/markdownHtml.ts": "d0394074b4f5f320d1358b381a36b297646bf977699a3baa3dea488bd60b5233",
+    "src/core/render/mathJaxAdapter.ts": "051cc238452ae54515ca596d6df6dcec115cf4e14c275e8c8fa66c4c6cce920d",
+    "src/core/render/mathRender.ts": "142bc26b7440d7f947e08f71e4545c49ed843e82a98483b53c10657cbd033578",
+    "src/core/render/mermaidRender.ts": "0324e3ac06e64dbf1ced14e3e60f3ea1168c9c64a46a0c0e8f6a601b118aefdc",
+    "src/core/render/pagedJsAdapter.ts": "2dda9faf35cdde70cd5795679cba35407f26ebafef13566b8ada50ebe1deef7f",
+    "src/core/storage/storage.ts": "0b2bd14b8ffae8baff0f4b3d2d0c27b6a59e1b38d350e8d2de07996ac4807427",
+    "src/index.css": "56bdc16b8ebce2d8da58b221f6e4acd81c1b7c287812e0a9b68abdcbb9c949a7",
+    "src/main.tsx": "ef97beb765477d82ed0df9606026728b97f0db91057e24033469f477a137476c",
+    "src/styles/document.css": "1ee025b40ae9f238b2ee355a7bdca089425913f50cedf7a292c3c2d77f686591",
+    "src/types/pagedjs.d.ts": "bce4d42f6332a03e8c2a0e1deb84835e693a13cae8ad81121b21d396c1050d8f",
+    "vite.config.ts": "b067006798c68a8888a60d6522e9f5a91e9887b51d554b2b0755e559b128075a"
+  },
+  "negativeDiagnostics": [
+    "Error: 公式解析失败：\\unknowncommand{x}",
+    "当前静态模式不支持 canvas，请提供静态语义替代",
+    "Error: 图片读取失败：https://invalid.example/missing.png"
+  ],
+  "sourceCommit": "bb95dc099c9b1b0ec540f7eb2e4161096f692e3a",
+  "harness": "Vite development source modules, real Chromium, 3 sequential render samples and 1 pagination sample per workload; not production performance or release coverage",
+  "environment": {
+    "os": "win32",
+    "release": "10.0.26300",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12500H",
+    "logicalCpus": 16,
+    "memoryBytes": 16892026880,
+    "browser": "156.0.8078.4",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  "results": [
+    {
+      "id": "small",
+      "sha256": "a77d24447b387670c1dba55bb7a5f33c8d290a427be90d2f35e1ada7dfcc8905",
+      "parseMs": [
+        3.199999988079071,
+        2.300000011920929,
+        2.199999988079071
+      ],
+      "renderMs": [
+        305.09999999403954,
+        60.5,
+        59.5
+      ],
+      "paginateMs": 189.10000002384186,
+      "pages": 3,
+      "artifactBytes": 81643,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "medium",
+      "sha256": "d7fdb32ad81efc885893558b9ae568ffd28e6797b9f209856d085f99c128e3fb",
+      "parseMs": [
+        9.699999988079071,
+        8.299999982118607,
+        8.099999994039536
+      ],
+      "renderMs": [
+        93.7000000178814,
+        91.2000000178814,
+        86.30000001192093
+      ],
+      "paginateMs": 273.09999999403954,
+      "pages": 9,
+      "artifactBytes": 155270,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "large",
+      "sha256": "f2bdbb68c350eb8a17f2ad3d7c53c0a7bd76e552ad879fe781419fcdde5ba94f",
+      "parseMs": [
+        23.599999994039536,
+        22,
+        23
+      ],
+      "renderMs": [
+        174,
+        145.19999998807907,
+        163.2000000178814
+      ],
+      "paginateMs": 627.3999999761581,
+      "pages": 23,
+      "artifactBytes": 323139,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    }
+  ]
+}

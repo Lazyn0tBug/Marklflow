@@ -347,3 +347,9 @@ Tauri层初期只预留接口和能力等级，不增加SDK、Rust工程或sidec
 - [Tauri随包外部程序](https://v2.tauri.app/develop/sidecar/)：未来受控进程发布依据，不表示当前已接入。
 
 本文件是设计与讨论依据。文档检查只能证明结构/链接/约束一致，不能证明任务机制已实现；实现证据必须按配套阶段另行生成。本轮完整审查的问题与修正见[审查记录](architecture-implementation-acceptance-2026-10-25.md#9-本轮完整文档审查记录)。
+
+## A0/A1完整代码审查补充（2026-10-25）
+
+[审查修复记录](../reviews/architecture-a0-a1-review-2026-10-25.md)与[独立证据](../acceptance/architecture-a0-a1-review-evidence.json)覆盖AC01/AC02：纯层和平台边界、四环境受管文件类型覆盖、开发及构建后真实Worker、后端固定、部分坏数据继续读取、恢复索引逐项校验、同修订冲突与应用失败反馈。未知版本不自动迁移；原件保留，恢复下载对非JSON类型仅供检查。冻结A0/A1证据不改写，复测有独立输出与比较命令。
+
+A1的Worker测试为解析/schema构建兼容性证明，不是A3生产任务调度、终止与重建证明。Web存储端口不引入Tauri SDK；A2任务生命周期/超时/资源账本、A4独立Tab会话和产物缓存、A5其余平台端口均保持后续规划，未因本轮通过而视为完成。MathJax和Paged.js不变，未声明远端CI、其他浏览器、Word/WPS或实体打印验收。
