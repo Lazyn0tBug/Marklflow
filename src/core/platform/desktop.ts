@@ -263,3 +263,49 @@ export async function updateWindowTitle(title: string, isDirty: boolean): Promis
     }
   }
 }
+
+/** 注册桌面端原生拖拽文件监听器 (Tauri Window onDragDropEvent) */
+export async function listenNativeFileDrop(
+  onFileDrop: (file: NativeFileResult) => void,
+  onDragStateChange?: (isDragging: boolean) => void
+): Promise<(() => void) | undefined> {
+  if (!isTauri()) return undefined;
+
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const { readTextFile } = await import('@tauri-apps/plugin-fs');
+
+    const unlisten = await getCurrentWindow().onDragDropEvent(async (event) => {
+      const payload = event.payload;
+      if (payload.type === 'enter') {
+        onDragStateChange?.(true);
+      } else if (payload.type === 'leave') {
+        onDragStateChange?.(false);
+      } else if (payload.type === 'drop') {
+        onDragStateChange?.(false);
+        const paths = payload.paths;
+        if (!paths || paths.length === 0) return;
+        const filePath = paths[0];
+        if (!filePath) return;
+
+        try {
+          const content = await readTextFile(filePath);
+          const pathParts = filePath.replace(/\\/g, '/').split('/');
+          const name = pathParts[pathParts.length - 1] || '未命名文档';
+          onFileDrop({
+            path: filePath,
+            name,
+            content,
+          });
+        } catch (err) {
+          console.error('读取原生拖放文件失败:', err);
+        }
+      }
+    });
+
+    return unlisten;
+  } catch (err) {
+    console.error('注册原生拖放事件失败:', err);
+    return undefined;
+  }
+}

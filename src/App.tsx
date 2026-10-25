@@ -26,7 +26,7 @@ import {
   extractPayloadFromHtml,
 } from './core/storage/storage';
 import { extractOutline } from './core/parser/markdownParser';
-import { isTauri, saveNativeFileInPlace, saveNativeFileAs, updateWindowTitle } from './core/platform/desktop';
+import { isTauri, saveNativeFileInPlace, saveNativeFileAs, updateWindowTitle, listenNativeFileDrop } from './core/platform/desktop';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
 function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number {
@@ -293,6 +293,61 @@ export default function App() {
       setIsDirty(false);
     });
   };
+
+  // 监听 Tauri 桌面端原生拖拽文件 (Windows Explorer / macOS Finder)
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    void listenNativeFileDrop(
+      (nativeFile) => {
+        if (/\.html?$/i.test(nativeFile.name)) {
+          const restored = extractPayloadFromHtml(nativeFile.content);
+          if (restored) {
+            restored.meta.filePath = nativeFile.path;
+            handleImportDoc(restored);
+            return;
+          }
+        }
+
+        const title = nativeFile.name.replace(/\.[^/.]+$/, '');
+        const newDoc: DocumentRecord = {
+          schemaVersion: 1,
+          id: 'doc_' + Math.random().toString(36).substring(2, 9),
+          revision: 1,
+          markdown: nativeFile.content,
+          meta: {
+            title,
+            author: 'Local File',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            filePath: nativeFile.path,
+          },
+          theme: {
+            fontFamily: 'sans',
+            fontSize: 15,
+            lineHeight: 1.75,
+            primaryColor: '#0d9488',
+            paperTheme: 'clean-white',
+            paperSize: 'A4',
+            margins: { top: 20, bottom: 25, left: 20, right: 20 },
+          },
+          options: {
+            syntaxProfile: 'commonmark-gfm-v1',
+            mathMode: 'mathml',
+          },
+        };
+        handleImportDoc(newDoc);
+      },
+      (isDragging) => {
+        setIsDraggingFile(isDragging);
+      }
+    ).then((unlisten) => {
+      cleanup = unlisten;
+    });
+
+    return () => {
+      cleanup?.();
+    };
+  }, []);
 
   const handleDirectScroll=(pane:'editor'|'preview')=>{
     if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current);
