@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "workloads": [
+    {
+      "id": "small",
+      "file": "small.md",
+      "bytes": 1438,
+      "sha256": "a77d24447b387670c1dba55bb7a5f33c8d290a427be90d2f35e1ada7dfcc8905",
+      "expectedEnd": "END_SMALL",
+      "sections": 2
+    },
+    {
+      "id": "medium",
+      "file": "medium.md",
+      "bytes": 6336,
+      "sha256": "d7fdb32ad81efc885893558b9ae568ffd28e6797b9f209856d085f99c128e3fb",
+      "expectedEnd": "END_MEDIUM",
+      "sections": 10
+    },
+    {
+      "id": "large",
+      "file": "large.md",
+      "bytes": 17584,
+      "sha256": "f2bdbb68c350eb8a17f2ad3d7c53c0a7bd76e552ad879fe781419fcdde5ba94f",
+      "expectedEnd": "END_LARGE",
+      "sections": 28
+    }
+  ],
+  "negative": {
+    "id": "failures",
+    "file": "failures.md",
+    "expectedDiagnostics": [
+      "canvas",
+      "公式"
+    ],
+    "sha256": "f78d5729857eb28558d0b117de6d0b0eba6ee71d9b9608955d826c615de7da9c"
+  }
+}

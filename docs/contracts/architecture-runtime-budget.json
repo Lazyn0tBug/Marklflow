@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "status": "frozen-for-A2-not-enforced-in-current-runtime",
+  "clock": "monotonic; Web guarantees require a responsive supervisor",
+  "deadlinesMs": {
+    "assetFetch": 15000,
+    "engineStage": 20000,
+    "paginationStage": 60000,
+    "previewFlowTotal": 90000,
+    "previewA4Total": 120000,
+    "exportMdTotal": 10000,
+    "exportMdBundleTotal": 120000,
+    "exportHtmlTotal": 120000,
+    "exportDocxTotal": 180000,
+    "exportPrintGenerationTotal": 120000,
+    "previewQueue": 15000,
+    "exportQueue": 60000,
+    "cancelGrace": 1000,
+    "workerTerminateTarget": 1000,
+    "workerReady": 20000,
+    "platformDialogWait": 300000
+  },
+  "queue": {
+    "computeLanes": 1,
+    "domLanes": 1,
+    "pendingPerActiveDocumentAndPreviewKind": 1,
+    "activeExports": 1,
+    "backgroundPreviews": 0,
+    "maxPreviewStagesBeforeWaitingExport": 1,
+    "retriesForIdempotentCompute": 1
+  },
+  "input": {
+    "markdownUtf8Bytes": 10485760,
+    "semanticNodes": 100000,
+    "mathExpressions": 5000,
+    "mathExpressionUtf8Bytes": 65536,
+    "diagramUtf8Bytes": 262144,
+    "graphNodes": 1000,
+    "graphEdges": 5000,
+    "pages": 500,
+    "htmlImportBytes": 52428800,
+    "singleImageBytes": 10485760,
+    "totalImageBytes": 26214400,
+    "assets": 128
+  },
+  "memory": {
+    "accounting": "estimated owned bytes, not a browser heap guarantee; count shared bytes once and clone peaks explicitly",
+    "cacheEntries": 16,
+    "singleCacheEntryBytes": 16777216,
+    "retainedCacheBytes": 67108864,
+    "activeArtifactBytes": 67108864,
+    "inFlightBytes": 201326592,
+    "sessionBytes": 268435456,
+    "totalOwnedBytes": 536870912,
+    "sessions": 32,
+    "quarantinedExecutorsPerLane": 1,
+    "overflow": "evict unleased LRU; reject admission or skip cache; never close dirty sessions"
+  },
+  "resources": {
+    "externalRevalidationMs": 300000,
+    "offline": "valid authorization and explicit snapshot label required",
+    "revocation": "invalidate cache and deny unfinished reads/delivery"
+  },
+  "regression": {
+    "comparison": "same fixtures/browser/viewport; first cold render separate from warm samples",
+    "maxMultiplier": 3,
+    "parseAdditiveMs": 50,
+    "renderAdditiveMs": 100,
+    "paginationAdditiveMs": 250,
+    "restoreTargetMs": 250,
+    "restoreStatus": "unmeasured until A4.3; exact content cache hit must invoke zero generators"
+  },
+  "capabilities": {
+    "webWorkerHardStop": "external terminate; no worker stop-ack; ready is separate",
+    "webDomHardStop": false,
+    "iframeProcessIsolationGuaranteed": false,
+    "tauri": "ports-only; not implemented",
+    "storageCache": "memory-only in A4.3; persistence deferred"
+  }
+}

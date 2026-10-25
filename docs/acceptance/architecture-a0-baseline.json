@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-25T05:13:00.051Z",
+  "sourceCommit": "75261ae1e532630a5a5859c397110f31698964af",
+  "harness": "Vite development source modules, real Chromium, 3 sequential render samples and 1 pagination sample per workload; not production performance or release coverage",
+  "environment": {
+    "os": "win32",
+    "release": "10.0.26300",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12500H",
+    "logicalCpus": 16,
+    "memoryBytes": 16892026880,
+    "browser": "156.0.8078.4",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  "results": [
+    {
+      "id": "small",
+      "sha256": "a77d24447b387670c1dba55bb7a5f33c8d290a427be90d2f35e1ada7dfcc8905",
+      "parseMs": [
+        8,
+        3.699999988079071,
+        3
+      ],
+      "renderMs": [
+        421.5,
+        82.40000000596046,
+        75.80000001192093
+      ],
+      "paginateMs": 247.69999998807907,
+      "pages": 3,
+      "artifactBytes": 81643,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "medium",
+      "sha256": "d7fdb32ad81efc885893558b9ae568ffd28e6797b9f209856d085f99c128e3fb",
+      "parseMs": [
+        11.700000017881393,
+        13.5,
+        11.5
+      ],
+      "renderMs": [
+        133.39999997615814,
+        117.90000000596046,
+        112.90000000596046
+      ],
+      "paginateMs": 299.30000001192093,
+      "pages": 9,
+      "artifactBytes": 155270,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "large",
+      "sha256": "f2bdbb68c350eb8a17f2ad3d7c53c0a7bd76e552ad879fe781419fcdde5ba94f",
+      "parseMs": [
+        45.70000001788139,
+        32.19999998807907,
+        33.19999998807907
+      ],
+      "renderMs": [
+        199.09999999403954,
+        204.60000002384186,
+        209
+      ],
+      "paginateMs": 677.6999999880791,
+      "pages": 23,
+      "artifactBytes": 323139,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    }
+  ],
+  "checks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "unitTests": 76,
+    "chromiumE2E": 22,
+    "productionBuild": "passed",
+    "warnings": [
+      "Vite native configLoader __dirname warning (existing)",
+      "large production chunks (existing)"
+    ]
+  },
+  "engineBaseline": {
+    "package.json": "0a0c4fc83cc368ee27c511bd5fd65681e4620fc047700bf0b3f87cbd4de3d2d0",
+    "bun.lock": "c9adb6ed3669a3b2eebf4c40a2abf857ab2c8dbd66e735933b6462b62bb58667",
+    "src/core/render/mathJaxAdapter.ts": "73f9cab65f9401d2a4c3f5d29f123b4f8096205909cf57a8c683bf9eceddbad3",
+    "src/core/render/mathRender.ts": "8088c588de44d46fb473ed66d3d8624a29e6dce6f1de48c1a6a946301e1c898b",
+    "src/core/render/pagedJsAdapter.ts": "b99462ac02dc9b4d02861b7e7ae20c235bf7f7ef68c1145197c1e77b90f0a093"
+  }
+}
