@@ -1,8 +1,10 @@
 import {taskBudget} from './budget';
+import type {PreviewCacheKey} from './previewIdentity';
+type PreviewKind=PreviewCacheKey['previewKind'];
 /** Open-document admission and current preview task IDs; editor sessions arrive in U3. */
 export class IdentityGate{
  private sessions=new Set<string>();private active:string|undefined;
- private expected=new Map<string,Map<string,string>>();
+ private expected=new Map<string,Map<PreviewKind,string>>();
  open(documentId:string):void{
   if(!documentId||documentId.length>256)throw new Error('Invalid document id');
   if(this.sessions.has(documentId))return;
@@ -12,11 +14,11 @@ export class IdentityGate{
  activate(documentId:string):void{if(!this.sessions.has(documentId))throw new Error('Unknown document session');this.active=documentId}
  close(documentId:string):void{this.sessions.delete(documentId);this.expected.delete(documentId);if(this.active===documentId)this.active=undefined}
  hasSession(documentId:string):boolean{return this.sessions.has(documentId)}
- expect(documentId:string,kind:string,taskId:string):void{
+ expect(documentId:string,kind:PreviewKind,taskId:string):void{
   if(!this.hasSession(documentId))throw new Error('Unknown document session');
   let kinds=this.expected.get(documentId);if(!kinds){kinds=new Map();this.expected.set(documentId,kinds)}kinds.set(kind,taskId);
  }
- current(documentId:string,kind:string,taskId:string):boolean{return this.hasSession(documentId)&&this.expected.get(documentId)?.get(kind)===taskId}
+ current(documentId:string,kind:PreviewKind,taskId:string):boolean{return this.hasSession(documentId)&&this.expected.get(documentId)?.get(kind)===taskId}
  get sessionCount():number{return this.sessions.size}
  get activeDocumentId(){return this.active}
 }

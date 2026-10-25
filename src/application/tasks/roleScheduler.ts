@@ -4,9 +4,9 @@ import {RoleTaskQueue,requestOf,type WorkerRole,type RoleClaim,type RoleAdmissio
 import {IdentityGate} from './identity';
 import {RoleExecutor} from './roleExecutor';
 import {taskBudget,estimatedBytes} from './budget';
-export type RoleRunState='running'|'stopRequested'|'generated'|'failed'|'cancelled'|'timedOut';
+export type RoleRunState='running'|'stopRequested'|'generated'|'failed'|'cancelled';
 interface Run {claim:RoleClaim;state:RoleRunState;reason:string|undefined}
-interface Outcome {id:string;role:WorkerRole|undefined;state:RoleRunState|'superseded';reason:string|undefined}
+interface Outcome {id:string;role:WorkerRole|undefined;state:RoleRunState;reason:string|undefined}
 const terminal=(state:RoleRunState)=>state!=='running'&&state!=='stopRequested';
 /** Preview generation handoff only; generated is not cache completion or view publication. */
 export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined}
@@ -18,7 +18,7 @@ export class RoleTaskScheduler{
  private pumping=false;private notifying=false;
  constructor(private readonly gate:IdentityGate,clock:TaskClock,readPreview:PreviewReader,private readonly hooks:RoleSchedulerHooks={generated:()=>undefined}){
   this.queue=new RoleTaskQueue(gate,readPreview,bytes=>this.memory(bytes).accepted);
-  const executor=(role:WorkerRole)=>new RoleExecutor(role,clock,{message:message=>this.message(role,message),fault:(id,reason)=>this.end(id,'failed',reason),timeout:(id,reason)=>this.end(id,'timedOut',reason),available:()=>{for(const run of [...this.runs.values()])this.archive(run);this.pump()}},bytes=>this.memory(bytes).accepted);
+  const executor=(role:WorkerRole)=>new RoleExecutor(role,clock,{message:message=>this.message(role,message),fault:(id,reason)=>this.end(id,'failed',reason),timeout:(id,reason)=>this.end(id,'failed','Timed out: '+reason),available:()=>{for(const run of [...this.runs.values()])this.archive(run);this.pump()}},bytes=>this.memory(bytes).accepted);
   this.executors={foreground:executor('foreground'),background:executor('background')};
  }
  private mutation():void{if(this.notifying)throw new Error('Reentrant generation handoff')}
@@ -41,7 +41,7 @@ export class RoleTaskScheduler{
  enqueuePreview(submission:PreviewSubmission):RoleAdmission|{status:'unsupported'}{
   this.mutation();
   if(!this.executors[submission.role].supports(requestOf({kind:'preview',submission})))return {status:'unsupported'};
-  const admitted=this.queue.enqueuePreview(submission);if(admitted.status==='accepted')for(const id of admitted.replaced)this.record({id,role:submission.role,state:'superseded',reason:'Latest pending intent'});
+  const admitted=this.queue.enqueuePreview(submission);if(admitted.status==='accepted')for(const id of admitted.replaced)this.record({id,role:submission.role,state:'cancelled',reason:'Latest pending intent'});
   this.pump();return admitted;
  }
  private pump():void{

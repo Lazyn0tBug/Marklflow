@@ -1,6 +1,6 @@
 import {createPreviewSubmission,type PreviewSubmission,type PreviewCacheKey} from './previewIdentity';
 import type {DocumentRecord} from '../../core/model/document';
-import {type TaskRequest} from './contracts';
+import type {TaskRequest} from './contracts';
 import {IdentityGate} from './identity';
 import {backgroundPendingCapacity} from './dualWorkerPolicy';
 import {taskBudget,estimatedBytes} from './budget';
@@ -23,14 +23,14 @@ export class RoleTaskQueue{
  constructor(private readonly gate:IdentityGate,private readonly readPreview:PreviewReader,private readonly canAllocate:(additionalBytes:number)=>boolean=()=>true){}
  private allowed(role:WorkerRole,documentId:string):boolean{return this.gate.hasSession(documentId)&&(role==='foreground'?this.gate.activeDocumentId===documentId:this.gate.activeDocumentId!==documentId)}
  private prune():void{
-  for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>{const preview=previewOf(entry);return !preview||this.gate.current(preview.documentId,preview.previewKind,entry.id)});
+  for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>{const preview=previewOf(entry);return this.gate.current(preview.documentId,preview.previewKind,entry.id)});
  }
  enqueuePreview(input:PreviewSubmission):RoleAdmission{
   this.prune();const role=input.role,documentId=input.document.id,previewKind=input.cacheKey.previewKind;
   if(!this.allowed(role,documentId))return {status:'inactive'};
   const list=this.pending[role];
-  const previous=role==='foreground'?list[0]:list.find(entry=>{const key=previewOf(entry);return key?.documentId===documentId&&key.previewKind===previewKind});
-  if(!previous&&role==='background'&&list.filter(entry=>previewOf(entry)).length>=backgroundPendingCapacity(this.gate.sessionCount))return {status:'capacity'};
+  const previous=role==='foreground'?list[0]:list.find(entry=>{const key=previewOf(entry);return key.documentId===documentId&&key.previewKind===previewKind});
+  if(!previous&&role==='background'&&list.length>=backgroundPendingCapacity(this.gate.sessionCount))return {status:'capacity'};
   let entry:Pending;
   if(role==='background')entry={kind:'background-preview',id:'',role,bytes:0,documentId,previewKind};
   else{
@@ -39,7 +39,7 @@ export class RoleTaskQueue{
   }
   entry.bytes=estimatedBytes(entry);
   if(!this.canAllocate(entry.bytes-(previous?.bytes??0)))return {status:'capacity'};
-  entry.id=nextId();if(entry.kind==='work'&&entry.work.kind==='preview')entry.work.submission.taskId=entry.id;
+  entry.id=nextId();if(entry.kind==='work')entry.work.submission.taskId=entry.id;
   this.gate.expect(documentId,previewKind,entry.id);
   if(previous)list[list.indexOf(previous)]=entry;else list.push(entry);
   return {status:'accepted',taskId:entry.id,replaced:previous?[previous.id]:[]};
@@ -49,7 +49,7 @@ export class RoleTaskQueue{
   if(this.active.has(role))return;this.prune();const list=this.pending[role];
   for(;;){
    const entry=list.shift();if(!entry)return;
-   const preview=previewOf(entry);if(preview&&!this.allowed(role,preview.documentId))continue;
+   const preview=previewOf(entry);if(!this.allowed(role,preview.documentId))continue;
    try{
     let work:RoleWork;
     if(entry.kind==='background-preview'){

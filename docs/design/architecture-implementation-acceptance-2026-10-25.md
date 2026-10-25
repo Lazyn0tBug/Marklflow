@@ -1,8 +1,8 @@
 # 架构重构分步实施与验收计划
 
-最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3a已审查验证，见[R3a执行记录](../reviews/architecture-r3a-implementation-2026-10-25.md)；R3b已审查验证，见[R3b执行记录](../reviews/architecture-r3b-implementation-2026-10-25.md)；R4已审查验证，见[R4执行记录](../reviews/architecture-r4-implementation-2026-10-25.md)；R5及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
+最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3a已审查验证，见[R3a执行记录](../reviews/architecture-r3a-implementation-2026-10-25.md)；R3b已审查验证，见[R3b执行记录](../reviews/architecture-r3b-implementation-2026-10-25.md)；R4已审查验证，见[R4执行记录](../reviews/architecture-r4-implementation-2026-10-25.md)；R5已完成审查与回归收口，见[R5审查记录](../reviews/architecture-r5-review-2026-10-25.md)；U3及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
 
-编号：AR-03；草案版本：6；日期：2026-10-25；状态：architecture-refactor本轮仅修订方案，不实施/提交；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；旧模型A2已实施，前后台统一逻辑已完成U0—U2组件，U3及后续尚未实施，见[差异及小步计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)；A3及后续未启动。当前完整路线已规划：先R0—R5收缩，再按依赖实施U3—U6及A5/A7；所有未实施步骤均待授权，本轮仅改文档。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
+草案6规划时记录（历史状态，当前实施进度以上方补充为准）：编号：AR-03；草案版本：6；日期：2026-10-25；状态：architecture-refactor本轮仅修订方案，不实施/提交；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；旧模型A2已实施，前后台统一逻辑已完成U0—U2组件，U3及后续尚未实施，见[差异及小步计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)；A3及后续未启动。当前完整路线已规划：先R0—R5收缩，再按依赖实施U3—U6及A5/A7；所有未实施步骤均待授权，本轮仅改文档。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
 
 ## 1. 范围与执行规则
 
@@ -18,7 +18,7 @@
 
 ## 2. 完整小步路线与唯一提交单位（草案6）
 
-本节是当前实施顺序的唯一清单，替代旧A/U两套独立实施表及草案5“R5后再规划U3”的安排。A编号只表示架构领域，U/R编号表示实际步骤；同一工作不按A编号重复实施或提交。A0/A1已完成；A2/U0—U2是现有历史实现，先收缩再接入。以下各行均尚未实施，本轮规划不是实施授权。
+本节是当前实施顺序的唯一清单，替代旧A/U两套独立实施表及草案5“R5后再规划U3”的安排。A编号只表示架构领域，U/R编号表示实际步骤；同一工作不按A编号重复实施或提交。A0/A1已完成；A2/U0—U2是现有历史实现，先收缩再接入。下表保留草案6的目标、依赖与验收定义；R0—R5当前完成状态以上方实施补充及逐步记录为准，U3及后续未实施。
 
 ### 2.1 阶段对应
 
@@ -257,4 +257,4 @@ U2独立队列/受控执行协调已实现并本地验证，见[执行记录](..
 
 当前按第2节完整路线执行，E01—E12为验收目录；第9、10节及A0/A1/A2/U0—U2附记只记录当时事实，不再提供第二套执行顺序。原AC编号的保留/简化/延期见[收缩审查](../reviews/architecture-simplification-review-2026-10-25.md)；不得为旧AC继续维持已删除的状态或票据。
 
-本轮将R0—R5与U3—U6、A5/A7一并规划；所有未实施步骤待独立授权。代码未修改、不提交、不推送、不升级MathJax、不替换Paged.js。后续每步证据都应区分组件替身、真实Worker、DOM集成、生产UI、视觉和打印，不让R5或V2名称代替实际通过记录。
+草案6规划时记录（历史状态，当前实施进度以上方补充为准）：本轮将R0—R5与U3—U6、A5/A7一并规划；所有未实施步骤待独立授权。代码未修改、不提交、不推送、不升级MathJax、不替换Paged.js。后续每步证据都应区分组件替身、真实Worker、DOM集成、生产UI、视觉和打印，不让R5或V2名称代替实际通过记录。

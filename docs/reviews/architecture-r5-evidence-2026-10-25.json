@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "becef45d7f80683b6c57eb2b54b0a353cf8abdb7",
+  "scope": "R5 only; no U3, push, dependency upgrade or tag movement",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 109,
+      "unitFiles": 30,
+      "unitTestsPassed": 173,
+      "includes": [
+        "four TypeScript profiles",
+        "source policy",
+        "module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 32,
+      "durationSeconds": 48.2,
+      "realWorkerImportSmoke": 2
+    }
+  ],
+  "baselineVerification": {
+    "refsUnchangedBeforeCommit": true,
+    "changedTrackedFiles": [
+      "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "docs/design/architecture-stack-assessment-2026-10-25.md",
+      "scripts/check-module-boundaries.ts",
+      "src/application/exports/exportService.ts",
+      "src/application/tasks/identity.ts",
+      "src/application/tasks/lifecycle.ts",
+      "src/application/tasks/roleQueue.ts",
+      "src/application/tasks/roleScheduler.ts",
+      "src/core/platform/web/exportService.ts",
+      "tests/types/worker-contracts.ts",
+      "tests/unit/tasks-contracts.test.ts",
+      "tests/unit/tasks-role-scheduler.test.ts"
+    ],
+    "allOtherTrackedBytesUnchanged": true
+  },
+  "protectedSha256": {
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "docs/reviews/architecture-a0-a1-review-2026-10-25.md": "c226167d599aa15de4dd838c5d81ddc31092466e278e7dc224a094b2bd5bb474",
+    "docs/reviews/architecture-a0-baseline-2026-10-25.md": "7838c54febe0c8fafe633681a0be4880c4901f729be67e2c5c39b877fb20a92f",
+    "docs/reviews/architecture-a1-implementation-2026-10-25.md": "dbcef766446e46510345c14c2087667b82882b0ed308c014d695e98d4442850c",
+    "docs/reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md": "e4bb17d2533acea3a01ab6d14b1b76f040c44385a53ca7b3ffe07038d665d5c1",
+    "docs/reviews/architecture-a2-implementation-2026-10-25.md": "faa9b8443059f1798f6f812a1ebe6f27afafeb285ad71e685a030eeaff7c2c3e",
+    "docs/reviews/architecture-r0-r1-implementation-2026-10-25.md": "5f8baa73c6e00d0186b26c6fcee9031a2d3554cc98db14121a6e46a9b64ad478",
+    "docs/reviews/architecture-r2-implementation-2026-10-25.md": "9ccaf88b9067d31a7f4c3d30467a44bdfdf95cc302a1fcd2e59813a1d66b5c14",
+    "docs/reviews/architecture-r3a-implementation-2026-10-25.md": "b52a55acfdb4e3c4f1bd179599cfc0f5c1247e4259e69bff7323eddd3356498c",
+    "docs/reviews/architecture-r3b-implementation-2026-10-25.md": "51a410e5c8e3200c624f36454b2b597d21ba9e7dd87276c6d5667ca2b9a9efed",
+    "docs/reviews/architecture-r4-implementation-2026-10-25.md": "b4d2113effc7b91728c41ebd3c5845d42b93fe3ca55e969b09794817ce0d3b2d",
+    "docs/reviews/architecture-simplification-review-2026-10-25.md": "c98b0edfeb35f542b24dc2de2d015d1674932f725b637f3bc2c714414e57d694",
+    "docs/reviews/architecture-u2-implementation-2026-10-25.md": "6df0d9d5aa76e7f984566b475aee611bb570226ed4ce6771619603e9a68c5795",
+    "docs/reviews/html-review-2026-10-24.md": "ad727f5fd9f064e30440d3fe6abad5c4c8648cfa424cf11165ef4979b8a4d25b",
+    "docs/reviews/typescript-strict-review-2026-10-25.md": "160256ba46b6231e612f189efdf24bcf76131abd539399087aacaf4067d03d2a",
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "src/core/export/documentAssets.ts": "f2a30a4ebef045736fa0e8e31aa174da8cb3bfec0bd5a0b5c44025ae8a257245",
+    "src/core/export/documentPrint.ts": "a19acae8c5bd93eec984e1b9b9a37c4bc5d9884ffe10c07b1b051293bd9963de",
+    "src/core/export/docxExporter.ts": "98f4beb40f2762ccba7fd6136b5ba822ab4ed267540e0a64c0f69bad81ffad3b",
+    "src/core/export/htmlExporter.ts": "ecc2e69b7f3c79f6452bbb20b8e4acea54cbdbc820fa647ff609dc2c4bb0f1ef",
+    "src/core/export/outputCapabilities.ts": "2a523128ea912e190650f6f7f052c63b7c2cfb7be3dbd19a60421be394cca162"
+  },
+  "limitations": [
+    "no production dual physical Worker integration",
+    "no multi-Tab UI or preview cache integration",
+    "no remote CI",
+    "no Word/WPS, physical print or cross-browser acceptance"
+  ]
+}

@@ -3,8 +3,8 @@ import {documentSchema} from '../../core/model/documentSchema';
 export type ExportFormat='editable-html'|'reading-html'|'docx'|'print-pdf'|'markdown';
 export interface ExportInput {document:DocumentRecord;format:ExportFormat;fileName:string;mathMode:'mathml'|'svg';allowSourceFallback:boolean;allowRemoteAssets:boolean}
 export interface ExportPorts {
- generateHtml(document:DocumentRecord,options:{includeEditablePayload:boolean;mathMode:'mathml'|'svg';allowRemoteAssets:boolean}):Promise<string>;
- generateDocx(document:DocumentRecord,options:{allowSourceFallback:boolean;allowRemoteAssets:boolean}):Promise<Blob>;
+ generateHtml(doc:DocumentRecord,options:{includeEditablePayload:boolean;mathMode:'mathml'|'svg';allowRemoteAssets:boolean}):Promise<string>;
+ generateDocx(doc:DocumentRecord,options:{allowSourceFallback:boolean;allowRemoteAssets:boolean}):Promise<Blob>;
  download(blob:Blob,name:string):void;
  print(html:string):Promise<void>;
 }

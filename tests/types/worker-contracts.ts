@@ -38,3 +38,7 @@ void genericLane;void retryAttempt;
 // @ts-expect-error: User exports never enter the preview task protocol.
 const exportedPreview:TaskKind='export.html';
 void exportedPreview;
+
+import {IdentityGate} from '../../src/application/tasks/identity';
+// @ts-expect-error: Document preview expectations cannot introduce arbitrary task kinds.
+new IdentityGate().expect('A','export.html','id');
