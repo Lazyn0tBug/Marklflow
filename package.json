@@ -8,11 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "oxlint --deny-warnings src tests vite.config.ts vitest.config.ts playwright.config.ts",
+    "lint": "bun run check:source && oxlint --deny-warnings .",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "check": "bun run typecheck && bun run lint && bun run test:unit && bun run build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:source": "bun scripts/check-source-policy.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

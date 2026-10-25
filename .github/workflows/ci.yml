@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, html]
+    branches: [main, html, typescript-strict]
   pull_request:
   workflow_dispatch:
 

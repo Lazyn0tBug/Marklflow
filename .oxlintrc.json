@@ -23,5 +23,11 @@
     "no-unreachable": "error",
     "constructor-super": "error",
     "valid-typeof": "error"
-  }
+  },
+  "ignorePatterns": [
+    "public/vendor/**",
+    "dist/**",
+    "test-results/**",
+    "playwright-report/**"
+  ]
 }
