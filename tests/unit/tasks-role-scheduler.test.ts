@@ -6,8 +6,8 @@ import {IdentityGate} from '../../src/application/tasks/identity';
 import type {WorkerAdapter,ExecutionIdentity} from '../../src/application/tasks/contracts';
 import {request,previewRequest,artifact,FakeClock} from './task-fixtures';
 const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve()};
-function setup(){
- const gate=new IdentityGate();gate.open('A');gate.open('B');gate.open('C');gate.activate('A');const sources=new Map<string,ReturnType<PreviewReader>>();const clock=new FakeClock(),generated=vi.fn<RoleSchedulerHooks['generated']>(()=>undefined),scheduler=new RoleTaskScheduler(gate,clock,doc=>sources.get(doc),{generated});
+function setup(prepareDom?:RoleSchedulerHooks['prepareDom']){
+ const gate=new IdentityGate();gate.open('A');gate.open('B');gate.open('C');gate.activate('A');const sources=new Map<string,ReturnType<PreviewReader>>();const clock=new FakeClock(),generated=vi.fn<RoleSchedulerHooks['generated']>(()=>undefined),scheduler=new RoleTaskScheduler(gate,clock,doc=>sources.get(doc),{generated,...(prepareDom?{prepareDom}:{})});
  const runs:Record<'foreground'|'background',{identity:ExecutionIdentity;send:(input:unknown)=>void}[]>={foreground:[],background:[]};
  const cleanup={foreground:vi.fn(()=>{}),background:vi.fn(()=>{})};
  const port=(role:'foreground'|'background',generation=1):WorkerAdapter=>({id:role,generation,cancellation:'cooperative',supportedKinds:['preview.flow','preview.a4'],start:(_request,identity,send,resources)=>{resources.register('host-'+identity.task.taskId,'host',8,cleanup[role]);runs[role].push({identity,send})},stop:vi.fn()});
@@ -45,3 +45,27 @@ it('counts each local allocation once with no runtime floor or JSON multiplier',
 it('uses the same admission rule for supplied runtime estimates and queue input',()=>{const s=setup();expect(()=>s.scheduler.install('foreground',s.port('foreground',2),-1)).toThrow('Invalid');s.scheduler.install('foreground',s.port('foreground',2),201326592);expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(201326592);expect(s.scheduler.enqueuePreview(s.preview('A')).status).toBe('capacity');expect(s.scheduler.snapshot().queue.active).toHaveLength(0)});
 
 it('reports timeout as failure with a reason and cannot be changed by late results',async()=>{const s=setup(),id=s.enqueue('A');s.clock.advance(20000);expect(s.scheduler.status(id)).toMatchObject({state:'failed',reason:'Timed out: stage'});s.send('foreground','result');await flush();expect(s.scheduler.status(id)).toMatchObject({state:'failed',reason:'Timed out: stage'});expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.snapshot().queue.active).toHaveLength(0)});
+
+it('holds the logical role during DOM wait and cancellation until the step settles',async()=>{
+ let done=()=>{};let signal:AbortSignal|undefined;
+ const s=setup((_claim,value,abort)=>{signal=abort;return new Promise(resolve=>{done=()=>resolve(value)})});
+ const id=s.enqueue('A');s.send('foreground','result');await flush();
+ s.enqueue('A',2);expect(s.runs.foreground).toHaveLength(1);expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
+ s.scheduler.cancel(id);expect(signal?.aborted).toBe(true);await flush();expect(s.runs.foreground).toHaveLength(1);
+ done();await flush();expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.status(id)?.state).toBe('cancelled');expect(s.runs.foreground).toHaveLength(2);
+});
+it('keeps the original total deadline while waiting for DOM and rejects late completion',async()=>{
+ let done=()=>{};const s=setup((_claim,value)=>new Promise(resolve=>{done=()=>resolve(value)}));
+ const id=s.enqueue('A');s.clock.advance(10000);s.send('foreground','result');await flush();s.clock.advance(90000);
+ expect(s.scheduler.status(id)?.state).toBe('failed');expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
+ done();await flush();expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.snapshot().queue.active).toHaveLength(0);expect(s.clock.pending).toBe(0);
+});
+it('validates DOM output and only hands off successful current results',async()=>{
+ const s=setup(async(_claim,value)=>({...value,content:'<p>DOM</p>'}));const id=s.enqueue('A');s.send('foreground','result');await flush();expect(s.scheduler.status(id)?.state).toBe('generated');expect(s.generated.mock.calls[0]?.[1].content).toBe('<p>DOM</p>');
+ const invalid=setup(async(_claim,value)=>({...value,encoding:'invalid' as 'utf8'}));const bad=invalid.enqueue('A');invalid.send('foreground','result');await flush();expect(invalid.scheduler.status(bad)?.state).toBe('failed');expect(invalid.generated).not.toHaveBeenCalled();
+});
+
+it('isolates DOM callback changes from the owned task identity and claim',async()=>{
+ const s=setup(async(claim,value)=>{claim.id='changed';claim.work.submission.document.id='changed';return value});
+ const id=s.enqueue('A');s.send('foreground','result');await flush();expect(s.scheduler.status(id)?.state).toBe('generated');expect(s.generated.mock.calls[0]?.[0].id).toBe(id);expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+});

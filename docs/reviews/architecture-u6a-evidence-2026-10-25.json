@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "05b51dc920fe1175b85781d56001848bd0e8b496",
+  "scope": "U6a shared serial DOM steps and optional scheduler preparation; standalone fixtures only",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 134,
+      "unitFiles": 38,
+      "unitTestsPassed": 250,
+      "newUnitTests": 11,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 42,
+      "newSharedDomTests": 3,
+      "environments": [
+        "development",
+        "built",
+        "ordinary HTTP"
+      ]
+    }
+  ],
+  "logSha256": {
+    "check": "1514720c9060491cff8a7e18044b18e03aa740bb27347f1bd79e2e579055e940",
+    "fullChromium": "1fb9aefe750cf43b9b09bc1263a769d274b96743a3d2c3f743f64deea0fd7ffc"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "f6ee00942886ef9403ef0de222befe5b89a934b2ba5b6ac24c6e543699c510d0",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "e86bb1765ff68d266f4dd072efdf05ae6d3ec39c8a9f9630a9f1937e0f38e231",
+    "docs/reviews/architecture-u6a-implementation-2026-10-25.md": "1a58b0701d45ba9f9103801cac8ca26457db9d53c2384a0299eee79552e124cf",
+    "scripts/build-worker-probe.ts": "b2a9029a399ebdff127b6b33e1c5cdb831c054364432756babd03efee011f417",
+    "src/application/tasks/roleScheduler.ts": "e531940d64084934506786fc7e02aadc126212c1e85e54d94c07388330614d69",
+    "src/application/tasks/sharedDom.ts": "13a2166e552a3ecc33467854e2c678f5f3e07dc99f881351e4975cfc2729dc87",
+    "tests/e2e/shared-dom.spec.ts": "9e248f1b86cfde1d0dd2a52723ce47652318a433ebec28ff3b724ea2eddaa98e",
+    "tests/fixtures/architecture/shared-dom-probe-client.ts": "f299fbaf24bf8dbbbd7e71285695fc08ee30bbebbae7f84f4b69091039b4da15",
+    "tests/fixtures/architecture/shared-dom-probe.html": "829819d9d9a27544ebac60de8848e76a695dfcafb8b3790a9930a10d407f71f5",
+    "tests/unit/tasks-role-scheduler.test.ts": "18757b2f7db9134574210d4a0bbb620505c9d73f22ed8d5cf2db43944f33040c",
+    "tests/unit/tasks-shared-dom.test.ts": "24f989d8f3204a72ec5a0d19c27726bb481874f49d6069680a3b874b1cf732ed",
+    "tsconfig.integration.json": "c4db862cc58862e4ba0ad0f033463f284cf5366d098d409ed3f5f257159a6efc"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/core/parse/markdown.ts": "bcfd523117710798f84bdc4c6767447cbec5897e009868ef8f9e2f19f550438c",
+    "src/workers/markdownWorker.ts": "14261c6915d2afea18aadabebb5b026b819a233da69bd1e34ae08fa90a87f59d",
+    "src/application/tasks/markdownWorkerTask.ts": "73b5f1ed928ffa2e7da8246d1ea1cc515c8b28eb43320c30cebc00e8dd48d4e3",
+    "docs/reviews/architecture-u5b-evidence-2026-10-25.json": "c12db52293a7828fbd015b82745bdc78598083e5166b616257c1fe9112521008"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "reviewFindingsFixed": [
+    "logical role remains held through DOM wait, cancellation and cleanup",
+    "original total execution deadline continues through DOM wait",
+    "DOM return is schema-validated and checked against current identity before commit",
+    "synchronous overrun checked after return",
+    "role adapter replacement waits for DOM release",
+    "DOM callback receives a separate claim snapshot"
+  ],
+  "limitations": [
+    "actual MathJax/Mermaid/Paged.js adapters remain U6b/U6c/U6d",
+    "no UI or production dual-role/shared-DOM composition enabled",
+    "no hard preemption of synchronous JavaScript or uncooperative asynchronous steps; ownership retained until settlement",
+    "no other-browser, Tauri or physical-print acceptance",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

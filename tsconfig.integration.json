@@ -20,6 +20,7 @@
     "src/types/**/*.d.ts",
     "tests/fixtures/architecture/worker-probe-client.ts",
     "tests/fixtures/architecture/markdown-worker-probe-client.ts",
-    "tests/fixtures/architecture/dual-worker-probe-client.ts"
+    "tests/fixtures/architecture/dual-worker-probe-client.ts",
+    "tests/fixtures/architecture/shared-dom-probe-client.ts"
   ]
 }
