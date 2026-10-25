@@ -45,4 +45,23 @@ describe('desktop platform abstraction', () => {
     appendChildSpy.mockRestore();
     removeChildSpy.mockRestore();
   });
+
+  it('updates document.title correctly with dirty indicator', async () => {
+    await import('../../src/core/platform/desktop').then(async (m) => {
+      await m.updateWindowTitle('系统报告', true);
+      expect(document.title).toBe('● 系统报告 - MarkFlow 墨流');
+
+      await m.updateWindowTitle('系统报告', false);
+      expect(document.title).toBe('系统报告 - MarkFlow 墨流');
+
+      await m.updateWindowTitle('', false);
+      expect(document.title).toBe('未命名技术文档 - MarkFlow 墨流');
+    });
+  });
+
+  it('returns undefined for listenNativeFileDrop when running in browser', async () => {
+    const { listenNativeFileDrop } = await import('../../src/core/platform/desktop');
+    const unlisten = await listenNativeFileDrop(() => {});
+    expect(unlisten).toBeUndefined();
+  });
 });
