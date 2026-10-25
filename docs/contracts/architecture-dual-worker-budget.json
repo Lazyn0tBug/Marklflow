@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "status": "R2 lightweight serial queues; production worker/UI wiring remains pending",
+  "schemaVersion": 4,
+  "status": "R3b local cleanup and single execution timer; production worker/UI wiring remains pending",
   "baseBudget": "architecture-runtime-budget.json",
   "workers": {
     "foreground": 1,
@@ -18,9 +18,7 @@
     "activeExports": 1
   },
   "memory": {
-    "reservedRuntimeBytesPerWorker": 16777216,
-    "reservationStatus": "conservative accounting floor; not a measured heap size",
-    "accounting": "both worker runtimes plus owned task bytes plus clone peaks count against base inFlightBytes; other owned bytes count against base totalOwnedBytes",
+    "accounting": "single scheduler admission: owned input estimates + task-local resource bytes + supplied runtime estimates + candidate output; no fixed runtime reservation or JSON multiplier; not physical heap measurement",
     "overflow": "report capacity or dispatch failure; do not increase workers"
   },
   "mapping": {

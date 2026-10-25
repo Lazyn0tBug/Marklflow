@@ -2,8 +2,8 @@ import {createPreviewSubmission,type PreviewSubmission,type PreviewCacheKey} fro
 import type {DocumentRecord} from '../../core/model/document';
 import {snapshotRequest,isPreview,type TaskRequest} from './contracts';
 import {IdentityGate} from './identity';
-import {backgroundPendingCapacity,assessDualWorkerMemory} from './dualWorkerPolicy';
-import {taskBudget} from './budget';
+import {backgroundPendingCapacity} from './dualWorkerPolicy';
+import {taskBudget,estimatedBytes} from './budget';
 export type WorkerRole=PreviewSubmission['role'];
 export type RoleWork={kind:'preview';submission:PreviewSubmission}|{kind:'export';request:TaskRequest};
 export type PreviewReader=(documentId:string,previewKind:PreviewCacheKey['previewKind'])=>{document:DocumentRecord;renderConfigVersion:number}|undefined;
@@ -14,19 +14,17 @@ export interface ClaimFailure {id:string;role:WorkerRole;error:string}
 export type RoleAdmission={status:'accepted';taskId:string;replaced:string[]}|{status:'inactive'|'capacity'|'busy'};
 export const requestOf=(work:RoleWork):TaskRequest=>work.kind==='preview'?{identity:{protocolVersion:1,taskId:work.submission.taskId,documentId:work.submission.document.id},kind:work.submission.cacheKey.previewKind,document:work.submission.document,cacheKey:work.submission.cacheKey}:work.request;
 const previewOf=(entry:Pending)=>entry.kind==='background-preview'?{documentId:entry.documentId,previewKind:entry.previewKind}:entry.work.kind==='preview'?entry.work.submission.cacheKey:undefined;
-const estimate=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).byteLength*3;
 let taskSequence=0;
 const nextId=()=>{if(taskSequence===Number.MAX_SAFE_INTEGER)throw new Error('Task id space exhausted');return 'role-task-'+(++taskSequence)};
 /** One latest foreground demand; background holds only document/mode references in FIFO order. */
 export class RoleTaskQueue{
  private pending:Record<WorkerRole,Pending[]>={foreground:[],background:[]};
  private active=new Map<WorkerRole,Active>();private exportId:string|undefined;
- constructor(private readonly gate:IdentityGate,private readonly readPreview:PreviewReader,private readonly extraInFlightBytes:()=>number=()=>0){}
+ constructor(private readonly gate:IdentityGate,private readonly readPreview:PreviewReader,private readonly canAllocate:(additionalBytes:number)=>boolean=()=>true){}
  private allowed(role:WorkerRole,documentId:string):boolean{return this.gate.hasSession(documentId)&&(role==='foreground'?this.gate.activeDocumentId===documentId:this.gate.activeDocumentId!==documentId)}
  private prune():void{
   for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>{const preview=previewOf(entry);return !preview||this.gate.current(preview.documentId,preview.previewKind,entry.id)});
  }
- private fits(bytes:number):boolean{return assessDualWorkerMemory({foregroundRuntimeBytes:0,backgroundRuntimeBytes:0,ownedTaskBytes:this.ownedBytes+this.extraInFlightBytes()+bytes,clonePeakBytes:0,otherOwnedBytes:0}).accepted}
  enqueuePreview(input:PreviewSubmission):RoleAdmission{
   this.prune();const role=input.role,documentId=input.document.id,previewKind=input.cacheKey.previewKind;
   if(!this.allowed(role,documentId))return {status:'inactive'};
@@ -39,8 +37,8 @@ export class RoleTaskQueue{
    if(new TextEncoder().encode(input.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
    entry={kind:'work',id:'',role,bytes:0,work:{kind:'preview',submission:structuredClone(input)}};
   }
-  entry.bytes=estimate(entry);
-  if(!this.fits(entry.bytes-(previous?.bytes??0)))return {status:'capacity'};
+  entry.bytes=estimatedBytes(entry);
+  if(!this.canAllocate(entry.bytes-(previous?.bytes??0)))return {status:'capacity'};
   entry.id=nextId();if(entry.kind==='work'&&entry.work.kind==='preview')entry.work.submission.taskId=entry.id;
   this.gate.expect(documentId,previewKind,entry.id);
   if(previous)list[list.indexOf(previous)]=entry;else list.push(entry);
@@ -51,8 +49,8 @@ export class RoleTaskQueue{
   if(this.exportId)return {status:'busy'};
   if(!this.gate.hasSession(request.document.id))return {status:'inactive'};
   if(new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
-  const work:RoleWork={kind:'export',request},bytes=estimate(work);
-  if(!this.fits(bytes))return {status:'capacity'};
+  const work:RoleWork={kind:'export',request},bytes=estimatedBytes(work);
+  if(!this.canAllocate(bytes))return {status:'capacity'};
   const id=nextId();request.identity.taskId=id;this.exportId=id;this.pending.background.push({kind:'work',id,role:'background',work,bytes});
   return {status:'accepted',taskId:id,replaced:[]};
  }
@@ -72,7 +70,7 @@ export class RoleTaskQueue{
     }else work=entry.work;
     const request=requestOf(work);
     if(new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
-    const bytes=estimate(work);if(!this.fits(bytes))throw new Error('Task dispatch budget exceeded');
+    const bytes=estimatedBytes(work);if(!this.canAllocate(bytes))throw new Error('Task dispatch budget exceeded');
     this.active.set(role,{id:entry.id,role,bytes});return {id:entry.id,role,work};
    }catch(error){if(this.exportId===entry.id)this.exportId=undefined;return {id:entry.id,role,error:String(error)}}
   }

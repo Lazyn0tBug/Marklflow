@@ -14,3 +14,6 @@ export function totalDeadline(kind:TaskKind):number{
   case 'export.print':return taskBudget.deadlinesMs.exportPrintGenerationTotal;
  }
 }
+
+/** Serialized UTF-8 estimate, entered once per owned value; not a physical heap measurement. */
+export function estimatedBytes(value:unknown):number{return new TextEncoder().encode(JSON.stringify(value)).byteLength}

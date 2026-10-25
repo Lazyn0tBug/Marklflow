@@ -1,0 +1,59 @@
+{
+  "step": "R3b",
+  "branch": "architecture-refactor",
+  "parent": "b142c2a4f330015e39bacf0894058332e490669f",
+  "check": "passed",
+  "managedSources": 106,
+  "unitTests": 170,
+  "unitFiles": 29,
+  "targetedTests": 55,
+  "workerBrowserTests": 2,
+  "commands": [
+    "bun run typecheck",
+    "bun run test:unit -- tests/unit/tasks-resources.test.ts tests/unit/tasks-deadlines.test.ts tests/unit/tasks-executors.test.ts tests/unit/tasks-role-queue.test.ts tests/unit/tasks-role-scheduler.test.ts tests/unit/tasks-dual-worker-policy.test.ts",
+    "bun run check",
+    "bun run test:e2e tests/e2e/architecture-pure-worker.spec.ts"
+  ],
+  "review": {
+    "localCleanupPerRun": true,
+    "globalResourceLedgerRemoved": true,
+    "singleTimerPerActiveRole": true,
+    "resourceTimeoutMs": 15000,
+    "engineTimeoutMs": 20000,
+    "paginationTimeoutMs": 60000,
+    "stopGraceMs": 1000,
+    "singleAdmissionCalculation": true,
+    "runtimeReservationAndJsonMultiplierRemoved": true,
+    "productionDependenciesAndHistoricalEvidenceUnchanged": true,
+    "protectedRefsUnchangedBeforeCommit": true
+  },
+  "versions": {
+    "MathJax": "3.2.2",
+    "Paged.js": "0.4.3"
+  },
+  "notVerified": [
+    "full application E2E not rerun",
+    "physical heap limit not measured",
+    "production Worker/DOM/Tab/cache not wired",
+    "remote CI not run"
+  ],
+  "removedFiles": [
+    "src/application/tasks/resources.ts"
+  ],
+  "sourceHashes": {
+    "docs/contracts/architecture-dual-worker-budget.json": "d456c4a394a5cdbafe6e8a176a89bdb004220ec845d29bdd13ad585fbd7e4a77",
+    "src/application/tasks/budget.ts": "3f28ec61e3bf9dfb01ce701e964e64640774573679a8ce2312180391bb8e4706",
+    "src/application/tasks/deadlines.ts": "1c02a163cecd2c1c020db2683098d72279b1c4c884c314fcda34000f77e9253d",
+    "src/application/tasks/dualWorkerPolicy.ts": "b528cfebb14c5f55bd683ddaf66ba1480d77b81ca0d1c79c0602e681252be86b",
+    "src/application/tasks/roleExecutor.ts": "3018ded66c7e52c70251b9ece41d5d6bb6cd36941a6102cab8f5537888b16f02",
+    "src/application/tasks/roleQueue.ts": "f9f18fd97e4b4ea16e8916b09b790c18e8c59a5f775855e351ffb430dc7446d7",
+    "src/application/tasks/roleScheduler.ts": "0a4bcb13126a7bc1a539ae67d0504ab5638a8a4297cc92dfc8a020a03546b8cb",
+    "tests/unit/tasks-deadlines.test.ts": "31cefe66b55fe3ecf2cea08862437b7fdde7fc7d7facc76fa8246ca5b0b34cab",
+    "tests/unit/tasks-dual-worker-policy.test.ts": "1f4c380260277f580855b78dc44509c3857510bb4bcb965d703c77bc4d3635ee",
+    "tests/unit/tasks-executors.test.ts": "55b5ee493a84dbb03b3952c5f107262e9e37f01d27706b6532aabd8a68c476ab",
+    "tests/unit/tasks-resources.test.ts": "71c5340d4ce09f784a81c39d1186a70ded739c68e0ec495015c2fe02cc0bd3c5",
+    "tests/unit/tasks-role-queue.test.ts": "e9a663959e0e1b7e70d89de7194f3e6a3bfc0970a3125bbdbcc5326d6c71e85d",
+    "tests/unit/tasks-role-scheduler.test.ts": "5df13de16ce1b97f3b70bab85e4924080ad269d5e4fad16043812480567fcefe",
+    "src/application/tasks/cleanup.ts": "beeb85d0d8365d787d2b8ad7da55d431091c20099f9003ec199fca5a033ede46"
+  }
+}
