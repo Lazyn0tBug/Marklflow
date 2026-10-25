@@ -1,4 +1,5 @@
 import {expect,it,vi} from 'vitest';
+import {CleanupList} from '../../src/application/tasks/cleanup';
 import {createPagedAdapter,loadPagedAdapter} from '../../src/core/render/pagedJsAdapter';
 function runtime(){
  const chunkerDestroy=vi.fn(),polisherDestroy=vi.fn(),preview=vi.fn(async()=>({total:1}));
@@ -57,4 +58,14 @@ it('requires a fresh adapter after a preview settles',async()=>{
   await expect(adapter.preview('second',[],document.createElement('div'))).rejects.toThrow('已开始');
   expect(()=>adapter.beforeParsed(()=>{})).toThrow('已开始');expect(source.preview).toHaveBeenCalledOnce();
  }finally{adapter.destroy()}
+});
+
+it('retries only failed cleanup components and never reopens a partially disposed adapter',async()=>{
+ const source=runtime(),adapter=createPagedAdapter(source.module);source.chunkerDestroy.mockImplementationOnce(()=>{throw new Error('cleanup failed')});expect(()=>adapter.destroy()).toThrow('cleanup failed');expect(source.polisherDestroy).toHaveBeenCalledOnce();await expect(adapter.preview('text',[],document.createElement('div'))).rejects.toThrow('已开始');adapter.destroy();expect(source.chunkerDestroy).toHaveBeenCalledTimes(2);expect(source.polisherDestroy).toHaveBeenCalledOnce();adapter.destroy();expect(source.chunkerDestroy).toHaveBeenCalledTimes(2);
+});
+
+it('owns a partially initialized adapter even when its first cleanup attempt fails',async()=>{
+ const cleanup=new CleanupList(),chunker=vi.fn().mockImplementationOnce(()=>{throw new Error('destroy failed')}),polisher=vi.fn();
+ const module={Previewer:class{chunker={destroy:chunker,hooks:{}};polisher={destroy:polisher};preview(){return Promise.resolve({total:1})}}};
+ expect(()=>createPagedAdapter(module,cleanup)).toThrow('初始化失败');expect(polisher).toHaveBeenCalledOnce();expect(await cleanup.dispose()).toEqual([]);expect(chunker).toHaveBeenCalledTimes(2);expect(polisher).toHaveBeenCalledOnce();expect(cleanup.snapshot()).toEqual([]);
 });

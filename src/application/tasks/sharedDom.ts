@@ -28,7 +28,7 @@ export class SharedDom {
     // A synchronous call can block timers: reject after return, never claim hard preemption.
     if(this.clock.now()-start>=duration)failure??=new Error('DOM step timed out');
     const errors=await resources.dispose();
-    if(errors.length){this.failedCleanup=resources;failure=new Error('DOM cleanup failed: '+errors.join('; '))}
+    if(errors.length){this.failedCleanup=resources;const cleanupFailure=new Error('DOM cleanup failed: '+errors.join('; '));failure=failure?new AggregateError([failure,cleanupFailure],'DOM step and cleanup failed: '+String(failure)+'; '+String(cleanupFailure)):cleanupFailure}
     if(signal.aborted)failure??=new Error('DOM step cancelled');
     if(failure)reject(failure);else resolve(value as T);
    }};

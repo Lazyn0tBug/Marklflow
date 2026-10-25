@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-26",
+  "branch": "architecture-refactor",
+  "parentCommit": "95861a8e9b0e9e12b96a73e803eb1cb8f6364d8e",
+  "scope": "U6d Paged.js 0.4.3 migration to the shared Web DOM entry; no UI or production dual-role enablement",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 145,
+      "unitFiles": 41,
+      "unitTestsPassed": 275,
+      "newUnitTests": 7,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source/module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 51,
+      "reportedDuration": "1.7m",
+      "newPaginationDomTests": 3,
+      "environments": [
+        "development",
+        "built",
+        "ordinary HTTP"
+      ]
+    }
+  ],
+  "logSha256": {
+    "check": "f1c7660608f0b1da7f7a03946e50738d1a29a540ff432a574f97a4ccb239890a",
+    "fullChromium": "aff523b4870505d53c0ce732a81aef302210b9af8b00f901a3fee7600cd5e3ad",
+    "targetedRealPagination": "acd8627803438fe184bd98e29c24e6e6d58fa8584f9995760b9d94de260158b3"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-u6d-pagination-dom.json": "9bfef49a4756b57bd6c7f6f6d70ab7034e7d51d775e116ede78a3f538a696988",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "27b2e9110f5fcc920cb7afe046a2ddb72fcb6122b30c840235678166a9a02298",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "92f75793e059b4fe69b5140da4fc96e57ed8be7996220e223b2ff969e00651c6",
+    "docs/reviews/architecture-u6d-implementation-2026-10-26.md": "781c69aed81c184e3361770bee1f2ae56ee371d346f75d44b78bca6f0b179632",
+    "scripts/build-worker-probe.ts": "c252868e0b09c15fd17e285ad24c950da3e9ede4be8df3cf68c740c1722adb45",
+    "src/application/tasks/sharedDom.ts": "19eb2d88b67f1a903dd43395734cf8400ba4cfa7b2acaa31f42c8167fa22c239",
+    "src/core/render/documentPaginator.ts": "77366cabd66e0186a0c82d37020e844fd1f82ed3aeb6a5350702b61b117f2410",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "tests/e2e/pagination-shared-dom.spec.ts": "87f64b8801354c190f0927c870662dc9a9ab7dc5fa2fdbe106faac2c3262655c",
+    "tests/fixtures/architecture/pagination-dom-probe-client.ts": "4a86d207ae7a49d6d03bfa2d2304d36ef5c721def88f00bbff1143add75143d9",
+    "tests/fixtures/architecture/pagination-dom-probe.html": "030ad42571d16d2df07049df95a3982233a83f79b7d4adc5ca5a1de2830fd3fb",
+    "tests/unit/pagination-shared-dom.test.ts": "12a39aad2fc8c84632c6870ab1e04d3ebaed833ae1b285e5686f9eb697672cbc",
+    "tests/unit/review-paged-boundary.test.ts": "b36ca23266f122ad7ab180a71ea1f6e8e36257e6b561042f5aed0dd53b90b5b2",
+    "tests/unit/review-pagination-failures.test.ts": "4716cd9d6f2cf78a2bec38e8335c5f641f3b9310b9f4564fd120ddad74a44ea0",
+    "tests/unit/review-pagination-lifecycle.test.ts": "75fd2bdc294037a6cd46f2f014629c7fc2e34ea0c1882875f628b3f5f3be03ed",
+    "tsconfig.integration.json": "f432fb418aae4f917b4d3fe3ad8e332f41eebf02ff712e679e7925ed66c0ade0"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/workers/markdownWorker.ts": "14261c6915d2afea18aadabebb5b026b819a233da69bd1e34ae08fa90a87f59d",
+    "src/application/tasks/markdownWorkerTask.ts": "73b5f1ed928ffa2e7da8246d1ea1cc515c8b28eb43320c30cebc00e8dd48d4e3",
+    "docs/reviews/architecture-u5b-evidence-2026-10-25.json": "c12db52293a7828fbd015b82745bdc78598083e5166b616257c1fe9112521008",
+    "docs/reviews/architecture-u6a-evidence-2026-10-25.json": "8b0d03dce6c681628a150d5e45c9aeeea9b3e1bab6173c7e1d48cfcd977445b4",
+    "public/vendor/mathjax/tex-mml-svg.js": "1f17a7ed95ff4a4b27d16bf0fb5f80b915686ee8673e82983a2876ecf8cb9fae",
+    "docs/reviews/architecture-u6b-evidence-2026-10-25.json": "07a545d815d8d25341e577132005430de60745565bd2fe42f7f17eec376ef6cd",
+    "src/core/parse/markdown.ts": "9596316e319e355ed0ee4ba934585290eaf596e1b41ccb5d44d420ed48f99078",
+    "src/core/render/mathJaxAdapter.ts": "77e52f84eb76e823eaec632c884320d4be395c1bd774f036f3ff7377dce3bac9",
+    "src/core/export/htmlExporter.ts": "bd3793c55668f58b79ef362bfe46334d36dd4aaf9586ec365cb45931750abfea",
+    "src/core/export/docxExporter.ts": "56fb617653d9a942702f0eaebd1370138c979671cba2eb5d552096b94b964bce",
+    "docs/reviews/architecture-u6c-evidence-2026-10-26.json": "cd93e4fea334a3bc029077d2aa09a27861fbb34b8e380f9947b0858261e779e0",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mermaidRender.ts": "93fdc0694bebaa80737478486e2de4f8d1e310ea111d8ee79ecdffb2accd24db",
+    "src/core/render/graphvizRender.ts": "4db421e282a9c3b49ab5baea939871ea23c35cf9d9a2570de5d106639d2b7583",
+    "src/core/render/documentRenderer.ts": "96834f8cc199d5bb022503039b24b2789b0d6953c8ade90832c196d0b55a63a7",
+    "src/core/platform/web/sharedDom.ts": "5a679fdbcabc9de850434e0076fa6a18efbf2de63f7715b48e71a3ab5222f444"
+  },
+  "intentionalPriorProtectedChanges": {
+    "src/core/render/documentPaginator.ts": "replace pagination queue and deferred cleanup with shared pagination step",
+    "src/core/render/pagedJsAdapter.ts": "register cleanup ownership before validation; retry failed components only",
+    "src/application/tasks/sharedDom.ts": "preserve both execution and cleanup errors instead of overwriting execution failure"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "realPaginationArchive": "docs/acceptance/architecture-u6d-pagination-dom.json",
+  "reviewFindingsFixed": [
+    "avoid reentering shared DOM while preparing formulas and diagrams",
+    "remove pagination queue, pendingCleanup and early native timeout race",
+    "register stage/style/native instance in local cleanup before failure-prone setup",
+    "partial destruction cannot report destroyed or reopen the adapter",
+    "successful cleanup components are not destroyed repeatedly on retry",
+    "cleanup failure blocks reuse until explicit recovery and preserves original execution error",
+    "reject page-count mismatch before publishing A4 artifact"
+  ],
+  "limitations": [
+    "60-second pagination step includes host preparation/readiness/module loading/native layout and does not restart at preview",
+    "existing 20-second module import and readiness protections remain; late imports cannot construct unowned instances",
+    "no hard cancellation; shared ownership remains until native work and cleanup settle",
+    "7-page mixed corpus and CSS page-frame checks do not establish all-document or physical-print correctness",
+    "no UI/production dual-role/U6e integration",
+    "no other-browser, Tauri, Word/WPS visual or physical-print acceptance",
+    "no dependency upgrades, push or tag movement"
+  ]
+}
