@@ -18,3 +18,8 @@ it('rejects CSS imports and invalid v1 payload structure',()=>{
  const doc=createNewDocument('坏数据');const bad={...doc,theme:{...doc.theme,lineHeight:-1}};
  expect(extractPayloadFromHtml('<script id="markflow-source-payload">'+encodeSourcePayload(bad)+'</script>')).toBeNull();
 });
+it('reads a repeated permitted resource only once and freezes verified bytes',async()=>{
+ const bytes=Uint8Array.from(atob(data.split(',')[1]!),c=>c.charCodeAt(0));
+ const fetchSpy=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response(bytes,{headers:{'content-type':'image/png'}}));
+ try{const result=await collectAssets('<img src="https://example.com/image.png"><img src="https://example.com/image.png">',[],true);expect(fetchSpy).toHaveBeenCalledOnce();expect(result.assets).toHaveLength(1);expect(result.html.match(/data:image/g)).toHaveLength(2);await verifyAssets(result.assets)}finally{fetchSpy.mockRestore()}
+});

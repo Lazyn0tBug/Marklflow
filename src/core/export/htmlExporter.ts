@@ -1,9 +1,9 @@
 import { waitForLayout } from './documentPrint';
 import { printCss } from './documentPrint';
-import { collectAssets,assertSelfContainedCss } from './documentAssets';
+import { assertSelfContainedCss } from './documentAssets';
 import { documentSchema } from '../model/documentSchema';
 import type { DocumentRecord } from '../model/document';
-import { renderDocument,assertArtifact } from '../render/documentRenderer';
+import {prepareExportContent} from './exportContent';
 import { encodeSourcePayload } from '../storage/storage';
 import { DOCUMENT_CSS, documentStyleAttribute } from '../render/documentPresentation';
 import { escapeHtml } from '../render/htmlPolicy';
@@ -11,7 +11,7 @@ export interface HtmlExportOptions {includeEditablePayload?:boolean;mathMode?:'m
 export async function generateExportHtml(input:DocumentRecord,options:HtmlExportOptions={}):Promise<string> {
  const frozenOptions={...options};
  const doc:DocumentRecord=documentSchema.parse(structuredClone(input));assertSelfContainedCss(DOCUMENT_CSS);
- const artifact=await renderDocument(doc.markdown,frozenOptions.mathMode||doc.options.mathMode,undefined,{priority:'export'});assertArtifact(artifact);const collected=await collectAssets(artifact.html,doc.assets,frozenOptions.allowRemoteAssets);doc.assets=collected.assets;const content=collected.html;
+ const prepared=await prepareExportContent(doc,{mathMode:frozenOptions.mathMode??doc.options.mathMode,allowRemoteAssets:frozenOptions.allowRemoteAssets??false});doc.assets=prepared.document.assets;doc.options=prepared.document.options;const content=prepared.html;
  const contentRoot=document.createElement('div');contentRoot.innerHTML=content;for(const el of contentRoot.querySelectorAll('details'))el.setAttribute('open','');
  if(contentRoot.querySelector('img,svg image')){contentRoot.style.cssText='position:fixed;left:-20000px;top:0;width:960px;visibility:hidden';document.body.append(contentRoot);try{await waitForLayout(contentRoot)}finally{contentRoot.remove()}}
  const payload=frozenOptions.includeEditablePayload?'<script id="markflow-source-payload" type="application/json">'+encodeSourcePayload(doc)+'</script>':'';

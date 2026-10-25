@@ -1,0 +1,38 @@
+{
+  "step": "p2",
+  "parentCommit": "5f08443be9a1404498381d373a8e3ed66956956f",
+  "checks": {
+    "checkExitCode": 0,
+    "managedSources": 160,
+    "unitTests": 300,
+    "chromiumExitCode": 0,
+    "chromiumTests": 67,
+    "duration": "2.5m"
+  },
+  "logSha256": {
+    "check": "955cd3c24d8f01ab8259411690efe1127cf635106e915f42f3042d601c3d1fc4",
+    "chromium": "a921d9308a38209323e850ad253badf5437b95ecd5b8107330f6f84d45535070"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "1dd95751d965efa63f96de1e6942d3299f2f947e54add340f7951d2c34e3901e",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "ccd319d917b5ce75a1c2974daba782425b7c0d1bca446d58bd543cff89c006ca",
+    "docs/reviews/architecture-p2-implementation-2026-10-26.md": "82dce371ae3c88789d0409ea1dc43f4931b27bc8d20e8f2c884a1df2f37a3b50",
+    "src/core/export/exportContent.ts": "4bff48f1bd8b48d50cd5d3446651c7b5e7b1388fc99b8fe7b234387214e105e2",
+    "src/core/export/htmlExporter.ts": "fc764795cf14e046086bfccade2bd25baad410dd2d744420d786b250af4f13c6",
+    "tests/unit/document-assets.test.ts": "061f62de704020e39ce20e96a7ab62dba25fcd405401c79afa03d750c7551dda",
+    "tests/unit/export-content.test.ts": "9ad67c90ad7d429a2aea8bb319283562aee393a22c74dac2ee0454695ecbccab"
+  },
+  "protectedSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}
