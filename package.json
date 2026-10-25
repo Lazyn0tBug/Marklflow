@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.integration.json && bun run check:type-coverage",
     "check:source": "bun scripts/check-source-policy.ts",
     "check:boundaries": "bun scripts/check-module-boundaries.ts",
-    "check:type-coverage": "bun scripts/check-type-coverage.ts"
+    "check:type-coverage": "bun scripts/check-type-coverage.ts",
+    "check:architecture-baseline": "bun scripts/check-architecture-baseline.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
