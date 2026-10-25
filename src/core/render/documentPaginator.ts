@@ -1,3 +1,4 @@
+import {loadPagedAdapter,type PagedAdapter} from './pagedJsAdapter';
 import { parse,walk,generate } from 'css-tree';
 import {documentSchema} from '../model/documentSchema';
 import type {DocumentRecord} from '../model/document';
@@ -26,16 +27,17 @@ export function paginateDocument(input:DocumentRecord,signal?:AbortSignal):Promi
   walk(printTree,{visit:'Atrule',enter(node,item,list){if(node.name.toLowerCase()==='container'&&item&&list)list.remove(item)}});
   walk(printTree,{visit:'Rule',enter(node,item,list){if(node.prelude.type==='SelectorList'&&item&&list){let hidesUI=false;walk(node.prelude,n=>{if(n.type==='ClassSelector'&&n.name==='no-print')hidesUI=true});if(hidesUI)list.remove(item)}}});
   const paginationCss=generate(printTree);
-  let paged:InstanceType<typeof import('pagedjs').Previewer>|undefined;
+  let paged:PagedAdapter|undefined;
   let deferCleanup=false,stopped:unknown;
-  const cleanup=()=>{try{paged?.chunker.destroy();paged?.polisher.destroy()}finally{nativeStyle?.remove();stage.remove()}};
+  const cleanup=()=>{try{paged?.destroy()}finally{nativeStyle?.remove();stage.remove()}};
   try{
    await waitForLayout(source);throwIfAborted(signal);
-   const {Previewer}=await import('pagedjs');paged=new Previewer();
+   paged=await loadPagedAdapter();
    nativeStyle=document.createElement('style');nativeStyle.textContent=DOCUMENT_CSS+'\n.mf-pagination .mf-doc pre{white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere}.mf-pagination .mf-doc .mf-table-scroll,.mf-pagination .mf-doc .mf-math,.mf-pagination .mf-doc .mf-diagram{overflow:visible}.mf-pagination .mf-doc{--mf-paper:#fff;--mf-ink:#1f2937}';
-   paged.chunker.hooks.beforeParsed.register(()=>{document.head.append(nativeStyle!)});
+   const style=nativeStyle;
+   paged.beforeParsed(()=>{document.head.append(style)});
    const guard=()=>{throwIfAborted(signal);if(stopped)throw stopped};
-   paged.chunker.hooks.beforePageLayout.register(guard);paged.chunker.hooks.afterPageLayout.register(guard);
+   paged.beforePageLayout(guard);paged.afterPageLayout(guard);
    let settled=false;const work=paged.preview(source.innerHTML,[{[location.href]:paginationCss}],target).finally(()=>{settled=true});
    let flow:{total:number};
    try{flow=await withDeadline(work,'分页超时',60000)}catch(error){

@@ -36,3 +36,5 @@ S1 工具选择：typescript-eslint 当前 peer 范围 <6.1.0，不支持项目 
 S1 完成：strict/allowJs/include 范围固化，typecheck/lint 分离并接入 CI；锁定 Oxlint 1.89.0。frozen install、类型、lint、41单元及生产构建通过。沿用已有构建分包/configLoader警告，不修改业务行为；本分支未推送，远端CI未执行。
 
 S2 完成：开启 noUncheckedIndexedAccess/exactOptionalPropertyTypes，108条原始诊断全部消除；修复文档选择、撤销重做、双向滚动锚点、文件枚举、DOT捕获/布局、图片编码及DOCX选项。schema 输出省略 undefined 可选键，保留空字符串/空数组；未扩大全部接口为 undefined。新增4项运行时边界回归，45单元、20 Chromium、类型/lint/构建通过。历史基线证据不改写。
+
+S3 完成：MathJax/Paged.js 适配入口均做运行时能力收窄和结果校验，业务层不再接触第三方启动工厂/分页组件；补充13项负例及生命周期回归。58单元、20 Chromium、类型/lint/构建通过；lint临时显式any负例确实阻断。引擎版本、超时等待/队列隔离及历史验证边界保持。详见 ../acceptance/typescript-strict-2026-10-25.md。

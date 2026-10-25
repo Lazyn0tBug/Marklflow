@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### 工程与可靠性
+
+- 在本地 typescript-strict 分支开启 strict、noUncheckedIndexedAccess、exactOptionalPropertyTypes，明确源码/测试/配置检查范围。
+- 分离 typecheck 与 Oxlint 基础 lint，接入 check/CI；修复空集合、索引、正则捕获及精确可选字段。
+- 收紧 MathJax/Paged.js 运行时边界，校验能力、输出和清理生命周期；引擎版本保持不变。
+- 本地 0.9.2 标签标记上述严格化之前的 HTTP 修复基线，标签/分支未推送。
+
 ### 修复
 
 - 修复非安全HTTP环境没有`crypto.randomUUID()`时解析器崩溃：降级使用`crypto.getRandomValues()`生成128位随机标识，不使用Math.random。

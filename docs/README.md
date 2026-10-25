@@ -28,3 +28,10 @@
 - [使用教程](../TUTORIAL.md)
 
 0.9.1是HTML兼容性改造、审查修复与设计文档归档版本，不是1.0验收放行。MathJax当前实现仍为3.2.2，编辑器仍采用现有textarea；设计中的高级编辑器/高亮、H2字体模板、H3脚本交互、H4增强能力不因文档入库而变成已实现。Word/WPS、原生系统及实体打印、其他浏览器与Tauri仍需后续验收。用户端环境要求与开发依赖分别记录。
+
+## TypeScript 严格化（本地分支）
+
+本地 0.9.2 标签标记 HTTP 兼容性修复基线；后续严格化位于 typescript-strict，尚未推送。
+
+- [严格化分步计划](design/typescript-strict-plan.md)
+- [严格化本地验证记录](acceptance/typescript-strict-2026-10-25.md)
