@@ -1,4 +1,5 @@
 import { verifyAssets } from '../../core/export/documentAssets';
+import { isTauri, openNativeFileDialog } from '../../core/platform/desktop';
 /**
  * MarkFlow (墨流) 左栏工作区与大纲组件
  * 对应设计方案第 4.5.2 节：多文档列表、批量导入、可编辑 HTML 还原与实时大纲树
@@ -15,6 +16,7 @@ import {
   FileCode,
   Search,
   PanelLeftClose,
+  FolderOpen,
 } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 import { extractOutline } from '../../core/parser/markdownParser';
@@ -138,6 +140,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const handleOpenAction = async () => {
+    if (isTauri()) {
+      const nativeFile = await openNativeFileDialog();
+      if (!nativeFile) return;
+
+      if (/\.html?$/i.test(nativeFile.name)) {
+        const restoredDoc = extractPayloadFromHtml(nativeFile.content);
+        if (restoredDoc) {
+          try {
+            await verifyAssets(restoredDoc.assets);
+          } catch (error) {
+            setSidebarError(String(error));
+            return;
+          }
+          restoredDoc.meta.filePath = nativeFile.path;
+          onImportDoc(restoredDoc);
+          return;
+        }
+      }
+
+      const title = nativeFile.name.replace(/\.[^/.]+$/, '');
+      const newDoc: DocumentRecord = {
+        schemaVersion: 1,
+        id: 'doc_' + Math.random().toString(36).substring(2, 9),
+        revision: 1,
+        markdown: nativeFile.content,
+        meta: {
+          title,
+          author: 'Local File',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          filePath: nativeFile.path,
+        },
+        theme: {
+          fontFamily: 'sans',
+          fontSize: 15,
+          lineHeight: 1.75,
+          primaryColor: '#0d9488',
+          paperTheme: 'clean-white',
+          paperSize: 'A4',
+          margins: { top: 20, bottom: 25, left: 20, right: 20 },
+        },
+        options: {
+          syntaxProfile: 'commonmark-gfm-v1',
+          mathMode: 'mathml',
+        },
+      };
+      onImportDoc(newDoc);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
   return (
     <aside className="w-full h-full flex flex-col bg-neutral-900 border-r border-neutral-800 text-neutral-200 select-none no-print relative shrink-0">
       {/* Sidebar Tabs & Collapse Trigger */}
@@ -213,12 +268,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 新建文档
               </button>
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
-                title="导入 .md 文件或含有载荷的可编辑 .html"
+                onClick={handleOpenAction}
+                className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors cursor-pointer"
+                title={isTauri() ? '从本地磁盘打开文件 (原生对话框)' : '导入 .md 文件或含有载荷的可编辑 .html'}
               >
-                <Upload className="w-3.5 h-3.5" />
-                导入
+                {isTauri() ? <FolderOpen className="w-3.5 h-3.5 text-teal-400" /> : <Upload className="w-3.5 h-3.5" />}
+                {isTauri() ? '打开' : '导入'}
               </button>
               <input
                 ref={fileInputRef}
@@ -243,6 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       ? 'bg-teal-950/60 text-teal-200 border border-teal-700/60'
                       : 'hover:bg-neutral-800/60 text-neutral-300 border border-transparent'
                   }`}
+                  title={doc.meta.filePath ? `本地文件：${doc.meta.filePath}` : undefined}
                 >
                   <div className="flex items-start gap-2 overflow-hidden pr-2 flex-1 min-w-0">
                     <FileCode
@@ -251,14 +307,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }`}
                     />
                     <div className="overflow-hidden flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate leading-tight">
-                        {doc.meta.title || '未命名文档'}
+                      <div className="text-xs font-medium truncate leading-tight flex items-center gap-1">
+                        <span className="truncate">{doc.meta.title || '未命名文档'}</span>
+                        {doc.meta.filePath && (
+                          <span className="shrink-0 px-1 py-0.2 rounded bg-neutral-800 text-neutral-400 text-[9px] font-mono border border-neutral-700/60">
+                            本地
+                          </span>
+                        )}
                       </div>
-                      <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
+                      <div className="text-[10px] text-neutral-500 font-mono mt-0.5 truncate">
                         {new Date(doc.meta.updatedAt).toLocaleTimeString('zh-CN', {
                           hour: '2-digit',
                           minute: '2-digit',
                         })} · Rev {doc.revision}
+                        {doc.meta.filePath && ` · ${doc.meta.filePath.replace(/\\/g, '/').split('/').pop()}`}
                       </div>
                     </div>
                   </div>

@@ -9,6 +9,7 @@ export interface DocumentMeta {
   createdAt: string;
   updatedAt: string;
   tags?: string[];
+  filePath?: string;
 }
 
 export interface ThemeSpec {

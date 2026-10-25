@@ -13,11 +13,15 @@
     "test:e2e": "playwright test",
     "check": "bun run typecheck && bun run lint && bun run test:unit && bun run build",
     "typecheck": "tsc --noEmit",
-    "check:source": "bun scripts/check-source-policy.ts"
+    "check:source": "bun scripts/check-source-policy.ts",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-dialog": "^2.8.3",
+    "@tauri-apps/plugin-fs": "^2.7.1",
     "@vitejs/plugin-react": "^6.1.1",
     "css-tree": "3.2.1",
     "docx": "^9.14.0",
@@ -45,6 +49,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/css-tree": "3.2.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",

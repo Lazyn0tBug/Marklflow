@@ -7,7 +7,7 @@ export const assetSchema=z.object({
 const date=z.string().max(100).refine(v=>Number.isFinite(Date.parse(v)));
 export const documentSchema=z.object({
  schemaVersion:z.literal(1),id:z.string().min(1).max(256),revision:z.number().int().min(0),markdown:z.string().max(10*1024*1024),
- meta:z.object({title:z.string().max(1000),author:z.string().max(1000).optional(),createdAt:date,updatedAt:date,tags:z.array(z.string().max(100)).max(100).optional()}).transform(({author,tags,...meta})=>({...meta,...(author===undefined?{}:{author}),...(tags===undefined?{}:{tags})})),
+ meta:z.object({title:z.string().max(1000),author:z.string().max(1000).optional(),createdAt:date,updatedAt:date,tags:z.array(z.string().max(100)).max(100).optional(),filePath:z.string().max(2048).optional()}).transform(({author,tags,filePath,...meta})=>({...meta,...(author===undefined?{}:{author}),...(tags===undefined?{}:{tags}),...(filePath===undefined?{}:{filePath})})),
  theme:themeSchema,options:z.object({syntaxProfile:z.literal('commonmark-gfm-v1'),mathMode:z.enum(['mathml','svg'])}),
  assets:z.array(assetSchema).max(128).optional(),
 }).transform(({assets,...doc})=>({...doc,...(assets===undefined?{}:{assets})}));

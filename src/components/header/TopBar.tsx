@@ -52,6 +52,7 @@ export interface TopBarProps {
   onOpenExport: () => void;
   onOpenRoadmap: () => void;
   documentTitle: string;
+  filePath?: string | undefined;
 }
 
 const WIDTH_OPTIONS: { label: string; value: number | 'full'; desc: string }[] = [
@@ -82,6 +83,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenExport,
   onOpenRoadmap,
   documentTitle,
+  filePath,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
   const settingsRef=useRef<HTMLDialogElement>(null);
@@ -114,8 +116,16 @@ export const TopBar: React.FC<TopBarProps> = ({
           </span>
         </a>
 
-        <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-neutral-800 text-xs text-neutral-400 max-w-xs truncate">
+        <div
+          className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-neutral-800 text-xs text-neutral-400 max-w-xs truncate"
+          title={filePath ? `本地文件：${filePath}` : undefined}
+        >
           <span className="truncate">{documentTitle || '未命名技术文档'}</span>
+          {filePath && (
+            <span className="shrink-0 px-1 py-0.2 rounded bg-neutral-800 text-teal-400 text-[10px] font-mono border border-teal-900/40">
+              本地
+            </span>
+          )}
           {isDirty && (
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="有未写入草稿修改" />
           )}

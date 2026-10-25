@@ -1,13 +1,14 @@
 import { printFrozenHtml } from '../../core/export/documentPrint';
 import { inspectDocx } from '../../core/export/outputCapabilities';
+import { isTauri, saveExportBinaryOrText, exportPdfDirect } from '../../core/platform/desktop';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
- * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、浏览器打印 A4 PDF、原生 DOCX
+ * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、A4 矢量 PDF 原生导出 / 浏览器打印、原生 DOCX
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
+import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers, Save } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 import { generateExportHtml } from '../../core/export/htmlExporter';
 import { exportDocumentToDocx } from '../../core/export/docxExporter';
@@ -43,26 +44,43 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
     try {
       if (selectedFormat === 'print-pdf') {
         const frozen = await generateExportHtml(doc, { mathMode, allowRemoteAssets });
-        await printFrozenHtml(frozen);
-        onClose();
+        if (isTauri()) {
+          const res = await exportPdfDirect(frozen, safeName);
+          if (res.success) {
+            setExportSuccess(res.message || '已成功导出矢量 PDF');
+          } else if (res.message && res.message !== '已取消保存') {
+            setExportError(res.message);
+          }
+        } else {
+          await printFrozenHtml(frozen);
+          onClose();
+        }
         return;
       }
 
       if (selectedFormat === 'editable-html') {
         const html = await generateExportHtml(doc, { includeEditablePayload: true, mathMode, allowRemoteAssets });
-        downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.markflow.html`);
-        setExportSuccess(`已成功下载可编辑 HTML，含全量 Markdown 载荷`);
+        const res = await saveExportBinaryOrText(safeName, 'markflow.html', html);
+        if (res.saved) {
+          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功下载可编辑 HTML，含全量 Markdown 载荷`);
+        }
       } else if (selectedFormat === 'reading-html') {
         const html = await generateExportHtml(doc, { includeEditablePayload: false, mathMode, allowRemoteAssets });
-        downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.html`);
-        setExportSuccess(`已成功生成静态阅读 HTML`);
+        const res = await saveExportBinaryOrText(safeName, 'html', html);
+        if (res.saved) {
+          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功生成静态阅读 HTML`);
+        }
       } else if (selectedFormat === 'docx') {
         const blob = await exportDocumentToDocx(doc, { allowSourceFallback, allowRemoteAssets });
-        downloadBlob(blob, `${safeName}.docx`);
-        setExportSuccess(`已成功导出原生 DOCX 文档 (OpenXML)`);
+        const res = await saveExportBinaryOrText(safeName, 'docx', blob);
+        if (res.saved) {
+          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功导出原生 DOCX 文档 (OpenXML)`);
+        }
       } else if (selectedFormat === 'markdown') {
-        downloadBlob(new Blob([doc.markdown], { type: 'text/markdown;charset=utf-8' }), `${safeName}.md`);
-        setExportSuccess(`已成功下载原始 Markdown 文件`);
+        const res = await saveExportBinaryOrText(safeName, 'md', doc.markdown);
+        if (res.saved) {
+          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功下载原始 Markdown 文件`);
+        }
       }
     } catch (err) {
       console.error('Export error:', err);
@@ -151,7 +169,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </div>
               </button>
 
-              {/* 打印 A4 PDF */}
+              {/* A4 矢量 PDF */}
               <button
                 type="button"
                 onClick={() => setSelectedFormat('print-pdf')}
@@ -165,9 +183,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                   <Printer className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="font-medium text-xs text-neutral-100">打印 / 保存为 A4 PDF</div>
+                  <div className="font-medium text-xs text-neutral-100 flex items-center gap-1.5">
+                    {isTauri() ? 'A4 矢量 PDF (.pdf)' : '打印 / 保存为 A4 PDF'}
+                    {isTauri() && <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-900/60 text-sky-300 font-mono">原生</span>}
+                  </div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    准备 A4 文档后调用浏览器打印；实际分页、字体及 PDF 结果需在目标环境核对。
+                    {isTauri()
+                      ? '直接通过系统底层渲染引擎生成高精度矢量 PDF 并落盘保存，无需打印机弹窗。'
+                      : '准备 A4 文档后调用浏览器打印；实际分页、字体及 PDF 结果需在目标环境核对。'}
                   </p>
                 </div>
               </button>
@@ -283,7 +306,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
               className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 shadow-md shadow-teal-950/30"
             >
               <Download className="w-4 h-4" />
-              {isExporting ? '正在生成...' : selectedFormat === 'print-pdf' ? '唤起系统打印' : '立即导出并保存'}
+              {isExporting
+                ? '正在生成...'
+                : selectedFormat === 'print-pdf'
+                ? (isTauri() ? '导出为 PDF 文件' : '唤起系统打印')
+                : '立即导出并保存'}
             </button>
           </div>
         </div>

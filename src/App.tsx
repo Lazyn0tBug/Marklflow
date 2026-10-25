@@ -25,6 +25,7 @@ import {
   createNewDocument,
 } from './core/storage/storage';
 import { extractOutline } from './core/parser/markdownParser';
+import { isTauri, saveNativeFileInPlace, saveNativeFileAs } from './core/platform/desktop';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
 function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number {
@@ -205,11 +206,51 @@ export default function App() {
     [currentDoc, handleMarkdownChange]
   );
 
-  const handleSaveImmediately = () => {
+  const handleSaveImmediately = async () => {
     if (!currentDoc) return;
-    const pending=pendingSaves.current.get(currentDoc.id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(currentDoc.id);
+    const pending = pendingSaves.current.get(currentDoc.id);
+    if (pending) clearTimeout(pending.timer);
+    pendingSaves.current.delete(currentDoc.id);
+
+    if (isTauri()) {
+      if (currentDoc.meta.filePath) {
+        const ok = await saveNativeFileInPlace(currentDoc.meta.filePath, currentDoc.markdown);
+        if (ok) {
+          setIsDirty(false);
+          await persist(currentDoc);
+          return;
+        }
+      } else {
+        const targetPath = await saveNativeFileAs(currentDoc.meta.title, currentDoc.markdown);
+        if (targetPath) {
+          const updatedDoc: DocumentRecord = {
+            ...currentDoc,
+            meta: {
+              ...currentDoc.meta,
+              filePath: targetPath,
+            },
+          };
+          setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
+          setIsDirty(false);
+          await persist(updatedDoc);
+          return;
+        }
+      }
+    }
+
     void persist(currentDoc);
   };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        void handleSaveImmediately();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [currentDoc]);
 
   const handleCreateDoc = () => {
     const newDoc = createNewDocument('新建 Markdown 文档');
@@ -566,6 +607,7 @@ export default function App() {
         onOpenExport={() => setExportModalOpen(true)}
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
         documentTitle={currentDoc.meta.title}
+        filePath={currentDoc.meta.filePath}
       />
 
       {/* Main Workbench Layout */}
