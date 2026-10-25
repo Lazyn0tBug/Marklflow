@@ -35,10 +35,13 @@ jobs:
         id: install
         run: bun install --frozen-lockfile
 
-      # The existing lint script is TypeScript checking, not ESLint.
       - name: Typecheck
         if: steps.install.outcome == 'success'
-        run: bun run --bun lint
+        run: bun run typecheck
+
+      - name: Lint
+        if: steps.install.outcome == 'success'
+        run: bun run lint
 
       - name: Unit and contract tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

@@ -42,3 +42,8 @@ R0–R4审查后，本地样例为37项单元/契约及19项Chromium测试，覆
 ## 普通 HTTP 兼容性回归（0.9.1 之后）
 
 新增浏览器测试使用普通 HTTP 来源，断言 isSecureContext=false 且 randomUUID/subtle 缺失，再验证预览、公式与图片导出、SHA-256 校验和源文档重导入。随机标识优先 randomUUID，回退到 getRandomValues；资产摘要优先原生 SHA-256，回退到动态加载的 hash.js。单元测试覆盖 SHA-256 分块和填充边界以及随机数能力缺失的明确失败，不使用弱随机数代替。历史 R0–R4 验证记录保持原样；本次运行结果以当前 CI 为准。
+
+
+## TypeScript 严格化分支门禁
+
+当前 typecheck 独立执行 tsc --noEmit（strict=true，allowJs=false），检查 src、tests 以及 Vite/Vitest/Playwright 配置；public/vendor 保留第三方发布产物，不纳入应用源码类型检查。lint 改为 Oxlint 1.89.0，检查显式 any、无说明的类型忽略及基础控制流可靠性，不宣称全套风格/类型感知 lint。check 顺序为 typecheck、lint、单元测试、生产构建；CI 独立执行各项。之前章节中的 lint=tsc 为历史配置。
