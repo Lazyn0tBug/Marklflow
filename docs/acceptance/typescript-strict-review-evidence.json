@@ -1,0 +1,633 @@
+{
+  "recordedAt": "2026-10-25T04:24:59.575002+00:00",
+  "branch": "typescript-strict",
+  "reviewBaseline": "7dfb6f0",
+  "reviewedSourceCommit": "243c2588ab669db29bedd569853309f05bb1b1ab",
+  "refs": {
+    "main": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "html": "b4446e21c4c7bcf2eeb4a7d8c382223d1580ebfa",
+    "0.9.1^{}": "0d7f95926c263636b48f2651a5317926d537d1ce",
+    "0.9.2^{}": "b4446e21c4c7bcf2eeb4a7d8c382223d1580ebfa"
+  },
+  "environment": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "bun": "1.4.2",
+    "packages": {
+      "typescript": "7.0.2",
+      "oxlint": "1.89.0",
+      "mathjax": "3.2.2",
+      "pagedjs": "0.4.3",
+      "@playwright/test": "1.64.1",
+      "vitest": "5.0.5"
+    },
+    "browser": {
+      "browser": "156.0.8078.4",
+      "platform": "win32",
+      "date": "2026-10-25T04:23:49.329Z",
+      "probes": {
+        "grid": true,
+        "namedContainer": true,
+        "containerUnits": true,
+        "fluidUnits": true,
+        "oklch": true,
+        "cryptoDigest": true,
+        "dialog": true,
+        "fontStatus": "loaded"
+      },
+      "limits": "API/grammar detection is not glyph coverage, Word, physical print or cross-browser acceptance"
+    }
+  },
+  "gates": {
+    "frozenInstall": "passed",
+    "typecheck": "passed",
+    "sourcePolicy": "passed",
+    "lint": "passed",
+    "unit": {
+      "files": 15,
+      "passed": 76
+    },
+    "build": "passed",
+    "e2e": {
+      "startTime": "2026-10-25T04:23:22.468Z",
+      "duration": 53438.636000000006,
+      "expected": 22,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    }
+  },
+  "negativeGates": {
+    "newSourceJavaScript": "rejected",
+    "explicitAnyInDeclaration": "rejected",
+    "tsIgnore": "rejected",
+    "weakenIndexedAccess": "TS2578",
+    "weakenExactOptional": "TS2578",
+    "weakenImplicitAny": "TS2578",
+    "weakenStrictNull": "TS2578"
+  },
+  "sourceFingerprint": {
+    "algorithm": "sha256",
+    "digest": "81713ba7cb2e022906e77f960adaf19580c46da6a2cbad044d01656d7d5b0b61",
+    "files": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "sha256": "a8c9d5167e71c4b897a132b3daa0778eab4343f7263d5729c4f8e634d43d8f46"
+      },
+      {
+        "path": ".oxlintrc.json",
+        "sha256": "68fea4fc47cac79d95bc4bce650eb9c7e0dcaf524445a207f340d64e031262f8"
+      },
+      {
+        "path": "bun.lock",
+        "sha256": "c9adb6ed3669a3b2eebf4c40a2abf857ab2c8dbd66e735933b6462b62bb58667"
+      },
+      {
+        "path": "index.html",
+        "sha256": "91f0a09bcc4f9a9379f3c31907f4e6c6366488c0da49503c2c04bb4b69a81153"
+      },
+      {
+        "path": "package.json",
+        "sha256": "0a0c4fc83cc368ee27c511bd5fd65681e4620fc047700bf0b3f87cbd4de3d2d0"
+      },
+      {
+        "path": "playwright.config.ts",
+        "sha256": "c478586df569b0d8fcf38df9b000827437c3e812ae6498e324d81414f66d2802"
+      },
+      {
+        "path": "public/vendor/mathjax/tex-mml-svg.js",
+        "sha256": "1f17a7ed95ff4a4b27d16bf0fb5f80b915686ee8673e82983a2876ecf8cb9fae"
+      },
+      {
+        "path": "scripts/check-source-policy.ts",
+        "sha256": "2d481dee78c300a9458f333e93174e3ad6da30bd13c7a7500012bb0a8265d11b"
+      },
+      {
+        "path": "src/App.tsx",
+        "sha256": "244121b52b4430a03957c3f018553b79735f8b2e2e361b2c0fa9b7973beeec1b"
+      },
+      {
+        "path": "src/components/editor/Editor.tsx",
+        "sha256": "c0cae960601e7b6ad11bf140f7a34906568eb84d7625dca75306f1580ca85d02"
+      },
+      {
+        "path": "src/components/export/ExportModal.tsx",
+        "sha256": "8daa86b374c221727b870b19eb4b3617491fabc4fad93a44698214acf22eb5f6"
+      },
+      {
+        "path": "src/components/footer/StatusBar.tsx",
+        "sha256": "96fb494699db47f18d5400986539d48372975ae49b3db8887a899083c69de205"
+      },
+      {
+        "path": "src/components/header/TopBar.tsx",
+        "sha256": "7e44009ac5ba99bc5ec1df54ea702007e88ff634027b652c5a6f8b9938f6254a"
+      },
+      {
+        "path": "src/components/preview/A4PagePreview.tsx",
+        "sha256": "b0c6c97e694f9aafde4d6e31b246bed1f9980848da434eb3436af8d3cb38562d"
+      },
+      {
+        "path": "src/components/preview/ReadingPreview.tsx",
+        "sha256": "589ff788d3116681a02c7d1b1b21bab3d45da10f4828fb1d515735795f8640e2"
+      },
+      {
+        "path": "src/components/roadmap/RoadmapModal.tsx",
+        "sha256": "678ee3ea402effee281a87287b04a2b5376359b9dea6b0e8699981950fca4467"
+      },
+      {
+        "path": "src/components/toolbar/WorkbenchToolbar.tsx",
+        "sha256": "a174a9db74a036c8b62dff77eccaa140a16d0e49118879e7f5395d27f04696c2"
+      },
+      {
+        "path": "src/components/workspace/Sidebar.tsx",
+        "sha256": "f6cad7f59ff0b78486fbd1355cdb87c41f844c69d2c641becc33e7e73457d8e5"
+      },
+      {
+        "path": "src/core/export/documentAssets.ts",
+        "sha256": "3f146becf07d128e36eab20c10b933948a5f2be41f26556c069ccc9df9ec3d5a"
+      },
+      {
+        "path": "src/core/export/documentPrint.ts",
+        "sha256": "f1c2ffa91747aaecd76b5de95af915bb3a1e6d4532d3e531ec636d4b8d85b307"
+      },
+      {
+        "path": "src/core/export/docxExporter.ts",
+        "sha256": "98f4beb40f2762ccba7fd6136b5ba822ab4ed267540e0a64c0f69bad81ffad3b"
+      },
+      {
+        "path": "src/core/export/htmlExporter.ts",
+        "sha256": "ecc2e69b7f3c79f6452bbb20b8e4acea54cbdbc820fa647ff609dc2c4bb0f1ef"
+      },
+      {
+        "path": "src/core/export/outputCapabilities.ts",
+        "sha256": "2a523128ea912e190650f6f7f052c63b7c2cfb7be3dbd19a60421be394cca162"
+      },
+      {
+        "path": "src/core/model/document.ts",
+        "sha256": "8323404be19dc39aff419864d87abcaff7253f571d15eef304952c9f77bb41bd"
+      },
+      {
+        "path": "src/core/model/documentSchema.ts",
+        "sha256": "273cb022e19f6214589c65c5ed3d6e7dbc16a614307360614f34861fcbfa5b12"
+      },
+      {
+        "path": "src/core/parser/markdownParser.ts",
+        "sha256": "663dee696397096773c724b7327b27c7ff91bbe3b07da2a9cc09e0708359e6d8"
+      },
+      {
+        "path": "src/core/platform/crypto.ts",
+        "sha256": "755ce3198a6f733d70fb5c88515f29c5c972e836bf99c2d1e8cf4c7dbc4bc1bb"
+      },
+      {
+        "path": "src/core/platform/externalApi.ts",
+        "sha256": "2e398e127dcd81f84c0918dca2cf044e1028423285d37eb7e1dbfcefab9c4065"
+      },
+      {
+        "path": "src/core/render/documentPaginator.ts",
+        "sha256": "a2ab279d6132b4c5dca1efc52f1b9c60d12f9032a800ff7e94ea4a993bed6538"
+      },
+      {
+        "path": "src/core/render/documentPresentation.ts",
+        "sha256": "2a88fb26afcc59dc31a9192bcb506da5c9ba93d88f4d0c8a391d07bb80823a66"
+      },
+      {
+        "path": "src/core/render/documentRenderer.ts",
+        "sha256": "9779150b6c95f2b802115a791902b61d28c75f545119b680b88cbb8b4cddd83e"
+      },
+      {
+        "path": "src/core/render/graphvizRender.ts",
+        "sha256": "6406eb092449cc574f2cff6c7ea9086b3f1bb7380741dda71e6ac064845b3bce"
+      },
+      {
+        "path": "src/core/render/htmlPolicy.ts",
+        "sha256": "e773c310274bec10a421e72466e8d877ec31bddd8c18859f5b16d63bbac48d7e"
+      },
+      {
+        "path": "src/core/render/mathJaxAdapter.ts",
+        "sha256": "73f9cab65f9401d2a4c3f5d29f123b4f8096205909cf57a8c683bf9eceddbad3"
+      },
+      {
+        "path": "src/core/render/mathRender.ts",
+        "sha256": "8088c588de44d46fb473ed66d3d8624a29e6dce6f1de48c1a6a946301e1c898b"
+      },
+      {
+        "path": "src/core/render/mermaidRender.ts",
+        "sha256": "bc0ee1fed27259a741ebab29ba0127a00d4014d7e24371b3d8c9942943251602"
+      },
+      {
+        "path": "src/core/render/pagedJsAdapter.ts",
+        "sha256": "b99462ac02dc9b4d02861b7e7ae20c235bf7f7ef68c1145197c1e77b90f0a093"
+      },
+      {
+        "path": "src/core/storage/storage.ts",
+        "sha256": "9201c6253778ab4c4b8939da01197510e5ab28c694a12a519e7e821a77b073fc"
+      },
+      {
+        "path": "src/index.css",
+        "sha256": "6cc8391b1a82ec8563d9b73afeb13c4c53477833c9130cc9b263020f3a2841fa"
+      },
+      {
+        "path": "src/main.tsx",
+        "sha256": "fe388a78164b0322133387de66700458a618bbefabfbd18a8cd36f79007e6410"
+      },
+      {
+        "path": "src/styles/document.css",
+        "sha256": "3b300c1df97244435e6d98a4d165dfc60e8610a4ea3693561084ee79b66d54a9"
+      },
+      {
+        "path": "src/types/pagedjs.d.ts",
+        "sha256": "34473f0fd3f3524c4cdb1229e2d66d6614b36eaf3632f44c283d737063d34fe6"
+      },
+      {
+        "path": "tests/e2e/html-compatibility.spec.ts",
+        "sha256": "c3b5a1f3f3baf8dc01e62149f5f3a3abfccf492f6f92f7e4db3ccd29ae4e1813"
+      },
+      {
+        "path": "tests/e2e/http-compatibility.spec.ts",
+        "sha256": "1f8b12b3a6882181256bfd753b8fb4093a98757df9c5ef44176144a66ce81acd"
+      },
+      {
+        "path": "tests/e2e/review-docx.spec.ts",
+        "sha256": "e33388331ca13be1b14574ec824bc65841c2565a6ec51dcc7d91b66eae89ca67"
+      },
+      {
+        "path": "tests/e2e/review-environment.spec.ts",
+        "sha256": "e92bcfdc0704f2f505019d915943bf2b8f90705b136928ae5e7f6c920dd790c1"
+      },
+      {
+        "path": "tests/e2e/review-paged-lifecycle.spec.ts",
+        "sha256": "18defb46ab8338a5b0d3ad731eca62a3dae28a42ca692ab84a272e75f49198b7"
+      },
+      {
+        "path": "tests/e2e/review-pagination.spec.ts",
+        "sha256": "185ce344d0c31a99dbed8c70e4b56cb0472238f40103f962281063b0d5872738"
+      },
+      {
+        "path": "tests/e2e/review-regressions.spec.ts",
+        "sha256": "8f24b660acbc32ec561f237163087392686b7774452f20c5571813ca2e0b9596"
+      },
+      {
+        "path": "tests/e2e/review-workbench.spec.ts",
+        "sha256": "fa91238b16b030c57eb17d9278c2ce664f01ab6bd7d3b85879de5acd8535ea56"
+      },
+      {
+        "path": "tests/e2e/workbench.spec.ts",
+        "sha256": "17de48c500772926c19386d466ac4341adc6ddf37ada07c2d8ac6f3ddec9f90d"
+      },
+      {
+        "path": "tests/fixtures/html-baseline.md",
+        "sha256": "ca19e2a1d4b961843269be0b6dca984b0bbf4964100be2bcceaff12eac42793a"
+      },
+      {
+        "path": "tests/fixtures/responsive.md",
+        "sha256": "4bb91322b228a0141102797ad3a474ace6e86414d061916bb93fef04097f17bf"
+      },
+      {
+        "path": "tests/types/strict-contracts.ts",
+        "sha256": "8e3f7713b1ee7a995c3c10b2968c79b9b9e09c015a8fb42ffd497cf1e6d6890a"
+      },
+      {
+        "path": "tests/unit/contracts.test.ts",
+        "sha256": "269619cf6879320b39b42019f172fc8333ae9acbdc2c2669503b96204009ed00"
+      },
+      {
+        "path": "tests/unit/crypto-compatibility.test.ts",
+        "sha256": "3681f23df23cd6f065571aeccc4a656ea67401bde4c4d6e7a297c20d20f9f9ac"
+      },
+      {
+        "path": "tests/unit/document-assets.test.ts",
+        "sha256": "0ca1e6d1593fef77eb4bbdf9c831ef0fee46df2b05ff418ec329f6c45dc44225"
+      },
+      {
+        "path": "tests/unit/document-presentation.test.ts",
+        "sha256": "ffab1bcfd11601856153cf12e39fadde2fdd7249a4748b73c77e5cb7f272821f"
+      },
+      {
+        "path": "tests/unit/document-renderer.test.ts",
+        "sha256": "d615f433222752fe096ed87c04fb0abe2d2284f0697cd7fc73596732f583ffa8"
+      },
+      {
+        "path": "tests/unit/html-policy.test.ts",
+        "sha256": "7fa184f4799aa6108d750a7f0453a52f1f640e8fd42d4aac45a35aadb056af83"
+      },
+      {
+        "path": "tests/unit/print-capabilities.test.ts",
+        "sha256": "dd5eb0f7f37ea81cf2a6022818aa5e64436253e6fd63525c1b157b74fab275cc"
+      },
+      {
+        "path": "tests/unit/review-assets-math.test.ts",
+        "sha256": "d8459b8aba847d0d1d9cc9f4c0cd8676fc625c792948940d8d7c83cae0aab525"
+      },
+      {
+        "path": "tests/unit/review-content.test.ts",
+        "sha256": "f51ca966d059c7fd4190cbb1619842b4c287e978f3862a3bdf04c8625216a17e"
+      },
+      {
+        "path": "tests/unit/review-mathjax-boundary.test.ts",
+        "sha256": "87f8069398aeba08b3867a549fe0666d7b1068202b6ae6ed4bd9ab70956081e5"
+      },
+      {
+        "path": "tests/unit/review-paged-boundary.test.ts",
+        "sha256": "95246da5590bbf2169927af8422e3e6267e0c26d4e314340266621717a185e64"
+      },
+      {
+        "path": "tests/unit/review-pagination-failures.test.ts",
+        "sha256": "9d71a61587eeb4e1920de944319115a95ee80420dc8216df76cd5e171fd0ea43"
+      },
+      {
+        "path": "tests/unit/review-pagination-lifecycle.test.ts",
+        "sha256": "4d1bdf241ff512b640a8b371323721ff8ea2f3e27cce634c0c928ce1783b103a"
+      },
+      {
+        "path": "tests/unit/strict-boundaries.test.ts",
+        "sha256": "5a09777dec94b22a1e52b9adce19810ca89b6c62c91201f03ba987ca38a36a31"
+      },
+      {
+        "path": "tests/unit/third-party-adapters.test.ts",
+        "sha256": "7db83c8921af5786232e3004691a30f517092a6442c41a0ae67418e0ecfa10b2"
+      },
+      {
+        "path": "tsconfig.json",
+        "sha256": "3b2155891bdfe382831d6933e0572852b5558a99d6476a5d787dbbf9d8f11938"
+      },
+      {
+        "path": "vite.config.ts",
+        "sha256": "e2b951ea8ad28347fbd791da1011ca4222ed86e7d19bb54de20acde30487fc96"
+      },
+      {
+        "path": "vitest.config.ts",
+        "sha256": "296e6f579c274a2bac4b70622e293fd5a29b4c20bff72168e11ef77434c107f9"
+      }
+    ],
+    "basis": "working-tree file bytes; line endings preserved"
+  },
+  "e2eCases": [
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "isolates document palette and rejects executable content",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "queries its own container in wide and narrow layouts",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "opens HTML offline and restores editable source and assets",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "paginates long content without losing final text or source mappings",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "reports static DOCX mappings before explicit consent",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "exports native DOCX structure with embedded formula and diagram pictures",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "prepares the print frame only after assets are ready and cleans up after print",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "html-compatibility.spec.ts",
+      "title": "does not report successful export for a corrupt embedded image",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "http-compatibility.spec.ts",
+      "title": "previews and exports on a real insecure HTTP origin without randomUUID or subtle",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-docx.spec.ts",
+      "title": "preserves mixed text, list starts, bookmarks, page breaks and A4 in DOCX",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-environment.spec.ts",
+      "title": "records capability detection separately from rendered verification",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-paged-lifecycle.spec.ts",
+      "title": "recovers from an interrupted A4 preview without retaining an abandoned host",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-pagination.spec.ts",
+      "title": "keeps long table/code text and container layout in A4 pages",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-regressions.spec.ts",
+      "title": "isolates TeX definitions across repeated document revisions",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-regressions.spec.ts",
+      "title": "blocks corrupt SVG images instead of exporting a blank figure",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-regressions.spec.ts",
+      "title": "shows unsupported content diagnostics and keeps static task state",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-regressions.spec.ts",
+      "title": "keeps diagnostic-like literal formula text in MathML and SVG modes",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-workbench.spec.ts",
+      "title": "keeps all seven pane combinations under user control and prevents hiding the last",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-workbench.spec.ts",
+      "title": "opens hidden width settings as a real dialog and closes with Escape",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-workbench.spec.ts",
+      "title": "saves undo and redo revisions and restores the selected document math preference",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "review-workbench.spec.ts",
+      "title": "synchronizes outline, editor and HTML using stable source headings",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    },
+    {
+      "file": "workbench.spec.ts",
+      "title": "production workbench loads editable source",
+      "status": "expected",
+      "results": [
+        "passed"
+      ]
+    }
+  ],
+  "localArtifacts": {
+    "report": {
+      "path": "test-results/strict-review-e2e.json",
+      "sha256": "eebd7b4e2d299be2ec1850baddde69d0b3a375eb104a83fb36d7eb7f96e2e695"
+    },
+    "runtime": {
+      "path": "test-results/review-environment-records-1461c--from-rendered-verification-chromium/runtime.json",
+      "sha256": "d2139fe8633118f48e85c9c0288143125b1dc9a1ecf61aea99cb7570393b5a8e"
+    }
+  },
+  "findings": [
+    {
+      "id": "T01",
+      "status": "fixed",
+      "step": "R1"
+    },
+    {
+      "id": "T02",
+      "status": "fixed",
+      "step": "R1"
+    },
+    {
+      "id": "T03",
+      "status": "fixed",
+      "step": "R1"
+    },
+    {
+      "id": "T04",
+      "status": "fixed",
+      "step": "R2"
+    },
+    {
+      "id": "T05",
+      "status": "fixed",
+      "step": "R2"
+    },
+    {
+      "id": "T06",
+      "status": "fixed",
+      "step": "R2"
+    },
+    {
+      "id": "T07",
+      "status": "fixed",
+      "step": "R2"
+    },
+    {
+      "id": "T08",
+      "status": "fixed",
+      "step": "R3"
+    },
+    {
+      "id": "T09",
+      "status": "fixed",
+      "step": "R3"
+    },
+    {
+      "id": "T10",
+      "status": "fixed",
+      "step": "R3"
+    },
+    {
+      "id": "T11",
+      "status": "fixed",
+      "step": "R3"
+    },
+    {
+      "id": "T12",
+      "status": "fixed",
+      "step": "R3"
+    },
+    {
+      "id": "T13",
+      "status": "fixed",
+      "step": "R3"
+    }
+  ],
+  "limitations": [
+    "No push; remote CI not run",
+    "MathJax remains 3.2.2; Paged.js remains 0.4.3",
+    "No Worker or forced cancellation guarantee",
+    "Shared MathJax engine remains serialized by documentRenderer",
+    "skipLibCheck=true; lint is not a complete type-aware ruleset",
+    "IndexedDB/localStorage full runtime schema validation remains outside this task",
+    "Other browsers, Word/WPS and system/physical print not newly validated",
+    "Existing build chunk/configLoader warnings remain"
+  ],
+  "vendorMatchesInstalledMathJax": true,
+  "tagObjects": {
+    "0.9.1": "fb1618011a4df013de0334fe54c832983977e8e3",
+    "0.9.2": "b55edda904c24a1484e857cfd8aef3f1df323d9d"
+  }
+}

@@ -49,3 +49,5 @@ R0–R4审查后，本地样例为37项单元/契约及19项Chromium测试，覆
 当前 typecheck 独立执行 tsc --noEmit（strict=true，allowJs=false），检查 src、tests 以及 Vite/Vitest/Playwright 配置；public/vendor 保留第三方发布产物，不纳入应用源码类型检查。lint 改为 Oxlint 1.89.0，检查显式 any、无说明的类型忽略及基础控制流可靠性，不宣称全套风格/类型感知 lint。check 顺序为 typecheck、lint、单元测试、生产构建；CI 独立执行各项。之前章节中的 lint=tsc 为历史配置。
 
 严格化审查R1进一步增加第一方JS拒绝策略（src/tests/scripts及根工具配置；不处理vendor），纳入lint；tsc检查源码/测试/脚本与ts/mts/cts工具配置，编译专用负契约防止严格选项被误关。Oxlint扫描仓库并排除vendor/生成物。typescript-strict推送也已配置触发，但本地审查期间不推送。
+
+本地严格化完整审查最终快照为76单元/契约、22 Chromium，运行环境及边界见 [审查报告](reviews/typescript-strict-review-2026-10-25.md)。编译专用负契约位于tests/types，不由Vitest执行，而由typecheck覆盖；正常检查通过，放宽关键严格选项应因未使用expect-error而失败。未推送，因此远端CI仍未执行。

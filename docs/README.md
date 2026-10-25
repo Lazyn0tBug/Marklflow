@@ -35,3 +35,6 @@
 
 - [严格化分步计划](design/typescript-strict-plan.md)
 - [严格化本地验证记录](acceptance/typescript-strict-2026-10-25.md)
+
+- [严格化分支完整代码审查](reviews/typescript-strict-review-2026-10-25.md)
+- [严格化审查结构化证据](acceptance/typescript-strict-review-evidence.json)

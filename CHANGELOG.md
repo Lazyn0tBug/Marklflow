@@ -6,6 +6,8 @@
 
 ### 工程与可靠性
 
+- 完整审查严格化分支：补齐新增JS拒绝与编译负契约，修复MathJax正常公式文本误判、同步工厂和会话边界，以及Paged.js部分初始化/活动任务/加载超时/宿主清理与错误聚合；本地76单元、22 Chromium通过，未推送。
+
 - 在本地 typescript-strict 分支开启 strict、noUncheckedIndexedAccess、exactOptionalPropertyTypes，明确源码/测试/配置检查范围。
 - 分离 typecheck 与 Oxlint 基础 lint，接入 check/CI；修复空集合、索引、正则捕获及精确可选字段。
 - 收紧 MathJax/Paged.js 运行时边界，校验能力、输出和清理生命周期；引擎版本保持不变。
