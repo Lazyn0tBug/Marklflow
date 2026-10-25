@@ -2,8 +2,7 @@ import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyper
 import {documentSchema} from '../model/documentSchema';
 import type {DocumentRecord} from '../model/document';
 import {inspectDocx} from './outputCapabilities';
-import {renderDocument,assertArtifact} from '../render/documentRenderer';
-import {collectAssets} from './documentAssets';
+import {prepareExportContent} from './exportContent';
 import {documentStyle} from '../render/documentPresentation';
 import {waitForLayout,withDeadline} from './documentPrint';
 type Run=ParagraphChild;
@@ -48,14 +47,13 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
  const frozenOptions={...options};
  const doc=documentSchema.parse(structuredClone(input)),issues=inspectDocx(doc.markdown);
  if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
- const artifact=await renderDocument(doc.markdown,'svg',undefined,{priority:'export'});assertArtifact(artifact);
- const assets=await collectAssets(artifact.html,doc.assets,frozenOptions.allowRemoteAssets);
+ const prepared=await prepareExportContent(doc,{mathMode:'svg',allowRemoteAssets:frozenOptions.allowRemoteAssets??false});
  const root=document.createElement('article');root.className='mf-document-shell mf-doc';
  for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
  const m=doc.theme.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
  const context:InlineContext={bookmarks:new Map(),width:(210-m.left-m.right)*96/25.4,height:(297-m.top-m.bottom)*96/25.4-20};
  root.style.cssText+=';position:fixed;left:-20000px;top:0;width:'+context.width+'px;visibility:hidden';
- root.innerHTML=assets.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');document.body.append(root);
+ root.innerHTML=prepared.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');document.body.append(root);
  try{
   await waitForLayout(root);
   for(const el of root.querySelectorAll('[id]'))if(!context.bookmarks.has(el.id))context.bookmarks.set(el.id,'mf_bookmark_'+context.bookmarks.size);
