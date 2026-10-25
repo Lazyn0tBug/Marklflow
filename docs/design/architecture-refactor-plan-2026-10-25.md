@@ -1,6 +1,6 @@
 # MarkFlow 架构重构方案：文档任务管理与平台适配
 
-最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3a已审查验证，见[R3a执行记录](../reviews/architecture-r3a-implementation-2026-10-25.md)；R3b已审查验证，见[R3b执行记录](../reviews/architecture-r3b-implementation-2026-10-25.md)；R4及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
+最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3a已审查验证，见[R3a执行记录](../reviews/architecture-r3a-implementation-2026-10-25.md)；R3b已审查验证，见[R3b执行记录](../reviews/architecture-r3b-implementation-2026-10-25.md)；R4已审查验证，见[R4执行记录](../reviews/architecture-r4-implementation-2026-10-25.md)；R5及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
 
 文档编号：AR-01；草案版本：6；日期：2026-10-25（Asia/Shanghai）。状态：A2、U0—U2历史组件已验证；草案6收缩任务治理并统筹接入路线，R0—R5及U3—U6/A5/A7完整路线已规划，尚未实施；本轮仅改文档，不提交、不推送。
 
@@ -185,7 +185,7 @@ MD纯文本导出可绕过渲染，资源包按源引用重写和冻结资产打
 
 任务角色foreground/background与执行环境worker/DOM是两个维度，不能把旧compute/dom槽位直接重命名为前台/后台。依赖DOM的MathJax/Mermaid/Paged.js步骤保留一个共享串行DOM执行通道，不虚称Web Worker具备DOM。等待DOM时相应渲染任务仍占自身逻辑任务槽；DOM不构成第三个Worker。DOM调度在当前步骤完成后优先已接受导出、再前台、再后台，不能并发访问共享引擎；前台优先不表示可抢占正在运行的DOM同步步骤。
 
-导出仍最多一个已接受任务，切换不取消冻结导出，不借后台预览规则放宽权限或将预览缓存当作导出权威输入；不新增导出Worker。导出计算复用既有执行端口，具体接入留A5验证；已接受导出在下一可用共享步骤优先，正在执行步骤不抢占，平台交付等待不占生成槽。额外导出明确busy。必要执行超时、停止确认和局部清理保留，测试聚焦切换/取消/完成边界而非任意抢占平台。
+导出独立于RoleTaskQueue/WorkerAdapter，由ExportService持有单一busy和冻结输入，沿用既有HTML/DOCX/打印函数；切换不取消，不以当前预览DOM为权威输入，不新增导出Worker。下载/打印由Web函数反馈交接，不确认实际保存。U6未来共享DOM入口才处理导出/前台/后台的步骤优先级；R4没有实现或宣称该优先调度，当前仍沿用生成器的原串行路径。P阶段继续资源/格式适配，不重做busy/快照。
 
 Worker停止并确认主宿主清理后才复用/重建，新实例ready另验。无法停止的DOM入口停止接收且保留诊断，不无限新增宿主。不自动重试任务或文件交付；由用户明确再次操作。双Worker的物理停止与资源峰值需要A3实测，不由纯队列测试代替。
 

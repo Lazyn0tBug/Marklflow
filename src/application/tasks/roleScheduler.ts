@@ -1,5 +1,5 @@
 import type {PreviewSubmission} from './previewIdentity';
-import {snapshotRequest,type WorkerAdapter,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
+import {type WorkerAdapter,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
 import {RoleTaskQueue,requestOf,type WorkerRole,type RoleClaim,type RoleAdmission,type PreviewReader} from './roleQueue';
 import {IdentityGate} from './identity';
 import {RoleExecutor} from './roleExecutor';
@@ -8,7 +8,7 @@ export type RoleRunState='running'|'stopRequested'|'generated'|'failed'|'cancell
 interface Run {claim:RoleClaim;state:RoleRunState;reason:string|undefined}
 interface Outcome {id:string;role:WorkerRole|undefined;state:RoleRunState|'superseded';reason:string|undefined}
 const terminal=(state:RoleRunState)=>state!=='running'&&state!=='stopRequested';
-/** Generation handoff only; generated is not cache completion, preview publication or export delivery. */
+/** Preview generation handoff only; generated is not cache completion or view publication. */
 export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined}
 export class RoleTaskScheduler{
  private readonly queue:RoleTaskQueue;
@@ -43,10 +43,6 @@ export class RoleTaskScheduler{
   if(!this.executors[submission.role].supports(requestOf({kind:'preview',submission})))return {status:'unsupported'};
   const admitted=this.queue.enqueuePreview(submission);if(admitted.status==='accepted')for(const id of admitted.replaced)this.record({id,role:submission.role,state:'superseded',reason:'Latest pending intent'});
   this.pump();return admitted;
- }
- enqueueExport(input:unknown):RoleAdmission|{status:'unsupported'}{
-  this.mutation();const request=snapshotRequest(input);if(!this.executors.background.supports(request))return {status:'unsupported'};
-  const admitted=this.queue.enqueueExport(request);this.pump();return admitted;
  }
  private pump():void{
   if(this.pumping||this.notifying)return;this.pumping=true;
@@ -90,11 +86,9 @@ export class RoleTaskScheduler{
  }
  private archive(run:Run):void{
   if(!terminal(run.state)||this.executors[run.claim.role].held(run.claim.id))return;
-  this.queue.release(run.claim.role,run.claim.id);if(run.claim.work.kind==='export'&&run.state!=='generated')this.queue.finishExport(run.claim.id);this.runs.delete(run.claim.id);this.record({id:run.claim.id,role:run.claim.role,state:run.state,reason:run.reason});
+  this.queue.release(run.claim.role,run.claim.id);this.runs.delete(run.claim.id);this.record({id:run.claim.id,role:run.claim.role,state:run.state,reason:run.reason});
  }
  private record(outcome:Outcome):void{if(this.history.some(item=>item.id===outcome.id))return;this.history.push({...outcome});if(this.history.length>16)this.history.shift()}
- /** Delivery ownership is separate: generation alone cannot release the accepted export slot. */
- releaseExportReservation(id:string):boolean{this.mutation();return this.queue.finishExport(id)}
  async retryCleanup(role:WorkerRole):Promise<void>{this.mutation();await this.executors[role].retryCleanup()}
  status(id:string){const run=this.runs.get(id);if(run)return {id,state:run.state,reason:run.reason};const result=this.history.find(item=>item.id===id);return result?{...result}:undefined}
  snapshot(){return {queue:this.queue.snapshot(),executors:{foreground:this.executors.foreground.snapshot(),background:this.executors.background.snapshot()},resources:[...this.executors.foreground.resourcesSnapshot(),...this.executors.background.resourcesSnapshot()],memory:this.memory(),history:this.history.map(item=>({...item}))}}

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {it,expect} from 'vitest';
 import {createHash} from 'node:crypto';
-import {markdownSha256,previewSubmissionSchema,previewCacheKeySchema,samePreviewCacheKey,RenderConfigVersion} from '../../src/application/tasks/previewIdentity';
+import {createPreviewSubmission,markdownSha256,previewSubmissionSchema,previewCacheKeySchema,samePreviewCacheKey,RenderConfigVersion} from '../../src/application/tasks/previewIdentity';
 import {request,previewRequest} from './task-fixtures';
 it('hashes exact UTF-8 Markdown including CRLF, CJK, emoji and chunk boundaries',()=>{
  for(const text of ['', '# 中文 🧪\r\nbody', '# 中文 🧪\nbody','\ufeff# BOM','x'.repeat(65537)])expect(markdownSha256(text)).toBe(createHash('sha256').update(text,'utf8').digest('hex'));
@@ -18,7 +18,7 @@ it('invalidates changed Markdown/configuration and partitions document/preview k
 it('rejects unknown envelopes, forged hashes, export kinds and legacy identity envelopes',()=>{
  const valid=previewRequest(request(),'foreground',1);
  for(const value of [{...valid,protocolVersion:2},{...valid,role:'parallel'},{...valid,cacheKey:{...valid.cacheKey,mdHash:'0'.repeat(64)}},{...valid,cacheKey:{...valid.cacheKey,renderConfigVersion:0}},{...valid,request:request()}])expect(previewSubmissionSchema.safeParse(value).success).toBe(false);
- expect(()=>previewRequest(request('export','A','export.html'),'background',1)).toThrow();
+ expect(()=>createPreviewSubmission({taskId:'export',document:request().document,previewKind:'export.html',role:'background',renderConfigVersion:1})).toThrow();
 });
 it('advances a single config version only for semantic JSON configuration changes',()=>{
  const input={theme:'white',layout:{width:1024}};const config=new RenderConfigVersion(input);input.theme='external mutation';

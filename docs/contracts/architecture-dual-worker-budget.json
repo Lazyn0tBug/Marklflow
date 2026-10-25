@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 4,
-  "status": "R3b local cleanup and single execution timer; production worker/UI wiring remains pending",
+  "schemaVersion": 5,
+  "status": "R4 preview-only queues; export busy/snapshot/Web feedback handled independently",
   "baseBudget": "architecture-runtime-budget.json",
   "workers": {
     "foreground": 1,
@@ -14,8 +14,7 @@
     "foregroundPending": 1,
     "backgroundPendingPerDocumentAndKind": 1,
     "backgroundPendingMaximum": 64,
-    "backgroundExecutionDeadlineStarts": "dispatch",
-    "activeExports": 1
+    "backgroundExecutionDeadlineStarts": "dispatch"
   },
   "memory": {
     "accounting": "single scheduler admission: owned input estimates + task-local resource bytes + supplied runtime estimates + candidate output; no fixed runtime reservation or JSON multiplier; not physical heap measurement",

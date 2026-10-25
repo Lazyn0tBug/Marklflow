@@ -1,0 +1,55 @@
+{
+  "step": "R4",
+  "branch": "architecture-refactor",
+  "parent": "e109d27708bb72dd1c9f7fd5a1644f0d317e3883",
+  "check": "passed",
+  "managedSources": 110,
+  "unitTests": 172,
+  "unitFiles": 30,
+  "chromiumTests": 32,
+  "workerSmokeIncluded": 2,
+  "commands": [
+    "bun run check",
+    "bun run test:e2e"
+  ],
+  "review": {
+    "exportBusyIndependent": true,
+    "inputCapturedBeforeAwait": true,
+    "previewExportQueueRemoved": true,
+    "webFeedbackNotDiskCommit": true,
+    "existingGeneratorsAndAssetValidationUnchanged": true,
+    "dependenciesAndHistoricalEvidenceUnchanged": true,
+    "protectedRefsUnchangedBeforeCommit": true
+  },
+  "versions": {
+    "MathJax": "3.2.2",
+    "Paged.js": "0.4.3"
+  },
+  "notVerified": [
+    "Word/WPS visual validation",
+    "physical print or actual PDF save",
+    "production dual Worker/Tab cache not integrated",
+    "unified DOM priority not implemented",
+    "remote CI not run"
+  ],
+  "sourceHashes": {
+    "docs/contracts/architecture-dual-worker-budget.json": "c9eb267075ad92605fb64435ca6e9b6f80103be139e879d25d5e25dfcbda6326",
+    "src/application/tasks/budget.ts": "70f5b90123e6a46f8afd91a2075a057a8cb20a637a89cc953a1899f09606ff8b",
+    "src/application/tasks/contracts.ts": "cd19cea2be353520e1eb2dab5512dfabf1cc51a9732053815b9d13d36177a1b9",
+    "src/application/tasks/dualWorkerPolicy.ts": "e323a6222120a00f012fcc571b16ca5bc2febc300e5ae9f024f120063a01004c",
+    "src/application/tasks/roleQueue.ts": "bbda5ed5a7477966e5cb05a87af9be47e983b53a8b12848a9d94ad79a417305b",
+    "src/application/tasks/roleScheduler.ts": "8c32e4b350e514f58c61137fd8393a248e88a02d21279f6d0e393df070019f4e",
+    "src/components/export/ExportModal.tsx": "e928318bef35ddd719df2dc8385797a813caee18ed1e439f6f44656efc03a6dd",
+    "tests/types/worker-contracts.ts": "1e862b53afa715261b9f2d26e5b438b14b6aa130216e6b48790c30960d1b8990",
+    "tests/unit/task-fixtures.ts": "72102cd5b5e7fc244d28aca753e9382c93af96c5f5b792b71a181442813ab04b",
+    "tests/unit/tasks-contracts.test.ts": "75d45dd771bd17c8e22df6cbc03b3bf0665b4cd101da644e655ba2ee8cb49b79",
+    "tests/unit/tasks-deadlines.test.ts": "203c325ea7946985ca3b37128cd22e75418038432c720800dc3b756a685cdd99",
+    "tests/unit/tasks-preview-identity.test.ts": "d74ce978e12126611f67d506e78f415d50e8a158ab40c8100eaf2ad841fb1783",
+    "tests/unit/tasks-role-queue.test.ts": "fd04dabb2d955592de4f14e25cdaecae4beaf7a9198abba43c359404403c99e2",
+    "tests/unit/tasks-role-scheduler.test.ts": "60bf8bae6920138e778d6256131e50d1b4d9ec4384c977d3bc7492cde4c05558",
+    "src/application/exports/exportService.ts": "1cdd8a3a5f9eadff512d82612440bd80753d5084fb48fc6f6490c29735231b9c",
+    "src/core/platform/web/exportService.ts": "13c45ff5a6a41f0987093d40e915b58a1f2be2229e6366e0ee62413cd6aa0289",
+    "tests/unit/export-service.test.ts": "7d44c60b7d4a40c489e38cec26f315645c382b34406313d73863d69157016127",
+    "tests/e2e/export-service.spec.ts": "df9239f13cfb514bc467477ae166d34a674e588dba3b011c7aa562b05162573e"
+  }
+}

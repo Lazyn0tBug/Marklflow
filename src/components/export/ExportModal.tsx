@@ -1,4 +1,5 @@
-import { printFrozenHtml } from '../../core/export/documentPrint';
+import { webExportService } from '../../core/platform/web/exportService';
+import type {ExportFormat} from '../../application/exports/exportService';
 import { inspectDocx } from '../../core/export/outputCapabilities';
 /**
  * MarkFlow (墨流) 导出控制中心
@@ -9,8 +10,6 @@ import { inspectDocx } from '../../core/export/outputCapabilities';
 import React, { useEffect, useState } from 'react';
 import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
-import { generateExportHtml } from '../../core/export/htmlExporter';
-import { exportDocumentToDocx } from '../../core/export/docxExporter';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -19,7 +18,7 @@ interface ExportModalProps {
   mathMode: 'mathml' | 'svg';
 }
 
-export type ExportFormat = 'editable-html' | 'reading-html' | 'docx' | 'print-pdf' | 'markdown';
+export type {ExportFormat} from '../../application/exports/exportService';
 
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode }) => {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('editable-html');
@@ -33,52 +32,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   if (!isOpen) return null;
 
   const handleExport = async () => {
-    setIsExporting(true);
-    setExportSuccess(null);
-
-    const safeName = fileName.trim() || 'MarkFlow-Document';
-
-    try {
-      if (selectedFormat === 'print-pdf') {
-        const frozen = await generateExportHtml(doc, { mathMode, allowRemoteAssets });
-        await printFrozenHtml(frozen);
-        onClose();
-        return;
-      }
-
-      if (selectedFormat === 'editable-html') {
-        const html = await generateExportHtml(doc, { includeEditablePayload: true, mathMode, allowRemoteAssets });
-        downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.markflow.html`);
-        setExportSuccess(`已成功下载可编辑 HTML，含全量 Markdown 载荷`);
-      } else if (selectedFormat === 'reading-html') {
-        const html = await generateExportHtml(doc, { includeEditablePayload: false, mathMode, allowRemoteAssets });
-        downloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${safeName}.html`);
-        setExportSuccess(`已成功生成静态阅读 HTML`);
-      } else if (selectedFormat === 'docx') {
-        const blob = await exportDocumentToDocx(doc, { allowSourceFallback, allowRemoteAssets });
-        downloadBlob(blob, `${safeName}.docx`);
-        setExportSuccess(`已成功导出原生 DOCX 文档 (OpenXML)`);
-      } else if (selectedFormat === 'markdown') {
-        downloadBlob(new Blob([doc.markdown], { type: 'text/markdown;charset=utf-8' }), `${safeName}.md`);
-        setExportSuccess(`已成功下载原始 Markdown 文件`);
-      }
-    } catch (err) {
-      console.error('Export error:', err);
-      alert('导出过程出错: ' + String(err));
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const downloadBlob = (blob: Blob, name: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if(webExportService.busy){setExportSuccess('正在导出，请稍候');return}
+    setIsExporting(true);setExportSuccess(null);
+    try{
+      const result=await webExportService.run({document:doc,format:selectedFormat,fileName,mathMode,allowSourceFallback,allowRemoteAssets});
+      setExportSuccess(result.status==='busy'?'正在导出，请稍候':result.message);
+    }catch(err){console.error('Export error:',err);alert('导出过程出错: '+String(err))}
+    finally{setIsExporting(false)}
   };
 
   return (
@@ -95,7 +55,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             <div>
               <h2 className="text-base font-semibold text-neutral-100">导出与发布文档</h2>
               <p className="text-xs text-neutral-400 mt-0.5">
-                基于冻结修订快照 (Rev {doc.revision}) 输出自包含成品
+                {isExporting&&webExportService.sourceLabel?'正在导出：'+webExportService.sourceLabel:'基于冻结修订快照 (Rev '+doc.revision+') 输出自包含成品'}
               </p>
             </div>
           </div>

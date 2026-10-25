@@ -7,11 +7,7 @@ export function totalDeadline(kind:TaskKind):number{
  switch(kind){
   case 'preview.flow':return taskBudget.deadlinesMs.previewFlowTotal;
   case 'preview.a4':return taskBudget.deadlinesMs.previewA4Total;
-  case 'export.md':return taskBudget.deadlinesMs.exportMdTotal;
-  case 'export.mdBundle':return taskBudget.deadlinesMs.exportMdBundleTotal;
-  case 'export.html':return taskBudget.deadlinesMs.exportHtmlTotal;
-  case 'export.docx':return taskBudget.deadlinesMs.exportDocxTotal;
-  case 'export.print':return taskBudget.deadlinesMs.exportPrintGenerationTotal;
+
  }
 }
 

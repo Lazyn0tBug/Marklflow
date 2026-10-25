@@ -11,7 +11,7 @@ void process;
 
 import type {TaskKind} from '../../src/application/tasks/contracts';
 import type {RoleSchedulerHooks} from '../../src/application/tasks/roleScheduler';
-// @ts-expect-error: Only the finite preview and export kinds may enter governance.
+// @ts-expect-error: Only the finite preview kinds may enter governance.
 const arbitraryTask:TaskKind='plugin.custom';
 // @ts-expect-error: Preview publication must return undefined synchronously, never a Promise.
 const asynchronousPublish:RoleSchedulerHooks['generated']=async()=>{};
@@ -34,3 +34,7 @@ const genericLane:WorkerAdapter['lane']='dom';
 // @ts-expect-error: The role adapter runs once, without a retry-attempt protocol.
 const retryAttempt:ExecutionIdentity['attempt']=1;
 void genericLane;void retryAttempt;
+
+// @ts-expect-error: User exports never enter the preview task protocol.
+const exportedPreview:TaskKind='export.html';
+void exportedPreview;
