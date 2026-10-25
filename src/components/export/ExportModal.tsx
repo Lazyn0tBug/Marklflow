@@ -174,6 +174,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             </div>
           </div>
 
+          <button type="button" onClick={()=>setSelectedFormat('markdown-bundle')} aria-pressed={selectedFormat==='markdown-bundle'} className={`w-full rounded-lg border p-3 text-left text-xs hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-teal-400 ${selectedFormat==='markdown-bundle'?'border-teal-500 bg-teal-950/40':'border-neutral-700'}`}>
+            <span className="font-medium">Markdown 资源包 (.zip)</span><span className="mt-1 block text-neutral-400">包含源文、图片及资源清单，图片引用改为包内相对路径。</span>
+          </button>
+
           {/* Capabilities Diagnostics Box */}
           <div className="p-3 rounded-lg bg-neutral-950/60 border border-neutral-800 text-xs">
             <div className="flex items-center gap-2 font-medium text-neutral-300 mb-1">

@@ -1,8 +1,9 @@
 import type {DocumentRecord} from '../../core/model/document';
 import {documentSchema} from '../../core/model/documentSchema';
-export type ExportFormat='editable-html'|'reading-html'|'docx'|'print-pdf'|'markdown';
+export type ExportFormat='editable-html'|'reading-html'|'docx'|'print-pdf'|'markdown'|'markdown-bundle';
 export interface ExportInput {document:DocumentRecord;format:ExportFormat;fileName:string;mathMode:'mathml'|'svg';allowSourceFallback:boolean;allowRemoteAssets:boolean}
 export interface ExportPorts {
+ generateMarkdownBundle(doc:DocumentRecord,options:{mathMode:'mathml'|'svg';allowRemoteAssets:boolean}):Promise<Blob>;
  generateHtml(doc:DocumentRecord,options:{includeEditablePayload:boolean;mathMode:'mathml'|'svg';allowRemoteAssets:boolean}):Promise<string>;
  generateDocx(doc:DocumentRecord,options:{allowSourceFallback:boolean;allowRemoteAssets:boolean}):Promise<Blob>;
  download(blob:Blob,name:string):void;
@@ -25,6 +26,7 @@ export class ExportService{
    let printed=false;
    switch(format){
     case 'markdown':this.ports.download(new Blob([doc.markdown],{type:'text/markdown;charset=utf-8'}),name+'.md');break;
+    case 'markdown-bundle':this.ports.download(await this.ports.generateMarkdownBundle(doc,{mathMode,allowRemoteAssets}),name+'.zip');break;
     case 'docx':this.ports.download(await this.ports.generateDocx(doc,{allowSourceFallback,allowRemoteAssets}),name+'.docx');break;
     case 'editable-html':case 'reading-html':case 'print-pdf':{
      const html=await this.ports.generateHtml(doc,{includeEditablePayload:format==='editable-html',mathMode,allowRemoteAssets});

@@ -1,0 +1,41 @@
+{
+  "step": "p3",
+  "parentCommit": "62954d3f0564094187965ee90929d39353050500",
+  "checks": {
+    "checkExitCode": 0,
+    "managedSources": 163,
+    "unitTests": 305,
+    "chromiumExitCode": 0,
+    "chromiumTests": 68,
+    "duration": "2.6m"
+  },
+  "logSha256": {
+    "check": "022aaa7b5bdbce4a935a741040194d9cde27b031cc9df0f0c5475fcaa101e258",
+    "chromium": "d0334ceb1dc22b648d4bee1d61284025c001f46f0898580ef06544bdd27e9f1b"
+  },
+  "changedFileSha256": {
+    "bun.lock": "31f1f1ada5cc72c8e4b17214b336d35997f318f63492a225d8d2d388259e3ed6",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "29fb72894dd2bd96182de5a61bb0563575beb61ebcf5000324fe76c10c154caf",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "2e7ed45800662368117bc15bcea3802531684a939761de6b12df5837cae031ff",
+    "docs/reviews/architecture-p3-implementation-2026-10-26.md": "b3021b12d15d52fe58e34cf7f6dc33673be50e298e74c1bac61b6d6ff30b8628",
+    "package.json": "65eaa0c3921dfd49279d141d5bc2c4ce4d188ab9f5bcf6dc09dacc530cc46b1c",
+    "src/application/exports/exportService.ts": "7bbb83be9f11282d1a7a09abc8f3c123e1323dc35eafab2d443e5cf2c1b6e8fe",
+    "src/components/export/ExportModal.tsx": "3fa707548dd61e14b2abe1f92fc64c29f24fdc11c08509af0c62e54a7abba018",
+    "src/core/export/markdownBundle.ts": "92ccaa85a3067874be7b7c4cb36a3553750503f11002a527dea5ab8a52cfa616",
+    "src/core/platform/web/exportService.ts": "a17a5ef4938c2a07ed7b248057529e9a76eea0af7cdf9ec52c4f10f0cd5dcc3a",
+    "tests/e2e/markdown-bundle.spec.ts": "0586e29e60b64cde049ac760250eb495c8834345a3ccf7560aa1a815ed7597b8",
+    "tests/unit/export-service.test.ts": "11e7c7580f7f63e8da2dea761dbf0980b71ac4af170d473b01cc10bfcdf9a81b",
+    "tests/unit/markdown-bundle.test.ts": "8e94f8a4d21d0bdbbf2a098ce1f9877aa78388b6b6219f2bd59d830ddf17d259"
+  },
+  "protectedSha256": {
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}

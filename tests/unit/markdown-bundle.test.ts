@@ -1,0 +1,12 @@
+import {it,expect,vi,afterEach} from 'vitest';
+import {Blob as NodeBlob} from 'node:buffer';
+import JSZip from 'jszip';
+import {bundleMarkdown,buildMarkdownBundle} from '../../src/core/export/markdownBundle';
+import {collectAssets} from '../../src/core/export/documentAssets';
+import {createNewDocument} from '../../src/core/storage/storage';
+const data='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';
+afterEach(()=>vi.unstubAllGlobals());
+it('rewrites inline, reference and HTML images while preserving unrelated source bytes',async()=>{const {assets}=await collectAssets('<img src="'+data+'">');const asset={...assets[0]!,source:'/image.png'};const source='\ufeffplain r n\r\n![a](/image.png "r n")\n\n![ref][image]\n\n[image]: /image.png\n\n<img src="/image.png">\n\n`/image.png`';const result=bundleMarkdown(source,[asset]);expect(result).toContain('plain r n\r\n');expect(result).toContain('"r n"');expect(result.match(/assets\//g)).toHaveLength(3);expect(result).toContain('`/image.png`');expect(result.startsWith('\ufeff')).toBe(true)});
+it('leaves exact Markdown untouched when no asset references need rewriting',()=>{const source='# Source\r\n\n![missing](other.png)\n';expect(bundleMarkdown(source,[])).toBe(source)});
+it('writes a portable ZIP with byte-identical assets and license/hash manifest',async()=>{vi.stubGlobal('Blob',NodeBlob);const {assets}=await collectAssets('<img src="'+data+'">');assets[0]!.license='CC0';const document={...createNewDocument('Bundle'),assets,markdown:'![image]('+data+')'};const blob=await buildMarkdownBundle({document,html:''});const zip=await JSZip.loadAsync(await blob.arrayBuffer());const asset=assets[0]!,path='assets/'+asset.sha256+'.png';expect(await zip.file('document.md')!.async('string')).toContain(path);expect(await zip.file(path)!.async('base64')).toBe(data.split(',')[1]);expect(await zip.file('manifest.json')!.async('string')).toContain('CC0');expect(await zip.file('manifest.json')!.async('string')).toContain(asset.sha256)});
+it('preserves escaped reference labels as valid Markdown',async()=>{const {assets}=await collectAssets('<img src="'+data+'">');const asset={...assets[0]!,source:'/image.png'},slash=String.fromCharCode(92),source='![ref][a'+slash+']]'+String.fromCharCode(10,10)+'[a'+slash+']]: /image.png';const result=bundleMarkdown(source,[asset]);expect(result).toContain('[a'+slash+']]: assets/');});

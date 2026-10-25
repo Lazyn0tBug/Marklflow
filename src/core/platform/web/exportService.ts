@@ -1,4 +1,5 @@
 import {ExportService} from '../../../application/exports/exportService';
+import {generateMarkdownBundle} from '../../export/markdownBundle';
 import {generateExportHtml} from '../../export/htmlExporter';
 import {exportDocumentToDocx} from '../../export/docxExporter';
 import {printFrozenHtml} from '../../export/documentPrint';
@@ -9,4 +10,4 @@ export function downloadBlob(blob:Blob,name:string):void{
  finally{link.remove();URL.revokeObjectURL(url)}
 }
 /** Shared across modal close/reopen; the user operation is independent of preview/Tab state. */
-export const webExportService=new ExportService({generateHtml:generateExportHtml,generateDocx:exportDocumentToDocx,download:downloadBlob,print:printFrozenHtml});
+export const webExportService=new ExportService({generateMarkdownBundle,generateHtml:generateExportHtml,generateDocx:exportDocumentToDocx,download:downloadBlob,print:printFrozenHtml});
