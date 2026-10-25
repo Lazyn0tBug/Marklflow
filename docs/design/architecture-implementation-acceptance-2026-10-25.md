@@ -1,6 +1,6 @@
 # 架构重构分步实施与验收计划
 
-编号：AR-03；草案版本：4；日期：2026-10-25；状态：architecture-refactor本轮仅修订方案，不实施/提交；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；旧模型A2已实施，前后台统一逻辑的调整尚未实施，见[差异及小步计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)；A3及后续未启动。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
+编号：AR-03；草案版本：4；日期：2026-10-25；状态：architecture-refactor本轮仅修订方案，不实施/提交；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；旧模型A2已实施，前后台统一逻辑已完成U0/U1组件，U2及后续尚未实施，见[差异及小步计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)；A3及后续未启动。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
 
 ## 1. 范围与执行规则
 
@@ -209,3 +209,7 @@ A2仅提供会话代际和异步恢复令牌，不实现编辑器Tab会话、缓
 | AC42 | 后台A正执行，前台C切到B，B有有效缓存 | A继续；C未完成则合并后台待办；B命中缓存；不触发全局后台取消或新增Worker |
 
 AC03/04/07—11等保留消息/状态/停止/资源保护；只把测试中心移到上述确定边界，不删除故障验证。真实DOM停止、Tauri和阅读器/打印验收仍按原阶段，未因简化队列而自动完成。
+
+### U0/U1契约实施进度（2026-10-25）
+
+U0新版策略及U1前后台角色/MD散列/配置版本/缓存键组件已验证并按步骤本地提交，见[调整执行记录](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)和[独立证据](../acceptance/architecture-u0-u1-evidence.json)。A0预算JSON保持冻结，新策略独立保存；旧运行票据和调度守卫保留。U2队列、U3统一切换、U4缓存提交及后续真实Worker/UI仍未接入，不能宣称双Worker已经运行。

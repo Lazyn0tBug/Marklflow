@@ -131,3 +131,7 @@ A2仅提供会话代际和异步恢复令牌，不实现编辑器Tab会话、缓
 ## 前后台统一逻辑的技术边界（当前设计）
 
 以AR-01第3.3—3.5、4.3节和[小步调整计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)为准：前后台各一个计算Worker，各自串行，未完成切换即丢弃、完成则访问缓存；mdHash+renderConfigVersion决定有效性。不新增队列框架或替换现有引擎。DOM仍用单独共享串行宿主，不将compute/DOM等同前台/后台，也不预设MathJax/Mermaid/Paged.js可直接移到Worker。双Worker资源/启动与独立状态在A3实测；本轮仅更新文档，旧实现记录中的禁后台策略已被新设计替代，代码尚未调整。
+
+### U0/U1契约实施进度（2026-10-25）
+
+U0新版策略及U1前后台角色/MD散列/配置版本/缓存键组件已验证并按步骤本地提交，见[调整执行记录](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)和[独立证据](../acceptance/architecture-u0-u1-evidence.json)。A0预算JSON保持冻结，新策略独立保存；旧运行票据和调度守卫保留。U2队列、U3统一切换、U4缓存提交及后续真实Worker/UI仍未接入，不能宣称双Worker已经运行。

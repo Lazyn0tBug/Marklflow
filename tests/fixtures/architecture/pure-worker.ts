@@ -1,3 +1,4 @@
+import {markdownSha256} from '../../../src/application/tasks/previewIdentity';
 import {TaskSupervisor} from '../../../src/application/tasks/supervisor';
 import {analyzeMarkdown,extractOutline} from '../../../src/core/parse/markdown';
 import {documentSchema} from '../../../src/core/model/documentSchema';
@@ -6,5 +7,5 @@ const source='# Worker 🧪\r\n\r\n$a+b$';
 const input={schemaVersion:1,id:'worker-probe',revision:1,markdown:source,meta:{title:'worker',createdAt:'2026-10-25T00:00:00Z',updatedAt:'2026-10-25T00:00:00Z'},theme:DEFAULT_THEME,options:{syntaxProfile:'commonmark-gfm-v1',mathMode:'mathml'}};
 const governance=new TaskSupervisor({now:()=>0,schedule:()=>()=>{}},{validate:async()=>{},publish:()=>undefined,withdraw:()=>undefined});
 const governanceReady=governance.open('pure-governance')===1&&governance.stats().ownedBytes===0;
-const result={kind:'ready',governanceReady,text:extractOutline('# Worker &copy; &NotEqualTilde;')[0]?.text,blocks:analyzeMarkdown(source).blocks,validAccepted:documentSchema.safeParse(input).success,invalidAccepted:documentSchema.safeParse({}).success,hasDOM:'document'in globalThis||'window'in globalThis};
+const result={kind:'ready',mdHash:markdownSha256(source),governanceReady,text:extractOutline('# Worker &copy; &NotEqualTilde;')[0]?.text,blocks:analyzeMarkdown(source).blocks,validAccepted:documentSchema.safeParse(input).success,invalidAccepted:documentSchema.safeParse({}).success,hasDOM:'document'in globalThis||'window'in globalThis};
 self.postMessage(structuredClone(result));

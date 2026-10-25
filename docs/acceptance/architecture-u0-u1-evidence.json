@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "baseline": "71894903b521612e8d6895ef9755e426c59663e5",
+  "U0Commit": "50ea704cc7159e570d088e49a4bb419fac3427d1",
+  "U1SourceAtValidation": "U0 parent plus the byte fingerprints below; this evidence is included in the U1 commit",
+  "sourceByteFingerprints": {
+    "src/application/tasks/dualWorkerPolicy.ts": "62da6a5b4c038129bab3551b925d6e03d563a5f4a8c55db5224f7e6bed73c8b5",
+    "src/application/tasks/previewIdentity.ts": "b185687ad0448819083aec9fdcc0cdaa4fdfe587deae6f522d51af49a87e841a",
+    "docs/contracts/architecture-dual-worker-budget.json": "c2456c7d4f2e17d89316d4b14e276e3aba68c901f79c4105e8713bfe063c415f",
+    "scripts/check-module-boundaries.ts": "6b092b0b799fb7c3ff519703eb37541292efc18dcfb4b27dac461d6c1c0921b9",
+    "tests/unit/tasks-dual-worker-policy.test.ts": "ba2061d7ef62a82ebee9bc86e17fcf862cfc4c4fc23b897f7c1b35f969a5186c",
+    "tests/unit/tasks-preview-identity.test.ts": "a1074cdb597c7fda75948e68f518d19f8cfe49972b018e49547fa92a7e6d6e81",
+    "tests/types/worker-contracts.ts": "6899857cbb790864e493e2dc1c1b21b9055862c57d4bf8bb9ae011f6a04bf559",
+    "tests/fixtures/architecture/pure-worker.ts": "3feeb093d4a4ede2d7d1c6ffb5479d76cf2fb649f019f22b82f3073e0324b9e2",
+    "tests/e2e/architecture-pure-worker.spec.ts": "da5c312c348cb74208d95ebd2037f0ce3d9b6f6a0e17436de798cde5cabfadc6"
+  },
+  "checks": {
+    "U0RelatedTests": 14,
+    "U1RelatedTests": 30,
+    "allUnitTests": 155,
+    "unitFiles": 28,
+    "typeProfiles": 4,
+    "managedSources": 105,
+    "lint": "passed",
+    "sourceAndModuleBoundaries": "passed",
+    "productionBuild": "passed",
+    "realWorkerSourceAndBuiltTests": 2,
+    "fullAppE2E": "not rerun; no production integration changes"
+  },
+  "protectedByteFingerprints": {
+    "bun.lock": "a517268e662d34326732aefe4249bf27bc4bf642881eefb573ec8e38a6021119",
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/core/platform/crypto.ts": "755ce3198a6f733d70fb5c88515f29c5c972e836bf99c2d1e8cf4c7dbc4bc1bb",
+    "src/core/render/mathJaxAdapter.ts": "73f9cab65f9401d2a4c3f5d29f123b4f8096205909cf57a8c683bf9eceddbad3",
+    "src/core/render/mathRender.ts": "8088c588de44d46fb473ed66d3d8624a29e6dce6f1de48c1a6a946301e1c898b",
+    "src/core/render/pagedJsAdapter.ts": "b99462ac02dc9b4d02861b7e7ae20c235bf7f7ef68c1145197c1e77b90f0a093",
+    "docs/acceptance/architecture-a0-a1-review-evidence.json": "8c0fde77bf8697d11da5375cca187bb481b7a77a4cede1c84e346711682942d0",
+    "docs/acceptance/architecture-a0-a1-review-runtime.json": "fbe4386331308bd6d0ed34c740d69cae533b307e49cf8657782463f5ceacc4d4",
+    "docs/acceptance/architecture-a0-baseline.json": "1f74cdbe5b09713f1199c1c946b57ecc52bab30ff304c8a8052b3010720d3403",
+    "docs/acceptance/architecture-a1-comparison.json": "5831f7ea47aa93d9cae763883aed80b7d42cb410a7916779caa53346179afde9",
+    "docs/acceptance/architecture-a1-evidence.json": "bbe0a7a44e684a83436262f7e8d99176493c34e850faf54fffa45e0bab1a7c5e",
+    "docs/acceptance/html-local-2026-10-24.md": "a9f14ee63bd317b733e3df30745655c0e9ca06783eb0a600ad3ab2f0d5c9eecd",
+    "docs/acceptance/html-local-evidence.json": "91fab3eb6569f1696abb1c8c932dd2bdce89abdc8bf1d534ed747f89f3ce8f1e",
+    "docs/acceptance/html-review-evidence.json": "db013016a684c5411bc9d2e87ebbbade9be678ee1f729c2ace32f47090d4c591",
+    "docs/acceptance/html-review-pdf-check.json": "873c801f69877148756e4f53dd37580ac90786aaf9230817352bac77450e02b5",
+    "docs/acceptance/html-review-ui-check.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "docs/acceptance/typescript-strict-2026-10-25.md": "09dce7acfba09e3b7cbd61aac374fa1e0543b81c6210274b355ee9cba7ffaf33",
+    "docs/acceptance/typescript-strict-review-evidence.json": "270c4fd103d5c6d0e9c651901ec743729b00342217c977fce22dbe082bc35214"
+  },
+  "preservedRefs": {
+    "refs/heads/html": "b4446e21c4c7bcf2eeb4a7d8c382223d1580ebfa",
+    "refs/heads/main": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "refs/heads/typescript-strict": "75261ae1e532630a5a5859c397110f31698964af",
+    "refs/remotes/origin/HEAD": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "refs/remotes/origin/html": "b4446e21c4c7bcf2eeb4a7d8c382223d1580ebfa",
+    "refs/remotes/origin/main": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "refs/tags/0.9": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f",
+    "refs/tags/0.9.1": "fb1618011a4df013de0334fe54c832983977e8e3",
+    "refs/tags/0.9.2": "b55edda904c24a1484e857cfd8aef3f1df323d9d"
+  },
+  "notImplemented": [
+    "U2 dual serial queues",
+    "U3 unified tab switch",
+    "U4 complete artifact cache commit",
+    "real foreground/background worker runtime",
+    "cache/UI/Tauri integration"
+  ],
+  "warnings": [
+    "existing Vite native configLoader warning",
+    "existing chunks above 500kB"
+  ],
+  "push": "not performed"
+}

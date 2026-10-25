@@ -16,3 +16,10 @@ const arbitraryTask:TaskKind='plugin.custom';
 // @ts-expect-error: Preview publication must return undefined synchronously, never a Promise.
 const asynchronousPublish:TaskHooks['publish']=async()=>{};
 void arbitraryTask;void asynchronousPublish;
+
+import type {PreviewSubmission,PreviewCacheKey} from '../../src/application/tasks/previewIdentity';
+// @ts-expect-error: Only foreground/background roles belong to preview envelopes.
+const invalidRole:PreviewSubmission['role']='compute';
+// @ts-expect-error: A cache key cannot be replaced with a partial execution ticket.
+const invalidCacheKey:PreviewCacheKey={taskId:'task',activationEpoch:1};
+void invalidRole;void invalidCacheKey;
