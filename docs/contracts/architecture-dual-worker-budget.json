@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 2,
+  "status": "contract-only; scheduling activation deferred to U2",
+  "baseBudget": "architecture-runtime-budget.json",
+  "workers": {
+    "foreground": 1,
+    "background": 1,
+    "maxActivePerWorker": 1,
+    "maxLiveComputeWorkers": 2,
+    "sharedDomLanes": 1
+  },
+  "queue": {
+    "previewKinds": 2,
+    "foregroundPending": 2,
+    "backgroundPendingPerDocumentAndKind": 1,
+    "backgroundPendingMaximum": 64,
+    "backgroundQueueWaitMs": 60000,
+    "backgroundExpiry": "dequeue-and-retain-needs-render; no implicit retry",
+    "backgroundExecutionDeadlineStarts": "dispatch",
+    "activeExports": 1
+  },
+  "memory": {
+    "reservedRuntimeBytesPerWorker": 16777216,
+    "reservationStatus": "conservative accounting floor; not a measured heap size",
+    "accounting": "both worker runtimes plus owned task bytes plus clone peaks count against base inFlightBytes; other owned bytes count against base totalOwnedBytes",
+    "overflow": "reject admission; retain needs-render; do not increase workers"
+  },
+  "mapping": {
+    "legacyComputeDom": "execution environment; not foreground/background role",
+    "unchanged": "base input, total memory, generation deadlines, cancel grace, ready and regression thresholds remain unchanged"
+  }
+}

@@ -19,7 +19,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
   if(!pure)return;
   if(name.startsWith('.')){
    const target=portable(relative(root,resolve(root,dirname(file),name))).toLowerCase();
-   if(!pureRoots.some(p=>target.startsWith(p))&&!(taskPure&&(target.startsWith(taskRoot)||target==='docs/contracts/architecture-runtime-budget.json')))failures.push('pure module cannot import '+name);
+   if(!pureRoots.some(p=>target.startsWith(p))&&!(taskPure&&(target.startsWith(taskRoot)||['docs/contracts/architecture-runtime-budget.json','docs/contracts/architecture-dual-worker-budget.json'].includes(target))))failures.push('pure module cannot import '+name);
   }else if(!allowed.has(name)&&!(typeOnly&&['mdast','hast','unist'].includes(name)))failures.push('pure dependency not approved: '+name);
  }
  function literal(value:unknown):string|undefined{
