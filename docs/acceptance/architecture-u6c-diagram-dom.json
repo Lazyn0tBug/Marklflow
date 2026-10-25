@@ -1,0 +1,1014 @@
+{
+  "date": "2026-10-26",
+  "scope": "real Mermaid and existing limited DOT renderer in standalone fixtures; no UI or production dual-role enablement",
+  "reports": [
+    {
+      "environment": "development",
+      "report": {
+        "first": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "#ffdddd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "ALPHA\nALPHAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          ALPHA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBALPHABALPHAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_alpha",
+            "mf_svg_4_0",
+            "mf_svg_4_1",
+            "mf_svg_4_2",
+            "mf_svg_4_3",
+            "mf_svg_4_4",
+            "mf_svg_4_5",
+            "mf_svg_4_6",
+            "mf_svg_4_7",
+            "mf_svg_4_8",
+            "mf_svg_4_9",
+            "mf_svg_4_10",
+            "mf_svg_4_11",
+            "mf_svg_4_12",
+            "mf_svg_4_13",
+            "mf_svg_4_14",
+            "mf_svg_4_15",
+            "mf_svg_4_16",
+            "mf_svg_4_17",
+            "mf_svg_4_18",
+            "mf_svg_5_0",
+            "mf_svg_6_0",
+            "mf_svg_6_1",
+            "mf_svg_6_2",
+            "mf_svg_6_3",
+            "mf_svg_6_4",
+            "mf_svg_6_5",
+            "mf_svg_6_6",
+            "mf_svg_6_7",
+            "mf_svg_6_8",
+            "mf_svg_6_9",
+            "mf_svg_6_10",
+            "mf_svg_6_11",
+            "mf_svg_6_12",
+            "mf_svg_6_13",
+            "mf_svg_6_14",
+            "mf_svg_6_15",
+            "mf_svg_6_16"
+          ],
+          "pending": 0
+        },
+        "second": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "#ddddff",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "BETA\nBETAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          BETA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBBETABBETAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_beta",
+            "mf_svg_1_0",
+            "mf_svg_1_1",
+            "mf_svg_1_2",
+            "mf_svg_1_3",
+            "mf_svg_1_4",
+            "mf_svg_1_5",
+            "mf_svg_1_6",
+            "mf_svg_1_7",
+            "mf_svg_1_8",
+            "mf_svg_1_9",
+            "mf_svg_1_10",
+            "mf_svg_1_11",
+            "mf_svg_1_12",
+            "mf_svg_1_13",
+            "mf_svg_1_14",
+            "mf_svg_1_15",
+            "mf_svg_1_16",
+            "mf_svg_1_17",
+            "mf_svg_1_18",
+            "mf_svg_2_0",
+            "mf_svg_3_0",
+            "mf_svg_3_1",
+            "mf_svg_3_2",
+            "mf_svg_3_3",
+            "mf_svg_3_4",
+            "mf_svg_3_5",
+            "mf_svg_3_6",
+            "mf_svg_3_7",
+            "mf_svg_3_8",
+            "mf_svg_3_9",
+            "mf_svg_3_10",
+            "mf_svg_3_11",
+            "mf_svg_3_12",
+            "mf_svg_3_13",
+            "mf_svg_3_14",
+            "mf_svg_3_15",
+            "mf_svg_3_16"
+          ],
+          "pending": 0
+        },
+        "repeated": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "#ffdddd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "ALPHA\nALPHAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          ALPHA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBALPHABALPHAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_alpha",
+            "mf_svg_7_0",
+            "mf_svg_7_1",
+            "mf_svg_7_2",
+            "mf_svg_7_3",
+            "mf_svg_7_4",
+            "mf_svg_7_5",
+            "mf_svg_7_6",
+            "mf_svg_7_7",
+            "mf_svg_7_8",
+            "mf_svg_7_9",
+            "mf_svg_7_10",
+            "mf_svg_7_11",
+            "mf_svg_7_12",
+            "mf_svg_7_13",
+            "mf_svg_7_14",
+            "mf_svg_7_15",
+            "mf_svg_7_16",
+            "mf_svg_7_17",
+            "mf_svg_7_18",
+            "mf_svg_8_0",
+            "mf_svg_9_0",
+            "mf_svg_9_1",
+            "mf_svg_9_2",
+            "mf_svg_9_3",
+            "mf_svg_9_4",
+            "mf_svg_9_5",
+            "mf_svg_9_6",
+            "mf_svg_9_7",
+            "mf_svg_9_8",
+            "mf_svg_9_9",
+            "mf_svg_9_10",
+            "mf_svg_9_11",
+            "mf_svg_9_12",
+            "mf_svg_9_13",
+            "mf_svg_9_14",
+            "mf_svg_9_15",
+            "mf_svg_9_16"
+          ],
+          "pending": 0
+        },
+        "recovered": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "#ddffdd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "GAMMA\nGAMMAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          GAMMA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBGAMMABGAMMAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_gamma",
+            "mf_svg_10_0",
+            "mf_svg_10_1",
+            "mf_svg_10_2",
+            "mf_svg_10_3",
+            "mf_svg_10_4",
+            "mf_svg_10_5",
+            "mf_svg_10_6",
+            "mf_svg_10_7",
+            "mf_svg_10_8",
+            "mf_svg_10_9",
+            "mf_svg_10_10",
+            "mf_svg_10_11",
+            "mf_svg_10_12",
+            "mf_svg_10_13",
+            "mf_svg_10_14",
+            "mf_svg_10_15",
+            "mf_svg_10_16",
+            "mf_svg_10_17",
+            "mf_svg_10_18",
+            "mf_svg_11_0",
+            "mf_svg_12_0",
+            "mf_svg_12_1",
+            "mf_svg_12_2",
+            "mf_svg_12_3",
+            "mf_svg_12_4",
+            "mf_svg_12_5",
+            "mf_svg_12_6",
+            "mf_svg_12_7",
+            "mf_svg_12_8",
+            "mf_svg_12_9",
+            "mf_svg_12_10",
+            "mf_svg_12_11",
+            "mf_svg_12_12",
+            "mf_svg_12_13",
+            "mf_svg_12_14",
+            "mf_svg_12_15",
+            "mf_svg_12_16"
+          ],
+          "pending": 0
+        },
+        "bad": [
+          {
+            "nodeId": "line-1",
+            "message": "Error: Parse error on line 2:\ngraph LRA --> [\n--------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'SQS'",
+            "severity": "error"
+          }
+        ],
+        "cancelled": "AbortError: 已取消",
+        "maxActive": 1,
+        "calls": [
+          "ALPHA",
+          "BETA",
+          "BETA",
+          "ALPHA",
+          "ALPHA",
+          "ALPHA",
+          "invalid",
+          "CANCEL",
+          "GAMMA",
+          "GAMMA"
+        ],
+        "hosts": 0,
+        "dom": {
+          "waiting": [],
+          "blocked": false
+        },
+        "secure": true
+      }
+    },
+    {
+      "environment": "built",
+      "report": {
+        "first": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "#ffdddd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "ALPHA\nALPHAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          ALPHA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBALPHABALPHAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_alpha",
+            "mf_svg_4_0",
+            "mf_svg_4_1",
+            "mf_svg_4_2",
+            "mf_svg_4_3",
+            "mf_svg_4_4",
+            "mf_svg_4_5",
+            "mf_svg_4_6",
+            "mf_svg_4_7",
+            "mf_svg_4_8",
+            "mf_svg_4_9",
+            "mf_svg_4_10",
+            "mf_svg_4_11",
+            "mf_svg_4_12",
+            "mf_svg_4_13",
+            "mf_svg_4_14",
+            "mf_svg_4_15",
+            "mf_svg_4_16",
+            "mf_svg_4_17",
+            "mf_svg_4_18",
+            "mf_svg_5_0",
+            "mf_svg_6_0",
+            "mf_svg_6_1",
+            "mf_svg_6_2",
+            "mf_svg_6_3",
+            "mf_svg_6_4",
+            "mf_svg_6_5",
+            "mf_svg_6_6",
+            "mf_svg_6_7",
+            "mf_svg_6_8",
+            "mf_svg_6_9",
+            "mf_svg_6_10",
+            "mf_svg_6_11",
+            "mf_svg_6_12",
+            "mf_svg_6_13",
+            "mf_svg_6_14",
+            "mf_svg_6_15",
+            "mf_svg_6_16"
+          ],
+          "pending": 0
+        },
+        "second": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "#ddddff",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "BETA\nBETAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          BETA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBBETABBETAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_beta",
+            "mf_svg_1_0",
+            "mf_svg_1_1",
+            "mf_svg_1_2",
+            "mf_svg_1_3",
+            "mf_svg_1_4",
+            "mf_svg_1_5",
+            "mf_svg_1_6",
+            "mf_svg_1_7",
+            "mf_svg_1_8",
+            "mf_svg_1_9",
+            "mf_svg_1_10",
+            "mf_svg_1_11",
+            "mf_svg_1_12",
+            "mf_svg_1_13",
+            "mf_svg_1_14",
+            "mf_svg_1_15",
+            "mf_svg_1_16",
+            "mf_svg_1_17",
+            "mf_svg_1_18",
+            "mf_svg_2_0",
+            "mf_svg_3_0",
+            "mf_svg_3_1",
+            "mf_svg_3_2",
+            "mf_svg_3_3",
+            "mf_svg_3_4",
+            "mf_svg_3_5",
+            "mf_svg_3_6",
+            "mf_svg_3_7",
+            "mf_svg_3_8",
+            "mf_svg_3_9",
+            "mf_svg_3_10",
+            "mf_svg_3_11",
+            "mf_svg_3_12",
+            "mf_svg_3_13",
+            "mf_svg_3_14",
+            "mf_svg_3_15",
+            "mf_svg_3_16"
+          ],
+          "pending": 0
+        },
+        "repeated": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "#ffdddd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "ALPHA\nALPHAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          ALPHA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBALPHABALPHAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_alpha",
+            "mf_svg_7_0",
+            "mf_svg_7_1",
+            "mf_svg_7_2",
+            "mf_svg_7_3",
+            "mf_svg_7_4",
+            "mf_svg_7_5",
+            "mf_svg_7_6",
+            "mf_svg_7_7",
+            "mf_svg_7_8",
+            "mf_svg_7_9",
+            "mf_svg_7_10",
+            "mf_svg_7_11",
+            "mf_svg_7_12",
+            "mf_svg_7_13",
+            "mf_svg_7_14",
+            "mf_svg_7_15",
+            "mf_svg_7_16",
+            "mf_svg_7_17",
+            "mf_svg_7_18",
+            "mf_svg_8_0",
+            "mf_svg_9_0",
+            "mf_svg_9_1",
+            "mf_svg_9_2",
+            "mf_svg_9_3",
+            "mf_svg_9_4",
+            "mf_svg_9_5",
+            "mf_svg_9_6",
+            "mf_svg_9_7",
+            "mf_svg_9_8",
+            "mf_svg_9_9",
+            "mf_svg_9_10",
+            "mf_svg_9_11",
+            "mf_svg_9_12",
+            "mf_svg_9_13",
+            "mf_svg_9_14",
+            "mf_svg_9_15",
+            "mf_svg_9_16"
+          ],
+          "pending": 0
+        },
+        "recovered": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "#ddffdd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "GAMMA\nGAMMAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          GAMMA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBGAMMABGAMMAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_gamma",
+            "mf_svg_10_0",
+            "mf_svg_10_1",
+            "mf_svg_10_2",
+            "mf_svg_10_3",
+            "mf_svg_10_4",
+            "mf_svg_10_5",
+            "mf_svg_10_6",
+            "mf_svg_10_7",
+            "mf_svg_10_8",
+            "mf_svg_10_9",
+            "mf_svg_10_10",
+            "mf_svg_10_11",
+            "mf_svg_10_12",
+            "mf_svg_10_13",
+            "mf_svg_10_14",
+            "mf_svg_10_15",
+            "mf_svg_10_16",
+            "mf_svg_10_17",
+            "mf_svg_10_18",
+            "mf_svg_11_0",
+            "mf_svg_12_0",
+            "mf_svg_12_1",
+            "mf_svg_12_2",
+            "mf_svg_12_3",
+            "mf_svg_12_4",
+            "mf_svg_12_5",
+            "mf_svg_12_6",
+            "mf_svg_12_7",
+            "mf_svg_12_8",
+            "mf_svg_12_9",
+            "mf_svg_12_10",
+            "mf_svg_12_11",
+            "mf_svg_12_12",
+            "mf_svg_12_13",
+            "mf_svg_12_14",
+            "mf_svg_12_15",
+            "mf_svg_12_16"
+          ],
+          "pending": 0
+        },
+        "bad": [
+          {
+            "nodeId": "line-1",
+            "message": "Error: Parse error on line 2:\ngraph LRA --> [\n--------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'SQS'",
+            "severity": "error"
+          }
+        ],
+        "cancelled": "AbortError: 已取消",
+        "maxActive": 1,
+        "calls": [
+          "ALPHA",
+          "BETA",
+          "BETA",
+          "ALPHA",
+          "ALPHA",
+          "ALPHA",
+          "invalid",
+          "CANCEL",
+          "GAMMA",
+          "GAMMA"
+        ],
+        "hosts": 0,
+        "dom": {
+          "waiting": [],
+          "blocked": false
+        },
+        "secure": true
+      }
+    },
+    {
+      "environment": "http",
+      "report": {
+        "first": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "#ffdddd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "ALPHA\nALPHAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          ALPHA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBALPHABALPHAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_alpha",
+            "mf_svg_4_0",
+            "mf_svg_4_1",
+            "mf_svg_4_2",
+            "mf_svg_4_3",
+            "mf_svg_4_4",
+            "mf_svg_4_5",
+            "mf_svg_4_6",
+            "mf_svg_4_7",
+            "mf_svg_4_8",
+            "mf_svg_4_9",
+            "mf_svg_4_10",
+            "mf_svg_4_11",
+            "mf_svg_4_12",
+            "mf_svg_4_13",
+            "mf_svg_4_14",
+            "mf_svg_4_15",
+            "mf_svg_4_16",
+            "mf_svg_4_17",
+            "mf_svg_4_18",
+            "mf_svg_5_0",
+            "mf_svg_6_0",
+            "mf_svg_6_1",
+            "mf_svg_6_2",
+            "mf_svg_6_3",
+            "mf_svg_6_4",
+            "mf_svg_6_5",
+            "mf_svg_6_6",
+            "mf_svg_6_7",
+            "mf_svg_6_8",
+            "mf_svg_6_9",
+            "mf_svg_6_10",
+            "mf_svg_6_11",
+            "mf_svg_6_12",
+            "mf_svg_6_13",
+            "mf_svg_6_14",
+            "mf_svg_6_15",
+            "mf_svg_6_16"
+          ],
+          "pending": 0
+        },
+        "second": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "rgb(221, 221, 255)",
+            "#ddddff",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "BETA\nBETAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          BETA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBBETABBETAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_beta",
+            "mf_svg_1_0",
+            "mf_svg_1_1",
+            "mf_svg_1_2",
+            "mf_svg_1_3",
+            "mf_svg_1_4",
+            "mf_svg_1_5",
+            "mf_svg_1_6",
+            "mf_svg_1_7",
+            "mf_svg_1_8",
+            "mf_svg_1_9",
+            "mf_svg_1_10",
+            "mf_svg_1_11",
+            "mf_svg_1_12",
+            "mf_svg_1_13",
+            "mf_svg_1_14",
+            "mf_svg_1_15",
+            "mf_svg_1_16",
+            "mf_svg_1_17",
+            "mf_svg_1_18",
+            "mf_svg_2_0",
+            "mf_svg_3_0",
+            "mf_svg_3_1",
+            "mf_svg_3_2",
+            "mf_svg_3_3",
+            "mf_svg_3_4",
+            "mf_svg_3_5",
+            "mf_svg_3_6",
+            "mf_svg_3_7",
+            "mf_svg_3_8",
+            "mf_svg_3_9",
+            "mf_svg_3_10",
+            "mf_svg_3_11",
+            "mf_svg_3_12",
+            "mf_svg_3_13",
+            "mf_svg_3_14",
+            "mf_svg_3_15",
+            "mf_svg_3_16"
+          ],
+          "pending": 0
+        },
+        "repeated": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "rgb(255, 221, 221)",
+            "#ffdddd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "ALPHA\nALPHAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          ALPHA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBALPHABALPHAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_alpha",
+            "mf_svg_7_0",
+            "mf_svg_7_1",
+            "mf_svg_7_2",
+            "mf_svg_7_3",
+            "mf_svg_7_4",
+            "mf_svg_7_5",
+            "mf_svg_7_6",
+            "mf_svg_7_7",
+            "mf_svg_7_8",
+            "mf_svg_7_9",
+            "mf_svg_7_10",
+            "mf_svg_7_11",
+            "mf_svg_7_12",
+            "mf_svg_7_13",
+            "mf_svg_7_14",
+            "mf_svg_7_15",
+            "mf_svg_7_16",
+            "mf_svg_7_17",
+            "mf_svg_7_18",
+            "mf_svg_8_0",
+            "mf_svg_9_0",
+            "mf_svg_9_1",
+            "mf_svg_9_2",
+            "mf_svg_9_3",
+            "mf_svg_9_4",
+            "mf_svg_9_5",
+            "mf_svg_9_6",
+            "mf_svg_9_7",
+            "mf_svg_9_8",
+            "mf_svg_9_9",
+            "mf_svg_9_10",
+            "mf_svg_9_11",
+            "mf_svg_9_12",
+            "mf_svg_9_13",
+            "mf_svg_9_14",
+            "mf_svg_9_15",
+            "mf_svg_9_16"
+          ],
+          "pending": 0
+        },
+        "recovered": {
+          "svg": 3,
+          "rectFills": [
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "rgb(221, 255, 221)",
+            "#ddffdd",
+            "#f0fdfa",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)",
+            "rgb(236, 236, 255)"
+          ],
+          "text": "GAMMA\nGAMMAEND\n\n      \n        \n          \n            \n              \n            \n          \n          \n        \n      \n          \n        \n          \n          GAMMA\n        \n      \n        \n          \n          B\n        \n      \n        \n      \n    \nBGAMMABGAMMAstatic message",
+          "ranges": [
+            [
+              "3",
+              "8"
+            ],
+            [
+              "10",
+              "15"
+            ],
+            [
+              "17",
+              "21"
+            ]
+          ],
+          "unsafe": 0,
+          "missing": 0,
+          "unique": true,
+          "ids": [
+            "heading_0_gamma",
+            "mf_svg_10_0",
+            "mf_svg_10_1",
+            "mf_svg_10_2",
+            "mf_svg_10_3",
+            "mf_svg_10_4",
+            "mf_svg_10_5",
+            "mf_svg_10_6",
+            "mf_svg_10_7",
+            "mf_svg_10_8",
+            "mf_svg_10_9",
+            "mf_svg_10_10",
+            "mf_svg_10_11",
+            "mf_svg_10_12",
+            "mf_svg_10_13",
+            "mf_svg_10_14",
+            "mf_svg_10_15",
+            "mf_svg_10_16",
+            "mf_svg_10_17",
+            "mf_svg_10_18",
+            "mf_svg_11_0",
+            "mf_svg_12_0",
+            "mf_svg_12_1",
+            "mf_svg_12_2",
+            "mf_svg_12_3",
+            "mf_svg_12_4",
+            "mf_svg_12_5",
+            "mf_svg_12_6",
+            "mf_svg_12_7",
+            "mf_svg_12_8",
+            "mf_svg_12_9",
+            "mf_svg_12_10",
+            "mf_svg_12_11",
+            "mf_svg_12_12",
+            "mf_svg_12_13",
+            "mf_svg_12_14",
+            "mf_svg_12_15",
+            "mf_svg_12_16"
+          ],
+          "pending": 0
+        },
+        "bad": [
+          {
+            "nodeId": "line-1",
+            "message": "Error: Parse error on line 2:\ngraph LRA --> [\n--------------^\nExpecting 'AMP', 'COLON', 'PIPE', 'TESTSTR', 'DOWN', 'DEFAULT', 'NUM', 'COMMA', 'NODE_STRING', 'BRKT', 'MINUS', 'MULT', 'UNICODE_TEXT', got 'SQS'",
+            "severity": "error"
+          }
+        ],
+        "cancelled": "AbortError: 已取消",
+        "maxActive": 1,
+        "calls": [
+          "ALPHA",
+          "BETA",
+          "BETA",
+          "ALPHA",
+          "ALPHA",
+          "ALPHA",
+          "invalid",
+          "CANCEL",
+          "GAMMA",
+          "GAMMA"
+        ],
+        "hosts": 0,
+        "dom": {
+          "waiting": [],
+          "blocked": false
+        },
+        "secure": false
+      }
+    }
+  ]
+}

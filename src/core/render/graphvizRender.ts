@@ -212,7 +212,7 @@ export function renderDotToSVG(dotSource: string): string {
       const ctrlY2 = isLR ? endY : (startY + endY) / 2;
 
       const pathData = `M ${startX} ${startY} C ${ctrlX1} ${ctrlY1}, ${ctrlX2} ${ctrlY2}, ${endX} ${endY}`;
-      const edgeColor = e.color || '#0d9488';
+      const edgeColor = escapeAttribute(e.color || '#0d9488');
 
       edgesSvg += `
         <path d="${pathData}" fill="none" stroke="${edgeColor}" stroke-width="2" marker-end="url(#arrowhead)" />
@@ -232,8 +232,8 @@ export function renderDotToSVG(dotSource: string): string {
     for (const node of nodeList) {
       const pos = nodePositions.get(node.id);
       if(!pos)throw new Error('DOT 节点布局缺失');
-      const strokeColor = node.color || '#0d9488';
-      const bgColor = node.fillcolor || '#f0fdfa';
+      const strokeColor = escapeAttribute(node.color || '#0d9488');
+      const bgColor = escapeAttribute(node.fillcolor || '#f0fdfa');
       const lines = node.label.split('\n');
 
       nodesSvg += `
@@ -269,3 +269,5 @@ export function renderDotToSVG(dotSource: string): string {
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+function escapeAttribute(value:string):string {return escapeHtml(value).replace(/"/g,'&quot;').replace(/'/g,'&#39;')}

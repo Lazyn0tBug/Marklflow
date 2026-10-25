@@ -22,6 +22,7 @@
     "tests/fixtures/architecture/markdown-worker-probe-client.ts",
     "tests/fixtures/architecture/dual-worker-probe-client.ts",
     "tests/fixtures/architecture/shared-dom-probe-client.ts",
-    "tests/fixtures/architecture/math-dom-probe-client.ts"
+    "tests/fixtures/architecture/math-dom-probe-client.ts",
+    "tests/fixtures/architecture/diagram-dom-probe-client.ts"
   ]
 }

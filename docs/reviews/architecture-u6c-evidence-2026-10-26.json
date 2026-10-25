@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-26",
+  "branch": "architecture-refactor",
+  "parentCommit": "f4d2988fda9a46bdf85eedd2dc8571f14f5b56dd",
+  "scope": "U6c existing Mermaid and limited DOT paths share the Web DOM entry; no UI or production dual-role enablement",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 142,
+      "unitFiles": 40,
+      "unitTestsPassed": 268,
+      "newUnitTests": 9,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source/module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 48,
+      "reportedDuration": "1.6m",
+      "newDiagramDomTests": 3,
+      "environments": [
+        "development",
+        "built",
+        "ordinary HTTP"
+      ]
+    }
+  ],
+  "logSha256": {
+    "check": "fdd2ee53feb8393785a88ff1bf306add1885781ffa5d945d8039e3959000162b",
+    "fullChromium": "dddc1637e47be3451a90d0834a2b4931f0ba3d005a1462cd2a65c21e7630a496"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-u6c-diagram-dom.json": "70fc009ab7baa9a042f7d608dba7f4c2756b6fcf8ea5f4775be971bbc7491765",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "6fad55e4170af3cef3a03394a19cf4f149d95226de5ebddbb2ae953603bf5d05",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "9e45679aafbb4154ba91797c51d10fe592e817797fd73e18405ce4841f3075d2",
+    "docs/reviews/architecture-u6c-implementation-2026-10-26.md": "2a124810bc310b79231ad000c00228105ea0e09810a0a4af7d0c5aae21f678fc",
+    "scripts/build-worker-probe.ts": "e31b82cb044eac6b88da816fa8c8651ffe636059e71418ddaef873935b2e93cb",
+    "src/core/platform/web/sharedDom.ts": "5a679fdbcabc9de850434e0076fa6a18efbf2de63f7715b48e71a3ab5222f444",
+    "src/core/render/diagramRender.ts": "88ea1412418164988be2af5dee31e9554881897817f111e3568da11d66bf6f74",
+    "src/core/render/documentRenderer.ts": "96834f8cc199d5bb022503039b24b2789b0d6953c8ade90832c196d0b55a63a7",
+    "src/core/render/graphvizRender.ts": "4db421e282a9c3b49ab5baea939871ea23c35cf9d9a2570de5d106639d2b7583",
+    "src/core/render/markdownHtml.ts": "d4c11d006585c4ac84c497f0234fea174f63a3f08de6712f1196974eedab3fad",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mermaidRender.ts": "93fdc0694bebaa80737478486e2de4f8d1e310ea111d8ee79ecdffb2accd24db",
+    "tests/e2e/diagram-shared-dom.spec.ts": "6ffa67c3637a60ca2fc06bb71f0bb2b3ed794c01cb8ecc039dec65964cda5a04",
+    "tests/fixtures/architecture/diagram-dom-probe-client.ts": "1db4056d0d483a4b1cc83028d51c4e06f9ea4ae323337a547126ec7658444f50",
+    "tests/fixtures/architecture/diagram-dom-probe.html": "b1973847fb001ac24b1d96006332b924992648bf9027827e95c1171b53677bab",
+    "tests/unit/diagram-shared-dom.test.ts": "3bae9c72ce5a17939ec8ca8e30dfc22795abc8f66aeb0c3d13f01e1bf895beac",
+    "tsconfig.integration.json": "54ade1dd074c50c487c82a936e6aeaf7c81cdec14eaa1d798ea38d1626d519b1"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/workers/markdownWorker.ts": "14261c6915d2afea18aadabebb5b026b819a233da69bd1e34ae08fa90a87f59d",
+    "src/application/tasks/markdownWorkerTask.ts": "73b5f1ed928ffa2e7da8246d1ea1cc515c8b28eb43320c30cebc00e8dd48d4e3",
+    "docs/reviews/architecture-u5b-evidence-2026-10-25.json": "c12db52293a7828fbd015b82745bdc78598083e5166b616257c1fe9112521008",
+    "docs/reviews/architecture-u6a-evidence-2026-10-25.json": "8b0d03dce6c681628a150d5e45c9aeeea9b3e1bab6173c7e1d48cfcd977445b4",
+    "src/application/tasks/sharedDom.ts": "13a2166e552a3ecc33467854e2c678f5f3e07dc99f881351e4975cfc2729dc87",
+    "src/core/render/pagedJsAdapter.ts": "b99462ac02dc9b4d02861b7e7ae20c235bf7f7ef68c1145197c1e77b90f0a093",
+    "src/core/render/documentPaginator.ts": "a2ab279d6132b4c5dca1efc52f1b9c60d12f9032a800ff7e94ea4a993bed6538",
+    "public/vendor/mathjax/tex-mml-svg.js": "1f17a7ed95ff4a4b27d16bf0fb5f80b915686ee8673e82983a2876ecf8cb9fae",
+    "docs/reviews/architecture-u6b-evidence-2026-10-25.json": "07a545d815d8d25341e577132005430de60745565bd2fe42f7f17eec376ef6cd",
+    "src/core/parse/markdown.ts": "9596316e319e355ed0ee4ba934585290eaf596e1b41ccb5d44d420ed48f99078",
+    "src/core/render/mathJaxAdapter.ts": "77e52f84eb76e823eaec632c884320d4be395c1bd774f036f3ff7377dce3bac9",
+    "src/core/export/htmlExporter.ts": "bd3793c55668f58b79ef362bfe46334d36dd4aaf9586ec365cb45931750abfea",
+    "src/core/export/docxExporter.ts": "56fb617653d9a942702f0eaebd1370138c979671cba2eb5d552096b94b964bce"
+  },
+  "intentionalPriorProtectedChange": "Mermaid adapter migrated from its application queue to shared DOM and local cleanup; no package update",
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "realDiagramArchive": "docs/acceptance/architecture-u6c-diagram-dom.json",
+  "reviewFindingsFixed": [
+    "remove document renderer serial and application Mermaid queue",
+    "defer DOT to the same shared DOM entry without replacing its parser/layout",
+    "reset Mermaid configuration per diagram and restore after native settlement",
+    "preserve computed SVG presentation, sanitization, source ranges and fragment rewriting",
+    "do not turn user cancellation into a displayable diagram error",
+    "reject malformed Mermaid SVG output and forged author placeholders",
+    "escape DOT color attributes before constructing SVG"
+  ],
+  "limitations": [
+    "Mermaid public render API retains its internal library serialization; application calls remain one at a time",
+    "synchronous or uncooperative native work cannot be hard-preempted; DOM ownership retained until settlement",
+    "synchronous Markdown HTML parser emits diagram placeholders; complete output uses renderDocument",
+    "Paged.js migration remains U6d",
+    "no UI or production dual-role enablement; no new Graphviz implementation",
+    "no other-browser, Tauri, Word/WPS visual or physical-print acceptance",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

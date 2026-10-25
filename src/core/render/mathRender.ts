@@ -1,13 +1,11 @@
 /** One isolated MathJax document per preparation, scheduled only through SharedDom. */
-import {sharedDom} from '../platform/web/sharedDom';
-import type {DomPriority} from '../../application/tasks/sharedDom';
+import {sharedDom,type DomScheduling} from '../platform/web/sharedDom';
 import {escapeHtml} from './htmlPolicy';
 import {loadMathJaxAdapter,type MathJaxAdapter} from './mathJaxAdapter';
 export interface MathExpression {value:string;display:boolean;sourceOffset?:number}
 export type PreparedMath=(value:string,display:boolean,sourceOffset?:number)=>string;
-export interface MathScheduling {priority?:DomPriority;signal?:AbortSignal}
 export function unpreparedMath(value:string):string{return '<span class="mf-diagnostic" data-mjx-error="not-prepared">公式未就绪：'+escapeHtml(value)+'</span>'}
-export async function prepareMath(input:readonly MathExpression[],mode:'mathml'|'svg',options:MathScheduling={}):Promise<PreparedMath>{
+export async function prepareMath(input:readonly MathExpression[],mode:'mathml'|'svg',options:DomScheduling={}):Promise<PreparedMath>{
  const expressions=input.map(expression=>({...expression})),signal=options.signal??new AbortController().signal,priority=options.priority??'foreground';
  const outputs:string[]=[];let engine:MathJaxAdapter|undefined;
  try{

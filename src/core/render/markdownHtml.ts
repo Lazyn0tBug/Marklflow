@@ -6,7 +6,6 @@ import { SKIP, visit } from 'unist-util-visit';
 import type { Root } from 'mdast';
 import type { Element } from 'hast';
 import {unpreparedMath,type PreparedMath} from './mathRender';
-import { renderDotToSVG } from './graphvizRender';
 import { escapeHtml, sanitizeDocumentHtml, inspectAuthorHtml, rewriteFragments, type ContentDiagnostic } from './htmlPolicy';
 export interface ParseOptions {mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number;preparedMath?:PreparedMath}
 import {createMarkdownReader,createHeadingId,textOf} from '../parse/markdown';
@@ -40,7 +39,7 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
   code(_state,node){
    const lang=(node.lang||'plaintext').toLowerCase(),line=node.position!.start.line+offset;
    const position='data-mf-origin="'+nonce+'" data-line="'+line+'" data-source-end="'+(node.position!.end.line+offset)+'"';
-   const html=lang==='mermaid'?'<figure class="mf-diagram" '+position+' data-mermaid-code="'+encodeURIComponent(node.value)+'"><figcaption>Mermaid 渲染中</figcaption></figure>':/^(dot|graphviz)$/.test(lang)?'<figure class="mf-diagram" '+position+'>'+renderDotToSVG(node.value)+'</figure>':'<pre class="mf-code" '+position+'><code class="language-'+escapeHtml(lang)+'">'+escapeHtml(node.value)+'\n</code></pre>';
+   const html=lang==='mermaid'?'<figure class="mf-diagram" '+position+' data-mermaid-code="'+encodeURIComponent(node.value)+'"><figcaption>Mermaid 渲染中</figcaption></figure>':/^(dot|graphviz)$/.test(lang)?'<figure class="mf-diagram" '+position+' data-dot-code="'+encodeURIComponent(node.value)+'"><figcaption>DOT 渲染中</figcaption></figure>':'<pre class="mf-code" '+position+'><code class="language-'+escapeHtml(lang)+'">'+escapeHtml(node.value)+'\n</code></pre>';
    return {type:'raw' as const,value:html};
   },
   math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-mf-origin="'+nonce+'" data-line="'+(node.position!.start.line+offset)+'">'+math(node.value,true,originalOffset(node.position?.start.offset))+'</div>'}},
@@ -52,7 +51,7 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
    const trusted=node.properties.dataMfOrigin===nonce;
    if(!trusted&&node.properties.id)node.properties.id=authorIds.get(String(node.properties.id))!;
    for(const [key,value]of Object.entries(node.properties)){if(typeof value!=='string'||key==='id')continue;node.properties[key]=rewriteFragments(value,authorIds,key)}
-   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode'].includes(key)))delete node.properties[key];
+   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode','dataDotCode'].includes(key)))delete node.properties[key];
    if(node.position&&!trusted)node.properties.dataLine=node.position.start.line+offset;
    if(node.position&&!trusted)node.properties.dataSourceEnd=node.position.end.line+offset;
    if(node.tagName==='table')node.properties.className=['mf-table'];

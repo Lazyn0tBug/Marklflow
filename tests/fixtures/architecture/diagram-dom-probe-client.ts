@@ -1,0 +1,19 @@
+import mermaid from 'mermaid';
+import {renderDocument,assertArtifact} from '../../../src/core/render/documentRenderer';
+import {sharedDom} from '../../../src/core/platform/web/sharedDom';
+const output=document.querySelector('[data-state]'),fence=String.fromCharCode(96).repeat(3);
+const flow=(label:string,color:string)=>'%%{init: {"theme":"base","themeVariables":{"primaryColor":"'+color+'"}}}%%\ngraph LR\nA['+label+'] --> B[END]\nstyle A fill:'+color+',stroke:#123456';
+const doc=(label:string,color:string)=>['# '+label,'',fence+'mermaid',flow(label,color),fence,'',fence+'dot','digraph G {','A [label="'+label+'",fillcolor="'+color+'"]','A -> B','}',fence,'',fence+'mermaid','sequenceDiagram','participant A as '+label,'A->>B: static message',fence].join('\n');
+function inspect(html:string){const root=document.createElement('div');root.innerHTML=html;const ids=[...root.querySelectorAll('[id]')].map(el=>el.id);const missing=[...root.querySelectorAll('svg [marker-end],svg [marker-start],svg use')].filter(el=>{const href=el.getAttribute('href')||el.getAttribute('xlink:href')||el.getAttribute('marker-end')||el.getAttribute('marker-start')||'';const id=href.startsWith('#')?href.slice(1):/url\(#([^)]*)\)/.exec(href)?.[1];return !!id&&!ids.includes(id)}).length;return {svg:root.querySelectorAll('svg').length,rectFills:[...root.querySelectorAll('svg rect')].map(el=>el.getAttribute('fill')),text:root.textContent,ranges:[...root.querySelectorAll('figure.mf-diagram')].map(el=>[el.getAttribute('data-line'),el.getAttribute('data-source-end')]),unsafe:root.querySelectorAll('style,script,foreignObject,[onclick]').length,missing,unique:new Set(ids).size===ids.length,ids,pending:root.querySelectorAll('[data-mermaid-code],[data-dot-code]').length}}
+void(async()=>{const native=mermaid.render.bind(mermaid);let active=0,maxActive=0;const calls:string[]=[];let onRender:((code:string)=>void)|undefined;
+ mermaid.render=async(...args:Parameters<typeof mermaid.render>)=>{active++;maxActive=Math.max(maxActive,active);calls.push(args[1]);onRender?.(args[1]);try{return await native(...args)}finally{active--}};
+ try{
+ let blue:ReturnType<typeof renderDocument>|undefined;onRender=code=>{if(code.includes('ALPHA')){onRender=undefined;blue=renderDocument(doc('BETA','#ddddff'),'mathml',undefined,{priority:'export'})}};
+ const first=await renderDocument(doc('ALPHA','#ffdddd'),'mathml',undefined,{priority:'background'});assertArtifact(first);if(!blue)throw new Error('Expected intervening export');const second=await blue;assertArtifact(second);
+ const repeated=await renderDocument(doc('ALPHA','#ffdddd'),'mathml');assertArtifact(repeated);
+ const bad=await renderDocument([fence+'mermaid','graph LR','A --> [',fence].join('\n'),'mathml');
+ const abort=new AbortController();onRender=code=>{if(code.includes('CANCEL')){onRender=undefined;abort.abort()}};let cancelled='';try{await renderDocument(doc('CANCEL','#ddffdd'),'mathml',abort.signal)}catch(error){cancelled=String(error)}
+ const recovered=await renderDocument(doc('GAMMA','#ddffdd'),'mathml');assertArtifact(recovered);await Promise.resolve();
+ const report={first:inspect(first.html),second:inspect(second.html),repeated:inspect(repeated.html),recovered:inspect(recovered.html),bad:bad.diagnostics,cancelled,maxActive,calls: calls.map(code=>code.includes('ALPHA')?'ALPHA':code.includes('BETA')?'BETA':code.includes('CANCEL')?'CANCEL':code.includes('GAMMA')?'GAMMA':'invalid'),hosts:document.querySelectorAll('[data-mermaid-host],body > [id^="dmf_mermaid_"],body > [id^="mf_mermaid_"]').length,dom:sharedDom.snapshot(),secure:isSecureContext};
+ if(!output)throw new Error('No report');output.textContent=JSON.stringify(report);output.setAttribute('data-state','ready');
+ }catch(error){if(output){output.textContent=String(error);output.setAttribute('data-state','error')}}finally{mermaid.render=native}})();

@@ -1,0 +1,12 @@
+import {test,expect} from '@playwright/test';
+import {writeFile} from 'node:fs/promises';
+import {z} from 'zod';
+const artifact=z.object({svg:z.number(),rectFills:z.array(z.string().nullable()),text:z.string().nullable(),ranges:z.array(z.array(z.string().nullable())),unsafe:z.number(),missing:z.number(),unique:z.boolean(),ids:z.array(z.string()),pending:z.number()});
+const schema=z.object({first:artifact,second:artifact,repeated:artifact,recovered:artifact,bad:z.array(z.object({severity:z.string(),nodeId:z.string()})),cancelled:z.string(),maxActive:z.number(),calls:z.array(z.string()),hosts:z.number(),dom:z.object({waiting:z.array(z.string()),blocked:z.boolean()}),secure:z.boolean()});
+for(const environment of ['development','built','http'] as const)test(`Mermaid and DOT share DOM with isolated document styles in ${environment}`,async({page},testInfo)=>{
+ if(environment==='http')await page.route('http://markflow-diagram.test/**',async route=>{const url=new URL(route.request().url()),response=await route.fetch({url:'http://127.0.0.1:4176'+url.pathname+url.search});await route.fulfill({response})});
+ const origin=environment==='development'?'http://127.0.0.1:4175':environment==='built'?'http://127.0.0.1:4176':'http://markflow-diagram.test';await page.goto(origin+'/tests/fixtures/architecture/diagram-dom-probe.html');const output=page.locator('[data-state]');await expect(output).toHaveAttribute('data-state','ready',{timeout:30000});
+ const raw=await output.textContent()||'null';await writeFile(testInfo.outputPath('diagram-dom-report.json'),raw);const report=schema.parse(JSON.parse(raw));expect(report).toMatchObject({maxActive:1,hosts:0,dom:{waiting:[],blocked:false}});expect(report.dom).not.toHaveProperty('active');expect(report.calls.slice(0,2)).toEqual(['ALPHA','BETA']);expect(report.first.rectFills).toEqual(report.repeated.rectFills);expect(report.first.rectFills).toContain('rgb(255, 221, 221)');expect(report.second.rectFills).toContain('rgb(221, 221, 255)');expect(report.cancelled).toContain('已取消');expect(report.calls.filter(value=>value==='CANCEL')).toHaveLength(1);expect(report.bad.some(item=>item.severity==='error'&&item.nodeId==='line-1')).toBe(true);
+ for(const result of [report.first,report.second,report.repeated,report.recovered]){expect(result).toMatchObject({svg:3,unsafe:0,missing:0,unique:true,pending:0});expect(result.ranges).toEqual([['3','8'],['10','15'],['17','21']])}expect(report.first.ids.filter(id=>report.second.ids.includes(id))).toEqual([]);
+ if(environment==='http')expect(report.secure).toBe(false);
+});
