@@ -7,7 +7,7 @@ const MAX=10*1024*1024,TOTAL=25*1024*1024;
 const mimePattern=/^image\/(png|jpeg|gif|webp|avif)$/;
 export function decodeImage(data:string):{mime:string;bytes:Uint8Array} {
  const match=/^data:(image\/(?:png|jpeg|gif|webp|avif));base64,([a-z0-9+/=]+)$/i.exec(data);
- if(!match)throw new Error('不支持的图片类型或编码');
+ if(!match?.[1]||!match[2])throw new Error('不支持的图片类型或编码');
  const bytes=Uint8Array.from(atob(match[2]),c=>c.charCodeAt(0));
  if(bytes.length>MAX)throw new Error('图片超过10MB');return {mime:match[1].toLowerCase(),bytes};
 }
@@ -44,7 +44,7 @@ export async function collectAssets(html:string,existing:DocumentAsset[]=[],allo
    if(!allowRemote&&url.origin!==location.origin)throw new Error('外部图片需允许联网收集：'+source);
    const response=await fetch(url,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});
    if(!response.ok)throw new Error('图片读取失败：'+source);
-   const mime=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
+   const mime=(response.headers.get('content-type')||'').split(';',1).join('').toLowerCase();
    if(!mimePattern.test(mime))throw new Error('图片类型不允许：'+source);
    if(Number(response.headers.get('content-length')||0)>MAX)throw new Error('图片超过10MB');
    const chunks:Uint8Array[]=[];let size=0;

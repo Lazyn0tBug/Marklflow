@@ -97,8 +97,8 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
     tooltipCtx.showTooltip({
       rect,
       title,
-      shortcut,
-      syntax,
+      ...(shortcut===undefined?{}:{shortcut}),
+      ...(syntax===undefined?{}:{syntax}),
     });
   };
 

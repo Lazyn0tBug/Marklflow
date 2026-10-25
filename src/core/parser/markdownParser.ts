@@ -42,7 +42,8 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
    }
   });
   visit(tree,'paragraph',(node,index,parent)=>{
-   if(node.children.length===1&&node.children[0].type==='text'&&node.children[0].value.trim()==='---pagebreak---'&&parent&&index!==undefined){
+   const first=node.children[0];
+   if(node.children.length===1&&first?.type==='text'&&first.value.trim()==='---pagebreak---'&&parent&&index!==undefined){
     parent.children[index]={type:'html',value:'<div class="mf-page-break" role="separator" aria-label="分页"></div>',position:node.position};
    }
   });

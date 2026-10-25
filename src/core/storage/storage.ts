@@ -203,8 +203,8 @@ export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | nu
     if (htmlContent.length > 50 * 1024 * 1024) return null;
     const template=document.createElement('template');template.innerHTML=htmlContent;
     const payloads=template.content.querySelectorAll('script[id="markflow-source-payload"]');
-    if(payloads.length!==1)return null;
     const payload=payloads[0];
+    if(payloads.length!==1||!payload)return null;
     if(payload.hasAttribute('type')&&payload.getAttribute('type')!=='application/json')return null;
     const base64Data=payload.textContent?.trim();if(!base64Data)return null;
     const jsonStr = decodeURIComponent(atob(base64Data));

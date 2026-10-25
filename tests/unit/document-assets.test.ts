@@ -5,7 +5,8 @@ const data='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAA
 it('keeps byte-identical embedded images with hashes',async()=>{
  const result=await collectAssets('<img src="'+data+'">');
  expect(result.assets).toHaveLength(1);await verifyAssets(result.assets);
- await expect(verifyAssets([{...result.assets[0],sha256:'0'.repeat(64)}])).rejects.toThrow('资产清单损坏');
+ const asset=result.assets[0];if(!asset)throw new Error('Expected embedded asset');
+ await expect(verifyAssets([{...asset,sha256:'0'.repeat(64)}])).rejects.toThrow('资产清单损坏');
 });
 it('does not silently fetch external assets without permission',async()=>{
  const fetchSpy=vi.spyOn(globalThis,'fetch');

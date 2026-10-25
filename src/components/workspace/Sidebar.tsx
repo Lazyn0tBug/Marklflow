@@ -69,15 +69,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (const file of Array.from(files)) {
       if(file.size>50*1024*1024){alert('导入文件超过50MB限制');continue}
       const reader = new FileReader();
       reader.onerror=()=>alert('文件读取失败：'+file.name);
 
       reader.onload = async (event) => {
-        const content = event.target?.result as string;
-        if (!content) return;
+        const content = event.target?.result;
+        if (typeof content!=='string'||!content) return;
 
         // 尝试从可编辑 HTML 中提取源载荷
         if (/\.html?$/i.test(file.name)) {

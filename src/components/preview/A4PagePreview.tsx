@@ -12,7 +12,7 @@ export const A4PagePreview:React.FC<Props>=({markdown,mathMode,meta,fontSize,lin
  useEffect(()=>{
   const controller=new AbortController();setStatus('排版更新中');
   const now=new Date().toISOString();
-  paginateDocument({schemaVersion:1,id:'a4-preview',revision:0,markdown,meta:{...meta,createdAt:meta.createdAt||now,updatedAt:meta.updatedAt||now},theme:theme||{...DEFAULT_THEME,fontSize,lineHeight},options:{syntaxProfile:'commonmark-gfm-v1',mathMode},assets},controller.signal)
+  paginateDocument({schemaVersion:1,id:'a4-preview',revision:0,markdown,meta:{...meta,createdAt:meta.createdAt||now,updatedAt:meta.updatedAt||now},theme:theme||{...DEFAULT_THEME,fontSize,lineHeight},options:{syntaxProfile:'commonmark-gfm-v1',mathMode},...(assets===undefined?{}:{assets})},controller.signal)
    .then(result=>{if(!controller.signal.aborted){setPages(result);setStatus('共 '+result.total+' 页')}})
    .catch(error=>{if(!controller.signal.aborted)setStatus('排版失败：'+String(error))});
   return()=>controller.abort();

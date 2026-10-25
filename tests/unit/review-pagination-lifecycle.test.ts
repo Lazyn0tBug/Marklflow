@@ -7,12 +7,13 @@ vi.mock('pagedjs',()=>({Previewer:class{
 vi.mock('../../src/core/export/documentPrint',async()=>{const actual=await vi.importActual<object>('../../src/core/export/documentPrint');return {...actual,waitForLayout:async()=>{}}});
 import {paginateDocument} from '../../src/core/render/documentPaginator';
 import {createNewDocument} from '../../src/core/storage/storage';
+function job(index:number){const value=state.jobs[index];if(!value)throw new Error('Expected pagination job '+index);return value}
 afterEach(()=>vi.useRealTimers());
 it('keeps timed-out work alive and serial until underlying pagination settles',async()=>{
  vi.useFakeTimers();const doc=createNewDocument('lifecycle');doc.markdown='# 纯文本';
  const first=paginateDocument(doc).catch(error=>error);await vi.waitFor(()=>expect(state.jobs).toHaveLength(1));
- await vi.advanceTimersByTimeAsync(60001);expect(String(await first)).toContain('分页超时');expect(state.jobs[0].destroy).not.toHaveBeenCalled();
+ await vi.advanceTimersByTimeAsync(60001);expect(String(await first)).toContain('分页超时');expect(job(0).destroy).not.toHaveBeenCalled();
  const second=paginateDocument(doc);await vi.advanceTimersByTimeAsync(1);expect(state.jobs).toHaveLength(1);
- state.jobs[0].resolve({total:1});await vi.waitFor(()=>expect(state.jobs).toHaveLength(2));expect(state.jobs[0].destroy).toHaveBeenCalledOnce();
- state.jobs[1].resolve({total:1});expect((await second).total).toBe(1);expect(state.jobs[1].destroy).toHaveBeenCalledOnce();
+ job(0).resolve({total:1});await vi.waitFor(()=>expect(state.jobs).toHaveLength(2));expect(job(0).destroy).toHaveBeenCalledOnce();
+ job(1).resolve({total:1});expect((await second).total).toBe(1);expect(job(1).destroy).toHaveBeenCalledOnce();
 });

@@ -43,13 +43,14 @@ export function parseDotToGraph(dotSource: string): DotGraph {
 
     // 检测 rankdir
     const rankMatch = line.match(/rankdir\s*=\s*(LR|TB|BT|RL)/i);
-    if (rankMatch) {
-      graph.rankdir = rankMatch[1].toUpperCase() as 'TB' | 'LR' | 'BT' | 'RL';
+    if (rankMatch?.[1]) {
+      const rank=rankMatch[1].toUpperCase();
+      if(rank==='TB'||rank==='LR'||rank==='BT'||rank==='RL')graph.rankdir=rank;
     }
 
     // 检测边关系: NodeA -> NodeB [label="..."]
     const edgeMatch = line.match(/([a-zA-Z0-9_]+)\s*->\s*([a-zA-Z0-9_]+)(?:\s*\[(.*?)\])?/);
-    if (edgeMatch) {
+    if (edgeMatch?.[1] && edgeMatch[2]) {
       const from = edgeMatch[1];
       const to = edgeMatch[2];
       const attrsStr = edgeMatch[3] || '';
@@ -59,8 +60,8 @@ export function parseDotToGraph(dotSource: string): DotGraph {
       graph.edges.push({
         from,
         to,
-        label: labelMatch ? labelMatch[1].replace(/\\n/g, ' ') : undefined,
-        color: colorMatch ? colorMatch[1] : undefined,
+        ...(labelMatch?.[1]===undefined?{}:{label:labelMatch[1].replace(/\\n/g, ' ')}),
+        ...(colorMatch?.[1]===undefined?{}:{color:colorMatch[1]}),
       });
 
       if (!graph.nodes.has(from)) {
@@ -74,7 +75,7 @@ export function parseDotToGraph(dotSource: string): DotGraph {
 
     // 检测节点定义: NodeA [label="...", fillcolor="...", color="..."]
     const nodeMatch = line.match(/^([a-zA-Z0-9_]+)\s*\[(.*?)\]/);
-    if (nodeMatch) {
+    if (nodeMatch?.[1] && nodeMatch[2]!==undefined) {
       const id = nodeMatch[1];
       const attrsStr = nodeMatch[2];
       const labelMatch = attrsStr.match(/label\s*=\s*["'](.*?)["']/);
@@ -84,10 +85,10 @@ export function parseDotToGraph(dotSource: string): DotGraph {
 
       graph.nodes.set(id, {
         id,
-        label: labelMatch ? labelMatch[1].replace(/\\n/g, '\n') : id,
-        fillcolor: fillMatch ? fillMatch[1] : '#f8fafc',
-        color: colorMatch ? colorMatch[1] : '#64748b',
-        shape: shapeMatch ? shapeMatch[1] : 'box',
+        label: labelMatch?.[1]?.replace(/\\n/g, '\n') ?? id,
+        fillcolor: fillMatch?.[1] ?? '#f8fafc',
+        color: colorMatch?.[1] ?? '#64748b',
+        shape: shapeMatch?.[1] ?? 'box',
       });
     }
   }
@@ -129,13 +130,15 @@ export function renderDotToSVG(dotSource: string): string {
         queue.push(id);
       }
     }
-    if (queue.length === 0 && nodeList.length > 0) {
-      levels.set(nodeList[0].id, 0);
-      queue.push(nodeList[0].id);
+    const firstNode=nodeList[0];
+    if (queue.length === 0 && firstNode) {
+      levels.set(firstNode.id, 0);
+      queue.push(firstNode.id);
     }
 
     while (queue.length > 0) {
-      const curr = queue.shift()!;
+      const curr = queue.shift();
+      if(curr===undefined)break;
       const currLvl = levels.get(curr) || 0;
       for (const e of graph.edges) {
         if (e.from === curr) {
@@ -156,8 +159,7 @@ export function renderDotToSVG(dotSource: string): string {
     const levelGroups: Map<number, DotNode[]> = new Map();
     for (const n of nodeList) {
       const lvl = levels.get(n.id) || 0;
-      if (!levelGroups.has(lvl)) levelGroups.set(lvl, []);
-      levelGroups.get(lvl)!.push(n);
+      const group=levelGroups.get(lvl)??[];group.push(n);levelGroups.set(lvl,group);
     }
 
     const nodePositions: Map<string, { x: number; y: number }> = new Map();
@@ -167,9 +169,9 @@ export function renderDotToSVG(dotSource: string): string {
     let maxDimY = 0;
 
     for (const lvl of sortedLevels) {
-      const nodesInLvl = levelGroups.get(lvl)!;
-      for (let i = 0; i < nodesInLvl.length; i++) {
-        const node = nodesInLvl[i];
+      const nodesInLvl = levelGroups.get(lvl);
+      if(!nodesInLvl)throw new Error('DOT 布局分组缺失');
+      for (const [i,node] of nodesInLvl.entries()) {
         let x: number, y: number;
         if (isLR) {
           x = 40 + lvl * (nodeWidth + gapX);
@@ -228,7 +230,8 @@ export function renderDotToSVG(dotSource: string): string {
 
     let nodesSvg = '';
     for (const node of nodeList) {
-      const pos = nodePositions.get(node.id)!;
+      const pos = nodePositions.get(node.id);
+      if(!pos)throw new Error('DOT 节点布局缺失');
       const strokeColor = node.color || '#0d9488';
       const bgColor = node.fillcolor || '#f0fdfa';
       const lines = node.label.split('\n');

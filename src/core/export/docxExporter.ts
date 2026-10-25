@@ -13,7 +13,7 @@ async function rasterImage(source:string,width:number,height:number):Promise<Uin
  const image=new Image();image.src=source;await withDeadline(image.decode(),'DOCX 图片转换超时');
  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*2));canvas.height=Math.max(1,Math.ceil(height*2));
  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('DOCX 图片转换不可用');ctx.drawImage(image,0,0,canvas.width,canvas.height);
- const base64=canvas.toDataURL('image/png').split(',')[1];return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+ const base64=canvas.toDataURL('image/png').split(',')[1];if(!base64)throw new Error('DOCX 图片编码失败');return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
 }
 async function picture(el:Element,context:InlineContext):Promise<ImageRun>{
  const box=el.getBoundingClientRect(),scale=Math.min(1,context.width/Math.max(1,box.width),context.height/Math.max(1,box.height));
@@ -34,7 +34,7 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
  const tag=node.tagName.toLowerCase();
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
- const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',font:tag==='code'?'Consolas':style.font,superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};
+ const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',...(tag==='code'?{font:'Consolas'}:{}),superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};
  const runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,context,next)))).flat();
  if(tag==='a'&&node.getAttribute('href')){
   const href=node.getAttribute('href')!;
@@ -60,7 +60,7 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
   await waitForLayout(root);
   for(const el of root.querySelectorAll('[id]'))if(!context.bookmarks.has(el.id))context.bookmarks.set(el.id,'mf_bookmark_'+context.bookmarks.size);
   const numbering:INumberingOptions['config'][number][]=[];
-  const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];
+  const headings:Record<string,typeof HeadingLevel.HEADING_1|typeof HeadingLevel.HEADING_2|typeof HeadingLevel.HEADING_3|typeof HeadingLevel.HEADING_4|typeof HeadingLevel.HEADING_5|typeof HeadingLevel.HEADING_6>={h1:HeadingLevel.HEADING_1,h2:HeadingLevel.HEADING_2,h3:HeadingLevel.HEADING_3,h4:HeadingLevel.HEADING_4,h5:HeadingLevel.HEADING_5,h6:HeadingLevel.HEADING_6};
   const blockTags=new Set(['p','pre','blockquote','figure','figcaption','div','section','article','main','aside','header','footer','details','summary','ul','ol','table','h1','h2','h3','h4','h5','h6','hr']);
   async function blocks(nodes:Node[],level=0,firstOptions:IParagraphOptions={}):Promise<(Paragraph|Table)[]>{
    const out:(Paragraph|Table)[]=[];let pending:Node[]=[],first=true;
@@ -75,7 +75,8 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
     const tag=node.localName;
     if(!blockTags.has(tag)&&!node.classList.contains('mf-math')){pending.push(node);continue}
     await flush();
-    if(/^h[1-6]$/.test(tag))await paragraph([...node.childNodes],{heading:headings[Number(tag[1])-1],keepNext:true},node.id);
+    const heading=headings[tag];
+    if(heading)await paragraph([...node.childNodes],{heading,keepNext:true},node.id);
     else if(node.classList.contains('mf-page-break'))out.push(new Paragraph({children:[new PageBreak()]}));
     else if(tag==='table'){
      const caption=node.querySelector(':scope > caption');if(caption)await paragraph([...caption.childNodes]);
@@ -86,7 +87,7 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
        const alignment=cell.getAttribute('align');
        const content=await blocks([...cell.childNodes],0,{alignment:alignment==='right'?AlignmentType.RIGHT:alignment==='center'?AlignmentType.CENTER:AlignmentType.LEFT});
        if(!(content[content.length-1] instanceof Paragraph))content.push(new Paragraph({}));
-       cells.push(new TableCell({children:content,columnSpan:cell.colSpan,rowSpan:cell.rowSpan,shading:cell.localName==='th'?{fill:'F3F4F6'}:undefined}));
+       cells.push(new TableCell({children:content,columnSpan:cell.colSpan,rowSpan:cell.rowSpan,...(cell.localName==='th'?{shading:{fill:'F3F4F6'}}:{})}));
       }
       rows.push(new TableRow({tableHeader:row.parentElement?.localName==='thead',children:cells}));
      }
@@ -95,7 +96,7 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
      const ordered=tag==='ol',reference='mf_list_'+numbering.length,start=Math.max(1,Math.min(2147483647,Number(node.getAttribute('start'))||1));
      numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:ordered?LevelFormat.DECIMAL:LevelFormat.BULLET,text:ordered?'%'+(i+1)+'.':'•',start,alignment:AlignmentType.LEFT}))});
      for(const li of Array.from(node.children).filter(n=>n.localName==='li'))out.push(...await blocks([...li.childNodes],level+1,{numbering:{reference,level:Math.min(8,level)}}));
-    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph([...node.childNodes],{alignment:node.classList.contains('mf-math')?AlignmentType.CENTER:undefined},node.id);
+    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph([...node.childNodes],node.classList.contains('mf-math')?{alignment:AlignmentType.CENTER}:{},node.id);
     else if(tag==='hr')await paragraph([document.createTextNode('—')]);
     else {const nested=await blocks([...node.childNodes],level,first?firstOptions:{});out.push(...nested);if(nested.length)first=false}
    }

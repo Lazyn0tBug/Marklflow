@@ -72,9 +72,10 @@ export default function App() {
   useEffect(() => {
     getAllDocuments().then((docs) => {
       setDocuments(docs);
-      if (docs.length > 0) {
-        setCurrentDocId(docs[0].id);
-        setMathMode(docs[0].options.mathMode || 'mathml');
+      const first=docs[0];
+      if (first) {
+        setCurrentDocId(first.id);
+        setMathMode(first.options.mathMode);
       }
     });
   }, []);
@@ -99,10 +100,11 @@ export default function App() {
     if (currentDoc) {
       setMathMode(currentDoc.options.mathMode);
       const outline = extractOutline(currentDoc.markdown);
-      if (outline.length > 0) {
+      const firstHeading=outline[0];
+      if (firstHeading) {
         setActiveHeadingId((prev) => {
           const exists = outline.some((h) => h.id === prev);
-          return exists ? prev : outline[0].id;
+          return exists ? prev : firstHeading.id;
         });
       } else {
         setActiveHeadingId(null);
@@ -127,7 +129,7 @@ export default function App() {
 
       // 从第一行推导文档标题 (# 标题)
       const firstHeadingMatch = newMarkdown.match(/^#\s+(.+)$/m);
-      if (firstHeadingMatch && firstHeadingMatch[1].trim()) {
+      if (firstHeadingMatch?.[1]?.trim()) {
         updatedDoc.meta = {
           ...updatedDoc.meta,
           title: firstHeadingMatch[1].trim(),
@@ -144,7 +146,8 @@ export default function App() {
 
   const handleUndo = () => {
     if (undoStack.length === 0 || !currentDoc) return;
-    const previous = undoStack[undoStack.length - 1];
+    const previous = undoStack.at(-1);
+    if(previous===undefined)return;
     setRedoStack((prev) => [...prev, currentDoc.markdown]);
     setUndoStack((prev) => prev.slice(0, -1));
 
@@ -160,7 +163,8 @@ export default function App() {
 
   const handleRedo = () => {
     if (redoStack.length === 0 || !currentDoc) return;
-    const next = redoStack[redoStack.length - 1];
+    const next = redoStack.at(-1);
+    if(next===undefined)return;
     setUndoStack((prev) => [...prev, currentDoc.markdown]);
     setRedoStack((prev) => prev.slice(0, -1));
 
@@ -223,8 +227,8 @@ export default function App() {
     deleteDocument(id).then(() => {
       const remaining = documents.filter((d) => d.id !== id);
       setDocuments(remaining);
-      if (currentDocId === id && remaining.length > 0) {
-        setCurrentDocId(remaining[0].id);
+      if (currentDocId === id) {
+        setCurrentDocId(remaining[0]?.id??'');
       }
     });
   };
@@ -312,8 +316,9 @@ export default function App() {
       if (outline.length > 0) {
         let currentCenterHeading = outline[0];
         for (let i = outline.length - 1; i >= 0; i--) {
-          if (outline[i].line <= centerLine) {
-            currentCenterHeading = outline[i];
+          const heading=outline[i];
+          if (heading && heading.line <= centerLine) {
+            currentCenterHeading = heading;
             break;
           }
         }
@@ -367,21 +372,23 @@ export default function App() {
       const topLine = Math.max(1, Math.floor((scrollTop-paddingTop)/24) + 1);
       let targetPreviewTop = 0;
 
-      if (topLine <= anchors[0].line) {
-        const progress = anchors[0].line > 1 ? (topLine - 1) / (anchors[0].line - 1) : 0;
-        targetPreviewTop = progress * anchors[0].top;
-      } else if (topLine >= anchors[anchors.length - 1].line) {
-        const last = anchors[anchors.length - 1];
+      const first=anchors[0],last=anchors.at(-1);
+      if(!first||!last)return;
+      if (topLine <= first.line) {
+        const progress = first.line > 1 ? (topLine - 1) / (first.line - 1) : 0;
+        targetPreviewTop = progress * first.top;
+      } else if (topLine >= last.line) {
         const span = Math.max(1, totalLines - last.line);
         const progress = (topLine - last.line) / span;
         targetPreviewTop = last.top + progress * (maxPreviewScroll - last.top);
       } else {
-        let prev = anchors[0];
-        let next = anchors[1];
-        for (let i = 0; i < anchors.length - 1; i++) {
-          if (topLine >= anchors[i].line && topLine < anchors[i + 1].line) {
-            prev = anchors[i];
-            next = anchors[i + 1];
+        let prev = first;
+        let next = last;
+        for (const [i,anchor] of anchors.entries()) {
+          const after=anchors[i+1];
+          if (after && topLine >= anchor.line && topLine < after.line) {
+            prev = anchor;
+            next = after;
             break;
           }
         }
@@ -410,16 +417,16 @@ export default function App() {
 
       if (headingEls.length > 0) {
         let centerHeadingId: string | null = null;
-        for (let i = 0; i < headingEls.length; i++) {
-          const rect = headingEls[i].getBoundingClientRect();
+        for (const heading of headingEls) {
+          const rect = heading.getBoundingClientRect();
           if (rect.top <= centerY) {
-            centerHeadingId = headingEls[i].getAttribute('data-heading-id');
+            centerHeadingId = heading.getAttribute('data-heading-id');
           } else {
             break;
           }
         }
         if (!centerHeadingId && headingEls.length > 0) {
-          centerHeadingId = headingEls[0].getAttribute('data-heading-id');
+          centerHeadingId = headingEls[0]?.getAttribute('data-heading-id')??null;
         }
         if (centerHeadingId && centerHeadingId !== activeHeadingId) {
           setActiveHeadingId(centerHeadingId);
@@ -468,21 +475,23 @@ export default function App() {
       const totalLines = docLines.length;
       let targetLine = 1;
 
-      if (scrollTop <= anchors[0].top) {
-        const progress = anchors[0].top > 0 ? scrollTop / anchors[0].top : 0;
-        targetLine = 1 + progress * (anchors[0].line - 1);
-      } else if (scrollTop >= anchors[anchors.length - 1].top) {
-        const last = anchors[anchors.length - 1];
+      const first=anchors[0],last=anchors.at(-1);
+      if(!first||!last)return;
+      if (scrollTop <= first.top) {
+        const progress = first.top > 0 ? scrollTop / first.top : 0;
+        targetLine = 1 + progress * (first.line - 1);
+      } else if (scrollTop >= last.top) {
         const span = Math.max(1, maxPreviewScroll - last.top);
         const progress = (scrollTop - last.top) / span;
         targetLine = last.line + progress * (totalLines - last.line);
       } else {
-        let prev = anchors[0];
-        let next = anchors[1];
-        for (let i = 0; i < anchors.length - 1; i++) {
-          if (scrollTop >= anchors[i].top && scrollTop < anchors[i + 1].top) {
-            prev = anchors[i];
-            next = anchors[i + 1];
+        let prev = first;
+        let next = last;
+        for (const [i,anchor] of anchors.entries()) {
+          const after=anchors[i+1];
+          if (after && scrollTop >= anchor.top && scrollTop < after.top) {
+            prev = anchor;
+            next = after;
             break;
           }
         }
@@ -582,7 +591,7 @@ export default function App() {
             onScrollToHeading={handleScrollToHeading}
             currentMarkdown={currentDoc.markdown}
             activeHeadingId={activeHeadingId}
-            onToggleCollapse={visibleCount>1?handleToggleSidebar:undefined}
+            {...(visibleCount>1?{onToggleCollapse:handleToggleSidebar}:{})}
           />
         </div>
 
@@ -641,7 +650,7 @@ export default function App() {
             {showPreview && previewMode === 'flow' && (
               <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
                 <ReadingPreview
-                  assets={currentDoc.assets}
+                  {...(currentDoc.assets===undefined?{}:{assets:currentDoc.assets})}
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
                   theme={currentDoc.theme}
@@ -659,7 +668,7 @@ export default function App() {
             {showPreview && previewMode === 'a4' && (
               <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
                 <A4PagePreview
-                  assets={currentDoc.assets}
+                  {...(currentDoc.assets===undefined?{}:{assets:currentDoc.assets})}
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
                   theme={currentDoc.theme}

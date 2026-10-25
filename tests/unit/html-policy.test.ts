@@ -4,7 +4,7 @@ import {sanitizeDocumentHtml,documentColor} from '../../src/core/render/htmlPoli
 describe('H1 boundaries',()=>{
  it('keeps fenced content literal and repeated headings distinct',()=>{
   const md=['# 同名','','\x60\x60\x60md','## 不是标题','---pagebreak---','<script>bad()</script>','\x60\x60\x60','','# 同名'].join('\n');
-  const outline=extractOutline(md);expect(outline).toHaveLength(2);expect(outline[0].id).not.toBe(outline[1].id);
+  const outline=extractOutline(md);expect(outline).toHaveLength(2);const [first,second]=outline;if(!first||!second)throw new Error('Expected two headings');expect(first.id).not.toBe(second.id);
   const root=document.createElement('div');root.innerHTML=parseMarkdownToHtml(md);
   expect(root.querySelectorAll('h1')).toHaveLength(2);expect(root.querySelectorAll('.mf-page-break')).toHaveLength(0);expect(root.querySelector('code')?.textContent).toContain('<script>bad()</script>');
  });

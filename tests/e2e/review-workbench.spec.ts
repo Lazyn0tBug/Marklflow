@@ -5,9 +5,9 @@ test('keeps all seven pane combinations under user control and prevents hiding t
  const controls=[page.getByRole('button',{name:/侧边文档与大纲 \(侧边点击\)/}),page.getByRole('button',{name:'编辑器',exact:true}),page.getByRole('button',{name:'HTML 预览',exact:true})];
  for(let mask=1;mask<8;mask++){
   for(const control of controls)if(await control.getAttribute('aria-pressed')==='false')await control.click();
-  for(let i=0;i<3;i++)if(!(mask&(1<<i)))await controls[i].click();
-  for(let i=0;i<3;i++)await expect(controls[i]).toHaveAttribute('aria-pressed',String(Boolean(mask&(1<<i))));
-  if((mask&(mask-1))===0)await expect(controls[Math.log2(mask)]).toBeDisabled();
+  for(const [i,control] of controls.entries())if(!(mask&(1<<i)))await control.click();
+  for(const [i,control] of controls.entries())await expect(control).toHaveAttribute('aria-pressed',String(Boolean(mask&(1<<i))));
+  if((mask&(mask-1))===0){const control=controls[Math.log2(mask)];if(!control)throw new Error('Expected visible pane control');await expect(control).toBeDisabled();}
  }
  await page.setViewportSize({width:684,height:900});
  for(const name of ['outline','editor','html'])await expect(page.locator('[data-view='+name+']')).toBeVisible();
