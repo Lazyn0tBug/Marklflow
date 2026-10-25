@@ -1,0 +1,65 @@
+{
+  "branch": "architecture-refactor",
+  "r0Commit": "2243c5f",
+  "r1Parent": "2243c5f",
+  "r0": {
+    "check": "passed",
+    "managedSources": 105,
+    "unitTests": 153,
+    "unitFiles": 28,
+    "workerBrowserTests": 2
+  },
+  "r1": {
+    "check": "passed",
+    "managedSources": 106,
+    "unitTests": 159,
+    "unitFiles": 29,
+    "workerBrowserTests": 2
+  },
+  "commands": [
+    "bun run check",
+    "bun run test:e2e tests/e2e/architecture-pure-worker.spec.ts"
+  ],
+  "review": {
+    "taskIdentity": "protocolVersion/taskId/documentId",
+    "previewCacheKey": [
+      "documentId",
+      "previewKind",
+      "mdHash",
+      "renderConfigVersion"
+    ],
+    "unknownBoundaryValidation": true,
+    "internalRepeatHashTest": "passed",
+    "sourceRevisionPreserved": true,
+    "productionEntrypointsChanged": false,
+    "protectedRefsUnchanged": true
+  },
+  "notVerified": [
+    "full application E2E not rerun",
+    "production dual Worker dispatch not implemented",
+    "Tab/cache UI not integrated",
+    "Word/WPS and physical print not checked",
+    "remote CI not run"
+  ],
+  "versionsUnchanged": {
+    "MathJax": "3.2.2",
+    "Paged.js": "0.4.3"
+  },
+  "sourceHashes": {
+    "src/application/tasks/contracts.ts": "2172adc50511d036afc1c3dcf5f7815ad6aeaab15dd6ea1d8bf4d33a44d21a4c",
+    "src/application/tasks/executors.ts": "03973ad454ca531f317a640e47090c4e0b1ab8672ef8b4373dcf44c65457b995",
+    "src/application/tasks/identity.ts": "21f2802fe59b8996a5a7903f80594c496158c35ee5d59f6278fde379bc6255ed",
+    "src/application/tasks/previewIdentity.ts": "5f9552a16624954d53fd57a2b7c1a4cdc6a7a79e39103f38855956bc61a0398b",
+    "src/application/tasks/resources.ts": "9beb2155bd33fda99218a521cb02de9942a46eb51116a10345727ac7810b9860",
+    "src/application/tasks/roleQueue.ts": "7c5e12e39ca63145ce40b0a89122df579113e1fe2b44b86043cf901590b6a0d6",
+    "src/application/tasks/roleScheduler.ts": "8bc6a788d3d1839d901046bc3440548851a7e5eda3b63e2a23586dcdfdbe0cd5",
+    "tests/types/worker-contracts.ts": "6ca3824eb495543cf1f92e35fb1c7bf1429c9fc689614da7f1126c96e8bd671b",
+    "tests/unit/task-fixtures.ts": "dc0164f5c21d9d81191962b958086fb4cf013892dff1ae18b301993a508939bf",
+    "tests/unit/tasks-contracts.test.ts": "86c4d7cb87b395f6ff6c215adf91ee6a6b9469ffd5f3afd3964e5c9b39f1fe10",
+    "tests/unit/tasks-preview-identity.test.ts": "3c7fda50a0a32b83352f438704e007a3d5ad1cad713bc6cf0f0a0f8030ef749b",
+    "tests/unit/tasks-resources.test.ts": "b94cc0f424fe89ebf94b6d1dd72aefe583ff360dbec475a4d6ee920fccd8698e",
+    "tests/unit/tasks-role-queue.test.ts": "a55bba6471c32a20a31566a9390cb6105207d48be1934ed1b6e9ca6675061c96",
+    "tests/unit/tasks-role-scheduler.test.ts": "c9d0c50740af977e2959eae3e9833f5ef635c020aedc2ba101146c779c77db71",
+    "tests/unit/tasks-identity.test.ts": "f4b88ff5263ed841f66461864180570aae41a1cdbd76f3160d43479e42b40327"
+  }
+}

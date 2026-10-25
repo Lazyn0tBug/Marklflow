@@ -3,7 +3,7 @@ import {it,expect,vi} from 'vitest';
 import {ResourceLedger,type ResourceSpec} from '../../src/application/tasks/resources';
 import {taskBudget} from '../../src/application/tasks/budget';
 const owner={kind:'task',id:'task'} as const;
-function spec(id='r',bytes=8):ResourceSpec{return {id,kind:'buffer',owner,group:'inFlight',bytes,taskId:'task',snapshotId:'snap',documentId:'A',sessionGeneration:1,executorGeneration:1}}
+function spec(id='r',bytes=8):ResourceSpec{return {id,kind:'buffer',owner,group:'inFlight',bytes,taskId:'task',documentId:'A',executorGeneration:1}}
 it('counts shared bytes once and keeps referenced allocations alive',async()=>{
  const ledger=new ResourceLedger(),clean=vi.fn();ledger.register(spec(),clean);const a=ledger.acquire('r'),b=ledger.acquire('r');expect(ledger.totalBytes).toBe(8);
  await expect(ledger.release('r',owner)).rejects.toThrow('leased');a();a();b();await Promise.all([ledger.release('r',owner),ledger.release('r',owner)]);expect(clean).toHaveBeenCalledTimes(1);expect(ledger.totalBytes).toBe(0);

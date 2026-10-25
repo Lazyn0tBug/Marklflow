@@ -1,5 +1,5 @@
-import {previewSubmissionSchema} from './previewIdentity';
-import {snapshotRequest,artifactSchema,type TaskExecutor,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
+import type {PreviewSubmission} from './previewIdentity';
+import {snapshotRequest,type TaskExecutor,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
 import {RoleTaskQueue,requestOf,type WorkerRole,type RoleClaim,type RoleAdmission} from './roleQueue';
 import {IdentityGate} from './identity';
 import {ExecutorPool} from './executors';
@@ -38,9 +38,9 @@ export class RoleTaskScheduler{
    this.pools[role].install(wrapped);this.installed.set(role,wrapped);
   }catch(error){this.runtime[role]=old;throw error}this.pump();
  }
- enqueuePreview(input:unknown):RoleAdmission|{status:'unsupported'}{
-  this.mutation();const submission=previewSubmissionSchema.parse(input);this.expire();
-  if(!this.pools[submission.role].supports('compute',submission.request))return {status:'unsupported'};
+ enqueuePreview(submission:PreviewSubmission):RoleAdmission|{status:'unsupported'}{
+  this.mutation();this.expire();
+  if(!this.pools[submission.role].supports('compute',requestOf({kind:'preview',submission})))return {status:'unsupported'};
   const admitted=this.queue.enqueuePreview(submission);if(admitted.status==='accepted')for(const id of admitted.replaced)this.record({id,role:submission.role,state:'superseded',reason:'Latest pending intent'});
   this.pump();return admitted;
  }
@@ -79,8 +79,9 @@ export class RoleTaskScheduler{
     const bytes=new TextEncoder().encode(JSON.stringify(message.artifact)).byteLength*3;
     if(!this.memory(bytes).accepted)throw new Error('Candidate clone budget exceeded');
     const work=run.claim.work;
-    const claim:RoleClaim={...run.claim,work:work.kind==='preview'?{kind:'preview',submission:previewSubmissionSchema.parse(work.submission)}:{kind:'export',request:snapshotRequest(work.request)}};
-    this.notifying=true;const result=this.hooks.generated(claim,artifactSchema.parse(message.artifact));if(result!==undefined)throw new Error('Generation handoff must be synchronous');
+    if(work.kind==='preview'&&!this.gate.current(work.submission.document.id,work.submission.cacheKey.previewKind,id)){this.end(id,'cancelled','Preview replaced or closed');return}
+    const claim:RoleClaim=structuredClone(run.claim);
+    this.notifying=true;const result=this.hooks.generated(claim,message.artifact);if(result!==undefined)throw new Error('Generation handoff must be synchronous');
     this.end(id,'generated');
    }catch(error){this.end(id,'failed',String(error))}finally{this.notifying=false}return;
   }

@@ -23,3 +23,7 @@ const invalidRole:PreviewSubmission['role']='compute';
 // @ts-expect-error: A cache key cannot be replaced with a partial execution ticket.
 const invalidCacheKey:PreviewCacheKey={taskId:'task',activationEpoch:1};
 void invalidRole;void invalidCacheKey;
+
+// @ts-expect-error: Legacy nested requests cannot replace a minimal preview envelope.
+const legacyPreview:PreviewSubmission={request:{}};
+void legacyPreview;

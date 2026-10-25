@@ -1,5 +1,7 @@
 # 架构重构分步实施与验收计划
 
+最新实施补充（2026-10-25）：R0、R1组件已审查验证，R0本地提交2243c5f，R1随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
+
 编号：AR-03；草案版本：6；日期：2026-10-25；状态：architecture-refactor本轮仅修订方案，不实施/提交；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；旧模型A2已实施，前后台统一逻辑已完成U0—U2组件，U3及后续尚未实施，见[差异及小步计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)；A3及后续未启动。当前完整路线已规划：先R0—R5收缩，再按依赖实施U3—U6及A5/A7；所有未实施步骤均待授权，本轮仅改文档。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
 
 ## 1. 范围与执行规则

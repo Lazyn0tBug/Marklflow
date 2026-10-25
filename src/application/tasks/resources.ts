@@ -4,7 +4,7 @@ export interface ResourceOwner {kind:'task'|'executor'|'artifact'|'view'|'delive
 export interface ResourceSpec {
  id:string;kind:'snapshot'|'bytes'|'buffer'|'host'|'url'|'listener'|'timer'|'port'|'artifact';
  owner:ResourceOwner;group:ResourceGroup;bytes:number;
- taskId:string;snapshotId:string;documentId:string;sessionGeneration:number;executorGeneration:number;
+ taskId:string;documentId:string;executorGeneration:number;
 }
 interface Entry {spec:ResourceSpec;cleanup:()=>void|Promise<void>;references:number;releasing:Promise<void>|undefined;error:string|undefined}
 const limits:Record<ResourceGroup,number>={inFlight:taskBudget.memory.inFlightBytes,activeArtifact:taskBudget.memory.activeArtifactBytes,cache:taskBudget.memory.retainedCacheBytes,session:taskBudget.memory.sessionBytes};

@@ -1,7 +1,14 @@
 import {snapshotRequest,type TaskRequest,type TaskArtifact,type TaskClock} from '../../src/application/tasks/contracts';
+import {createPreviewSubmission} from '../../src/application/tasks/previewIdentity';
 import {DEFAULT_THEME} from '../../src/core/model/document';
-export function request(id='task-1',documentId='A',kind:TaskRequest['kind']='preview.flow',revision=1):TaskRequest{return snapshotRequest({kind,identity:{protocolVersion:1,taskId:id,documentId,revision,snapshotId:'snapshot-'+revision,sessionGeneration:1,activationEpoch:1,optionsFingerprint:'options',contentFingerprint:'content-'+revision,layoutFingerprint:'layout',resourceFingerprint:'resources',policyFingerprint:'policy',engineFingerprint:'engine',workspaceId:'workspace',pluginFingerprint:'plugins',authorizationRevision:1},authorization:{revision:1,scopeIds:['workspace']},document:{schemaVersion:1,id:documentId,revision,markdown:'# Test',meta:{title:'Test',createdAt:'2026-10-25',updatedAt:'2026-10-25'},theme:DEFAULT_THEME,options:{syntaxProfile:'commonmark-gfm-v1',mathMode:'mathml'}}})}
-export function artifact():TaskArtifact{return {schemaVersion:1,artifactId:'artifact',mediaType:'text/html',encoding:'utf8',content:'<h1>Test</h1>',sourceMap:[],resources:[],diagnostics:[],engineFingerprint:'engine',layoutFingerprint:'layout',resourceFingerprint:'resources',policyFingerprint:'policy'}}
+export function request(id='task-1',documentId='A',kind:TaskRequest['kind']='preview.flow',revision=1):TaskRequest{
+ const document={schemaVersion:1 as const,id:documentId,revision,markdown:'# Test',meta:{title:'Test',createdAt:'2026-10-25',updatedAt:'2026-10-25'},theme:DEFAULT_THEME,options:{syntaxProfile:'commonmark-gfm-v1' as const,mathMode:'mathml' as const}};
+ const identity={protocolVersion:1 as const,taskId:id,documentId};
+ if(kind==='preview.flow'||kind==='preview.a4')return {identity,kind,document,cacheKey:createPreviewSubmission({taskId:id,document,previewKind:kind,role:'foreground',renderConfigVersion:1}).cacheKey};
+ return snapshotRequest({identity,kind,document,authorization:{revision:1,scopeIds:['workspace']}});
+}
+export function previewRequest(r:TaskRequest,role:'foreground'|'background',renderConfigVersion=1){return createPreviewSubmission({taskId:r.identity.taskId,document:r.document,previewKind:r.kind,role,renderConfigVersion})}
+export function artifact():TaskArtifact{return {schemaVersion:1,artifactId:'artifact',mediaType:'text/html',encoding:'utf8',content:'<h1>Test</h1>',sourceMap:[],resources:[],diagnostics:[]}}
 export class FakeClock implements TaskClock{
  time=0;private sequence=0;private timers=new Map<number,{at:number;callback:()=>void}>();
  now(){return this.time}

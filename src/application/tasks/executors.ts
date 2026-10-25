@@ -1,4 +1,4 @@
-import {executorMessageSchema,executionIdentitySchema,sameExecution,snapshotRequest,type TaskExecutor,type TaskClock,type TaskRequest,type ExecutionIdentity,type ExecutorMessage} from './contracts';
+import {executorMessageSchema,executionIdentitySchema,sameExecution,type TaskExecutor,type TaskClock,type TaskRequest,type ExecutionIdentity,type ExecutorMessage} from './contracts';
 import {ResourceLedger} from './resources';
 import {taskBudget} from './budget';
 export type ExecutorState='idle'|'busy'|'quarantined'|'restarting'|'disposed';
@@ -25,9 +25,9 @@ export class ExecutorPool{
   const identity:ExecutionIdentity={executorId:slot.executor.id,executorGeneration:slot.executor.generation,attempt:1,task:{...request.identity}};
   const lease:Lease={identity,owner:{kind:'executor',id:slot.executor.id+':'+slot.executor.generation+':'+request.identity.taskId},stopping:false,settled:false,invalidated:false,stopTimer:undefined};
   slot.state='busy';slot.lease=lease;
-  try{slot.executor.start(snapshotRequest(request),executionIdentitySchema.parse(identity),raw=>this.receive(slot,lease,raw),{register:(id,kind,bytes,cleanup)=>{
+  try{slot.executor.start(structuredClone(request),identity,raw=>this.receive(slot,lease,raw),{register:(id,kind,bytes,cleanup)=>{
    if(slot.lease!==lease||lease.settled||lease.stopping)throw new Error('Stale resource registration');
-   this.resources.register({id,kind,bytes,owner:lease.owner,group:'inFlight',taskId:request.identity.taskId,snapshotId:request.identity.snapshotId,documentId:request.identity.documentId,sessionGeneration:request.identity.sessionGeneration,executorGeneration:slot.executor.generation},cleanup);
+   this.resources.register({id,kind,bytes,owner:lease.owner,group:'inFlight',taskId:request.identity.taskId,documentId:request.identity.documentId,executorGeneration:slot.executor.generation},cleanup);
   }})}catch(error){lease.invalidated=true;slot.state='quarantined';this.events.fault(request.identity.taskId,String(error));this.stop(request.identity.taskId)}
  }
  private receive(slot:Slot,lease:Lease,raw:unknown):void{

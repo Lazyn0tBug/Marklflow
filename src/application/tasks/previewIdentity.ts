@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import hash from 'hash.js';
-import {taskRequestSchema,snapshotRequest} from './contracts';
+import {documentSchema} from '../../core/model/documentSchema';
 export const previewRoleSchema=z.enum(['foreground','background']);
 export const previewKindSchema=z.enum(['preview.flow','preview.a4']);
 const version=z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -12,19 +12,19 @@ export function markdownSha256(markdown:string):string{
  for(let offset=0;offset<data.length;offset+=65536)digest.update(data.subarray(offset,offset+65536));
  return digest.digest('hex');
 }
-/** V2 preview envelope, retaining the full V1 run ticket until U2/U3 migrate scheduling. */
-export const previewSubmissionSchema=z.object({schemaVersion:z.literal(2),role:previewRoleSchema,request:taskRequestSchema,cacheKey:previewCacheKeySchema}).strict().superRefine((submission,context)=>{
- const {request,cacheKey}=submission;
- if(request.kind!==cacheKey.previewKind||request.document.id!==cacheKey.documentId||markdownSha256(request.document.markdown)!==cacheKey.mdHash)context.addIssue({code:'custom',message:'Preview cache key does not match source'});
+/** Boundary schema for external messages; internal code passes the validated type. */
+export const previewSubmissionSchema=z.object({protocolVersion:z.literal(1),taskId:z.string().min(1).max(256),role:previewRoleSchema,document:documentSchema,cacheKey:previewCacheKeySchema}).strict().superRefine((submission,context)=>{
+ if(submission.document.id!==submission.cacheKey.documentId||markdownSha256(submission.document.markdown)!==submission.cacheKey.mdHash)context.addIssue({code:'custom',message:'Preview cache key does not match source'});
 });
 export type PreviewSubmission=z.infer<typeof previewSubmissionSchema>;
-export function createPreviewSubmission(input:unknown,role:unknown,renderConfigVersion:unknown):PreviewSubmission{
- const request=snapshotRequest(input);
- return previewSubmissionSchema.parse({schemaVersion:2,role,request,cacheKey:{schemaVersion:1,documentId:request.document.id,previewKind:request.kind,mdHash:markdownSha256(request.document.markdown),renderConfigVersion}});
+const previewInputSchema=z.object({taskId:z.string().min(1).max(256),document:documentSchema,previewKind:previewKindSchema,role:previewRoleSchema,renderConfigVersion:version}).strict();
+/** Own and validate a source snapshot once, then compute its exact UTF-8 hash once. */
+export function createPreviewSubmission(input:unknown):PreviewSubmission{
+ const value=previewInputSchema.parse(input);
+ return {protocolVersion:1,taskId:value.taskId,role:value.role,document:value.document,cacheKey:{schemaVersion:1,documentId:value.document.id,previewKind:value.previewKind,mdHash:markdownSha256(value.document.markdown),renderConfigVersion:value.renderConfigVersion}};
 }
-/** Cache comparison deliberately excludes run ticket, revision, activation and worker role. */
-export function samePreviewCacheKey(left:unknown,right:unknown):boolean{
- const a=previewCacheKeySchema.parse(left),b=previewCacheKeySchema.parse(right);
+/** Internal comparison: both keys have already crossed their validation boundary. */
+export function samePreviewCacheKey(a:PreviewCacheKey,b:PreviewCacheKey):boolean{
  return a.documentId===b.documentId&&a.previewKind===b.previewKind&&a.mdHash===b.mdHash&&a.renderConfigVersion===b.renderConfigVersion;
 }
 const configSchema=z.record(z.string(),z.json());

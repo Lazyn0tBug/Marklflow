@@ -6,7 +6,7 @@ import {checkModuleSource} from '../../scripts/check-module-boundaries';
 import {request,artifact} from './task-fixtures';
 it('owns the snapshot and rejects mismatched identities or unknown protocol/kind',()=>{
  const input=request();const owned=snapshotRequest(input);input.document.markdown='changed';expect(owned.document.markdown).toBe('# Test');
- for(const value of [{}, {...owned,kind:'user.dag'},{...owned,identity:{...owned.identity,protocolVersion:2}},{...owned,document:{...owned.document,revision:2}}])expect(()=>snapshotRequest(value)).toThrow();
+ for(const value of [{}, {...owned,kind:'user.dag'},{...owned,identity:{...owned.identity,protocolVersion:2}},{...owned,document:{...owned.document,id:'different'}}])expect(()=>snapshotRequest(value)).toThrow();
 });
 it('validates messages and rejects nonserializable/unsupported artifacts',()=>{
  expect(executorMessageSchema.safeParse({type:'result',artifact:artifact()}).success).toBe(false);
