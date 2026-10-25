@@ -12,6 +12,7 @@
     "src/core/parse/**/*",
     "src/core/policy/**/*",
     "tests/types/worker-contracts.ts",
-    "tests/fixtures/architecture/pure-worker.ts"
+    "tests/fixtures/architecture/pure-worker.ts",
+    "src/application/tasks/**/*"
   ]
 }
