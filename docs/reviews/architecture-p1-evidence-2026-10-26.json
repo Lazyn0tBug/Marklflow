@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-26",
+  "branch": "architecture-refactor",
+  "parentCommit": "bd01596147c90d9b7b042a626bb50d215595fcf2",
+  "scope": "P1 transient browser file reads, single import batch busy, source validation and session-bound source save receipts; original storage/recovery retained",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "strictProfiles": 4,
+      "managedSources": 158,
+      "unitFiles": 44,
+      "unitTestsPassed": 297,
+      "newUnitTests": 12,
+      "includes": [
+        "strict types",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 67,
+      "newSourceImportTests": 6,
+      "reportedDuration": "2.5m"
+    },
+    {
+      "command": "impeccable detect --json App and Sidebar",
+      "exitCode": 0,
+      "findings": []
+    }
+  ],
+  "unitAssertions": [
+    "one busy batch and serial selection order",
+    "per-file errors continue remaining files",
+    "unsupported extensions and file size rejection before read",
+    "empty Markdown and same-source identity reuse",
+    "invalid payload/schema/assets never open",
+    "storage failure releases busy for explicit retry",
+    "source snapshot frozen before write and scoped to document ID/revision",
+    "late save does not clear newer dirty revision",
+    "failed save and closed sessions",
+    "unsafe revision rejected before storage",
+    "real browser FileReader UTF-8, empty and malformed input"
+  ],
+  "browserAssertions": [
+    "mixed batch failures leave original source untouched",
+    "busy while reading and independent Tab editing/history",
+    "same Markdown selection focuses existing edited Tab",
+    "same HTML identity restores newer workspace version after close",
+    "write failure leaves source/Tab intact and manual retry works",
+    "ordinary insecure HTTP import and deduplication"
+  ],
+  "identityPolicy": {
+    "html": "embedded document ID; existing workspace source wins without a write",
+    "markdown": "session-local filename plus source SHA-256 mapping to random document ID",
+    "persistentFileIdentity": false
+  },
+  "visualReview": {
+    "reviewed": true,
+    "viewport": [
+      1280,
+      720
+    ],
+    "screenshot": "docs/acceptance/architecture-p1-import-busy.png",
+    "phoneVisualReview": false
+  },
+  "logSha256": {
+    "check": "29c86a41b3bd87c5477eb4018cc1ce50ce38e8ae5e7c2d59b170acd1166e57da",
+    "fullChromium": "660525999f8683547c78369f65d06a30ec5fd608081a5ce019a504b00cdbb45e",
+    "targetImportChromium": "5855b4e006c5b19fec1c068aed7530bf0676bc2d39db1b9b5e1a5fab8534f50f",
+    "uiDetector": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-p1-import-busy.png": "884e9e02cd5cf6bc3726de0df56f854fce9fca6b34dbfa09df10a2babf0de1be",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "1e2fef985c5cea39f893920fc3d308f7ae6cd41743fab63b0bcd45f4c2c3596c",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "70d80a1b5f48ddda300e28c7683e658afdffae9805570697e7eaa6ea2ae5773c",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "dd0452f1894a0365cab83cece6be2ad41dcd87aa71011b39f174ce03df6b0492",
+    "docs/reviews/architecture-p1-implementation-2026-10-26.md": "16011f91f152c94d461f8a5d6261118ffcf52a2190b9b1eec4df471deda2d501",
+    "src/App.tsx": "8300ef9c9a7e9fdb9035ea6ba65f200c399e6253c8f20bb3fb73bcda01ef13ea",
+    "src/application/workspace/sourceImport.ts": "4cea1596d5b457c4d92559eedd3ed836e8fdf7025faab1a4db0bbe0a8aa73e4d",
+    "src/application/workspace/sourceSave.ts": "653e6d3604e271ecdec683490fbee7bf4e339bd7b1159dc461c8c7909f7f0c6a",
+    "src/components/workspace/Sidebar.tsx": "9a22638c8f5bb66d10ef08e994dd59eba95ffc567dff929be61818b8975ce70e",
+    "src/core/platform/web/sourceImport.ts": "c1f9fd7e280c12f811c79508a807aedd490ddb628e1704463bc604cca6143787",
+    "src/core/storage/storage.ts": "dbc676b06b090d54d09cc55a0693bb1e1d94f3dbfb4788957bc526ab8742e8c8",
+    "tests/e2e/source-import.spec.ts": "cb1bc830a3ee17ca050592cd13233014eeafc2fde3369d453fe338e2dfcb736d",
+    "tests/unit/contracts.test.ts": "91314998e428a063d71d1b407ec8f651ccdbc476d09de3d9ffffe87cfdd2398a",
+    "tests/unit/source-import-save.test.ts": "1770b96b2e8246d53d64945468e69adbd7df42c7d284e3c82ec454c08a0de897"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/core/platform/web/documentRepository.ts": "16a4e417f5b81cd9d3e957b370ac36d92f9b32bf3ddd8767d1ed94698c5df35e",
+    "src/core/model/documentRepository.ts": "93c530165e6774eea40005d2ffe6dd07a2ee9dd55ff4c4fb64f1fe6b945285d3",
+    "src/core/model/recoveryEncoding.ts": "3fa99325d964e3ac01e56c0312678e69d0ef790628ee018f982ae59c65c62df6",
+    "src/core/model/documentSchema.ts": "b02a3f0c783fa240638bb93efed1005de102ef10bbc99a9f3cf185d72bb933ff",
+    "src/core/platform/crypto.ts": "755ce3198a6f733d70fb5c88515f29c5c972e836bf99c2d1e8cf4c7dbc4bc1bb",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/workspace/previewActivation.ts": "73e696092c7f22bbfad6077c9adb7c8df7b2f23ae8f4c40f53abe6e2aba09032",
+    "src/application/tasks/roleScheduler.ts": "e531940d64084934506786fc7e02aadc126212c1e85e54d94c07388330614d69",
+    "src/application/tasks/sharedDom.ts": "19eb2d88b67f1a903dd43395734cf8400ba4cfa7b2acaa31f42c8167fa22c239",
+    "src/core/platform/web/workbenchPreviewRuntime.ts": "ccaba3b4d4248d4cbdf20f5e8ba9085892663d23a26c45908236fcb748a55354",
+    "src/core/platform/web/markdownWorkerRuntime.ts": "95e38eb486d4eab08d3feadcd93694fef208af843bf0b3f17d68160dfc35eaac",
+    "src/application/exports/exportService.ts": "5a07f3635c9c994651376415eee58248f3a0b829ab375eff129411493488cd51",
+    "src/core/render/documentRenderer.ts": "96834f8cc199d5bb022503039b24b2789b0d6953c8ade90832c196d0b55a63a7",
+    "src/core/render/documentPaginator.ts": "77366cabd66e0186a0c82d37020e844fd1f82ed3aeb6a5350702b61b117f2410",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mermaidRender.ts": "93fdc0694bebaa80737478486e2de4f8d1e310ea111d8ee79ecdffb2accd24db",
+    "src/core/render/diagramRender.ts": "88ea1412418164988be2af5dee31e9554881897817f111e3568da11d66bf6f74",
+    "docs/reviews/architecture-u6f-evidence-2026-10-26.json": "0ed55647a35671e04edbb2ae83dabe442d82f9d33d9f23edf751bc85c0e51941"
+  },
+  "tagsBeforeCommit": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "notValidated": [
+    "other browsers",
+    "dedicated phone visual review",
+    "Tauri",
+    "Word/WPS visual rendering",
+    "physical print"
+  ],
+  "deferred": [
+    "P2 and subsequent P/V stages",
+    "persistent source file identity and native filesystem handles"
+  ],
+  "dependencyChanges": false,
+  "pushed": false
+}

@@ -28,6 +28,9 @@ import {
 } from './core/storage/storage';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
+import {saveSource} from './application/workspace/sourceSave';
+import {createWebSourceImport} from './core/platform/web/sourceImport';
+import type {ImportItemResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
 import {editorGeometry,editorLineAt,editorTopAt,previewSourcePoints,interpolate} from './components/workspace/sourceScroll';
@@ -37,6 +40,12 @@ export default function App() {
   const [currentDocId, setCurrentDocId] = useState<string>('');
   const [loadError,setLoadError]=useState('');
   const [actionError,setActionError]=useState('');
+  const [importBusy,setImportBusy]=useState(false);
+  const [importResults,setImportResults]=useState<ImportItemResult[]>([]);
+  const importOpen=useRef<(doc:DocumentRecord)=>Promise<'opened'|'focused'>>(async()=>{throw new Error('导入尚未就绪')});
+  const openSaved=useRef<(doc:DocumentRecord)=>void>(()=>{});
+  const importer=useRef<ReturnType<typeof createWebSourceImport>|null>(null);
+  if(!importer.current)importer.current=createWebSourceImport(doc=>importOpen.current(doc));
   const [storageWarnings,setStorageWarnings]=useState<string[]>([]);
   const [recoveryCount,setRecoveryCount]=useState(0);
   const [loadComplete,setLoadComplete]=useState(false);
@@ -119,8 +128,8 @@ export default function App() {
   const previewView:PreviewView=preview.documentId===currentDocId&&preview.kind===kind?preview:{documentId:currentDocId,kind,state:'pending'};
 
   const persist=async(doc:DocumentRecord):Promise<boolean>=>{
-    try{await saveDocument(doc);if(sessions.documentIds.includes(doc.id))sessions.markSaved(doc.id,doc.revision);sessionChanged(value=>value+1);return true}
-    catch(error){alert('保存失败，请导出备份后重试：'+String(error));return false}
+    try{await saveSource(sessions,doc,saveDocument);sessionChanged(value=>value+1);return true}
+    catch(error){alert('保存失败（'+doc.meta.title+'，Rev '+doc.revision+'），请导出备份后重试：'+String(error));return false}
   };
   const queueSave=(doc:DocumentRecord)=>{
     const prior=pendingSaves.current.get(doc.id);if(prior)clearTimeout(prior.timer);
@@ -137,7 +146,7 @@ export default function App() {
     sessions.setPosition(currentDoc.id,{selectionStart:editor?.selectionStart??old.selectionStart,selectionEnd:editor?.selectionEnd??old.selectionEnd,scrollTop:editor?.scrollTop??old.scrollTop,scrollLeft:editor?.scrollLeft??old.scrollLeft,previewScrollTop:view?.scrollTop??old.previewScrollTop});
   };
   const selectDocument=(id:string)=>{
-    capturePosition();const doc=documents.find(value=>value.id===id);if(!doc)return;
+    capturePosition();const doc=sessions.documentIds.includes(id)?sessions.read(id).document:documents.find(value=>value.id===id);if(!doc)return;
     try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;expectedScroll.current={editor:null,preview:null};pendingPreviewLine.current=undefined}catch(error){setActionError(String(error))}
   };
   const removeSession=(id:string)=>{
@@ -238,14 +247,26 @@ export default function App() {
     void persist(currentDoc);
   };
 
-  const addDocument=(doc:DocumentRecord)=>{
-    setActionError('');capturePosition();
-    if(sessions.documentIds.includes(doc.id)){selectDocument(doc.id);return}
-    if(sessions.documentIds.length>=32){setActionError('最多同时打开32个文档，请先关闭一个标签页。');return}
-    saveDocument(doc).then(()=>{sessions.open(doc);setDocuments(previous=>[doc,...previous.filter(value=>value.id!==doc.id)]);setTabs(sessions.documentIds);setCurrentDocId(doc.id);setMathMode(doc.options.mathMode);setPreviewMode('flow');restorePreview.current=doc.id}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
+  openSaved.current=(doc:DocumentRecord)=>{capturePosition();sessions.open(doc);setDocuments(previous=>[doc,...previous.filter(value=>value.id!==doc.id)]);setTabs(sessions.documentIds);setCurrentDocId(doc.id);setMathMode(doc.options.mathMode);setPreviewMode('flow');restorePreview.current=doc.id};
+  const addDocument=async(doc:DocumentRecord):Promise<'opened'|'focused'>=>{
+    const existing=documents.find(value=>value.id===doc.id);
+    if(sessions.documentIds.includes(doc.id)||existing){selectDocument(doc.id);return 'focused'}
+    if(sessions.documentIds.length>=32)throw new Error('最多同时打开32个文档，请先关闭一个标签页。');
+    await saveDocument(doc);
+    // Capture the currently displayed session when the write completes, not when file reading began.
+    openSaved.current(doc);
+    return 'opened';
   };
-  const handleCreateDoc=()=>addDocument(createNewDocument('新建 Markdown 文档'));
-  const handleImportDoc=(doc:DocumentRecord)=>addDocument(doc);
+  importOpen.current=addDocument;
+  const handleCreateDoc=()=>{if(importBusy)return;setActionError('');void addDocument(createNewDocument('新建 Markdown 文档')).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)))};
+  const handleImportFiles=async(files:File[])=>{
+    const service=importer.current;if(!service||service.busy)return;
+    setImportBusy(true);setImportResults([]);
+    try{const result=await service.run(files);if(result.status==='completed')setImportResults(result.items)}
+    catch(error){setImportResults([{name:'导入',status:'failed',message:String(error)}])}
+    finally{setImportBusy(false)}
+  };
+  const importNotice=importBusy?<p role="status" className="px-4 py-2 text-xs bg-neutral-900 text-neutral-200">正在读取、校验并导入文件…</p>:importResults.length>0?<aside role={importResults.some(value=>value.status==='failed')?'alert':'status'} className="px-4 py-2 text-xs bg-neutral-900 text-neutral-200 max-h-32 overflow-y-auto wrap-anywhere shrink-0"><ul>{importResults.map((item,index)=><li key={index}>{item.name}：{item.message}</li>)}</ul><button className="mt-1 underline" onClick={()=>setImportResults([])}>关闭导入结果</button></aside>:null;
   const handleDeleteDoc=(id:string)=>{
     setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
@@ -319,7 +340,7 @@ export default function App() {
   const handleToggleEditor=()=>{capturePosition();if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
   const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview&&syncScroll&&editorTextareaRef.current){pendingPreviewLine.current={documentId:currentDocId,line:editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current))};restorePreview.current=undefined}if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
-  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportDoc={handleImportDoc} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
+  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{importNotice}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportFiles={files=>{void handleImportFiles(files)}} importBusy={importBusy} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
 
   const lines = currentDoc.markdown.split('\n');
   const charCount = currentDoc.markdown.length;
@@ -331,6 +352,7 @@ export default function App() {
   return (
     <div className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}>
       {recoveryNotice}
+      {importNotice}
       {/* 3-Zone Top Bar */}
       <TopBar
         sidebarOpen={sidebarOpen}
@@ -368,7 +390,7 @@ export default function App() {
             onSelectDoc={selectDocument}
             onCreateDoc={handleCreateDoc}
             onDeleteDoc={handleDeleteDoc}
-            onImportDoc={handleImportDoc}
+            onImportFiles={files=>{void handleImportFiles(files)}} importBusy={importBusy}
             onScrollToHeading={handleScrollToHeading}
             currentMarkdown={currentDoc.markdown}
             activeHeadingId={activeHeadingId}

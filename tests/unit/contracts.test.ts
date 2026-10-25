@@ -17,6 +17,7 @@ describe('HTML contract baseline', () => {
     const restored = extractPayloadFromHtml(`<script id="markflow-source-payload" type="application/json">${encodeSourcePayload(doc)}</script>`);
     expect(restored?.markdown).toBe(doc.markdown);
     expect(restored?.theme).toEqual(doc.theme);
+    expect(restored?.id).toBe(doc.id);
   });
 });
 

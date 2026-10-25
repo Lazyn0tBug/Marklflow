@@ -2,7 +2,7 @@
 
 编号：AR-02；草案版本：6；日期：2026-10-25；状态：评估已审查，A1边界适配已实施；候选替换仍未实施。配套：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)、[实施与验收计划](architecture-implementation-acceptance-2026-10-25.md)。
 
-R5收口补充：技术栈选择不变；MathJax 3.2.2、Paged.js 0.4.3未升级或替换。当前模块边界及生产回归见[R5审查记录](../reviews/architecture-r5-review-2026-10-25.md)。真实双Worker、Tab与缓存现已在U6e接入生产，见[U6e执行记录](../reviews/architecture-u6e-implementation-2026-10-26.md)；U6f三视图适配已完成，见[U6f执行记录](../reviews/architecture-u6f-implementation-2026-10-26.md)；后续仍按AR-03的P/V阶段实施。
+R5收口补充：技术栈选择不变；MathJax 3.2.2、Paged.js 0.4.3未升级或替换。当前模块边界及生产回归见[R5审查记录](../reviews/architecture-r5-review-2026-10-25.md)。真实双Worker、Tab与缓存现已在U6e接入生产，见[U6e执行记录](../reviews/architecture-u6e-implementation-2026-10-26.md)；U6f三视图适配已完成，见[U6f执行记录](../reviews/architecture-u6f-implementation-2026-10-26.md)；P1导入/源保存已接入，见[P1执行记录](../reviews/architecture-p1-implementation-2026-10-26.md)；后续仍按AR-03的P2及后续P/V阶段实施。
 
 ## 1. 评估原则与证据口径
 

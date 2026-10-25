@@ -1,4 +1,3 @@
-import { verifyAssets } from '../../core/export/documentAssets';
 /**
  * MarkFlow (墨流) 左栏工作区与大纲组件
  * 对应设计方案第 4.5.2 节：多文档列表、批量导入、可编辑 HTML 还原与实时大纲树
@@ -18,7 +17,6 @@ import {
 } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 import { extractOutline } from '../../core/parse/markdown';
-import { extractPayloadFromHtml } from '../../core/storage/storage';
 
 interface SidebarProps {
   documents: DocumentRecord[];
@@ -26,7 +24,8 @@ interface SidebarProps {
   onSelectDoc: (id: string) => void;
   onCreateDoc: () => void;
   onDeleteDoc: (id: string) => void;
-  onImportDoc: (doc: DocumentRecord) => void;
+  onImportFiles: (files: File[]) => void;
+  importBusy: boolean;
   onScrollToHeading: (headingId: string, line: number) => void;
   currentMarkdown: string;
   activeHeadingId?: string | null;
@@ -39,7 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectDoc,
   onCreateDoc,
   onDeleteDoc,
-  onImportDoc,
+  onImportFiles,
+  importBusy,
   onScrollToHeading,
   currentMarkdown,
   activeHeadingId,
@@ -65,67 +65,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     else if(target.bottom>viewport.bottom)list.scrollTop+=target.bottom-viewport.bottom;
   },[activeHeadingId,activeTab]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    for (const file of Array.from(files)) {
-      if(file.size>50*1024*1024){alert('导入文件超过50MB限制');continue}
-      const reader = new FileReader();
-      reader.onerror=()=>alert('文件读取失败：'+file.name);
-
-      reader.onload = async (event) => {
-        const content = event.target?.result;
-        if (typeof content!=='string'||!content) return;
-
-        // 尝试从可编辑 HTML 中提取源载荷
-        if (/\.html?$/i.test(file.name)) {
-          const restoredDoc = extractPayloadFromHtml(content);
-          if (restoredDoc) {
-            try { await verifyAssets(restoredDoc.assets); } catch (error) { alert(String(error)); return; }
-            onImportDoc(restoredDoc);
-            return;
-          }
-          alert('HTML 没有有效源载荷或结构不受支持；不会按 Markdown 导入。');
-          return;
-        }
-
-        // 普通 Markdown 文件导入
-        const title = file.name.replace(/\.[^/.]+$/, '');
-        const newDoc: DocumentRecord = {
-          schemaVersion: 1,
-          id: 'doc_' + Math.random().toString(36).substring(2, 9),
-          revision: 1,
-          markdown: content,
-          meta: {
-            title,
-            author: 'Imported',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          theme: {
-            fontFamily: 'sans',
-            fontSize: 15,
-            lineHeight: 1.75,
-            primaryColor: '#0d9488',
-            paperTheme: 'clean-white',
-            paperSize: 'A4',
-            margins: { top: 20, bottom: 25, left: 20, right: 20 },
-          },
-          options: {
-            syntaxProfile: 'commonmark-gfm-v1',
-            mathMode: 'mathml',
-          },
-        };
-        onImportDoc(newDoc);
-      };
-
-      reader.readAsText(file);
-    }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const handleFileChange=(event:React.ChangeEvent<HTMLInputElement>)=>{
+    const files=Array.from(event.target.files??[]);event.target.value='';
+    if(files.length&&!importBusy)onImportFiles(files);
   };
 
   return (
@@ -183,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Action Bar */}
             <div className="flex items-center gap-1.5 mb-2 px-1">
               <button
-                onClick={onCreateDoc}
+                disabled={importBusy} onClick={onCreateDoc}
                 className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-teal-600/90 hover:bg-teal-600 text-white text-xs font-medium transition-colors"
                 title="创建新空白 Markdown 文档"
               >
@@ -191,16 +133,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 新建文档
               </button>
               <button
-                onClick={() => fileInputRef.current?.click()}
+                disabled={importBusy} aria-busy={importBusy} onClick={() => fileInputRef.current?.click()}
                 className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
                 title="导入 .md 文件或含有载荷的可编辑 .html"
               >
                 <Upload className="w-3.5 h-3.5" />
-                导入
+                {importBusy?'导入中…':'导入'}
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
+                disabled={importBusy}
                 multiple
                 accept=".md,.markdown,.txt,.html,.htm"
                 onChange={handleFileChange}

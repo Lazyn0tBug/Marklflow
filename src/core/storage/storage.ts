@@ -96,7 +96,7 @@ export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | nu
     if (parsed && parsed.schemaVersion === 1 && typeof parsed.markdown === 'string') {
       return {
         ...parsed,
-        id: 'doc_imported_' + createRenderNonce(),
+        id: parsed.id,
         meta: {
           ...parsed.meta,
           updatedAt: new Date().toISOString(),
