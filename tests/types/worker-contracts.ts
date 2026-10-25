@@ -10,11 +10,11 @@ void document;
 void process;
 
 import type {TaskKind} from '../../src/application/tasks/contracts';
-import type {TaskHooks} from '../../src/application/tasks/supervisor';
+import type {RoleSchedulerHooks} from '../../src/application/tasks/roleScheduler';
 // @ts-expect-error: Only the finite preview and export kinds may enter governance.
 const arbitraryTask:TaskKind='plugin.custom';
 // @ts-expect-error: Preview publication must return undefined synchronously, never a Promise.
-const asynchronousPublish:TaskHooks['publish']=async()=>{};
+const asynchronousPublish:RoleSchedulerHooks['generated']=async()=>{};
 void arbitraryTask;void asynchronousPublish;
 
 import type {PreviewSubmission,PreviewCacheKey} from '../../src/application/tasks/previewIdentity';
