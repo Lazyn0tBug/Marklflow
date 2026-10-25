@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "280924b8ef6c74199e146f91afa367eb097b603c",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 117,
+      "unitFiles": 34,
+      "unitTestsPassed": 222,
+      "newControlledCompletionTests": 15,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 32,
+      "reportedDuration": "1.2m",
+      "existingWorkerImportSmoke": 2
+    }
+  ],
+  "logSha256": {
+    "check": "fa3c0a3fd37263d5a37df05ad3e986792c545edf4070699ac9f9d381002434a7",
+    "e2e": "d7d2ef15c3067171e8796a69fec40c28821c9386d14231b0688ae81a98b5ff67"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "bd57ba02b5bafffc92ca8d4b7bfddfec1e938ec896d885b1c0030b8e0c19e6ec",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "da2d9ba6298ec73b41b02c50cd1bc9c35dae371776cf8cb8bfa9f0979bb7a2ba",
+    "src/application/tasks/roleScheduler.ts": "6259ba59849048c7692b5551dd5398a9b46ab15ee5eb6dbf80496a98c06ac500",
+    "src/application/workspace/previewActivation.ts": "75f45c8d3622ad4866bd21e6d3773981aa2dfc5a02d58508e1c73c05e6cb2501",
+    "tests/unit/memory-preview-cache.test.ts": "df3c7f70deef10c6c8798feceedf58c4fce8294469af528299a3cead0e7f0f43",
+    "tests/unit/preview-activation.test.ts": "e158fffec27555e4b44e564af81bcde49ee36556a0bc16e30c5eeb8379b3705f",
+    "docs/reviews/architecture-u4b-implementation-2026-10-25.md": "956fe143288eaa8d309b787208431f7f1b6cc597e0139892f34d9194f0fe9cc1",
+    "tests/unit/preview-completion.test.ts": "d694e7fbcb059648e7f997675d1bbf90615f99bf2923742b0e0aee33dadac9a5"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "scope": "U4b unique cache commit and current-document display reference using controlled generators",
+  "limitations": [
+    "new task/cache pipeline not connected to production UI or physical Workers",
+    "actual format-specific HTML/engine validation remains required by the injected validator in U6",
+    "no Tauri, persistence, cross-browser or physical print acceptance",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

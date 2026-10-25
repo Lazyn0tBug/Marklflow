@@ -1,6 +1,6 @@
 # MarkFlow 架构重构方案：文档任务管理与平台适配
 
-最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3a已审查验证，见[R3a执行记录](../reviews/architecture-r3a-implementation-2026-10-25.md)；R3b已审查验证，见[R3b执行记录](../reviews/architecture-r3b-implementation-2026-10-25.md)；R4已审查验证，见[R4执行记录](../reviews/architecture-r4-implementation-2026-10-25.md)；R5已完成审查与回归收口，见[R5审查记录](../reviews/architecture-r5-review-2026-10-25.md)；U3a会话组件已审查验证，见[U3a执行记录](../reviews/architecture-u3a-implementation-2026-10-25.md)；U3b统一切换组件已审查验证，见[U3b执行记录](../reviews/architecture-u3b-implementation-2026-10-25.md)；U4a内存缓存组件已审查验证，见[U4a执行记录](../reviews/architecture-u4a-implementation-2026-10-25.md)；U4b及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
+最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3a已审查验证，见[R3a执行记录](../reviews/architecture-r3a-implementation-2026-10-25.md)；R3b已审查验证，见[R3b执行记录](../reviews/architecture-r3b-implementation-2026-10-25.md)；R4已审查验证，见[R4执行记录](../reviews/architecture-r4-implementation-2026-10-25.md)；R5已完成审查与回归收口，见[R5审查记录](../reviews/architecture-r5-review-2026-10-25.md)；U3a会话组件已审查验证，见[U3a执行记录](../reviews/architecture-u3a-implementation-2026-10-25.md)；U3b统一切换组件已审查验证，见[U3b执行记录](../reviews/architecture-u3b-implementation-2026-10-25.md)；U4a内存缓存组件已审查验证，见[U4a执行记录](../reviews/architecture-u4a-implementation-2026-10-25.md)；U4b完成提交组件已审查验证，见[U4b执行记录](../reviews/architecture-u4b-implementation-2026-10-25.md)；U5及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
 
 草案6规划时记录（历史状态，当前实施进度以上方补充为准）：文档编号：AR-01；草案版本：6；日期：2026-10-25（Asia/Shanghai）。状态：A2、U0—U2历史组件已验证；草案6收缩任务治理并统筹接入路线，R0—R5及U3—U6/A5/A7完整路线已规划，尚未实施；本轮仅改文档，不提交、不推送。
 
@@ -191,7 +191,7 @@ Worker停止并确认主宿主清理后才复用/重建，新实例ready另验�
 
 ## 5. 预览任务生命周期
 
-目标对外语义为排队、执行、完成、失败、取消；超时是失败原因，替代是取消原因。R5组件中排队由待办条目表达，运行结果使用running、stopRequested、generated、failed、cancelled；stopRequested仅表示停止尚未确认，generated仅表示计算产物已交接，不表示缓存已提交。U4接入后，完整产物通过校验并同步提交内存缓存才可宣称完成；校验和缓存提交是执行内部步骤。前后台各一个当前任务，协调器持有状态，不另建发布、恢复及资源状态机。
+目标对外语义为排队、执行、完成、失败、取消；超时是失败原因，替代是取消原因。R5组件中排队由待办条目表达，运行结果使用running、stopRequested、generated、failed、cancelled；stopRequested仅表示停止尚未确认，generated仅表示计算产物已交接，不表示缓存已提交。U4b现已通过同步校验与入库后返回completed；保留generated作为底层未接缓存钩子的计算交接语义，不能用它宣称缓存完成。完整产物通过校验并同步提交内存缓存才可宣称完成；校验和缓存提交是执行内部步骤。前后台各一个当前任务，协调器持有状态，不另建发布、恢复及资源状态机。
 
 1. 编辑/配置变更作废旧taskId，前台保留最新需求。
 2. Tab切换统一按3.4节：已完成访问缓存，未完成丢弃并重新排队，不迁移中间结果。

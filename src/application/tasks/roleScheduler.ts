@@ -4,12 +4,12 @@ import {RoleTaskQueue,requestOf,type WorkerRole,type RoleClaim,type RoleAdmissio
 import {IdentityGate} from './identity';
 import {RoleExecutor} from './roleExecutor';
 import {taskBudget,estimatedBytes} from './budget';
-export type RoleRunState='running'|'stopRequested'|'generated'|'failed'|'cancelled';
+export type RoleRunState='running'|'stopRequested'|'generated'|'completed'|'failed'|'cancelled';
 interface Run {claim:RoleClaim;state:RoleRunState;reason:string|undefined}
 interface Outcome {id:string;role:WorkerRole|undefined;state:RoleRunState;reason:string|undefined}
 const terminal=(state:RoleRunState)=>state!=='running'&&state!=='stopRequested';
 /** Preview generation handoff only; generated is not cache completion or view publication. */
-export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined}
+export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined|'completed'}
 export class RoleTaskScheduler{
  private readonly queue:RoleTaskQueue;
  private readonly executors:Record<WorkerRole,RoleExecutor>;
@@ -71,8 +71,8 @@ export class RoleTaskScheduler{
     const work=run.claim.work;
     if(work.kind==='preview'&&!this.gate.current(work.submission.document.id,work.submission.cacheKey.previewKind,id)){this.end(id,'cancelled','Preview replaced or closed');return}
     const claim:RoleClaim=structuredClone(run.claim);
-    this.notifying=true;const result=this.hooks.generated(claim,message.artifact);if(result!==undefined)throw new Error('Generation handoff must be synchronous');
-    this.end(id,'generated');
+    this.notifying=true;const result=this.hooks.generated(claim,message.artifact);if(result!==undefined&&result!=='completed')throw new Error('Generation handoff must be synchronous');
+    this.end(id,result==='completed'?'completed':'generated');
    }catch(error){this.end(id,'failed',String(error))}finally{this.notifying=false}return;
   }
 
