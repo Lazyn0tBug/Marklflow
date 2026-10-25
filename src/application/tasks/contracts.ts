@@ -36,7 +36,9 @@ export function snapshotRequest(input:unknown):TaskRequest{return taskRequestSch
 export interface TaskClock {now():number;schedule(delayMs:number,callback:()=>void):()=>void}
 export interface TaskExecutor {
  readonly id:string;readonly generation:number;readonly lane:'compute'|'dom';
- readonly cancellation:'cooperative'|'external';
- start(request:TaskRequest,execution:ExecutionIdentity,receive:(message:unknown)=>void):void;
+ readonly cancellation:'cooperative'|'external';readonly supportedKinds:readonly TaskKind[];
+ start(request:TaskRequest,execution:ExecutionIdentity,receive:(message:unknown)=>void,resources:ExecutionResources):void;
  stop(execution:ExecutionIdentity):void;
 }
+
+export interface ExecutionResources {register(id:string,kind:'bytes'|'buffer'|'host'|'url'|'listener'|'timer'|'port',bytes:number,cleanup:()=>void|Promise<void>):void}
