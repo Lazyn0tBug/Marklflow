@@ -1,9 +1,6 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
-    "module": "ESNext",
     "types": [
       "vite/client"
     ],
@@ -12,36 +9,13 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "allowJs": false,
-    "jsx": "react-jsx",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "jsx": "react-jsx"
   },
-  "exclude": [
-    "dist",
-    "node_modules",
-    "public/vendor",
-    "test-results",
-    "playwright-report"
-  ],
   "include": [
-    "src/**/*",
-    "tests/**/*",
-    "scripts/**/*",
-    "*.config.ts",
-    "*.config.mts",
-    "*.config.cts"
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

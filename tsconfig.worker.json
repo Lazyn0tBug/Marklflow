@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "lib": [
+      "ES2022",
+      "WebWorker"
+    ]
+  },
+  "include": [
+    "src/core/model/**/*.ts",
+    "src/core/parse/**/*.ts",
+    "src/core/policy/**/*.ts",
+    "tests/types/worker-contracts.ts",
+    "tests/fixtures/architecture/pure-worker.ts"
+  ]
+}

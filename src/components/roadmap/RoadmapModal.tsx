@@ -8,7 +8,7 @@ import {version as APP_VERSION} from '../../../package.json';
 import { CheckCircle2, ShieldCheck, Flag, Sparkles, X, RefreshCw } from 'lucide-react';
 import {renderDocument,assertArtifact} from '../../core/render/documentRenderer';
 import { DocumentRecord } from '../../core/model/document';
-import { extractOutline } from '../../core/parser/markdownParser';
+import { extractOutline } from '../../core/parse/markdown';
 
 interface RoadmapModalProps {
   isOpen: boolean;

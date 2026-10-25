@@ -1,6 +1,7 @@
 import css from '../../styles/document.css?raw';
 import { DEFAULT_THEME, type ThemeSpec } from '../model/document';
-import { themeSchema, documentColor, escapeHtml } from './htmlPolicy';
+import {themeSchema} from '../model/themeSchema';
+import {documentColor,escapeHtml} from '../policy/htmlRules';
 export const DOCUMENT_CSS=css;
 export function documentStyle(theme:ThemeSpec=DEFAULT_THEME):Record<string,string> {
  const t=themeSchema.parse(theme);

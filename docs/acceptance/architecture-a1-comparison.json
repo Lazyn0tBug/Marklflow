@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-25T06:52:55.971Z",
+  "sourceCommit": "32b5b0cb46a819522f8cc27c633826be8065987b",
+  "harness": "Vite development source modules, real Chromium, 3 sequential render samples and 1 pagination sample per workload; not production performance or release coverage",
+  "environment": {
+    "os": "win32",
+    "release": "10.0.26300",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12500H",
+    "logicalCpus": 16,
+    "memoryBytes": 16892026880,
+    "browser": "156.0.8078.4",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  "results": [
+    {
+      "id": "small",
+      "sha256": "a77d24447b387670c1dba55bb7a5f33c8d290a427be90d2f35e1ada7dfcc8905",
+      "parseMs": [
+        5.0999999940395355,
+        2.7000000178813934,
+        2.2999999821186066
+      ],
+      "renderMs": [
+        303.59999999403954,
+        65.5,
+        61.10000002384186
+      ],
+      "paginateMs": 182.40000000596046,
+      "pages": 3,
+      "artifactBytes": 81640,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "medium",
+      "sha256": "d7fdb32ad81efc885893558b9ae568ffd28e6797b9f209856d085f99c128e3fb",
+      "parseMs": [
+        9.900000005960464,
+        9.400000005960464,
+        9.300000011920929
+      ],
+      "renderMs": [
+        97.19999998807907,
+        89.69999998807907,
+        88.59999999403954
+      ],
+      "paginateMs": 266.5,
+      "pages": 9,
+      "artifactBytes": 155230,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "large",
+      "sha256": "f2bdbb68c350eb8a17f2ad3d7c53c0a7bd76e552ad879fe781419fcdde5ba94f",
+      "parseMs": [
+        30.5,
+        23.599999994039536,
+        23.899999976158142
+      ],
+      "renderMs": [
+        158.69999998807907,
+        149.10000002384186,
+        143.10000002384186
+      ],
+      "paginateMs": 577.0999999940395,
+      "pages": 23,
+      "artifactBytes": 323099,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    }
+  ]
+}

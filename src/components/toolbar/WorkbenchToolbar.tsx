@@ -32,7 +32,7 @@ import {
   RotateCw,
   ArrowUpDown,
 } from 'lucide-react';
-import { generateMarkdownTable } from '../../core/parser/markdownParser';
+import { generateMarkdownTable } from '../../core/parse/markdown';
 
 interface TooltipInfo {
   rect: DOMRect;

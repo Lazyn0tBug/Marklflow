@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {themeSchema} from '../render/htmlPolicy';
+import {themeSchema} from './themeSchema';
 export const assetSchema=z.object({
  source:z.string().max(15*1024*1024).refine(v=>v.startsWith('data:')||v.length<=4096),mime:z.enum(['image/png','image/jpeg','image/gif','image/webp','image/avif']),bytes:z.number().int().min(0).max(10*1024*1024),
  sha256:z.string().regex(/^[a-f0-9]{64}$/),data:z.string().max(15*1024*1024).regex(/^data:image\/(png|jpeg|gif|webp|avif);base64,[a-z0-9+/=]+$/i),license:z.string().max(2048).optional(),

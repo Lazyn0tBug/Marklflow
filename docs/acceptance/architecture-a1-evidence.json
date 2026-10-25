@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "stage": "A1",
+  "branch": "architecture-refactor",
+  "baseCommit": "32b5b0cb46a819522f8cc27c633826be8065987b",
+  "sourceFingerprintConvention": "UTF-8 text normalized CRLF to LF; source changes committed together with this evidence",
+  "sourceFileSha256": {
+    ".github/workflows/ci.yml": "2b01af522446d4933f3aaf2eea5c22a2e95d78f08bac9bfaf6f6bf297edad28f",
+    "bun.lock": "a517268e662d34326732aefe4249bf27bc4bf642881eefb573ec8e38a6021119",
+    "package.json": "d8bfc41bd87ee376620048b4a71d4b1024723bdda7e6226e69c35363d1ebf1b5",
+    "playwright.config.ts": "4693316babc023e48659d85f1c03544ec7c1157b1a6192f4028f2dd6e92d5496",
+    "scripts/check-module-boundaries.ts": "54d2c5e75fec2fdde83352d7496aca36b93a1147db2d193f85342d6cb2d1c557",
+    "src/App.tsx": "8b5be43ca35a10159a631cbe7d7babf278a33dc388d6332fd67d3ab6d2aed4a4",
+    "src/components/editor/Editor.tsx": "3b7171d9173c63042deb4d88af2f55f1ba701c65f9a34adb07edddf02405f79f",
+    "src/components/roadmap/RoadmapModal.tsx": "d72f71b02cdfa14e6332d63d6f87de519296fb7ec4a7b6c15bd1ab042e4f074f",
+    "src/components/toolbar/WorkbenchToolbar.tsx": "d30941b778e513d97c763414bf30b6f6ec39dd26a2a7e27c3ed552cef2c0ca1d",
+    "src/components/workspace/Sidebar.tsx": "4fd56be9021e07062157be92cd9f65de8d8d7ffc6ab061605ff1b0a821c23710",
+    "src/core/export/documentAssets.ts": "a84c74263ef1fc26d56a64b41c03d848f9df12bb1bbb17c27ba95542c6334588",
+    "src/core/export/documentPrint.ts": "82024dc44d54c3fdc0ce54f1dac22315b2dd01326599244fbd84db414c8f3883",
+    "src/core/model/documentRepository.ts": "15ae2d1671503afdfa37bc61187a07a40767b3432289f8e6f6063c3c97268622",
+    "src/core/model/documentSchema.ts": "1066f46860f77a7175886e6fe6af6aa3f8c5ccd67a9080a58b385255eb1fff42",
+    "src/core/model/themeSchema.ts": "575b7125e8b95cc28c465dfdae0e6024509716a0322179a00ee38aced6a7948c",
+    "src/core/parse/markdown.ts": "b8b8ea46b35c24876379cdfb629c93f10f362df9a8f04b6f24239c021c0332a6",
+    "src/core/parser/markdownParser.ts": "e9df703c35f41eb347182ccbff6215f20de89915035ef30926c3988a48e49d30",
+    "src/core/platform/web/documentRepository.ts": "e021c08df409f804c5848047a97cacb414ab72faa59aa03f27be31c505b58759",
+    "src/core/policy/htmlRules.ts": "caab51b6844ff7e68e1c98d3340a5ff83f13530d833e6fcbbd63dcf2dca4e2be",
+    "src/core/render/documentPresentation.ts": "96b8f9fe29374ee8a3be31a856214eaa90fddbb010a00fd40199de0738ed074d",
+    "src/core/render/documentRenderer.ts": "de0babdea6bb87c26c2bf083ab4cf6fe3ffc699d41fac1ba73f7939d445e17dc",
+    "src/core/render/htmlPolicy.ts": "fdd8d609526e1267f79952e7d3aed4bfb35ae1f598d025c53511fb45f09b47af",
+    "src/core/render/markdownHtml.ts": "d0394074b4f5f320d1358b381a36b297646bf977699a3baa3dea488bd60b5233",
+    "src/core/storage/storage.ts": "6bc8002315892cca0d15357ebe25f21288239123801b7c69bec95114b296e04a",
+    "tests/e2e/architecture-pure-worker.spec.ts": "ad60f3ae21687f06cff14788533f3e88537c113701852072f7129c483e6e61aa",
+    "tests/e2e/architecture-storage.spec.ts": "c451b6cbc9b2a07eabd641522c0727d98065b3b4ee077eb56a6f0a4226cdf287",
+    "tests/fixtures/architecture/host.html": "1889254c5c51531385750adaa0ac625de20689f8e3edd2e389d7ed66a682175e",
+    "tests/fixtures/architecture/pure-worker.ts": "6438c772e2f3d6566213438ca314e99f94b4a321b4f87f497c182e32a8d3d46e",
+    "tests/types/worker-contracts.ts": "6b11986c1ee4ba31f0615af6aa6f499bdcc62d9b62ad1046779b6814df438639",
+    "tests/unit/architecture-pure.test.ts": "e4a0078461474dfb6e8f1b02f70ac09dc626fb8020d521141503bfe1ce8ec149",
+    "tests/unit/architecture-storage.test.ts": "59973f06ae68c8b12c8d61675d8caaec1a1c0335df25b92bcd3b7067585d1126",
+    "tsconfig.base.json": "6ddfb34c6ee95ac296e3f49451a16d377677f4d732d69b163dcca4592fa0de61",
+    "tsconfig.integration.json": "4b6c2e20f2feaec74ee457fe2578782dce2bc7b43c65adf7cf8606b58c873c30",
+    "tsconfig.json": "96f0d5ab4a867b3fe91bbd086aef429657fec2cef7f0a1dab61c658a688ac746",
+    "tsconfig.tools.json": "26b66da424ae645dd4635579aa2235b076c42bc1218ee2160f63cdd90c18ce1a",
+    "tsconfig.worker.json": "a1691dc3abcd415795d1cef8f0afd93dabc5240330e14df3835329aa73f035a9",
+    "vite.config.ts": "b067006798c68a8888a60d6522e9f5a91e9887b51d554b2b0755e559b128075a"
+  },
+  "checks": {
+    "lockedInstall": "passed, no changes",
+    "typecheck": [
+      "browser",
+      "worker-pure",
+      "tools",
+      "integration"
+    ],
+    "sourcePolicy": "passed",
+    "dependencyBoundaries": "passed",
+    "lint": "passed",
+    "unitTests": 87,
+    "chromiumTests": 25,
+    "productionE2ETests": 24,
+    "devWorkerImportSmokeTests": 1,
+    "build": "passed",
+    "comparison": "passed"
+  },
+  "workerFailureAndFix": {
+    "initial": "HMR navigation during first dependency optimization; isolated reproduction then showed document is not defined",
+    "rootCause": "decode-named-character-reference browser export uses document.createElement",
+    "resolution": "same installed 1.3.0 default DOM-free entry fixed by Vite alias; real Worker decodes copy and NotEqualTilde; no DOM shim",
+    "scope": "import smoke only; production Worker scheduler remains A3"
+  },
+  "dependencyChanges": {
+    "developmentOnly": "@babel/parser 7.28.5 for import graph syntax checks; TS7 does not export legacy Compiler API",
+    "runtimeEntryPin": "decode-named-character-reference 1.3.0 already present transitively; now direct exact dependency",
+    "mathjax": "3.2.2 unchanged",
+    "pagedjs": "0.4.3 unchanged"
+  },
+  "performanceComparison": [
+    {
+      "id": "small",
+      "checks": {
+        "parseMs": {
+          "baselineMs": 8,
+          "measuredMs": 5.0999999940395355,
+          "limitMs": 74,
+          "passed": true
+        },
+        "renderMs": {
+          "baselineMs": 421.5,
+          "measuredMs": 303.59999999403954,
+          "limitMs": 1364.5,
+          "passed": true
+        },
+        "paginateMs": {
+          "baselineMs": 247.69999998807907,
+          "measuredMs": 182.40000000596046,
+          "limitMs": 993.0999999642372,
+          "passed": true
+        }
+      },
+      "samePageCount": true,
+      "temporaryHostAndStyleCountsUnchanged": true
+    },
+    {
+      "id": "medium",
+      "checks": {
+        "parseMs": {
+          "baselineMs": 13.5,
+          "measuredMs": 9.900000005960464,
+          "limitMs": 90.5,
+          "passed": true
+        },
+        "renderMs": {
+          "baselineMs": 133.39999997615814,
+          "measuredMs": 97.19999998807907,
+          "limitMs": 500.1999999284744,
+          "passed": true
+        },
+        "paginateMs": {
+          "baselineMs": 299.30000001192093,
+          "measuredMs": 266.5,
+          "limitMs": 1147.9000000357628,
+          "passed": true
+        }
+      },
+      "samePageCount": true,
+      "temporaryHostAndStyleCountsUnchanged": true
+    },
+    {
+      "id": "large",
+      "checks": {
+        "parseMs": {
+          "baselineMs": 45.70000001788139,
+          "measuredMs": 30.5,
+          "limitMs": 187.10000005364418,
+          "passed": true
+        },
+        "renderMs": {
+          "baselineMs": 209,
+          "measuredMs": 158.69999998807907,
+          "limitMs": 727,
+          "passed": true
+        },
+        "paginateMs": {
+          "baselineMs": 677.6999999880791,
+          "measuredMs": 577.0999999940395,
+          "limitMs": 2283.099999964237,
+          "passed": true
+        }
+      },
+      "samePageCount": true,
+      "temporaryHostAndStyleCountsUnchanged": true
+    }
+  ],
+  "notValidated": [
+    "remote CI (not pushed)",
+    "Word/WPS visual/editing",
+    "physical printing",
+    "other browsers/Tauri",
+    "maximum input/budget enforcement (A2+)",
+    "full multi-Tab/session/cache lifecycle (A4+)"
+  ],
+  "storageCompatibility": {
+    "indexedDBVersion": 1,
+    "stores": "existing documents and metadata retained",
+    "recoveryNamespace": "metadata keys prefixed markflow-recovery:",
+    "legacyMetadataSentinelPreserved": true,
+    "sourceRecordsUnchangedOnRead": true
+  }
+}

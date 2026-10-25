@@ -23,8 +23,10 @@ import {
   saveDocument,
   deleteDocument,
   createNewDocument,
+  getStorageRecoveries,
+  recoveryJson,
 } from './core/storage/storage';
-import { extractOutline } from './core/parser/markdownParser';
+import { extractOutline } from './core/parse/markdown';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
 function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number {
@@ -36,6 +38,9 @@ function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string>('');
+  const [loadError,setLoadError]=useState('');
+  const [recoveryCount,setRecoveryCount]=useState(0);
+  const [loadComplete,setLoadComplete]=useState(false);
   const [isDark, setIsDark] = useState<boolean>(true);
 
   // 3 视图独立控制状态
@@ -63,22 +68,40 @@ export default function App() {
   const expectedScroll=useRef<{editor:number|null;preview:number|null}>({editor:null,preview:null});
   const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number)=>{const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));expectedScroll.current[pane]=clamped;el.scrollTop=clamped};
   const isProgrammatic=(pane:'editor'|'preview',top:number)=>{const expected=expectedScroll.current[pane];expectedScroll.current[pane]=null;return expected!==null&&Math.abs(expected-top)<2};
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pendingSaves=useRef(new Map<string,{timer:ReturnType<typeof setTimeout>;doc:DocumentRecord}>());
   const activeRevision=useRef<{id:string;revision:number}|null>(null);
 
   // 初始化加载文档
   useEffect(() => {
+    let active=true;
     getAllDocuments().then((docs) => {
+      if(!active)return;
       setDocuments(docs);
       const first=docs[0];
       if (first) {
         setCurrentDocId(first.id);
         setMathMode(first.options.mathMode);
       }
+    }).catch(error=>{if(active)setLoadError(String(error))}).finally(async()=>{
+      try{const entries=await getStorageRecoveries();if(active)setRecoveryCount(entries.length)}catch(error){if(active)setLoadError(String(error))}
+      if(active)setLoadComplete(true);
     });
+    return()=>{active=false};
   }, []);
+  const downloadRecovery=async()=>{
+    try{
+      const entries=await getStorageRecoveries();
+      const url=URL.createObjectURL(new Blob([recoveryJson({version:1,entries})],{type:'application/json'}));
+      const link=document.createElement('a');link.href=url;link.download='markflow-recovery.json';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(error){setLoadError('恢复备份读取失败，原始数据未改写：'+String(error))}
+  };
+  const recoveryNotice=(loadError||recoveryCount>0)?<aside role="alert" className="px-4 py-2 text-sm bg-amber-950 text-amber-100">
+    {loadError||`发现 ${recoveryCount} 项损坏或不支持的存储记录，原始数据已保留。`}
+    <button className="ml-3 underline" onClick={()=>{void downloadRecovery()}}>下载恢复备份</button>
+  </aside>:null;
 
   // 当前活动文档
   const currentDoc = documents.find((d) => d.id === currentDocId) || documents[0];
@@ -532,8 +555,9 @@ export default function App() {
 
   if (!currentDoc) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-neutral-900 text-neutral-400">
-        正在初始化 MarkFlow 墨流工作台...
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-neutral-900 text-neutral-400">
+        {recoveryNotice}
+        {loadComplete?<><p>没有可加载的文档，原始记录不会被空白文档覆盖。</p><button onClick={handleCreateDoc}>新建独立文档</button></>:'正在初始化 MarkFlow 墨流工作台...'}
       </div>
     );
   }
@@ -545,6 +569,7 @@ export default function App() {
 
   return (
     <div className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}>
+      {recoveryNotice}
       {/* 3-Zone Top Bar */}
       <TopBar
         sidebarOpen={sidebarOpen}

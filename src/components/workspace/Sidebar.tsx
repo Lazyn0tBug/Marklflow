@@ -17,7 +17,7 @@ import {
   PanelLeftClose,
 } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
-import { extractOutline } from '../../core/parser/markdownParser';
+import { extractOutline } from '../../core/parse/markdown';
 import { extractPayloadFromHtml } from '../../core/storage/storage';
 
 interface SidebarProps {

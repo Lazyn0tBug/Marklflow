@@ -5,7 +5,7 @@
  */
 
 import React, { useRef } from 'react';
-import { generateMarkdownTable } from '../../core/parser/markdownParser';
+import { generateMarkdownTable } from '../../core/parse/markdown';
 
 interface EditorProps {
   value: string;

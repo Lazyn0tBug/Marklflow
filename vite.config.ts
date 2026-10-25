@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import {createRequire} from 'node:module';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
@@ -9,6 +10,8 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // Its browser conditional entry uses document; pin the same package's DOM-free default.
+        'decode-named-character-reference': createRequire(import.meta.url).resolve('decode-named-character-reference'),
       },
     },
     server: {

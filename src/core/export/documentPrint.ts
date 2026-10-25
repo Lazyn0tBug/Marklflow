@@ -1,5 +1,5 @@
 import type {DocumentRecord} from '../model/document';
-import {themeSchema} from '../render/htmlPolicy';
+import {themeSchema} from '../model/themeSchema';
 export function printCss(doc:DocumentRecord):string {
  const m=themeSchema.parse(doc.theme).margins;
  return '@page{size:A4;margin:'+m.top+'mm '+m.right+'mm '+m.bottom+'mm '+m.left+'mm;@bottom-center{content:counter(page)}}'+

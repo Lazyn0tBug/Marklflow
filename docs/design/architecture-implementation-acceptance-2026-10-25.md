@@ -1,6 +1,6 @@
 # 架构重构分步实施与验收计划
 
-编号：AR-03；草案版本：3；日期：2026-10-25；状态：已授权在architecture-refactor分支分步实施；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1及后续阶段按各自证据更新。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
+编号：AR-03；草案版本：3；日期：2026-10-25；状态：已授权在architecture-refactor分支分步实施；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；A2及后续未启动。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
 
 ## 1. 范围与执行规则
 
@@ -11,6 +11,8 @@
 基线为typescript-strict分支75261ae1e532630a5a5859c397110f31698964af。既有严格化审查记录的76项单元测试、22项Chromium E2E仅为历史结果，不是本方案实现证据；来源：[审查记录](../reviews/typescript-strict-review-2026-10-25.md)、[验收证据](../acceptance/typescript-strict-review-evidence.json)。
 
 本次补充范围为多Tab单激活、独立文档会话、按文档调度及内存预览产物缓存。优先保证切换已打开Tab时恢复；关闭后重开、跨重启恢复及持久化缓存仅预留契约，后续实施。原有源文档持久化不受此延期影响。
+
+执行进度：A0已于本地提交32b5b0c；A1已完成纯层/浏览器拆分、四环境类型检查、依赖门禁与存储恢复，87项单元及25项Chromium测试通过。本阶段本地提交与验收记录同行保存；A2—A7、T/C阶段仍未启动，运行预算尚未接入生产调度。
 
 ## 2. 阶段与依赖
 

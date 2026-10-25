@@ -1,4 +1,5 @@
-import { mathExpressions,parseMarkdownDocument } from '../parser/markdownParser';
+import {mathExpressions} from '../parse/markdown';
+import {parseMarkdownDocument} from './markdownHtml';
 import { prepareMath } from './mathRender';
 import { renderMermaidDiagram,mermaidError } from './mermaidRender';
 import { sanitizeDocumentHtml,escapeHtml,rewriteFragments } from './htmlPolicy';

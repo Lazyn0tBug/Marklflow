@@ -6,139 +6,19 @@ import { documentSchema } from '../model/documentSchema';
 
 import { DocumentRecord, DEFAULT_THEME, INITIAL_SAMPLE_MARKDOWN } from '../model/document';
 
-const DB_NAME = 'markflow_db';
-const DB_VERSION = 1;
-const STORE_DOCS = 'documents';
-const STORE_METADATA = 'metadata';
-
-let dbInstance: IDBDatabase | null = null;
-
-async function getDB(): Promise<IDBDatabase> {
-  if (dbInstance) return dbInstance;
-
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') {
-      reject(new Error('IndexedDB is not supported'));
-      return;
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_DOCS)) {
-        db.createObjectStore(STORE_DOCS, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STORE_METADATA)) {
-        db.createObjectStore(STORE_METADATA, { keyPath: 'key' });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      dbInstance = (event.target as IDBOpenDBRequest).result;
-      resolve(dbInstance);
-    };
-
-    request.onerror = (event) => {
-      reject((event.target as IDBOpenDBRequest).error);
-    };
-  });
+import {webDocumentRepository,recoveryJson} from '../platform/web/documentRepository';
+import {createRenderNonce} from '../platform/crypto';
+export {recoveryJson};
+export async function getAllDocuments():Promise<DocumentRecord[]>{
+ const loaded=await webDocumentRepository.load();
+ if(loaded.canInitialize){const doc=createInitialDocument();await saveDocument(doc);return [doc]}
+ return loaded.documents;
 }
-
-/**
- * 获取所有文档列表
- */
-export async function getAllDocuments(): Promise<DocumentRecord[]> {
-  try {
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_DOCS, 'readonly');
-      const store = tx.objectStore(STORE_DOCS);
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const docs = req.result as DocumentRecord[];
-        if (!docs || docs.length === 0) {
-          // 初始化首个示例报告
-          const initialDoc = createInitialDocument();
-          saveDocument(initialDoc).then(() => resolve([initialDoc]),reject);
-        } else {
-          resolve(docs);
-        }
-      };
-      req.onerror = () => reject(req.error);
-    });
-  } catch {
-    // 降级为 localStorage
-    const stored = localStorage.getItem('markflow_docs');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        // fallback
-      }
-    }
-    const initialDoc = createInitialDocument();
-    localStorage.setItem('markflow_docs', JSON.stringify([initialDoc]));
-    return [initialDoc];
-  }
+export async function saveDocument(doc:DocumentRecord):Promise<void>{
+ await webDocumentRepository.save({...doc,meta:{...doc.meta,updatedAt:new Date().toISOString()}});
 }
-
-/**
- * 保存或更新文档
- */
-export async function saveDocument(doc: DocumentRecord): Promise<void> {
-  const updatedDoc = {
-    ...doc,
-    meta: {
-      ...doc.meta,
-      updatedAt: new Date().toISOString(),
-    },
-  };
-
-  try {
-    const db = await getDB();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_DOCS, 'readwrite');
-      const store = tx.objectStore(STORE_DOCS);
-      tx.oncomplete=()=>resolve();
-      tx.onabort=()=>reject(tx.error||new Error('存储事务已中止'));
-      tx.onerror=()=>reject(tx.error||new Error('存储事务失败'));
-      store.put(updatedDoc);
-    });
-  } catch (error) {
-    if(dbInstance)throw error;
-    // Fallback is only used when IndexedDB is unavailable.
-    const all = await getAllDocuments();
-    const idx = all.findIndex((d) => d.id === doc.id);
-    if (idx >= 0) {
-      all[idx] = updatedDoc;
-    } else {
-      all.push(updatedDoc);
-    }
-    localStorage.setItem('markflow_docs', JSON.stringify(all));
-  }
-}
-
-/**
- * 删除文档
- */
-export async function deleteDocument(docId: string): Promise<void> {
-  try {
-    const db = await getDB();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_DOCS, 'readwrite');
-      const store = tx.objectStore(STORE_DOCS);
-      tx.oncomplete=()=>resolve();
-      tx.onabort=()=>reject(tx.error||new Error('删除事务已中止'));
-      tx.onerror=()=>reject(tx.error||new Error('删除事务失败'));
-      store.delete(docId);
-    });
-  } catch (error) {
-    if(dbInstance)throw error;
-    const all = (await getAllDocuments()).filter((d) => d.id !== docId);
-    localStorage.setItem('markflow_docs', JSON.stringify(all));
-  }
-}
+export async function deleteDocument(id:string):Promise<void>{await webDocumentRepository.delete(id)}
+export function getStorageRecoveries(){return webDocumentRepository.recoveries()}
 
 /**
  * 创建新空白或模板文档
@@ -147,7 +27,7 @@ export function createNewDocument(title: string = '未命名技术文档'): Docu
   const now = new Date().toISOString();
   return {
     schemaVersion: 1,
-    id: 'doc_' + Math.random().toString(36).substring(2, 10),
+    id: 'doc_' + createRenderNonce(),
     revision: 1,
     markdown: `# ${title}\n\n在此开始撰写您的 Markdown 内容...\n`,
     meta: {
@@ -156,7 +36,7 @@ export function createNewDocument(title: string = '未命名技术文档'): Docu
       createdAt: now,
       updatedAt: now,
     },
-    theme: { ...DEFAULT_THEME },
+    theme: { ...DEFAULT_THEME, margins: {...DEFAULT_THEME.margins} },
     options: {
       syntaxProfile: 'commonmark-gfm-v1',
       mathMode: 'mathml',
@@ -178,7 +58,7 @@ export function createInitialDocument(): DocumentRecord {
       updatedAt: now,
       tags: ['物理', '量子计算', '系统工程'],
     },
-    theme: { ...DEFAULT_THEME },
+    theme: { ...DEFAULT_THEME, margins: {...DEFAULT_THEME.margins} },
     options: {
       syntaxProfile: 'commonmark-gfm-v1',
       mathMode: 'mathml',
@@ -215,7 +95,7 @@ export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | nu
     if (parsed && parsed.schemaVersion === 1 && typeof parsed.markdown === 'string') {
       return {
         ...parsed,
-        id: 'doc_imported_' + Math.random().toString(36).substring(2, 9),
+        id: 'doc_imported_' + createRenderNonce(),
         meta: {
           ...parsed.meta,
           updatedAt: new Date().toISOString(),

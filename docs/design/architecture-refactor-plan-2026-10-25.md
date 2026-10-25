@@ -1,8 +1,8 @@
 # MarkFlow 架构重构方案：文档任务管理与平台适配
 
-文档编号：AR-01；草案版本：3；日期：2026-10-25（Asia/Shanghai）。状态：待讨论的设计方案，未实施。
+文档编号：AR-01；草案版本：3；日期：2026-10-25（Asia/Shanghai）。状态：已审查；A0/A1已实施并本地验证，A2及后续未实施。
 
-代码基线：typescript-strict / 75261ae1e532630a5a5859c397110f31698964af。基线完整审查已记录76项单元、22项Chromium通过；这是历史代码验证，不是本方案已经实现或通过验收。
+设计冻结时的代码基线：typescript-strict / 75261ae1e532630a5a5859c397110f31698964af。基线完整审查已记录76项单元、22项Chromium通过；这是历史代码验证，不是本方案已经实现或通过验收。
 
 配套文档：[技术栈评估](architecture-stack-assessment-2026-10-25.md)、[分步实施与验收](architecture-implementation-acceptance-2026-10-25.md)。既有依据：[总体设计](Markdown编辑器总体设计方案_V0.2.10.md)、[严格化审查](../reviews/typescript-strict-review-2026-10-25.md)、[审查证据](../acceptance/typescript-strict-review-evidence.json)。
 
@@ -12,7 +12,7 @@
 
 现代化指标准能力、明确边界、可隔离执行、可维护发布；严格化同时包含编译期类型、运行时数据契约及生命周期约束。版本新旧不是独立替换依据。现有技术栈先作为功能基线，适配不足与库能力不足分别处理。
 
-本次只保存方案及验收规划，不修改业务代码、配置、依赖或既有设计原文，不提交、不推送、不变更分支和标签。实施需后续明确启动。本方案不构成MathJax升级、Paged.js替换或Tauri开发的执行授权。
+原方案编制与审查阶段只修改文档。用户后续已授权在architecture-refactor分支开始完整重构，本轮先完成A0/A1并按步骤本地提交；不推送、不合并、不移动标签、不升级MathJax、不替换Paged.js。[A0记录](../reviews/architecture-a0-baseline-2026-10-25.md)与[A1记录](../reviews/architecture-a1-implementation-2026-10-25.md)区分已执行与后续规划，不把A1的Worker导入烟测当作A3生产任务接入。
 
 ### 1.1 需求标识
 

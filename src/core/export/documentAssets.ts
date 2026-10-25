@@ -1,7 +1,7 @@
 import {sha256Hex} from '../platform/crypto';
 import type {DocumentAsset} from '../model/document';
 import {assetSchema} from '../model/documentSchema';
-import {safeUrl} from '../render/htmlPolicy';
+import {safeUrl} from '../policy/htmlRules';
 import {parse,walk} from 'css-tree';
 const MAX=10*1024*1024,TOTAL=25*1024*1024;
 const mimePattern=/^image\/(png|jpeg|gif|webp|avif)$/;

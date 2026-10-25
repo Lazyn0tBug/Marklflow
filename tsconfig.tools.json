@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022"
+    ]
+  },
+  "include": [
+    "scripts/check-source-policy.ts",
+    "scripts/check-module-boundaries.ts",
+    "*.config.ts"
+  ]
+}
