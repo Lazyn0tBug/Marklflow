@@ -197,14 +197,22 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button ref={settingsButtonRef} type="button" onClick={()=>setWidthMenuOpen(true)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300 whitespace-nowrap" aria-haspopup="dialog">
           <SlidersHorizontal className="w-3.5 h-3.5"/>设置
         </button>
-        <dialog ref={settingsRef} aria-labelledby="settings-title" onClose={()=>{setWidthMenuOpen(false);settingsButtonRef.current?.focus()}} className="m-auto w-80 max-w-[calc(100vw-32px)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60">
+        <dialog
+          ref={settingsRef}
+          aria-labelledby="settings-title"
+          onClick={(e) => {
+            if (e.target === settingsRef.current) setWidthMenuOpen(false);
+          }}
+          onClose={()=>{setWidthMenuOpen(false);settingsButtonRef.current?.focus()}}
+          className="m-auto w-80 max-w-[calc(100vw-32px)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60 shadow-2xl"
+        >
           <h2 id="settings-title" className="text-base font-semibold mb-4">工作台设置</h2>
           <label htmlFor="content-width" className="block text-sm mb-2">编辑器与 HTML 内容最大宽度</label>
           <select id="content-width" value={maxWidth} onChange={e=>onMaxWidthChange(e.target.value==='full'?'full':Number(e.target.value))} className="w-full rounded border border-neutral-600 bg-neutral-950 p-2 text-sm">
             {WIDTH_OPTIONS.map(opt=><option key={opt.label} value={opt.value}>{opt.label}</option>)}
           </select>
           <p className="text-xs text-neutral-400 mt-2">默认 1024px。仅影响工作台，不改变导出纸张。</p>
-          <button type="button" onClick={()=>setWidthMenuOpen(false)} className="mt-5 rounded bg-neutral-700 px-3 py-2 text-sm">完成</button>
+          <button type="button" onClick={()=>setWidthMenuOpen(false)} className="mt-5 rounded bg-teal-600 hover:bg-teal-500 text-white font-medium px-4 py-2 text-xs transition-colors cursor-pointer">完成</button>
         </dialog>
 
         {/* 公式引擎切换 (MathML vs SVG) */}

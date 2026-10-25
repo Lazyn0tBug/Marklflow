@@ -28,13 +28,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [allowRemoteAssets, setAllowRemoteAssets] = useState(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  useEffect(()=>{if(isOpen){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setAllowSourceFallback(false);setAllowRemoteAssets(false)}},[isOpen,doc.id]);
+  useEffect(()=>{if(isOpen){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setExportError(null);setAllowSourceFallback(false);setAllowRemoteAssets(false)}},[isOpen,doc.id]);
   if (!isOpen) return null;
 
   const handleExport = async () => {
     setIsExporting(true);
     setExportSuccess(null);
+    setExportError(null);
 
     const safeName = fileName.trim() || 'MarkFlow-Document';
 
@@ -64,7 +66,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       }
     } catch (err) {
       console.error('Export error:', err);
-      alert('导出过程出错: ' + String(err));
+      setExportError('导出过程出错: ' + String(err));
     } finally {
       setIsExporting(false);
     }
@@ -240,6 +242,19 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             <div className="p-2.5 rounded-lg bg-teal-950/50 border border-teal-800/80 text-xs text-teal-300 flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-teal-400 shrink-0" />
               <span>{exportSuccess}</span>
+            </div>
+          )}
+
+          {exportError && (
+            <div className="p-2.5 rounded-lg bg-red-950/60 border border-red-800 text-xs text-red-300 flex items-center justify-between gap-2">
+              <span>{exportError}</span>
+              <button
+                type="button"
+                onClick={() => setExportError(null)}
+                className="text-red-400 hover:text-white px-1"
+              >
+                ✕
+              </button>
             </div>
           )}
         </div>

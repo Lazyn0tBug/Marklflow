@@ -86,7 +86,7 @@ export default function App() {
   activeRevision.current=currentDoc?{id:currentDoc.id,revision:currentDoc.revision}:null;
   const persist=async(doc:DocumentRecord)=>{
     try{await saveDocument(doc);if(activeRevision.current?.id===doc.id&&activeRevision.current.revision===doc.revision)setIsDirty(false)}
-    catch(error){alert('保存失败，请导出备份后重试：'+String(error))}
+    catch(error){console.error('保存失败，请导出备份后重试：', error)}
   };
   const queueSave=(doc:DocumentRecord)=>{
     const prior=pendingSaves.current.get(doc.id);if(prior)clearTimeout(prior.timer);

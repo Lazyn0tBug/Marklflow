@@ -47,6 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'docs' | 'outline'>('docs');
   const [outlineFilter, setOutlineFilter] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [sidebarError, setSidebarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
 
@@ -70,23 +72,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (!files || files.length === 0) return;
 
     for (const file of Array.from(files)) {
-      if(file.size>50*1024*1024){alert('导入文件超过50MB限制');continue}
+      if (file.size > 50 * 1024 * 1024) {
+        setSidebarError('导入文件超过 50MB 限制');
+        continue;
+      }
       const reader = new FileReader();
-      reader.onerror=()=>alert('文件读取失败：'+file.name);
+      reader.onerror = () => setSidebarError('文件读取失败：' + file.name);
 
       reader.onload = async (event) => {
         const content = event.target?.result;
-        if (typeof content!=='string'||!content) return;
+        if (typeof content !== 'string' || !content) return;
 
         // 尝试从可编辑 HTML 中提取源载荷
         if (/\.html?$/i.test(file.name)) {
           const restoredDoc = extractPayloadFromHtml(content);
           if (restoredDoc) {
-            try { await verifyAssets(restoredDoc.assets); } catch (error) { alert(String(error)); return; }
+            try {
+              await verifyAssets(restoredDoc.assets);
+            } catch (error) {
+              setSidebarError(String(error));
+              return;
+            }
             onImportDoc(restoredDoc);
             return;
           }
-          alert('HTML 没有有效源载荷或结构不受支持；不会按 Markdown 导入。');
+          setSidebarError('HTML 没有有效源载荷或结构不受支持；未按 Markdown 导入。');
           return;
         }
 
@@ -180,6 +190,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 overflow-y-auto p-2">
         {activeTab === 'docs' ? (
           <div className="space-y-1">
+            {sidebarError && (
+              <div className="mb-2 p-2 bg-red-950/80 border border-red-800 text-red-200 text-xs rounded flex items-center justify-between gap-1">
+                <span className="truncate">{sidebarError}</span>
+                <button
+                  type="button"
+                  onClick={() => setSidebarError(null)}
+                  className="text-red-400 hover:text-white px-1 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             {/* Action Bar */}
             <div className="flex items-center gap-1.5 mb-2 px-1">
               <button
@@ -211,6 +233,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Document Items List */}
             {documents.map((doc) => {
               const isActive = doc.id === currentDocId;
+              const isConfirming = confirmDeleteId === doc.id;
               return (
                 <div
                   key={doc.id}
@@ -221,13 +244,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       : 'hover:bg-neutral-800/60 text-neutral-300 border border-transparent'
                   }`}
                 >
-                  <div className="flex items-start gap-2 overflow-hidden pr-6">
+                  <div className="flex items-start gap-2 overflow-hidden pr-2 flex-1 min-w-0">
                     <FileCode
                       className={`w-4 h-4 shrink-0 mt-0.5 ${
                         isActive ? 'text-teal-400' : 'text-neutral-500 group-hover:text-neutral-400'
                       }`}
                     />
-                    <div className="overflow-hidden">
+                    <div className="overflow-hidden flex-1 min-w-0">
                       <div className="text-xs font-medium truncate leading-tight">
                         {doc.meta.title || '未命名文档'}
                       </div>
@@ -241,18 +264,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
 
                   {documents.length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`确认删除文档 "${doc.meta.title}" 吗？此操作不可撤销。`)) {
-                          onDeleteDoc(doc.id);
-                        }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-red-400 rounded transition-all"
-                      title="删除文档"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {isConfirming ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onDeleteDoc(doc.id);
+                              setConfirmDeleteId(null);
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white text-[10px] font-medium transition-colors"
+                            title="确定删除此文档"
+                          >
+                            确定
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white text-[10px] transition-colors"
+                            title="取消删除"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(doc.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-red-400 rounded transition-all"
+                          title="删除文档"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               );
