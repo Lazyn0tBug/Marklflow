@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "status": "implemented in U2 role coordinator; production wiring deferred to U3/U5",
+  "schemaVersion": 3,
+  "status": "R2 lightweight serial queues; production worker/UI wiring remains pending",
   "baseBudget": "architecture-runtime-budget.json",
   "workers": {
     "foreground": 1,
@@ -11,11 +11,9 @@
   },
   "queue": {
     "previewKinds": 2,
-    "foregroundPending": 2,
+    "foregroundPending": 1,
     "backgroundPendingPerDocumentAndKind": 1,
     "backgroundPendingMaximum": 64,
-    "backgroundQueueWaitMs": 60000,
-    "backgroundExpiry": "dequeue-and-retain-needs-render; no implicit retry",
     "backgroundExecutionDeadlineStarts": "dispatch",
     "activeExports": 1
   },
@@ -23,7 +21,7 @@
     "reservedRuntimeBytesPerWorker": 16777216,
     "reservationStatus": "conservative accounting floor; not a measured heap size",
     "accounting": "both worker runtimes plus owned task bytes plus clone peaks count against base inFlightBytes; other owned bytes count against base totalOwnedBytes",
-    "overflow": "reject admission; retain needs-render; do not increase workers"
+    "overflow": "report capacity or dispatch failure; do not increase workers"
   },
   "mapping": {
     "legacyComputeDom": "execution environment; not foreground/background role",

@@ -1,95 +1,90 @@
-import type {PreviewSubmission,PreviewCacheKey} from './previewIdentity';
-import {snapshotRequest,isPreview,type TaskRequest,type TaskClock} from './contracts';
+import {createPreviewSubmission,type PreviewSubmission,type PreviewCacheKey} from './previewIdentity';
+import type {DocumentRecord} from '../../core/model/document';
+import {snapshotRequest,isPreview,type TaskRequest} from './contracts';
 import {IdentityGate} from './identity';
-import {dualWorkerPolicy,backgroundPendingCapacity,assessDualWorkerMemory} from './dualWorkerPolicy';
-import {taskBudget,totalDeadline} from './budget';
+import {backgroundPendingCapacity,assessDualWorkerMemory} from './dualWorkerPolicy';
+import {taskBudget} from './budget';
 export type WorkerRole=PreviewSubmission['role'];
 export type RoleWork={kind:'preview';submission:PreviewSubmission}|{kind:'export';request:TaskRequest};
-interface Entry {id:string;role:WorkerRole;work:RoleWork;bytes:number;acceptedAt:number;expiresAt:number}
-export interface RoleClaim {id:string;role:WorkerRole;work:RoleWork;acceptedAt:number}
-export interface NeedsRender {documentId:string;previewKind:PreviewCacheKey['previewKind'];reason:'capacity'|'expired'|'inactive'}
+export type PreviewReader=(documentId:string,previewKind:PreviewCacheKey['previewKind'])=>{document:DocumentRecord;renderConfigVersion:number}|undefined;
+type Pending={id:string;role:WorkerRole;bytes:number}&({kind:'background-preview';documentId:string;previewKind:PreviewCacheKey['previewKind']}|{kind:'work';work:RoleWork});
+interface Active {id:string;role:WorkerRole;bytes:number}
+export interface RoleClaim {id:string;role:WorkerRole;work:RoleWork}
+export interface ClaimFailure {id:string;role:WorkerRole;error:string}
 export type RoleAdmission={status:'accepted';taskId:string;replaced:string[]}|{status:'inactive'|'capacity'|'busy'};
 export const requestOf=(work:RoleWork):TaskRequest=>work.kind==='preview'?{identity:{protocolVersion:1,taskId:work.submission.taskId,documentId:work.submission.document.id},kind:work.submission.cacheKey.previewKind,document:work.submission.document,cacheKey:work.submission.cacheKey}:work.request;
-const keyOf=(submission:PreviewSubmission)=>JSON.stringify([submission.document.id,submission.cacheKey.previewKind]);
-const copy=(work:RoleWork):RoleWork=>structuredClone(work);
+const previewOf=(entry:Pending)=>entry.kind==='background-preview'?{documentId:entry.documentId,previewKind:entry.previewKind}:entry.work.kind==='preview'?entry.work.submission.cacheKey:undefined;
+const estimate=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).byteLength*3;
 let taskSequence=0;
-/** Foreground/background are roles, never aliases for compute/DOM environments. */
+const nextId=()=>{if(taskSequence===Number.MAX_SAFE_INTEGER)throw new Error('Task id space exhausted');return 'role-task-'+(++taskSequence)};
+/** One latest foreground demand; background holds only document/mode references in FIFO order. */
 export class RoleTaskQueue{
- private pending:Record<WorkerRole,Entry[]>={foreground:[],background:[]};
- private active=new Map<WorkerRole,Entry>();private exportId:string|undefined;
- private dirty=new Map<string,NeedsRender>();
- constructor(private readonly gate:IdentityGate,private readonly clock:TaskClock,private readonly extraInFlightBytes:()=>number=()=>0){}
- private allowed(submission:PreviewSubmission):boolean{return this.gate.hasSession(submission.document.id)&&(submission.role==='foreground'?this.gate.activeDocumentId===submission.document.id:this.gate.activeDocumentId!==submission.document.id)}
- private mark(submission:PreviewSubmission,reason:NeedsRender['reason']):void{
-  if(!this.gate.hasSession(submission.document.id))return;
-  const documentId=submission.document.id;
-  this.dirty.set(keyOf(submission),{documentId,previewKind:submission.cacheKey.previewKind,reason});
- }
+ private pending:Record<WorkerRole,Pending[]>={foreground:[],background:[]};
+ private active=new Map<WorkerRole,Active>();private exportId:string|undefined;
+ constructor(private readonly gate:IdentityGate,private readonly readPreview:PreviewReader,private readonly extraInFlightBytes:()=>number=()=>0){}
+ private allowed(role:WorkerRole,documentId:string):boolean{return this.gate.hasSession(documentId)&&(role==='foreground'?this.gate.activeDocumentId===documentId:this.gate.activeDocumentId!==documentId)}
  private prune():void{
-  for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>entry.work.kind==='export'||this.gate.hasSession(entry.work.submission.document.id));
-  for(const [key,marker]of this.dirty)if(!this.gate.hasSession(marker.documentId))this.dirty.delete(key);
+  for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>{const preview=previewOf(entry);return !preview||this.gate.current(preview.documentId,preview.previewKind,entry.id)});
  }
+ private fits(bytes:number):boolean{return assessDualWorkerMemory({foregroundRuntimeBytes:0,backgroundRuntimeBytes:0,ownedTaskBytes:this.ownedBytes+this.extraInFlightBytes()+bytes,clonePeakBytes:0,otherOwnedBytes:0}).accepted}
  enqueuePreview(input:PreviewSubmission):RoleAdmission{
-  const submission=structuredClone(input);this.prune();
-  if(!this.allowed(submission)){this.mark(submission,'inactive');return {status:'inactive'}}
-  const list=this.pending[submission.role],key=keyOf(submission);
-  const previous=list.find(entry=>entry.work.kind==='preview'&&keyOf(entry.work.submission)===key);
-  const capacity=submission.role==='foreground'?dualWorkerPolicy.queue.foregroundPending:backgroundPendingCapacity(this.gate.sessionCount);
-  if(!previous&&list.filter(entry=>entry.work.kind==='preview').length>=capacity){this.mark(submission,'capacity');return {status:'capacity'}}
-  return this.admit({kind:'preview',submission},submission.role,previous);
+  this.prune();const role=input.role,documentId=input.document.id,previewKind=input.cacheKey.previewKind;
+  if(!this.allowed(role,documentId))return {status:'inactive'};
+  const list=this.pending[role];
+  const previous=role==='foreground'?list[0]:list.find(entry=>{const key=previewOf(entry);return key?.documentId===documentId&&key.previewKind===previewKind});
+  if(!previous&&role==='background'&&list.filter(entry=>previewOf(entry)).length>=backgroundPendingCapacity(this.gate.sessionCount))return {status:'capacity'};
+  let entry:Pending;
+  if(role==='background')entry={kind:'background-preview',id:'',role,bytes:0,documentId,previewKind};
+  else{
+   if(new TextEncoder().encode(input.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
+   entry={kind:'work',id:'',role,bytes:0,work:{kind:'preview',submission:structuredClone(input)}};
+  }
+  entry.bytes=estimate(entry);
+  if(!this.fits(entry.bytes-(previous?.bytes??0)))return {status:'capacity'};
+  entry.id=nextId();if(entry.kind==='work'&&entry.work.kind==='preview')entry.work.submission.taskId=entry.id;
+  this.gate.expect(documentId,previewKind,entry.id);
+  if(previous)list[list.indexOf(previous)]=entry;else list.push(entry);
+  return {status:'accepted',taskId:entry.id,replaced:previous?[previous.id]:[]};
  }
  enqueueExport(input:unknown):RoleAdmission{
   this.prune();const request=snapshotRequest(input);if(isPreview(request.kind))throw new Error('Export queue requires an export kind');
   if(this.exportId)return {status:'busy'};
   if(!this.gate.hasSession(request.document.id))return {status:'inactive'};
-  const admitted=this.admit({kind:'export',request},'background');if(admitted.status==='accepted')this.exportId=admitted.taskId;return admitted;
- }
- private admit(work:RoleWork,role:WorkerRole,previous?:Entry):RoleAdmission{
-  const request=requestOf(work);
   if(new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
-  const bytes=new TextEncoder().encode(JSON.stringify(work)).byteLength*3;
-  if(!assessDualWorkerMemory({foregroundRuntimeBytes:0,backgroundRuntimeBytes:0,ownedTaskBytes:this.ownedBytes+this.extraInFlightBytes()-(previous?.bytes??0)+bytes,clonePeakBytes:0,otherOwnedBytes:0}).accepted){if(work.kind==='preview')this.mark(work.submission,'capacity');return {status:'capacity'}}
-  if(taskSequence===Number.MAX_SAFE_INTEGER)throw new Error('Task id space exhausted');
-  const id='role-task-'+(++taskSequence);
-  if(work.kind==='preview'){work.submission.taskId=id;this.gate.expect(work.submission.document.id,work.submission.cacheKey.previewKind,id)}else work.request.identity.taskId=id;
-  const wait=work.kind==='export'?Math.min(taskBudget.deadlinesMs.exportQueue,totalDeadline(request.kind)):role==='foreground'?taskBudget.deadlinesMs.previewQueue:dualWorkerPolicy.queue.backgroundQueueWaitMs;
-  const acceptedAt=previous?.acceptedAt??this.clock.now();
-  const entry:Entry={id,role,work,bytes,acceptedAt,expiresAt:previous?.expiresAt??acceptedAt+wait};
-  const list=this.pending[role];if(previous)list[list.indexOf(previous)]=entry;else list.push(entry);
-  if(work.kind==='preview')this.dirty.delete(keyOf(work.submission));
-  return {status:'accepted',taskId:id,replaced:previous?[previous.id]:[]};
+  const work:RoleWork={kind:'export',request},bytes=estimate(work);
+  if(!this.fits(bytes))return {status:'capacity'};
+  const id=nextId();request.identity.taskId=id;this.exportId=id;this.pending.background.push({kind:'work',id,role:'background',work,bytes});
+  return {status:'accepted',taskId:id,replaced:[]};
  }
- /** Claim stays active until the execution coordinator proves stop and cleanup. */
- claim(role:WorkerRole):RoleClaim|undefined{
-  if(this.active.has(role))return undefined;this.prune();const list=this.pending[role];
+ /** The active slot remains held until execution and cleanup have stopped. */
+ claim(role:WorkerRole):RoleClaim|ClaimFailure|undefined{
+  if(this.active.has(role))return;this.prune();const list=this.pending[role];
   for(;;){
-   const exportIndex=role==='background'?list.findIndex(entry=>entry.work.kind==='export'):-1;
-   const index=exportIndex>=0?exportIndex:0,entry=list[index];if(!entry)return;
-   list.splice(index,1);
-   if(entry.work.kind==='preview'&&!this.allowed(entry.work.submission)){this.mark(entry.work.submission,'inactive');continue}
-   if(this.clock.now()>=entry.expiresAt){if(entry.work.kind==='preview')this.mark(entry.work.submission,'expired');if(this.exportId===entry.id)this.exportId=undefined;continue}
-   this.active.set(role,entry);return {id:entry.id,role,work:copy(entry.work),acceptedAt:entry.acceptedAt};
+   const exportIndex=role==='background'?list.findIndex(entry=>entry.kind==='work'&&entry.work.kind==='export'):-1;
+   const entry=list.splice(exportIndex>=0?exportIndex:0,1)[0];if(!entry)return;
+   const preview=previewOf(entry);if(preview&&!this.allowed(role,preview.documentId))continue;
+   try{
+    let work:RoleWork;
+    if(entry.kind==='background-preview'){
+     const source=this.readPreview(entry.documentId,entry.previewKind);
+     if(!source||source.document.id!==entry.documentId)throw new Error('Preview source unavailable or mismatched');
+     work={kind:'preview',submission:createPreviewSubmission({taskId:entry.id,role,previewKind:entry.previewKind,document:source.document,renderConfigVersion:source.renderConfigVersion})};
+    }else work=entry.work;
+    const request=requestOf(work);
+    if(new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
+    const bytes=estimate(work);if(!this.fits(bytes))throw new Error('Task dispatch budget exceeded');
+    this.active.set(role,{id:entry.id,role,bytes});return {id:entry.id,role,work};
+   }catch(error){if(this.exportId===entry.id)this.exportId=undefined;return {id:entry.id,role,error:String(error)}}
   }
  }
- release(role:WorkerRole,id:string):boolean{
-  if(this.active.get(role)?.id!==id)return false;this.active.delete(role);return true;
- }
+ release(role:WorkerRole,id:string):boolean{if(this.active.get(role)?.id!==id)return false;this.active.delete(role);return true}
  finishExport(id:string):boolean{
   if(this.exportId!==id||[...this.active.values(),...this.pending.background].some(entry=>entry.id===id))return false;
   this.exportId=undefined;return true;
- }
- expire():{id:string;role:WorkerRole;kind:RoleWork['kind']}[]{
-  this.prune();const expired:{id:string;role:WorkerRole;kind:RoleWork['kind']}[]=[];
-  for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>{
-   if(this.clock.now()<entry.expiresAt)return true;
-   if(entry.work.kind==='preview')this.mark(entry.work.submission,'expired');if(this.exportId===entry.id)this.exportId=undefined;
-   expired.push({id:entry.id,role,kind:entry.work.kind});return false;
-  });return expired;
  }
  cancelPending(id:string):boolean{
   for(const role of ['foreground','background'] as const){const index=this.pending[role].findIndex(entry=>entry.id===id);if(index>=0){this.pending[role].splice(index,1);if(this.exportId===id)this.exportId=undefined;return true}}return false;
  }
  get ownedBytes():number{return [...this.pending.foreground,...this.pending.background,...this.active.values()].reduce((sum,entry)=>sum+entry.bytes,0)}
- get nextExpiry():number{return Math.min(...this.pending.foreground.map(entry=>entry.expiresAt),...this.pending.background.map(entry=>entry.expiresAt))}
- snapshot(){this.prune();return {exportTaskId:this.exportId,pending:{foreground:this.pending.foreground.map(entry=>({id:entry.id,work:copy(entry.work)})),background:this.pending.background.map(entry=>({id:entry.id,work:copy(entry.work)}))},active:[...this.active.values()].map(entry=>({id:entry.id,role:entry.role})),needsRender:[...this.dirty.values()].map(marker=>({...marker})),ownedBytes:this.ownedBytes}}
+ snapshot(){this.prune();return {exportTaskId:this.exportId,pending:structuredClone(this.pending),active:[...this.active.values()].map(({id,role})=>({id,role})),ownedBytes:this.ownedBytes}}
 }

@@ -1,0 +1,49 @@
+{
+  "branch": "architecture-refactor",
+  "parent": "95183fbe1b3e544652a804ce7143f464b831099f",
+  "step": "R2",
+  "check": "passed",
+  "managedSources": 106,
+  "unitTests": 162,
+  "unitFiles": 29,
+  "targetedTests": 37,
+  "workerBrowserTests": 2,
+  "commands": [
+    "bun run typecheck",
+    "bun run test:unit -- tests/unit/tasks-role-queue.test.ts tests/unit/tasks-role-scheduler.test.ts tests/unit/tasks-deadlines.test.ts tests/unit/tasks-dual-worker-policy.test.ts",
+    "bun run check",
+    "bun run test:e2e tests/e2e/architecture-pure-worker.spec.ts"
+  ],
+  "review": {
+    "foregroundPending": 1,
+    "background": "document/mode references; merged FIFO; snapshot read at dispatch",
+    "queueDeadlinesRemoved": true,
+    "needsRenderRemoved": true,
+    "eachRoleMaxActive": 1,
+    "executionDeadlinesStart": "dispatch",
+    "protectedRefsUnchangedBeforeCommit": true,
+    "productionAndDependenciesUnchanged": true
+  },
+  "versions": {
+    "MathJax": "3.2.2",
+    "Paged.js": "0.4.3"
+  },
+  "notVerified": [
+    "full application E2E not rerun",
+    "production dual Worker not wired",
+    "Tab UI/cache commit not wired",
+    "remote CI not run"
+  ],
+  "sourceHashes": {
+    "docs/contracts/architecture-dual-worker-budget.json": "78a2c9a5af9cfaba667655943984a1a0f8a1ac4e89c353395ee5b51eb3a51f61",
+    "src/application/tasks/deadlines.ts": "35adb76b77c863691218e3ba2a1eb1da7a70ff5915e66ef754c1eee2e6fc71e4",
+    "src/application/tasks/dualWorkerPolicy.ts": "72c79ccda13ad380a7e9788822d2c82da2e727efc1379f26007dccc756b7ea66",
+    "src/application/tasks/roleQueue.ts": "2c97aad14d9d5f6162cb3445d2b9efe0be80093f8ea53ee189fe375f7881e277",
+    "src/application/tasks/roleScheduler.ts": "f323867d68f628f9fee48aa7761ae99bbdc39855fc0c607449f41810347fd753",
+    "tests/fixtures/architecture/pure-worker.ts": "30b8e5929a2a6bfe3bf3c117567530a32f23068762e2ea6c0cd42ddb17576f4a",
+    "tests/unit/tasks-deadlines.test.ts": "464c667ea8fadf5468e548734c8294680c88488f57478100a8e7a1afe7bd38b2",
+    "tests/unit/tasks-dual-worker-policy.test.ts": "3d90492e46b323f8aeaabf23b2533e62512e723140b859886b193a9ef8db5c8e",
+    "tests/unit/tasks-role-queue.test.ts": "576befe3fa9eb4260dee8889054c141a7f04864e480036c578c58e37f151519e",
+    "tests/unit/tasks-role-scheduler.test.ts": "3a63e3f2e737ba34307a2b2a05b368aef82d2e0b5512259ecedaf9c9d06b3867"
+  }
+}

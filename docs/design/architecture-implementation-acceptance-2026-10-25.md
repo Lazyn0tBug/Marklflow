@@ -1,6 +1,6 @@
 # 架构重构分步实施与验收计划
 
-最新实施补充（2026-10-25）：R0、R1组件已审查验证，R0本地提交2243c5f，R1随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
+最新实施补充（2026-10-25）：R0、R1组件已审查验证（2243c5f、95183fb）；R2已审查验证，记录随本次提交归档；详见[执行记录](../reviews/architecture-r0-r1-implementation-2026-10-25.md)。R2见[R2执行记录](../reviews/architecture-r2-implementation-2026-10-25.md)，R3及后续尚未实施，真实双Worker和Tab UI仍未接入。以下阶段表描述目标范围；早先“未实施”的状态以本补充为准，不改变草案6路线。
 
 编号：AR-03；草案版本：6；日期：2026-10-25；状态：architecture-refactor本轮仅修订方案，不实施/提交；A0冻结见[执行记录](../reviews/architecture-a0-baseline-2026-10-25.md)，A1已完成，见[A1执行记录](../reviews/architecture-a1-implementation-2026-10-25.md)；旧模型A2已实施，前后台统一逻辑已完成U0—U2组件，U3及后续尚未实施，见[差异及小步计划](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)；A3及后续未启动。当前完整路线已规划：先R0—R5收缩，再按依赖实施U3—U6及A5/A7；所有未实施步骤均待授权，本轮仅改文档。入口：[架构与任务契约](architecture-refactor-plan-2026-10-25.md)；配套：[技术栈评估](architecture-stack-assessment-2026-10-25.md)。
 
@@ -107,7 +107,7 @@ A6候选研究不阻塞V1/V2；MathJax升级及Paged.js替换必须另行批准�
 
 预览按文档/模式合并：前台只处理当前Tab，后台对切出时未完成的文档从头生成；两个Worker各最多一个活跃任务，后台其他待办FIFO等待。切入时该文档未完成后台任务同样丢弃；缓存有效则仅更替指针，否则前台重算。后台完整结果允许写对应文档缓存，不直接更新当前视图。缓存键为documentId/previewKind/mdHash/renderConfigVersion，不把activationEpoch作为缓存有效性条件。导出单busy、共享DOM串行及资源大小限制保持，具体规则以AR-01第4.3节为准。
 
-冻结A0预算JSON记录旧模型；U0双Worker策略也属于历史组件配置，二者均不覆写。新运行目标为前后台各一个Worker及共享DOM串行入口；R2去掉队列到期/needsRender，后台只保存文档/模式引用，数量受当前打开文档和模式数约束。R3b核对保留的输入/资源/缓存限制，U5b测量真实运行开销；不将旧JSON乘3或16MiB保留量当成物理内存保证。
+冻结A0预算JSON记录旧模型并保持不变；双Worker运行策略随R2改为schemaVersion 3，U0旧版由Git历史及原证据保留，不维护重复运行配置。新运行目标为前后台各一个Worker及共享DOM串行入口；R2去掉队列到期/needsRender，后台只保存文档/模式引用，数量受当前打开文档和模式数约束。R3b核对保留的输入/资源/缓存限制，U5b测量真实运行开销；不将旧JSON乘3或16MiB保留量当成物理内存保证。
 
 保留当前资产限制：单图10MB、合计25MB、最多128项、HTML输入50MB；A0确认边界单位及现有错误行为。新的文档规模上限须依据语料测量决定，不能用图片限制代替整篇计算负载上限。
 
