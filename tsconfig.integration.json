@@ -17,6 +17,7 @@
     "tests/e2e/**/*.ts",
     "tests/types/strict-contracts.ts",
     "scripts/measure-architecture-baseline.ts",
-    "src/types/**/*.d.ts"
+    "src/types/**/*.d.ts",
+    "tests/fixtures/architecture/worker-probe-client.ts"
   ]
 }

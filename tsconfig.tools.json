@@ -9,8 +9,12 @@
     ]
   },
   "include": [
-    "scripts/check-source-policy.ts",
-    "scripts/check-module-boundaries.ts",
-    "*.config.ts"
+    "scripts/**/*.ts",
+    "*.config.ts",
+    "*.config.mts",
+    "*.config.cts"
+  ],
+  "exclude": [
+    "scripts/measure-architecture-baseline.ts"
   ]
 }

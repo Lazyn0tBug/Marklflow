@@ -8,9 +8,9 @@
     ]
   },
   "include": [
-    "src/core/model/**/*.ts",
-    "src/core/parse/**/*.ts",
-    "src/core/policy/**/*.ts",
+    "src/core/model/**/*",
+    "src/core/parse/**/*",
+    "src/core/policy/**/*",
     "tests/types/worker-contracts.ts",
     "tests/fixtures/architecture/pure-worker.ts"
   ]
