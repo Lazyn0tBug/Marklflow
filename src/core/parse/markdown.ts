@@ -52,9 +52,9 @@ export function generateMarkdownTable(cols: number = 3, rows: number = 3): strin
 }
 
 
-export function mathExpressions(markdown:string):{value:string;display:boolean}[] {
- const out:{value:string;display:boolean}[]=[];
+export function mathExpressions(markdown:string,withPositions=false):{value:string;display:boolean;sourceOffset?:number}[] {
+ const out:{value:string;display:boolean;sourceOffset?:number}[]=[];
  visit(parseMarkdownSyntax(markdown),node=>{
-  if(node.type==='math'||node.type==='inlineMath')out.push({value:node.value,display:node.type==='math'});
+  if(node.type==='math'||node.type==='inlineMath')out.push({value:node.value,display:node.type==='math',...(withPositions?{sourceOffset:node.position!.start.offset!}:{})});
  });return out;
 }

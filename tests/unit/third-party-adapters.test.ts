@@ -1,5 +1,6 @@
 import {expect,it,vi} from 'vitest';
 import {loadMathJaxAdapter} from '../../src/core/render/mathJaxAdapter';
+import {prepareMath} from '../../src/core/render/mathRender';
 import {createPagedAdapter} from '../../src/core/render/pagedJsAdapter';
 
 function mathRuntime(){
@@ -15,7 +16,7 @@ it('rejects missing MathJax or malformed conversion capabilities',async()=>{
 it('awaits startup and propagates startup failure',async()=>{
  const runtime=mathRuntime();let ready:()=>void=()=>{};runtime.startup.promise=new Promise<void>(resolve=>{ready=resolve});
  const pending=loadMathJaxAdapter(runtime);expect(runtime.startup.getInputJax).not.toHaveBeenCalled();ready();
- const adapter=await pending;adapter.resetDocument();expect(runtime.startup.makeMethods).toHaveBeenCalledOnce();
+ const adapter=await pending;adapter.resetDocument();expect(runtime.startup.makeMethods).toHaveBeenCalledTimes(2);
  await expect(loadMathJaxAdapter({...runtime,startup:{...runtime.startup,promise:Promise.reject(new Error('startup failed'))}})).rejects.toThrow('startup failed');
 });
 it('rejects malformed document factories rather than fabricating state',async()=>{
@@ -80,14 +81,15 @@ it('cleans the polisher even if chunker destruction throws',()=>{
  expect(()=>adapter.destroy()).toThrow('destroy failed');expect(runtime.polisherDestroy).toHaveBeenCalledOnce();
 });
 
-it('bounds MathJax startup waits without declaring the engine ready',async()=>{
+it('retains shared DOM ownership on startup timeout until startup actually settles',async()=>{
  vi.useFakeTimers();
  try{
-  const runtime=mathRuntime();runtime.startup.promise=new Promise<void>(()=>{});
-  const result=loadMathJaxAdapter(runtime).catch(error=>error);
-  await vi.advanceTimersByTimeAsync(20001);expect(String(await result)).toContain('启动超时');
+  const runtime=mathRuntime();let ready=()=>{};runtime.startup.promise=new Promise<void>(resolve=>{ready=resolve});window.MathJax=runtime;
+  let finished=false;const result=prepareMath([{value:'1',display:false}],'mathml').catch(error=>error).finally(()=>{finished=true});
+  await vi.advanceTimersByTimeAsync(20001);expect(finished).toBe(false);
+  ready();await vi.runAllTimersAsync();expect(String(await result)).toContain('timed out');
   expect(runtime.startup.getInputJax).not.toHaveBeenCalled();
- }finally{vi.useRealTimers()}
+ }finally{delete window.MathJax;vi.useRealTimers()}
 });
 it('rejects synchronous Paged.js lookalikes instead of treating them as completed work',async()=>{
  const runtime=paginationRuntime({total:1});

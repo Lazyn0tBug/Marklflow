@@ -11,7 +11,7 @@ export interface HtmlExportOptions {includeEditablePayload?:boolean;mathMode?:'m
 export async function generateExportHtml(input:DocumentRecord,options:HtmlExportOptions={}):Promise<string> {
  const frozenOptions={...options};
  const doc:DocumentRecord=documentSchema.parse(structuredClone(input));assertSelfContainedCss(DOCUMENT_CSS);
- const artifact=await renderDocument(doc.markdown,frozenOptions.mathMode||doc.options.mathMode);assertArtifact(artifact);const collected=await collectAssets(artifact.html,doc.assets,frozenOptions.allowRemoteAssets);doc.assets=collected.assets;const content=collected.html;
+ const artifact=await renderDocument(doc.markdown,frozenOptions.mathMode||doc.options.mathMode,undefined,{priority:'export'});assertArtifact(artifact);const collected=await collectAssets(artifact.html,doc.assets,frozenOptions.allowRemoteAssets);doc.assets=collected.assets;const content=collected.html;
  const contentRoot=document.createElement('div');contentRoot.innerHTML=content;for(const el of contentRoot.querySelectorAll('details'))el.setAttribute('open','');
  if(contentRoot.querySelector('img,svg image')){contentRoot.style.cssText='position:fixed;left:-20000px;top:0;width:960px;visibility:hidden';document.body.append(contentRoot);try{await waitForLayout(contentRoot)}finally{contentRoot.remove()}}
  const payload=frozenOptions.includeEditablePayload?'<script id="markflow-source-payload" type="application/json">'+encodeSourcePayload(doc)+'</script>':'';

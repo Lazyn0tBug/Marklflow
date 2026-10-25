@@ -1,10 +1,11 @@
 import {mathExpressions} from '../parse/markdown';
 import {parseMarkdownDocument} from './markdownHtml';
-import { prepareMath } from './mathRender';
+import { prepareMath,type MathScheduling } from './mathRender';
 import { renderMermaidDiagram,mermaidError } from './mermaidRender';
 import { sanitizeDocumentHtml,escapeHtml,rewriteFragments } from './htmlPolicy';
 export interface RenderDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
 export interface DocumentArtifact {html:string;diagnostics:RenderDiagnostic[]}
+/** Temporary owner of non-math assembly/diagram work until U6c; MathJax never enters it. */
 let serial:Promise<unknown>=Promise.resolve(),sequence=0;
 export function throwIfAborted(signal?:AbortSignal):void {if(signal?.aborted)throw new DOMException('已取消','AbortError')}
 export function uniqueSvgIds(root:HTMLElement):void {
@@ -18,10 +19,11 @@ export function uniqueSvgIds(root:HTMLElement):void {
   }
  }
 }
-export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:AbortSignal):Promise<DocumentArtifact> {
- const task=async()=>{
-  throwIfAborted(signal);await prepareMath(mathExpressions(markdown),mode);throwIfAborted(signal);
-  const parsed=parseMarkdownDocument(markdown,{mathMode:mode});
+export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:AbortSignal,scheduling:Omit<MathScheduling,'signal'>={}):Promise<DocumentArtifact> {
+ const prepare=async()=>{throwIfAborted(signal);return prepareMath(mathExpressions(markdown,true),mode,{...scheduling,...(signal?{signal}:{})})};
+ const task=async(preparedMath:Awaited<ReturnType<typeof prepareMath>>)=>{
+  throwIfAborted(signal);
+  const parsed=parseMarkdownDocument(markdown,{mathMode:mode,preparedMath});
   const root=document.createElement('div');root.innerHTML=parsed.html;
   const diagnostics:RenderDiagnostic[]=[...parsed.diagnostics];
   for(const el of root.querySelectorAll<HTMLElement>('[data-mermaid-code]')){
@@ -40,7 +42,7 @@ export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:Abort
   if(diagnostics.length){const notice=document.createElement('aside');notice.className='mf-diagnostic';notice.setAttribute('role','note');notice.innerHTML='<strong>内容兼容性提示</strong><ul>'+diagnostics.map(d=>'<li>'+escapeHtml(d.nodeId+'：'+d.message)+'</li>').join('')+'</ul>';root.prepend(notice)}
   return {html:root.innerHTML,diagnostics};
  };
- const result=serial.then(task,task);serial=result.catch(()=>undefined);return result;
+ return prepare().then(preparedMath=>{const execute=()=>task(preparedMath);const result=serial.then(execute,execute);serial=result.catch(()=>undefined);return result});
 }
 export function assertArtifact(artifact:DocumentArtifact):void{
  if(artifact.diagnostics.some(d=>d.severity==='error'))throw new Error(artifact.diagnostics.map(d=>d.nodeId+': '+d.message).join('\n'));

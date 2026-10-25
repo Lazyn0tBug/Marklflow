@@ -1,0 +1,99 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "3972d21840ff0b58e759539756c7a4a3fd315544",
+  "scope": "U6b MathJax 3.2.2 entry migration and per-document state isolation; no new UI or production dual-role enablement",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 138,
+      "unitFiles": 39,
+      "unitTestsPassed": 259,
+      "newUnitTests": 9,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source/module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 45,
+      "reportedDuration": "1.2m",
+      "newMathDomTests": 3,
+      "environments": [
+        "development",
+        "built",
+        "ordinary HTTP"
+      ]
+    }
+  ],
+  "logSha256": {
+    "check": "d0cb0b96db61d1af32148dd0858cba248ea73274f2acc0b8174ffa4c39b1c123",
+    "fullChromium": "b9ea427ed38cfd6b0a00fe938157cc49f9fb835c95a846413f089d539ae72c44",
+    "footnoteFailureReproduction": "03be0a17ce3bbe14791eeb2f5e6ba93aa0a5130d5c1c4866029c596f66457207",
+    "targetedMathUnitFinal": "d823aee65c9cebd00d370948b1b7fcfe1ab57158de5852e554effa3a617e0f8e"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-u6b-math-dom.json": "9aa222a4c856ae08be49f713c5b189e6edf6e18365a779154ddd2cf5c46dfc22",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "51078b112455cb191484598f651ab82f74d84ace5535e695aee0c9bc78f596cb",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "7bde8d472e0982b5e751d2b5016405a6b07702fa18d60f6ce3549710f723508a",
+    "docs/reviews/architecture-u6b-implementation-2026-10-25.md": "d7688915ccde4ba3446297e50d47b40569550d5cfc1cac27c6969315a79a30d9",
+    "scripts/build-worker-probe.ts": "bbff35b03b54180a255da194805ee7e8dd29551bc2b8567ae3534391bc4187af",
+    "src/core/export/docxExporter.ts": "56fb617653d9a942702f0eaebd1370138c979671cba2eb5d552096b94b964bce",
+    "src/core/export/htmlExporter.ts": "bd3793c55668f58b79ef362bfe46334d36dd4aaf9586ec365cb45931750abfea",
+    "src/core/parse/markdown.ts": "9596316e319e355ed0ee4ba934585290eaf596e1b41ccb5d44d420ed48f99078",
+    "src/core/platform/web/sharedDom.ts": "ce2d6464317c456f57465bf0a21a7056cae50f8d7f2e87d02ee3b243a64189be",
+    "src/core/render/documentRenderer.ts": "353e8de76c4a7abca954197f4672fa8421565882efa3d6526413fd11561c3481",
+    "src/core/render/markdownHtml.ts": "3185c24a17d1a0e24a570be6c5fd4549010c6a8e2d29a8d4819ae855ea84984c",
+    "src/core/render/mathJaxAdapter.ts": "77e52f84eb76e823eaec632c884320d4be395c1bd774f036f3ff7377dce3bac9",
+    "src/core/render/mathRender.ts": "02a9f679b6c7f2e52d4e0bbd4f23d366a39deac2fa1c64326466e20a2185d17b",
+    "tests/e2e/math-shared-dom.spec.ts": "991844cc5c5a272bdf1f4697199c3454e7d658853d76e219ac74750f141c51d4",
+    "tests/fixtures/architecture/math-dom-probe-client.ts": "e8bf6678c66415abd5be8d171d06868dedf39c52f7c5d9b71ad3a557dac5ab50",
+    "tests/fixtures/architecture/math-dom-probe.html": "f9ec37f736e5b79232556c50600e75a268677ec57e94647227e4f03475d8ba1c",
+    "tests/unit/math-shared-dom.test.ts": "c0ff96a68147ccbaca90de319c83e950ec87cd630143c20f3b77940c686d0038",
+    "tests/unit/review-assets-math.test.ts": "4df5e0add9a800210abaaaf945f133949e7c9da101c63361bbece4baaab1875e",
+    "tests/unit/third-party-adapters.test.ts": "8823f68b027059cee01370e4a1a1447f7284b0b0e104162a1b50b5df2ed57bfb",
+    "tsconfig.integration.json": "c3995b1b4033c311c2221dc5c601f96aba424e8adee717ff34cfe6dd27369ef2"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/workers/markdownWorker.ts": "14261c6915d2afea18aadabebb5b026b819a233da69bd1e34ae08fa90a87f59d",
+    "src/application/tasks/markdownWorkerTask.ts": "73b5f1ed928ffa2e7da8246d1ea1cc515c8b28eb43320c30cebc00e8dd48d4e3",
+    "docs/reviews/architecture-u5b-evidence-2026-10-25.json": "c12db52293a7828fbd015b82745bdc78598083e5166b616257c1fe9112521008",
+    "docs/reviews/architecture-u6a-evidence-2026-10-25.json": "8b0d03dce6c681628a150d5e45c9aeeea9b3e1bab6173c7e1d48cfcd977445b4",
+    "src/application/tasks/sharedDom.ts": "13a2166e552a3ecc33467854e2c678f5f3e07dc99f881351e4975cfc2729dc87",
+    "src/core/render/pagedJsAdapter.ts": "b99462ac02dc9b4d02861b7e7ae20c235bf7f7ef68c1145197c1e77b90f0a093",
+    "src/core/render/documentPaginator.ts": "a2ab279d6132b4c5dca1efc52f1b9c60d12f9032a800ff7e94ea4a993bed6538",
+    "src/core/render/mermaidRender.ts": "bc0ee1fed27259a741ebab29ba0127a00d4014d7e24371b3d8c9942943251602",
+    "public/vendor/mathjax/tex-mml-svg.js": "1f17a7ed95ff4a4b27d16bf0fb5f80b915686ee8673e82983a2876ecf8cb9fae"
+  },
+  "intentionalProtectedParserChange": "mathExpressions adds opt-in original sourceOffset metadata only; default shape, grammar and Worker protocol unchanged",
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "realMathArchive": "docs/acceptance/architecture-u6b-math-dom.json",
+  "reviewFindingsFixed": [
+    "replace old whole-document formula ownership with shared step entry",
+    "isolate TeX input/document and restore startup baseline between steps",
+    "remove global formula text-key caches; preserve duplicate occurrence numbering",
+    "associate prepared output with original source offset for footnote reorder and BOM",
+    "timeout/cancellation cannot release native MathJax execution early",
+    "release session through local cleanup list; preserve shared-entry cleanup failure blocking"
+  ],
+  "limitations": [
+    "synchronous/native uncooperative work cannot be hard-preempted; ownership retained until settlement",
+    "AMS automatic numbering enabled in fixture only; app configuration unchanged",
+    "diagram/pagination migration remains U6c/U6d; their old queues are retained",
+    "new coordinator/UI/production dual-role composition remains deferred",
+    "no other-browser, Tauri, Word/WPS visual or physical-print acceptance",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

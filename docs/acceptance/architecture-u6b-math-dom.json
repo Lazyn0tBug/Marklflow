@@ -1,0 +1,288 @@
+{
+  "date": "2026-10-25",
+  "scope": "isolated real MathJax 3.2.2 fixture; tags:ams enabled only in fixture; no UI or production dual-role enablement",
+  "reports": [
+    {
+      "environment": "development",
+      "report": {
+        "modes": [
+          {
+            "mode": "mathml",
+            "a": [
+              "\n  ALPHA\n",
+              "\n  ALPHA\n",
+              "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n",
+              "\n  \n    \n      \n        (2)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n"
+            ],
+            "b": [
+              "\n  BETA\n",
+              "\n  BETA\n",
+              "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n"
+            ],
+            "svgCount": 0
+          },
+          {
+            "mode": "svg",
+            "a": [
+              "ALPHA",
+              "ALPHA",
+              "𝑥=1(1)",
+              "𝑥=1(2)"
+            ],
+            "b": [
+              "BETA",
+              "BETA",
+              "𝑥=1(1)"
+            ],
+            "svgCount": 4
+          }
+        ],
+        "corpus": [
+          {
+            "mode": "mathml",
+            "math": 2,
+            "svg": 0,
+            "mapped": 73
+          },
+          {
+            "mode": "svg",
+            "math": 0,
+            "svg": 2,
+            "mapped": 156
+          }
+        ],
+        "footnote": [
+          "a",
+          "c",
+          "b"
+        ],
+        "unknown": "Error: 公式解析失败：\\docmacro",
+        "cancelled": "Error: DOM step cancelled",
+        "cancelSeen": true,
+        "after": "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n",
+        "maxActive": 1,
+        "baselineRestored": true,
+        "dom": {
+          "waiting": [],
+          "blocked": false
+        },
+        "secure": true,
+        "version": "3.2.2",
+        "events": [
+          "\\newcommand{\\docmacro}{\\text{ALPHA}}\\docmacro",
+          "\\newcommand{\\docmacro}{\\text{BETA}}\\docmacro",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\newcommand{\\docmacro}{\\text{ALPHA}}\\docmacro",
+          "\\newcommand{\\docmacro}{\\text{BETA}}\\docmacro",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\frac{a_1}{\\sqrt{1+x^2}} + \\mathbb{R} + \\operatorname{rank}(A)",
+          "\\begin{aligned} f(x)&=\\sum_{k=0}^{n}\\binom{n}{k}x^k\\\\ A&=\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\end{aligned}",
+          "\\frac{a_1}{\\sqrt{1+x^2}} + \\mathbb{R} + \\operatorname{rank}(A)",
+          "\\begin{aligned} f(x)&=\\sum_{k=0}^{n}\\binom{n}{k}x^k\\\\ A&=\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\end{aligned}",
+          "a",
+          "b",
+          "c",
+          "\\docmacro",
+          "x",
+          "\\begin{equation}x=1\\end{equation}"
+        ]
+      }
+    },
+    {
+      "environment": "built",
+      "report": {
+        "modes": [
+          {
+            "mode": "mathml",
+            "a": [
+              "\n  ALPHA\n",
+              "\n  ALPHA\n",
+              "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n",
+              "\n  \n    \n      \n        (2)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n"
+            ],
+            "b": [
+              "\n  BETA\n",
+              "\n  BETA\n",
+              "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n"
+            ],
+            "svgCount": 0
+          },
+          {
+            "mode": "svg",
+            "a": [
+              "ALPHA",
+              "ALPHA",
+              "𝑥=1(1)",
+              "𝑥=1(2)"
+            ],
+            "b": [
+              "BETA",
+              "BETA",
+              "𝑥=1(1)"
+            ],
+            "svgCount": 4
+          }
+        ],
+        "corpus": [
+          {
+            "mode": "mathml",
+            "math": 2,
+            "svg": 0,
+            "mapped": 73
+          },
+          {
+            "mode": "svg",
+            "math": 0,
+            "svg": 2,
+            "mapped": 156
+          }
+        ],
+        "footnote": [
+          "a",
+          "c",
+          "b"
+        ],
+        "unknown": "Error: 公式解析失败：\\docmacro",
+        "cancelled": "Error: DOM step cancelled",
+        "cancelSeen": true,
+        "after": "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n",
+        "maxActive": 1,
+        "baselineRestored": true,
+        "dom": {
+          "waiting": [],
+          "blocked": false
+        },
+        "secure": true,
+        "version": "3.2.2",
+        "events": [
+          "\\newcommand{\\docmacro}{\\text{ALPHA}}\\docmacro",
+          "\\newcommand{\\docmacro}{\\text{BETA}}\\docmacro",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\newcommand{\\docmacro}{\\text{ALPHA}}\\docmacro",
+          "\\newcommand{\\docmacro}{\\text{BETA}}\\docmacro",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\frac{a_1}{\\sqrt{1+x^2}} + \\mathbb{R} + \\operatorname{rank}(A)",
+          "\\begin{aligned} f(x)&=\\sum_{k=0}^{n}\\binom{n}{k}x^k\\\\ A&=\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\end{aligned}",
+          "\\frac{a_1}{\\sqrt{1+x^2}} + \\mathbb{R} + \\operatorname{rank}(A)",
+          "\\begin{aligned} f(x)&=\\sum_{k=0}^{n}\\binom{n}{k}x^k\\\\ A&=\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\end{aligned}",
+          "a",
+          "b",
+          "c",
+          "\\docmacro",
+          "x",
+          "\\begin{equation}x=1\\end{equation}"
+        ]
+      }
+    },
+    {
+      "environment": "http",
+      "report": {
+        "modes": [
+          {
+            "mode": "mathml",
+            "a": [
+              "\n  ALPHA\n",
+              "\n  ALPHA\n",
+              "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n",
+              "\n  \n    \n      \n        (2)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n"
+            ],
+            "b": [
+              "\n  BETA\n",
+              "\n  BETA\n",
+              "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n"
+            ],
+            "svgCount": 0
+          },
+          {
+            "mode": "svg",
+            "a": [
+              "ALPHA",
+              "ALPHA",
+              "𝑥=1(1)",
+              "𝑥=1(2)"
+            ],
+            "b": [
+              "BETA",
+              "BETA",
+              "𝑥=1(1)"
+            ],
+            "svgCount": 4
+          }
+        ],
+        "corpus": [
+          {
+            "mode": "mathml",
+            "math": 2,
+            "svg": 0,
+            "mapped": 73
+          },
+          {
+            "mode": "svg",
+            "math": 0,
+            "svg": 2,
+            "mapped": 156
+          }
+        ],
+        "footnote": [
+          "a",
+          "c",
+          "b"
+        ],
+        "unknown": "Error: 公式解析失败：\\docmacro",
+        "cancelled": "Error: DOM step cancelled",
+        "cancelSeen": true,
+        "after": "\n  \n    \n      \n        (1)\n      \n      \n        x\n        =\n        1\n      \n    \n  \n",
+        "maxActive": 1,
+        "baselineRestored": true,
+        "dom": {
+          "waiting": [],
+          "blocked": false
+        },
+        "secure": false,
+        "version": "3.2.2",
+        "events": [
+          "\\newcommand{\\docmacro}{\\text{ALPHA}}\\docmacro",
+          "\\newcommand{\\docmacro}{\\text{BETA}}\\docmacro",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\newcommand{\\docmacro}{\\text{ALPHA}}\\docmacro",
+          "\\newcommand{\\docmacro}{\\text{BETA}}\\docmacro",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\docmacro",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\begin{equation}x=1\\end{equation}",
+          "\\frac{a_1}{\\sqrt{1+x^2}} + \\mathbb{R} + \\operatorname{rank}(A)",
+          "\\begin{aligned} f(x)&=\\sum_{k=0}^{n}\\binom{n}{k}x^k\\\\ A&=\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\end{aligned}",
+          "\\frac{a_1}{\\sqrt{1+x^2}} + \\mathbb{R} + \\operatorname{rank}(A)",
+          "\\begin{aligned} f(x)&=\\sum_{k=0}^{n}\\binom{n}{k}x^k\\\\ A&=\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}\\end{aligned}",
+          "a",
+          "b",
+          "c",
+          "\\docmacro",
+          "x",
+          "\\begin{equation}x=1\\end{equation}"
+        ]
+      }
+    }
+  ]
+}
