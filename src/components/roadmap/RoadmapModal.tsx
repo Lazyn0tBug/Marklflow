@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import {version as APP_VERSION} from '../../../package.json';
 import { CheckCircle2, ShieldCheck, Flag, Sparkles, X, RefreshCw } from 'lucide-react';
 import {renderDocument,assertArtifact} from '../../core/render/documentRenderer';
 import { DocumentRecord } from '../../core/model/document';
@@ -177,7 +178,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-neutral-100">MarkFlow 版本规划与 1.0 验收审查看板</h2>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-700/60">
-                  当前：0.9-RC2 冻结候选
+                  当前：{APP_VERSION} · HTML 兼容性修复
                 </span>
               </div>
               <p className="text-xs text-neutral-400 mt-0.5">
@@ -357,7 +358,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
 
         {/* Modal Footer */}
         <div className="flex items-center justify-between px-6 py-3 border-t border-neutral-800 bg-neutral-950/60 text-xs text-neutral-400">
-          <div>MarkFlow V0.9 候选审查状态：审查中 · 尚未作出 1.0 放行结论</div>
+          <div>MarkFlow V{APP_VERSION} 审查状态：审查中 · 尚未作出 1.0 放行结论</div>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors"

@@ -1,5 +1,7 @@
 # MarkFlow (墨流) - 专业级技术 Markdown 编辑与排版工作台
 
+> **0.9.1 · html分支**：HTML兼容性改造与审查修复版本，暂未合并到main。完整设计基线、实施现状与验证边界见[文档导航](docs/README.md)，变更见[CHANGELOG](CHANGELOG.md)。设计中的规划项不自动等于已实现；Word/WPS、系统打印等仍需独立验收。
+
 <p align="center">
   <strong>开箱即用 · 深度数学公式与图表 · A4 分页与流式预览 · 三视图独立控制 · 双向同步滚动 · 多格式专业导出</strong>
 </p>
@@ -32,7 +34,7 @@
   - 隐藏预览 $\rightarrow$ 极致纯净的代码/Markdown 撰写模式
   - 支持任意单视图、双视图或全三视图自由组合。
 - **可配置最大内容宽度 (Configurable Max Width)**：
-  - 编辑器与 HTML 预览默认采用黄金阅读宽度 **1024px**（支持在顶部快捷切换为 **800px / 1024px / 1200px / 1440px / 100% 全宽**），并自动水平居中呈现，告别超宽屏幕下文字拉伸导致的不适体验。
+  - 编辑器与 HTML 预览默认采用黄金阅读宽度 **1024px**（通过顶部“设置”弹窗切换为 **800px / 1024px / 1280px / 1440px / 100% 全宽**），并自动水平居中呈现，告别超宽屏幕下文字拉伸导致的不适体验。
 
 ### 2. 🔄 毫秒级双向同步滚动 (Synchronized Bi-directional Scroll)
 - **大纲 $\rightarrow$ 编辑器与 HTML**：点击大纲章节标题，编辑器与 HTML 预览同步平滑滚动，使目标标题精准居顶。
@@ -41,7 +43,7 @@
 - **防抖与反馈死循环抑制**：内置毫秒级滚动锁机制，彻底消除两端相互触发导致的页面抖动或死循环。
 
 ### 3. 📐 深度数学公式双引擎 (Dual Math Rendering Engines)
-- 内置 MathJax 核心，支持完整的 LaTeX 数学公式语法（行内公式 `$E=mc^2$`，块级公式 `$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$`）。
+- 内置 MathJax 核心，支持当前 MathJax 已启用包中的 LaTeX 数学语法，未知命令明确报错（行内公式 `$E=mc^2$`，块级公式 `$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$`）。
 - **MathML 极速引擎**：利用现代浏览器原生 MathML 渲染能力，毫秒级流式呈现，内存占用低，字体与排版自然融入正文。
 - **SVG 矢量引擎**：生成像素级精准、缩放不失真、兼容性极佳的矢量图形，适用于学术论文或出版物打印。
 
@@ -51,7 +53,7 @@
 
 ### 5. 📑 真实 A4 分页模拟与流式双模 (A4 Pagination & Continuous Flow)
 - **连续流式模式 (Continuous Flow)**：适合日常撰写与快速浏览，排版随视口宽度流式伸展。
-- **A4 分页仿真模式 (A4 Print Preview)**：真实模拟标准 A4 页面物理边距（210mm × 297mm）、阴影与分页虚线，支持自定义插入分页符 `<div class="page-break"></div>`，所见即所印。
+- **A4 分页仿真模式 (A4 Print Preview)**：真实模拟标准 A4 页面物理边距（210mm × 297mm）、阴影与分页虚线，支持独立段落分页指令 `---pagebreak---`；分页预览与原生打印结果分别核验。
 
 ### 6. 💾 纯本地优先与文档管理 (Local-First Architecture)
 - 基于浏览器原生 **IndexedDB** 构建的高性能本地存储。
@@ -72,7 +74,7 @@
 在现存的 Markdown 工具生态中，多数软件将 Markdown 视为**专有富文本状态机**（如 Typora）、**知识图谱节点**（如 Obsidian）、**代码文件的附加产物**（如 VS Code）或**私有块级对象**（如 Notion）。这些方案在面临**导出、分页、打印与复杂渲染**时，往往需要引入多重 AST 转换管线、依赖重量级的外部二进制工具链（如 Pandoc、LaTeX 编译器）或后台无头浏览器（Puppeteer/Chromium）。
 
 **MarkFlow 的核心设计哲学：**
-> **以标准 HTML 作为 Markdown 的同步投影媒介与单一真实源（Single Source of Truth），通过现代 Web 原生标准全面收敛并简化系统复杂度。**
+> **Markdown 原文是权威来源；标准 HTML 是阅读、预览与视觉输出的共同投影，结构化模型保持语义。**
 
 - **统一渲染与输出管线**：Markdown 源码仅做一步解析，直接投影为携带块级锚点的标准语义 HTML DOM。后续的**屏幕实时预览**、**流式自适应**、**A4 物理分页排版**、**单文件独立 HTML 导出**、**Word (.docx) 导出**与**矢量 A4 PDF 打印**，全部收敛在这一套 HTML 标准切面上。
 - **免除重型外部依赖**：彻底摆脱了 Pandoc、Electron 后台守护进程与无头 Chromium 打印池的沉重负担，在浏览器端仅需数十毫秒即可完成高保真转换。
@@ -204,8 +206,7 @@ npm run lint
 
 1. **DOCX 公式进阶升级 (Word 原生 OMML 公式对象)**：
    - 接入 MathML 到 OpenXML OMML 格式映射，使生成的 Word (`.docx`) 文档在微软 Office 与 WPS 中呈现为可原生二次双击编辑的矢量公式对象。
-2. **Mermaid 导出离线静态化 (纯静态内联 SVG)**：
-   - 在导出单文件独立 HTML 时，预先将客户端已渲染生成的 Mermaid SVG 矢量节点提取并内嵌至文档 DOM 中，达成无需目标环境加载任何 Mermaid JS 引擎的极致纯净静态化。
+Mermaid静态SVG封装已在0.9.1实现，接收方无需运行Mermaid引擎；已验证范围和限制见[审查记录](docs/reviews/html-review-2026-10-24.md)。
 
 ---
 
