@@ -95,6 +95,13 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
       status: 'verifying',
     },
     {
+      version: '1.0-Tauri',
+      phase: 'Desktop Extension',
+      title: 'Tauri 跨平台桌面端与原生导出 (已就绪)',
+      desc: 'Tauri v2 双模架构、系统底层直接导出标准矢量 PDF (无需打印机弹窗)、原生文件系统直通 (Ctrl+S 本地原位写盘) 与多端 CI 打包矩阵。',
+      status: 'current',
+    },
+    {
       version: '1.1',
       phase: 'Backlog / TODO',
       title: '排版进阶与输出静态化 (TODO 演进储备)',

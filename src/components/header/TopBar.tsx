@@ -92,7 +92,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   useEffect(()=>{const dialog=settingsRef.current;if(widthMenuOpen&&!dialog?.open)dialog?.showModal();else if(!widthMenuOpen&&dialog?.open)dialog.close()},[widthMenuOpen]);
 
   return (
-    <header className="h-13 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-3 md:px-4 text-neutral-100 gap-3 select-none shrink-0 no-print z-40">
+    <header data-tauri-drag-region className="h-13 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-3 md:px-4 text-neutral-100 gap-3 select-none shrink-0 no-print z-40">
       {/* Zone 1: 侧栏侧边触发 + 品牌 & 当前文档 */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
