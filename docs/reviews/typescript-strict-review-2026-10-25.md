@@ -36,3 +36,14 @@ R0：已核对干净工作区，完整审查差异为34个文件。后续在对�
 已逐项审阅App/Sidebar/DOT/schema/资产/DOCX等差异。索引保护与可选键省略未发现正常路径内容丢失；schema输出可赋给DocumentRecord由编译契约覆盖。现有IndexedDB读取强转与localStorage反序列化仍不是完整运行时校验（此前明确不在此次存储全链路治理范围）；本报告不把strict通过当成这些数据已验证。
 
 R1验证：frozen install、typecheck、lint、58单元及生产构建通过；负例探针均被门禁拒绝。历史审查证据不改写。
+
+### R2：MathJax边界
+
+| ID | 等级 | 发现与修复 | 证据 |
+| --- | --- | --- | --- |
+| T04 | P1 | 对整个HTML字符串搜索错误词，合法公式文本data-mjx-error/mjx-merror也被拒绝；改为DOM元素/属性错误检查 | 单元及真实MathML→SVG切换回归 |
+| T05 | P2 | getDocument的Promise/任意对象被当作文档，输入jax空对象可通过，makeMethods异步返回不受控 | 校验同步工厂、jax名称/compile、文档convert及方法重建；观察非法Promise拒绝避免未处理拒绝 |
+| T06 | P2 | MathML允许根外多余文本；SVG允许任意包装内容，接口契约过宽 | 校验单一MathML根/命名空间、MathJax SVG宿主及SVG命名空间，拒绝根外非空白文本 |
+| T07 | P2 | 未初始化即可convert，转换中可重建文档或同会话并发转换 | 会话ready/busy保护；失败初始化保持不可转换 |
+
+7项新增负例先全部失败，修复后9项边界回归通过；67单元、类型/lint/构建、13项真实Chromium公式/导出/HTTP回归通过。首轮新E2E定位错误已修正，最终重跑13项全过。真实引擎宏隔离、SVG导出及普通HTTP均覆盖；MathJax仍3.2.2。documentRenderer继续负责跨文档串行调度；本步不引入独立引擎/Worker或性能优化。

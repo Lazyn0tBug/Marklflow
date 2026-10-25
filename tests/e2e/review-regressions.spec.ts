@@ -22,3 +22,12 @@ test('shows unsupported content diagnostics and keeps static task state',async({
  await page.locator('textarea').first().fill('# 静态边界\n\n<canvas>替代说明</canvas>');
  await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await expect(page.locator('.mf-diagnostic')).toContainText('canvas');
 });
+
+test('keeps diagnostic-like literal formula text in MathML and SVG modes',async({page})=>{
+ await page.goto('/');await expect(page.locator('textarea').first()).toBeVisible();
+ await ready(page,'# 公式文本\n\n$\\text{data-mjx-error and mjx-merror}$');
+ await expect(page.locator('.mf-doc math')).toContainText('data-mjx-error');
+ await page.getByTitle(/当前公式输出模式/).click();
+ await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
+ await expect(page.locator('.mf-doc svg')).toHaveCount(1);
+});

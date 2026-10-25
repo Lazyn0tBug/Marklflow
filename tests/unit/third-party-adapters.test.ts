@@ -3,9 +3,10 @@ import {loadMathJaxAdapter} from '../../src/core/render/mathJaxAdapter';
 import {createPagedAdapter} from '../../src/core/render/pagedJsAdapter';
 
 function mathRuntime(){
- return {startup:{promise:Promise.resolve(),getInputJax:vi.fn(()=>[{}]),getDocument:vi.fn(()=>({})),makeMethods:vi.fn()},
+ return {startup:{promise:Promise.resolve(),getInputJax:vi.fn(()=>[{name:'TeX',compile:()=>{}}]),getDocument:vi.fn(()=>({convert:()=>{}})),makeMethods:vi.fn()},
   tex2mmlPromise:vi.fn(async()=>'<math><mn>1</mn></math>'),tex2svgPromise:vi.fn(async()=>{const container=document.createElement('mjx-container');container.innerHTML='<svg><path d="M0 0"/></svg>';return container})};
 }
+async function initialized(raw:unknown){const adapter=await loadMathJaxAdapter(raw);adapter.resetDocument();return adapter}
 it('rejects missing MathJax or malformed conversion capabilities',async()=>{
  await expect(loadMathJaxAdapter(undefined)).rejects.toThrow('MathJax');
  await expect(loadMathJaxAdapter({...mathRuntime(),tex2mmlPromise:42})).rejects.toThrow('tex2mmlPromise');
@@ -28,7 +29,7 @@ it('validates MathML structure and MathJax diagnostics',async()=>{
  expect(await adapter.convert('1',false,'mathml')).toContain('<mn>1');
  runtime.tex2mmlPromise.mockResolvedValue('<span>not math</span>');await expect(adapter.convert('1',false,'mathml')).rejects.toThrow('结构');
  runtime.tex2mmlPromise.mockResolvedValue('<math><merror>bad</merror></math>');await expect(adapter.convert('bad',false,'mathml')).rejects.toThrow('公式解析失败');
- await expect((await loadMathJaxAdapter({...runtime,tex2mmlPromise:async()=>42})).convert('x',false,'mathml')).rejects.toThrow('类型');
+ await expect((await initialized({...runtime,tex2mmlPromise:async()=>42})).convert('x',false,'mathml')).rejects.toThrow('类型');
 });
 it('accepts SVG containers and rejects empty SVG conversion results',async()=>{
  const runtime=mathRuntime(),adapter=await loadMathJaxAdapter(runtime);adapter.resetDocument();
@@ -38,10 +39,10 @@ it('accepts SVG containers and rejects empty SVG conversion results',async()=>{
 });
 it('requires promise conversion APIs and preserves the engine receiver',async()=>{
  const runtime=mathRuntime();
- const adapter=await loadMathJaxAdapter({...runtime,tex2mmlPromise:()=>'<math/>'});
+ const adapter=await initialized({...runtime,tex2mmlPromise:()=>'<math/>'});
  await expect(adapter.convert('x',false,'mathml')).rejects.toThrow('Promise');
  const engine={...runtime,tex2mmlPromise(this:unknown){expect(this).toBe(engine);return Promise.resolve('<math><mi>x</mi></math>')}};
- expect(await (await loadMathJaxAdapter(engine)).convert('x',false,'mathml')).toContain('<mi>x');
+ expect(await (await initialized(engine)).convert('x',false,'mathml')).toContain('<mi>x');
 });
 function paginationRuntime(result:unknown){
  const chunkerDestroy=vi.fn(),polisherDestroy=vi.fn(),register=vi.fn();

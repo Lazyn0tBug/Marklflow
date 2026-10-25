@@ -15,7 +15,7 @@ it('rejects excessive/invalid asset sources and missing SVG image sources',async
  await expect(collectAssets('<svg><image/></svg>')).rejects.toThrow();
 });
 it('rebuilds TeX input state once for each document render',async()=>{
- const getInputJax=vi.fn(()=>[{}]),getDocument=vi.fn(()=>({})),makeMethods=vi.fn();
+ const getInputJax=vi.fn(()=>[{name:'TeX',compile:()=>{}}]),getDocument=vi.fn(()=>({convert:()=>{}})),makeMethods=vi.fn();
  window.MathJax={startup:{promise:Promise.resolve(),getInputJax,getDocument,makeMethods},tex2mmlPromise:vi.fn(async()=>'<math><mn>1</mn></math>'),tex2svgPromise:vi.fn()};
  await prepareMath([{value:'1',display:false}],'mathml');await prepareMath([{value:'2',display:false}],'mathml');
  expect(getInputJax).toHaveBeenCalledTimes(2);expect(getDocument).toHaveBeenCalledTimes(2);expect(makeMethods).toHaveBeenCalledTimes(2);
