@@ -77,6 +77,21 @@ export class RoleTaskScheduler{
   }
 
  }
+ hasPreviewDemand(taskId:string):boolean{return this.queue.hasPending(taskId)||this.runs.get(taskId)?.state==='running'}
+ matchesActiveDocuments(documentId:string,ids:readonly string[]):boolean{return this.gate.activeDocumentId===documentId&&ids.length===this.gate.sessionCount&&ids.every(id=>this.gate.hasSession(id))}
+ /** One synchronous switch transaction: invalidate both documents before any next dispatch. */
+ activateDocument(documentId:string,openDocumentIds:readonly string[]):void {
+  this.mutation();const ids=new Set(openDocumentIds);
+  if(!ids.has(documentId)||ids.size>taskBudget.memory.sessions||[...ids].some(id=>!id||id.length>256))throw new Error('Invalid open document projection');
+  const closed=this.gate.documentIds.filter(id=>!ids.has(id));
+  const affected=new Set([...closed,documentId,...(this.gate.activeDocumentId?[this.gate.activeDocumentId]:[])]);
+  for(const id of affected){
+   this.gate.invalidate(id);
+   for(const taskId of this.queue.cancelDocument(id))this.record({id:taskId,role:undefined,state:'cancelled',reason:'Document activated or left'});
+   for(const run of this.runs.values())if(run.claim.work.submission.document.id===id&&!terminal(run.state)){run.state='stopRequested';this.executors[run.claim.role].stop(run.claim.id)}
+  }
+  for(const id of closed)this.gate.close(id);for(const id of ids)this.gate.open(id);this.gate.activate(documentId);this.pump();
+ }
  cancel(id:string):'accepted'|'alreadyTerminal'{
   this.mutation();if(this.queue.cancelPending(id)){this.record({id,role:undefined,state:'cancelled',reason:'Cancelled pending intent'});this.pump();return 'accepted'}
   const run=this.runs.get(id);if(!run||terminal(run.state))return 'alreadyTerminal';run.state='stopRequested';this.executors[run.claim.role].stop(id);return 'accepted';

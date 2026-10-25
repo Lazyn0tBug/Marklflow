@@ -65,6 +65,10 @@ export class RoleTaskQueue{
   }
  }
  release(role:WorkerRole,id:string):boolean{if(this.active.get(role)?.id!==id)return false;this.active.delete(role);return true}
+ hasPending(id:string):boolean{return this.pending.foreground.some(entry=>entry.id===id)||this.pending.background.some(entry=>entry.id===id)}
+ cancelDocument(documentId:string):string[]{
+  const removed:string[]=[];for(const role of ['foreground','background'] as const)this.pending[role]=this.pending[role].filter(entry=>{if(previewOf(entry).documentId!==documentId)return true;removed.push(entry.id);return false});return removed;
+ }
  cancelPending(id:string):boolean{
   for(const role of ['foreground','background'] as const){const index=this.pending[role].findIndex(entry=>entry.id===id);if(index>=0){this.pending[role].splice(index,1);return true}}return false;
  }

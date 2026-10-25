@@ -1,7 +1,7 @@
 import {taskBudget} from './budget';
 import type {PreviewCacheKey} from './previewIdentity';
 type PreviewKind=PreviewCacheKey['previewKind'];
-/** Open-document admission and current preview task IDs; editor sessions arrive in U3. */
+/** Task admission projection only; DocumentSessions owns editor sessions. */
 export class IdentityGate{
  private sessions=new Set<string>();private active:string|undefined;
  private expected=new Map<string,Map<PreviewKind,string>>();
@@ -19,6 +19,8 @@ export class IdentityGate{
   let kinds=this.expected.get(documentId);if(!kinds){kinds=new Map();this.expected.set(documentId,kinds)}kinds.set(kind,taskId);
  }
  current(documentId:string,kind:PreviewKind,taskId:string):boolean{return this.hasSession(documentId)&&this.expected.get(documentId)?.get(kind)===taskId}
+ invalidate(documentId:string):void{this.expected.delete(documentId)}
+ get documentIds():string[]{return [...this.sessions]}
  get sessionCount():number{return this.sessions.size}
  get activeDocumentId(){return this.active}
 }

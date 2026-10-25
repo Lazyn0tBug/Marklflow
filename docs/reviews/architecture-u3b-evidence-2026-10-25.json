@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "225b0be2cef04276aec6c6c32ff95d1007de82cc",
+  "checks": {
+    "command": "bun run check",
+    "exitCode": 0,
+    "managedSources": 113,
+    "unitFiles": 32,
+    "unitTestsPassed": 194,
+    "newActivationTests": 13,
+    "includes": [
+      "four strict TypeScript profiles",
+      "source and module boundaries",
+      "lint",
+      "production build"
+    ]
+  },
+  "logSha256": "0c3248d22b50ee5f58e5621ba14c331e0bb0226de4467b17f9bc3b867be6a39c",
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "4be1c86029b90a46e4422dc675dbb5dec2d67dbcb549675699cb0e5463f7141e",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "fbd38d2c9f1f9cc4ea7a66701c1c6913f9776f83a183f09f685c4227cfc13dae",
+    "scripts/check-module-boundaries.ts": "aaee894f92a070197bd64c6037134e1d375be75fd22872ebb7558a2f42faa495",
+    "src/application/tasks/identity.ts": "97f7eca0e9afde171b5ec1d7f8c2624de0ff866b3e2dd9746ce77d9c25232a34",
+    "src/application/tasks/roleQueue.ts": "469fbcbbd9a773d3ca8133675b92dd68f2f98656c703fdb02249a888c3b0c051",
+    "src/application/tasks/roleScheduler.ts": "369ee687c91d29e52bf3ea794d32b5fd000738d50a52a040b24214ad9751ad14",
+    "tsconfig.worker.json": "3da01e7356001b2a7cd8dfb02f82bdf62b316f870911be7d50858ab78e8accf7",
+    "docs/reviews/architecture-u3b-implementation-2026-10-25.md": "f1ef224bce443e44f9c436f550794d639776e01e4e520edfd7817706310b8128",
+    "src/application/workspace/previewActivation.ts": "fc9f21287e2443ad0e69d1ef38866a7d2b9bd5fb0bb2d89a7d8f656007d32347",
+    "tests/unit/preview-activation.test.ts": "1335379eaf63a069c10f1805f22afc20fdcb2a1bb52ab8117be5d2bd21078bd0"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/sessions/documentSessions.ts": "7abb0b3ef4504c3b5ff81104bd91c77baf09bb14f1cb8cb17b10dab0c414b5eb"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "scope": "U3b only: synchronous activation composition, memory lookup fixture, controlled execution adapters",
+  "limitations": [
+    "no production UI or real Worker integration",
+    "no actual cache backend/LRU or DOM restore",
+    "browser tests not rerun in this component-only step",
+    "no storage changes or dependency updates",
+    "no push or tag movement"
+  ]
+}
