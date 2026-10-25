@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "49e62c776ffac91192f3c85f9b092b1631699bbd",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 130,
+      "unitFiles": 37,
+      "unitTestsPassed": 239,
+      "newRuntimeTests": 6,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 39,
+      "reportedDuration": "1.1m",
+      "newDualWorkerTests": 4
+    }
+  ],
+  "logSha256": {
+    "check": "870a39d75cee967e2dcc2f276be16efb7a43bb6e4fa6663005d988d9e7a63197",
+    "fullChromium": "189d292b45eb0f29e0ea802d7fb0e8329e7ae115bfca8335bcda7c517c5ff5da",
+    "initialTargetedChromium": "494b573a42821692e7ffe808946b27729ed92324f1a2679987c8b205ee6271d1"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "6efac0b6cf4bf6d46c0f55f94b91224872874db150420a83069c2c3caf189230",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "e9b03605daedd3aa731ba55d237222426f01fbf0efb7cfb3a21bed634a73aec3",
+    "scripts/build-worker-probe.ts": "73ff029980e8f1039458cc0fe5e892bc30edab22bf4f3e2346c62811e1621c34",
+    "src/application/tasks/roleExecutor.ts": "782ae0db3a43b9f985ce90f2a073847e1c3ffa3cddb67e3872d9eaac98d05c89",
+    "src/application/tasks/roleScheduler.ts": "d1513cc4c1021651060a6a8a0b182efca4c3ce8b0f135d261a8592ef4c2e0edb",
+    "src/application/workspace/previewActivation.ts": "37822e22b39ef91c88f6e6b6aea1e2921a791fbe8dd362f6d55283e1a6e981d4",
+    "src/core/platform/web/markdownWorkerAdapter.ts": "481cf00ebf9ca0600e061978cfaf586288bb3724bd2eb85a1ce3098f90f79dda",
+    "tsconfig.integration.json": "2cc4519c45907dba35626fdb27f64e6bfc459dc8cfd82f4175001c9d7f73aad5",
+    "docs/reviews/architecture-u5b-implementation-2026-10-25.md": "b65f42537634a030a3e81746d70b6583ee92aa25a9d2720d5ba49e3d83dcc568",
+    "docs/acceptance/architecture-u5b-runtime-overhead.json": "3b4d2db4e00398ef8fd7e802fe0e8b6d799473eab7c5cba22d154f21e1a81f97",
+    "src/core/platform/web/markdownWorkerRuntime.ts": "8a9fb833f672923597dbf56c5cea528e6fd24630ae546191b093a4e267555553",
+    "tests/e2e/dual-worker.spec.ts": "562588a99645c4371149348b6ce05d67440d74748792da116508a7baa2eb90d6",
+    "tests/fixtures/architecture/dual-worker-probe-client.ts": "184c9f0f94a45d6d32cd98a24ffe25d97df1064c0b953773a0476d07a3b87053",
+    "tests/fixtures/architecture/dual-worker-probe.html": "8d9bc1776d51326bc449e5c3e6cc335e89aaecb1eccdb9ff9840268c6a1d1fb1",
+    "tests/unit/markdown-worker-runtime.test.ts": "410293336c59aac6fa044eb5d5730e52901c112234c0cde318c87d270377d6b4"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/core/parse/markdown.ts": "bcfd523117710798f84bdc4c6767447cbec5897e009868ef8f9e2f19f550438c",
+    "src/workers/markdownWorker.ts": "14261c6915d2afea18aadabebb5b026b819a233da69bd1e34ae08fa90a87f59d",
+    "src/application/tasks/markdownWorkerTask.ts": "73b5f1ed928ffa2e7da8246d1ea1cc515c8b28eb43320c30cebc00e8dd48d4e3"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "measurementArchive": "docs/acceptance/architecture-u5b-runtime-overhead.json",
+  "scope": "U5b fixed foreground/background runtime verified in standalone fixtures; not production-enabled",
+  "limitations": [
+    "no app UI/shared DOM integration or U6 work",
+    "worker physical heap not measured; page heap is coarse/non-standard",
+    "small synthetic corpus and three warm rounds do not establish cross-device performance or leak absence",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

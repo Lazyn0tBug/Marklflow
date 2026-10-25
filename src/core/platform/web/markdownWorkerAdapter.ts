@@ -12,6 +12,7 @@ export class MarkdownWorkerAdapter implements WorkerAdapter {
   this.worker.addEventListener('messageerror',()=>this.fail('Markdown worker message could not be decoded'));
  }
  private fail(message:string):void{const run=this.current;this.dead=true;this.worker.terminate();if(run)run.receive({protocolVersion:1,execution:run.execution,type:'error',code:'host',message:message.slice(0,8192)})}
+ get stopped():boolean{return this.dead}
  start(request:TaskRequest,execution:ExecutionIdentity,receive:(message:unknown)=>void,resources:ExecutionResources):void {
   if(this.dead||this.current)throw new Error('Markdown worker unavailable');
   const command=workerStartSchema.parse({protocolVersion:1,type:'start',request,execution});

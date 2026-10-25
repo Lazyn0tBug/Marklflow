@@ -6,7 +6,7 @@ import {type TaskClock,type TaskArtifact} from '../tasks/contracts';
 import type {RoleClaim} from '../tasks/roleQueue';
 import {MemoryPreviewCache} from '../previewCache/memoryPreviewCache';
 import type {PreviewReference} from '../previewCache/contracts';
-import type {RoleAdmission} from '../tasks/roleQueue';
+import type {RoleAdmission,WorkerRole} from '../tasks/roleQueue';
 import type {DocumentRecord} from '../../core/model/document';
 type PreviewKind=PreviewCacheKey['previewKind'];
 type Admission=RoleAdmission|{status:'unsupported'};
@@ -17,8 +17,8 @@ export class PreviewActivation {
  readonly scheduler:RoleTaskScheduler;
  private readonly gate=new IdentityGate();private displayed:PreviewReference|undefined;
  private selected:PreviewCacheKey|undefined;private foregroundTaskId:string|undefined;
- constructor(private readonly sessions:DocumentSessions,clock:TaskClock,private readonly configVersion:(doc:DocumentRecord,kind:PreviewKind)=>number,private readonly cache:MemoryPreviewCache,private readonly validateArtifact:PreviewArtifactValidator){
-  this.scheduler=new RoleTaskScheduler(this.gate,clock,(id,kind)=>{if(!this.sessions.documentIds.includes(id))return;const doc=this.sessions.read(id).document;return {document:doc,renderConfigVersion:this.configVersion(doc,kind)}},{generated:(claim,artifact)=>this.commit(claim,artifact)});
+ constructor(private readonly sessions:DocumentSessions,clock:TaskClock,private readonly configVersion:(doc:DocumentRecord,kind:PreviewKind)=>number,private readonly cache:MemoryPreviewCache,private readonly validateArtifact:PreviewArtifactValidator,released?:(role:WorkerRole)=>void){
+  this.scheduler=new RoleTaskScheduler(this.gate,clock,(id,kind)=>{if(!this.sessions.documentIds.includes(id))return;const doc=this.sessions.read(id).document;return {document:doc,renderConfigVersion:this.configVersion(doc,kind)}},{generated:(claim,artifact)=>this.commit(claim,artifact),...(released?{released}:{})});
  }
  private submission(id:string,kind:PreviewKind,role:'foreground'|'background'){
   const doc=this.sessions.read(id).document;
@@ -42,11 +42,12 @@ export class PreviewActivation {
   if(foreground){this.cache.setActive(reference);this.displayed=reference}
   return 'completed';
  }
+ releasePreviewReference():void{this.cache.setActive(undefined);this.displayed=undefined}
  /** The only display read: rechecks active document, current source/config and cache existence. */
  currentPreviewReference():PreviewReference|undefined {
   const reference=this.displayed;
   if(reference&&this.sessions.activeDocumentId===reference.key.documentId&&this.sessions.documentIds.includes(reference.key.documentId)&&this.selected&&samePreviewCacheKey(this.selected,reference.key)&&samePreviewCacheKey(this.submission(reference.key.documentId,reference.key.previewKind,'foreground').cacheKey,reference.key)&&this.cache.resolve(reference))return reference;
-  this.cache.setActive(undefined);this.displayed=undefined;return undefined;
+  this.releasePreviewReference();return undefined;
  }
  activate(documentId:string,previewKind:PreviewKind='preview.flow'):ActivationResult {
   // Prepare snapshots and queries first: invalid input or lookup errors leave current work untouched.
@@ -57,7 +58,7 @@ export class PreviewActivation {
   const outgoing=this.selected&&this.selected.documentId!==documentId&&this.sessions.documentIds.includes(this.selected.documentId)?this.submission(this.selected.documentId,this.selected.previewKind,'background'):undefined;
   const outgoingComplete=outgoing?this.cache.lookup(outgoing.cacheKey)!==undefined:false;
   this.scheduler.activateDocument(documentId,this.sessions.documentIds);this.sessions.activate(documentId);
-  this.selected=incoming.cacheKey;this.cache.setActive(undefined);this.displayed=undefined;
+  this.selected=incoming.cacheKey;this.releasePreviewReference();
   if(reference){this.cache.setActive(reference);this.displayed=reference;this.sessions.setPreviewReference(documentId,previewKind,reference)}
   const background=outgoing&&!outgoingComplete?this.scheduler.enqueuePreview(outgoing):undefined;
   const foreground=reference===undefined?this.scheduler.enqueuePreview(incoming):undefined;

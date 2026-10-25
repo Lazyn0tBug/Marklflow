@@ -1,0 +1,579 @@
+{
+  "date": "2026-10-25",
+  "fixture": "tests/fixtures/architecture/dual-worker-probe-client.ts",
+  "sampleDesign": {
+    "sections": 96,
+    "coldRounds": 1,
+    "warmRounds": 3,
+    "pollMs": 5,
+    "timerIntervalMs": 10,
+    "changesBetweenRounds": "append short labels to force generation; input byte counters describe final A snapshot"
+  },
+  "definitions": {
+    "constructionMs": "host-side creation/installation; not worker module ready",
+    "coldWallMs": "host request preparation through first pair completion, including module load/transport/validation/cache",
+    "roleMs": "observer time after submission; not isolated worker CPU time",
+    "timerDelayMs": "main-thread timer proxy, not editor input latency",
+    "roles": "captured before dispose; memoryTrend and final disposal fields include after dispose",
+    "pageHeap": "non-standard coarse browser report; not independent worker heaps; no forced GC",
+    "workerPhysicalHeapBytes": "unavailable, represented as null",
+    "http": "Playwright HTTP forwarding; cannot attribute timing differences to security context"
+  },
+  "reports": {
+    "development": {
+      "source": "test-results/dual-worker-real-dual-work-36d44-ure-overhead-in-development-chromium/runtime-overhead.json",
+      "sha256": "80b5b7f5fccd82025779dd74731f0b5a5c3d1b81ba4b501869218c5182b23729",
+      "data": {
+        "fault": false,
+        "constructionMs": 0.7000000178813934,
+        "cold": {
+          "foregroundMs": 252.5,
+          "backgroundMs": 252.5,
+          "wallMs": 267,
+          "includesFirstModuleLoad": true
+        },
+        "warm": [
+          {
+            "round": 0,
+            "foregroundMs": 24.30000001192093,
+            "backgroundMs": 24.30000001192093,
+            "wallMs": 30.30000001192093
+          },
+          {
+            "round": 1,
+            "foregroundMs": 20.900000005960464,
+            "backgroundMs": 20.900000005960464,
+            "wallMs": 23.19999998807907
+          },
+          {
+            "round": 2,
+            "foregroundMs": 24,
+            "backgroundMs": 24.100000023841858,
+            "wallMs": 26.100000023841858
+          }
+        ],
+        "peakForeground": 1,
+        "peakBackground": 1,
+        "peakActive": 2,
+        "timerDelayMs": 23.900000005960464,
+        "inputUtf8Bytes": 9646,
+        "inputSnapshotBytes": 11583,
+        "artifactSerializedBytes": 100882,
+        "cacheBytes": 1603670,
+        "pageHeapReported": {
+          "usedJSHeapSize": 17100000,
+          "totalJSHeapSize": 20500000
+        },
+        "workerPhysicalHeapBytes": null,
+        "fifo": [
+          "C",
+          "B",
+          "D"
+        ],
+        "replacedPendingState": "cancelled",
+        "cancel": {
+          "oldState": "cancelled",
+          "foregroundRebuilt": true,
+          "unrelatedBackgroundPreserved": true,
+          "oldTask": "role-task-13",
+          "newArtifactTask": "role-task-15",
+          "newTask": "role-task-15"
+        },
+        "promotion": {
+          "oldForegroundState": "cancelled",
+          "oldBackgroundState": "cancelled",
+          "foregroundRebuilt": true,
+          "backgroundRebuilt": true,
+          "foregroundArtifactTask": "role-task-20",
+          "foregroundTask": "role-task-20",
+          "backgroundArtifactTask": "role-task-19",
+          "backgroundTask": "role-task-19"
+        },
+        "cacheHitNoGeneration": true,
+        "finalQueue": {
+          "pending": {
+            "foreground": [],
+            "background": []
+          },
+          "active": [],
+          "ownedBytes": 0
+        },
+        "roles": [
+          {
+            "role": "foreground",
+            "id": "markdown-worker-5",
+            "generation": 3,
+            "stopped": false
+          },
+          {
+            "role": "background",
+            "id": "markdown-worker-4",
+            "generation": 2,
+            "stopped": false
+          }
+        ],
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+        "hardwareConcurrency": 16,
+        "secure": true,
+        "uuid": "function",
+        "subtle": "object",
+        "memoryTrend": [
+          {
+            "stage": "beforeWorkers",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 0,
+            "liveRoleInstances": 0,
+            "resources": 0
+          },
+          {
+            "stage": "afterConstruction",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 0,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterCold",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 199028,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-0",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 398690,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-1",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 598986,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-2",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 799916,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterSwitches",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 1603670,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterDispose",
+            "pageHeapReported": {
+              "usedJSHeapSize": 17100000,
+              "totalJSHeapSize": 20500000
+            },
+            "cacheBytes": 1603670,
+            "liveRoleInstances": 0,
+            "resources": 0
+          }
+        ],
+        "activePinAfterDispose": null,
+        "disposed": true,
+        "retainedResources": 0,
+        "remainingPending": 0
+      }
+    },
+    "http": {
+      "source": "test-results/dual-worker-real-dual-work-e71d6-nd-measure-overhead-in-http-chromium/runtime-overhead.json",
+      "sha256": "a283ad524a72957ad6dec6389dbb53d19118bd64496e6d3d41153e59c0b89a80",
+      "data": {
+        "fault": false,
+        "constructionMs": 0.9000000059604645,
+        "cold": {
+          "foregroundMs": 157.59999999403954,
+          "backgroundMs": 157.59999999403954,
+          "wallMs": 177.59999999403954,
+          "includesFirstModuleLoad": true
+        },
+        "warm": [
+          {
+            "round": 0,
+            "foregroundMs": 30.30000001192093,
+            "backgroundMs": 30.30000001192093,
+            "wallMs": 37.80000001192093
+          },
+          {
+            "round": 1,
+            "foregroundMs": 28.400000005960464,
+            "backgroundMs": 28.400000005960464,
+            "wallMs": 32
+          },
+          {
+            "round": 2,
+            "foregroundMs": 24.599999994039536,
+            "backgroundMs": 24.700000017881393,
+            "wallMs": 27.5
+          }
+        ],
+        "peakForeground": 1,
+        "peakBackground": 1,
+        "peakActive": 2,
+        "timerDelayMs": 24.600000023841858,
+        "inputUtf8Bytes": 9646,
+        "inputSnapshotBytes": 11583,
+        "artifactSerializedBytes": 100882,
+        "cacheBytes": 1603670,
+        "pageHeapReported": {
+          "usedJSHeapSize": 10000000,
+          "totalJSHeapSize": 10000000
+        },
+        "workerPhysicalHeapBytes": null,
+        "fifo": [
+          "C",
+          "B",
+          "D"
+        ],
+        "replacedPendingState": "cancelled",
+        "cancel": {
+          "oldState": "cancelled",
+          "foregroundRebuilt": true,
+          "unrelatedBackgroundPreserved": true,
+          "oldTask": "role-task-13",
+          "newArtifactTask": "role-task-15",
+          "newTask": "role-task-15"
+        },
+        "promotion": {
+          "oldForegroundState": "cancelled",
+          "oldBackgroundState": "cancelled",
+          "foregroundRebuilt": true,
+          "backgroundRebuilt": true,
+          "foregroundArtifactTask": "role-task-20",
+          "foregroundTask": "role-task-20",
+          "backgroundArtifactTask": "role-task-19",
+          "backgroundTask": "role-task-19"
+        },
+        "cacheHitNoGeneration": true,
+        "finalQueue": {
+          "pending": {
+            "foreground": [],
+            "background": []
+          },
+          "active": [],
+          "ownedBytes": 0
+        },
+        "roles": [
+          {
+            "role": "foreground",
+            "id": "markdown-worker-5",
+            "generation": 3,
+            "stopped": false
+          },
+          {
+            "role": "background",
+            "id": "markdown-worker-4",
+            "generation": 2,
+            "stopped": false
+          }
+        ],
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+        "hardwareConcurrency": 16,
+        "secure": false,
+        "uuid": "undefined",
+        "subtle": "undefined",
+        "memoryTrend": [
+          {
+            "stage": "beforeWorkers",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 0,
+            "liveRoleInstances": 0,
+            "resources": 0
+          },
+          {
+            "stage": "afterConstruction",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 0,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterCold",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 199028,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-0",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 398690,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-1",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 598986,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-2",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 799916,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterSwitches",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 1603670,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterDispose",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 1603670,
+            "liveRoleInstances": 0,
+            "resources": 0
+          }
+        ],
+        "activePinAfterDispose": null,
+        "disposed": true,
+        "retainedResources": 0,
+        "remainingPending": 0
+      }
+    },
+    "built": {
+      "source": "test-results/dual-worker-real-dual-work-ea893-d-measure-overhead-in-built-chromium/runtime-overhead.json",
+      "sha256": "8023f564043e5c4510ec8c58cecc438c41f1c7e806b4bf9b861822e38d94fefa",
+      "data": {
+        "fault": false,
+        "constructionMs": 0.7999999821186066,
+        "cold": {
+          "foregroundMs": 114.40000000596046,
+          "backgroundMs": 114.40000000596046,
+          "wallMs": 128.30000001192093,
+          "includesFirstModuleLoad": true
+        },
+        "warm": [
+          {
+            "round": 0,
+            "foregroundMs": 23.400000005960464,
+            "backgroundMs": 23.400000005960464,
+            "wallMs": 29.799999982118607
+          },
+          {
+            "round": 1,
+            "foregroundMs": 19.5,
+            "backgroundMs": 19.5,
+            "wallMs": 22.600000023841858
+          },
+          {
+            "round": 2,
+            "foregroundMs": 17.099999994039536,
+            "backgroundMs": 17.099999994039536,
+            "wallMs": 19.19999998807907
+          }
+        ],
+        "peakForeground": 1,
+        "peakBackground": 1,
+        "peakActive": 2,
+        "timerDelayMs": 16.400000005960464,
+        "inputUtf8Bytes": 9646,
+        "inputSnapshotBytes": 11583,
+        "artifactSerializedBytes": 100882,
+        "cacheBytes": 1603670,
+        "pageHeapReported": {
+          "usedJSHeapSize": 10000000,
+          "totalJSHeapSize": 10000000
+        },
+        "workerPhysicalHeapBytes": null,
+        "fifo": [
+          "C",
+          "B",
+          "D"
+        ],
+        "replacedPendingState": "cancelled",
+        "cancel": {
+          "oldState": "cancelled",
+          "foregroundRebuilt": true,
+          "unrelatedBackgroundPreserved": true,
+          "oldTask": "role-task-13",
+          "newArtifactTask": "role-task-15",
+          "newTask": "role-task-15"
+        },
+        "promotion": {
+          "oldForegroundState": "cancelled",
+          "oldBackgroundState": "cancelled",
+          "foregroundRebuilt": true,
+          "backgroundRebuilt": true,
+          "foregroundArtifactTask": "role-task-20",
+          "foregroundTask": "role-task-20",
+          "backgroundArtifactTask": "role-task-19",
+          "backgroundTask": "role-task-19"
+        },
+        "cacheHitNoGeneration": true,
+        "finalQueue": {
+          "pending": {
+            "foreground": [],
+            "background": []
+          },
+          "active": [],
+          "ownedBytes": 0
+        },
+        "roles": [
+          {
+            "role": "foreground",
+            "id": "markdown-worker-5",
+            "generation": 3,
+            "stopped": false
+          },
+          {
+            "role": "background",
+            "id": "markdown-worker-4",
+            "generation": 2,
+            "stopped": false
+          }
+        ],
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+        "hardwareConcurrency": 16,
+        "secure": true,
+        "uuid": "function",
+        "subtle": "object",
+        "memoryTrend": [
+          {
+            "stage": "beforeWorkers",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 0,
+            "liveRoleInstances": 0,
+            "resources": 0
+          },
+          {
+            "stage": "afterConstruction",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 0,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterCold",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 199028,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-0",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 398690,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-1",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 598986,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "warm-2",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 799916,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterSwitches",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 1603670,
+            "liveRoleInstances": 2,
+            "resources": 0
+          },
+          {
+            "stage": "afterDispose",
+            "pageHeapReported": {
+              "usedJSHeapSize": 10000000,
+              "totalJSHeapSize": 10000000
+            },
+            "cacheBytes": 1603670,
+            "liveRoleInstances": 0,
+            "resources": 0
+          }
+        ],
+        "activePinAfterDispose": null,
+        "disposed": true,
+        "retainedResources": 0,
+        "remainingPending": 0
+      }
+    }
+  }
+}

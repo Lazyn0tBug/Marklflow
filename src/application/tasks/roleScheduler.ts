@@ -9,7 +9,7 @@ interface Run {claim:RoleClaim;state:RoleRunState;reason:string|undefined}
 interface Outcome {id:string;role:WorkerRole|undefined;state:RoleRunState;reason:string|undefined}
 const terminal=(state:RoleRunState)=>state!=='running'&&state!=='stopRequested';
 /** Preview generation handoff only; generated is not cache completion or view publication. */
-export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined|'completed'}
+export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined|'completed';released?(role:WorkerRole):void}
 export class RoleTaskScheduler{
  private readonly queue:RoleTaskQueue;
  private readonly executors:Record<WorkerRole,RoleExecutor>;
@@ -18,7 +18,7 @@ export class RoleTaskScheduler{
  private pumping=false;private notifying=false;
  constructor(private readonly gate:IdentityGate,clock:TaskClock,readPreview:PreviewReader,private readonly hooks:RoleSchedulerHooks={generated:()=>undefined}){
   this.queue=new RoleTaskQueue(gate,readPreview,bytes=>this.memory(bytes).accepted);
-  const executor=(role:WorkerRole)=>new RoleExecutor(role,clock,{message:message=>this.message(role,message),fault:(id,reason)=>this.end(id,'failed',reason),timeout:(id,reason)=>this.end(id,'failed','Timed out: '+reason),available:()=>{for(const run of [...this.runs.values()])this.archive(run);this.pump()}},bytes=>this.memory(bytes).accepted);
+  const executor=(role:WorkerRole)=>new RoleExecutor(role,clock,{message:message=>this.message(role,message),fault:(id,reason)=>this.end(id,'failed',reason),timeout:(id,reason)=>this.end(id,'failed','Timed out: '+reason),available:()=>{for(const run of [...this.runs.values()])this.archive(run);this.hooks.released?.(role);this.pump()}},bytes=>this.memory(bytes).accepted);
   this.executors={foreground:executor('foreground'),background:executor('background')};
  }
  private mutation():void{if(this.notifying)throw new Error('Reentrant generation handoff')}
@@ -76,6 +76,10 @@ export class RoleTaskScheduler{
    }catch(error){this.end(id,'failed',String(error))}finally{this.notifying=false}return;
   }
 
+ }
+ cancelAll():void{
+  this.mutation();for(const id of this.gate.documentIds){this.gate.invalidate(id);for(const taskId of this.queue.cancelDocument(id))this.record({id:taskId,role:undefined,state:'cancelled',reason:'Runtime disposed'})}
+  for(const run of this.runs.values())if(!terminal(run.state)){run.state='stopRequested';this.executors[run.claim.role].stop(run.claim.id)}
  }
  hasPreviewDemand(taskId:string):boolean{return this.queue.hasPending(taskId)||this.runs.get(taskId)?.state==='running'}
  matchesActiveDocuments(documentId:string,ids:readonly string[]):boolean{return this.gate.activeDocumentId===documentId&&ids.length===this.gate.sessionCount&&ids.every(id=>this.gate.hasSession(id))}
