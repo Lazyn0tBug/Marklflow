@@ -4,7 +4,7 @@
  * 整合：三栏工作台、多文档与大纲、双模公式与图表、流式/A4物理预览、导出中心与 1.0 审查看板
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { TopBar } from './components/header/TopBar';
 import { Sidebar } from './components/workspace/Sidebar';
@@ -26,6 +26,9 @@ import {
   getStorageRecoveries,
   recoveryJson,
 } from './core/storage/storage';
+import {DocumentTabs} from './components/workspace/DocumentTabs';
+import {DocumentSessions} from './application/sessions/documentSessions';
+import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
@@ -53,13 +56,16 @@ export default function App() {
   const [contentMaxWidth, setContentMaxWidth] = useState<number | 'full'>(1024);
 
   const [mathMode, setMathMode] = useState<'mathml' | 'svg'>('mathml');
-  const [isDirty, setIsDirty] = useState<boolean>(false);
+  const sessions=useRef(new DocumentSessions()).current;
+  const runtime=useRef<WorkbenchPreviewRuntime|null>(null);
+  const [tabs,setTabs]=useState<string[]>([]);
+  const [,sessionChanged]=useState(0);
+  const [preview,setPreview]=useState<PreviewView>({documentId:'',kind:'preview.flow',state:'pending'});
+  const restorePreview=useRef<string|undefined>(undefined);
+  const tabModes=useRef(new Map<string,'flow'|'a4'>());
+  const tabHeadings=useRef(new Map<string,string|null>());
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
   const [roadmapModalOpen, setRoadmapModalOpen] = useState<boolean>(false);
-
-  // 撤销重做栈
-  const [undoStack, setUndoStack] = useState<string[]>([]);
-  const [redoStack, setRedoStack] = useState<string[]>([]);
 
   // 同步滚动与大纲高亮状态
   const [syncScroll, setSyncScroll] = useState<boolean>(true);
@@ -73,17 +79,20 @@ export default function App() {
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pendingSaves=useRef(new Map<string,{timer:ReturnType<typeof setTimeout>;doc:DocumentRecord}>());
-  const activeRevision=useRef<{id:string;revision:number}|null>(null);
+
 
   // 初始化加载文档
   useEffect(() => {
     let active=true;
+    let pipeline:WorkbenchPreviewRuntime|undefined;let unsubscribe=()=>{};
+    try{pipeline=new WorkbenchPreviewRuntime(sessions);runtime.current=pipeline;const owner=pipeline;unsubscribe=owner.subscribe(()=>{if(active)setPreview(owner.view)})}catch(error){setActionError('预览启动失败，文档仍可编辑与保存：'+String(error))}
     loadDocuments().then(({documents:docs,warnings}) => {
       if(!active)return;
       setStorageWarnings(warnings);
       setDocuments(docs);
       const first=docs[0];
       if (first) {
+        sessions.open(first);setTabs(sessions.documentIds);
         setCurrentDocId(first.id);
         setMathMode(first.options.mathMode);
       }
@@ -91,7 +100,7 @@ export default function App() {
       try{const entries=await getStorageRecoveries();if(active)setRecoveryCount(entries.length)}catch(error){if(active)setLoadError(String(error))}
       if(active)setLoadComplete(true);
     });
-    return()=>{active=false};
+    return()=>{active=false;unsubscribe();pipeline?.dispose();runtime.current=null;for(const entry of pendingSaves.current.values())clearTimeout(entry.timer);};
   }, []);
   const downloadRecovery=async()=>{
     try{
@@ -107,19 +116,57 @@ export default function App() {
   </aside>:null;
 
   // 当前活动文档
-  const currentDoc = documents.find((d) => d.id === currentDocId) || documents[0];
+  const currentSession=sessions.documentIds.includes(currentDocId)?sessions.read(currentDocId):undefined;
+  const currentDoc=currentSession?.document;
+  const isDirty=currentSession?.dirty??false;
+  const kind=previewMode==='a4'?'preview.a4':'preview.flow';
+  const previewView:PreviewView=preview.documentId===currentDocId&&preview.kind===kind?preview:{documentId:currentDocId,kind,state:'pending'};
 
-  activeRevision.current=currentDoc?{id:currentDoc.id,revision:currentDoc.revision}:null;
-  const persist=async(doc:DocumentRecord)=>{
-    try{await saveDocument(doc);if(activeRevision.current?.id===doc.id&&activeRevision.current.revision===doc.revision)setIsDirty(false)}
-    catch(error){alert('保存失败，请导出备份后重试：'+String(error))}
+  const persist=async(doc:DocumentRecord):Promise<boolean>=>{
+    try{await saveDocument(doc);if(sessions.documentIds.includes(doc.id))sessions.markSaved(doc.id,doc.revision);sessionChanged(value=>value+1);return true}
+    catch(error){alert('保存失败，请导出备份后重试：'+String(error));return false}
   };
   const queueSave=(doc:DocumentRecord)=>{
     const prior=pendingSaves.current.get(doc.id);if(prior)clearTimeout(prior.timer);
     const timer=setTimeout(()=>{pendingSaves.current.delete(doc.id);void persist(doc)},700);
     pendingSaves.current.set(doc.id,{timer,doc});
   };
-  useEffect(()=>{const guard=(event:BeforeUnloadEvent)=>{if(pendingSaves.current.size){event.preventDefault();event.returnValue=''}};window.addEventListener('beforeunload',guard);return()=>window.removeEventListener('beforeunload',guard)},[]);
+  useEffect(()=>{const guard=(event:BeforeUnloadEvent)=>{if(pendingSaves.current.size||sessions.documentIds.some(id=>sessions.read(id).dirty)){event.preventDefault();event.returnValue=''}};window.addEventListener('beforeunload',guard);return()=>window.removeEventListener('beforeunload',guard)},[]);
+
+  const capturePosition=()=>{
+    if(!currentDoc||!sessions.documentIds.includes(currentDoc.id))return;
+    tabHeadings.current.set(currentDoc.id,activeHeadingId);
+    const old=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current,view=previewContainerRef.current;
+    sessions.setPosition(currentDoc.id,{selectionStart:editor?.selectionStart??old.selectionStart,selectionEnd:editor?.selectionEnd??old.selectionEnd,scrollTop:editor?.scrollTop??old.scrollTop,scrollLeft:editor?.scrollLeft??old.scrollLeft,previewScrollTop:view?.scrollTop??old.previewScrollTop});
+  };
+  const selectDocument=(id:string)=>{
+    capturePosition();const doc=documents.find(value=>value.id===id);if(!doc)return;
+    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;expectedScroll.current={editor:null,preview:null};scrollSourceRef.current=null;if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current)}catch(error){setActionError(String(error))}
+  };
+  const removeSession=(id:string)=>{
+    const active=sessions.activeDocumentId===id;if(sessions.documentIds.includes(id))sessions.close(id,true);
+    runtime.current?.forget(id);tabModes.current.delete(id);tabHeadings.current.delete(id);setTabs(sessions.documentIds);
+    if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;expectedScroll.current={editor:null,preview:null};scrollSourceRef.current=null;if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current)}
+    if(!sessions.documentIds.length)runtime.current?.clear();
+  };
+  const closeTab=async(id:string)=>{
+    if(!sessions.documentIds.includes(id))return;
+    const value=sessions.read(id);
+    if(value.dirty){if(!confirm('文档“'+value.document.meta.title+'”尚未保存。保存后关闭标签页？'))return;const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);if(!await persist(value.document))return;if(!sessions.documentIds.includes(id)||sessions.read(id).dirty)return}
+    if(id===currentDocId)capturePosition();removeSession(id);
+  };
+  useEffect(()=>{
+    if(currentDoc&&!runtime.current){setPreview({documentId:currentDoc.id,kind,state:'error',error:'预览引擎未就绪，请保存文档后重新加载。'});return}
+    if(currentDoc&&runtime.current){try{runtime.current.activate(currentDoc.id,kind)}catch(error){setPreview({documentId:currentDoc.id,kind,state:'error',error:String(error)})}}
+  },[currentDocId,currentDoc?.revision,kind,tabs.join('|')]);
+  useLayoutEffect(()=>{
+    if(!currentDoc)return;const position=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current;
+    if(editor){editor.setSelectionRange(position.selectionStart,position.selectionEnd);expectedScroll.current.editor=position.scrollTop;editor.scrollTop=position.scrollTop;editor.scrollLeft=position.scrollLeft}
+  },[currentDocId,showEditor]);
+  useLayoutEffect(()=>{
+    if(!currentDoc||previewView.state!=='ready'||restorePreview.current!==currentDoc.id)return;
+    const view=previewContainerRef.current;if(view){const top=sessions.read(currentDoc.id).position.previewScrollTop;expectedScroll.current.preview=top;view.scrollTop=top;restorePreview.current=undefined}
+  },[currentDocId,previewView.state,previewView.referenceId,showPreview,previewMode]);
 
   // 文档切换或加载时，确保大纲高亮同步指向当前有效章节
   useEffect(() => {
@@ -139,71 +186,13 @@ export default function App() {
     }
   }, [currentDocId, currentDoc?.id, currentDoc?.markdown]);
 
-  // Markdown 内容变更处理
-  const handleMarkdownChange = useCallback(
-    (newMarkdown: string) => {
-      if (!currentDoc) return;
-
-      // 压入撤销栈
-      setUndoStack((prev) => [...prev.slice(-30), currentDoc.markdown]);
-      setRedoStack([]);
-
-      const updatedDoc: DocumentRecord = {
-        ...currentDoc,
-        markdown: newMarkdown,
-        revision: currentDoc.revision + 1,
-      };
-
-      // 从第一行推导文档标题 (# 标题)
-      const firstHeadingMatch = newMarkdown.match(/^#\s+(.+)$/m);
-      if (firstHeadingMatch?.[1]?.trim()) {
-        updatedDoc.meta = {
-          ...updatedDoc.meta,
-          title: firstHeadingMatch[1].trim(),
-        };
-      }
-
-      setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
-      setIsDirty(true);
-
-      queueSave(updatedDoc);
-    },
-    [currentDoc]
-  );
-
-  const handleUndo = () => {
-    if (undoStack.length === 0 || !currentDoc) return;
-    const previous = undoStack.at(-1);
-    if(previous===undefined)return;
-    setRedoStack((prev) => [...prev, currentDoc.markdown]);
-    setUndoStack((prev) => prev.slice(0, -1));
-
-    const updatedDoc: DocumentRecord = {
-      ...currentDoc,
-      markdown: previous,
-      revision: currentDoc.revision + 1,
-    };
-    setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
-    setIsDirty(true);
-    queueSave(updatedDoc);
-  };
-
-  const handleRedo = () => {
-    if (redoStack.length === 0 || !currentDoc) return;
-    const next = redoStack.at(-1);
-    if(next===undefined)return;
-    setUndoStack((prev) => [...prev, currentDoc.markdown]);
-    setRedoStack((prev) => prev.slice(0, -1));
-
-    const updatedDoc: DocumentRecord = {
-      ...currentDoc,
-      markdown: next,
-      revision: currentDoc.revision + 1,
-    };
-    setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
-    setIsDirty(true);
-    queueSave(updatedDoc);
-  };
+  const applyDocument=(doc:DocumentRecord)=>{sessions.update(doc);setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);queueSave(doc)};
+  const handleMarkdownChange=useCallback((markdown:string)=>{
+    if(!currentDoc)return;
+    const doc={...currentDoc,revision:currentDoc.revision+1,markdown};const title=markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();if(title)doc.meta={...doc.meta,title};applyDocument(doc);
+  },[currentDoc]);
+  const history=(direction:'undo'|'redo')=>{if(!currentDoc)return;if(sessions[direction](currentDoc.id)){const doc=sessions.read(currentDoc.id).document;setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);setMathMode(doc.options.mathMode);queueSave(doc)}};
+  const handleUndo=()=>history('undo');const handleRedo=()=>history('redo');
 
   // 统一工作台工具栏文本插入
   const handleInsertText = useCallback(
@@ -238,36 +227,17 @@ export default function App() {
     void persist(currentDoc);
   };
 
-  const handleCreateDoc = () => {
-    setActionError('');
-    const newDoc = createNewDocument('新建 Markdown 文档');
-    saveDocument(newDoc).then(() => {
-      setDocuments((prev) => [newDoc, ...prev]);
-      setCurrentDocId(newDoc.id);
-      setUndoStack([]);
-      setRedoStack([]);
-      setIsDirty(false);
-    }).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
+  const addDocument=(doc:DocumentRecord)=>{
+    setActionError('');capturePosition();
+    if(sessions.documentIds.includes(doc.id)){selectDocument(doc.id);return}
+    if(sessions.documentIds.length>=32){setActionError('最多同时打开32个文档，请先关闭一个标签页。');return}
+    saveDocument(doc).then(()=>{sessions.open(doc);setDocuments(previous=>[doc,...previous.filter(value=>value.id!==doc.id)]);setTabs(sessions.documentIds);setCurrentDocId(doc.id);setMathMode(doc.options.mathMode);setPreviewMode('flow');restorePreview.current=doc.id}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
-
-  const handleDeleteDoc = (id: string) => {
-    setActionError('');
-    const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
-    deleteDocument(id).then(() => {
-      setDocuments(previous=>previous.filter(doc=>doc.id!==id));
-      setCurrentDocId(active=>active===id?'':active);
-    }).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
-  };
-
-  const handleImportDoc = (importedDoc: DocumentRecord) => {
-    setActionError('');
-    saveDocument(importedDoc).then(() => {
-      setDocuments((prev) => [importedDoc, ...prev]);
-      setCurrentDocId(importedDoc.id);
-      setUndoStack([]);
-      setRedoStack([]);
-      setIsDirty(false);
-    }).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
+  const handleCreateDoc=()=>addDocument(createNewDocument('新建 Markdown 文档'));
+  const handleImportDoc=(doc:DocumentRecord)=>addDocument(doc);
+  const handleDeleteDoc=(id:string)=>{
+    setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
+    deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
 
   const handleDirectScroll=(pane:'editor'|'preview')=>{
@@ -545,31 +515,24 @@ export default function App() {
           mathMode: nextMode,
         },
       };
-      setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
-      setIsDirty(true);
-      queueSave(updatedDoc);
+      applyDocument(updatedDoc);
     }
   };
 
   // All three panes are independent; the final visible pane cannot be hidden.
   const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
   const handleToggleSidebar=()=>{if(!sidebarOpen||visibleCount>1)setSidebarOpen(v=>!v)};
-  const handleToggleEditor=()=>{if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
-  const handleTogglePreview=()=>{if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
+  const handleToggleEditor=()=>{capturePosition();if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
+  const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
-  if (!currentDoc) {
-    return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-neutral-900 text-neutral-400">
-        {recoveryNotice}
-        {loadComplete?<><p>没有可加载的文档，原始记录不会被空白文档覆盖。</p><button onClick={handleCreateDoc}>新建独立文档</button></>:'正在初始化 MarkFlow 墨流工作台...'}
-      </div>
-    );
-  }
+  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportDoc={handleImportDoc} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
 
   const lines = currentDoc.markdown.split('\n');
   const charCount = currentDoc.markdown.length;
   const wordCount = currentDoc.markdown.trim().split(/\s+/).filter(Boolean).length;
   const lineCount = lines.length;
+
+  const tabBar=<DocumentTabs tabs={tabs.map(id=>{const value=sessions.read(id);return {id,title:value.document.meta.title,dirty:value.dirty}})} activeId={currentDocId} onActivate={selectDocument} onClose={id=>{void closeTab(id)}}/>;
 
   return (
     <div className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}>
@@ -583,7 +546,7 @@ export default function App() {
         onToggleEditor={handleToggleEditor}
         onTogglePreview={handleTogglePreview}
         previewMode={previewMode}
-        onPreviewModeChange={setPreviewMode}
+        onPreviewModeChange={mode=>{capturePosition();tabModes.current.set(currentDoc.id,mode);restorePreview.current=currentDoc.id;setPreviewMode(mode)}}
         maxWidth={contentMaxWidth}
         onMaxWidthChange={setContentMaxWidth}
         mathMode={mathMode}
@@ -608,12 +571,7 @@ export default function App() {
           <Sidebar
             documents={documents}
             currentDocId={currentDocId}
-            onSelectDoc={(id) => {
-              setCurrentDocId(id);
-              setUndoStack([]);
-              setRedoStack([]);
-              setIsDirty(false);
-            }}
+            onSelectDoc={selectDocument}
             onCreateDoc={handleCreateDoc}
             onDeleteDoc={handleDeleteDoc}
             onImportDoc={handleImportDoc}
@@ -646,8 +604,8 @@ export default function App() {
               onInsertText={handleInsertText}
               onUndo={handleUndo}
               onRedo={handleRedo}
-              canUndo={undoStack.length > 0}
-              canRedo={redoStack.length > 0}
+              canUndo={currentSession?.canUndo??false}
+              canRedo={currentSession?.canRedo??false}
               syncScroll={syncScroll}
               onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
               viewMode={showPreview ? 'split' : 'edit'}
@@ -655,7 +613,7 @@ export default function App() {
           )}
 
           {/* Viewports Split Panels */}
-          <div className="flex-1 flex overflow-hidden">
+          <div id="workbench-document" role="tabpanel" aria-labelledby={'tab-'+encodeURIComponent(currentDocId)} className="flex-1 flex overflow-hidden">
             {/* Editor Column */}
             {showEditor && (
               <div data-view="editor" onWheelCapture={()=>handleDirectScroll('editor')} onPointerDownCapture={()=>handleDirectScroll('editor')} onKeyDownCapture={()=>handleDirectScroll('editor')} className="h-full flex-1 min-w-0 flex flex-col">
@@ -664,52 +622,33 @@ export default function App() {
                   onChange={handleMarkdownChange}
                   onUndo={handleUndo}
                   onRedo={handleRedo}
-                  canUndo={undoStack.length > 0}
-                  canRedo={redoStack.length > 0}
+                  canUndo={currentSession?.canUndo??false}
+                  canRedo={currentSession?.canRedo??false}
                   textareaRef={editorTextareaRef}
                   onScroll={handleEditorScroll}
                   syncScroll={syncScroll}
                   onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
                   maxWidth={contentMaxWidth}
                 />
+                {tabBar}
               </div>
             )}
 
             {/* Preview Column: Reading View */}
             {showPreview && previewMode === 'flow' && (
               <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
-                <ReadingPreview
-                  {...(currentDoc.assets===undefined?{}:{assets:currentDoc.assets})}
-                  markdown={currentDoc.markdown}
-                  mathMode={mathMode}
-                  theme={currentDoc.theme}
-                  isDark={isDark}
-                  fontSize={currentDoc.theme.fontSize || 15}
-                  lineHeight={currentDoc.theme.lineHeight || 1.75}
-                  maxWidth={contentMaxWidth}
-                  containerRef={previewContainerRef}
-                  onScroll={handlePreviewScroll}
-                />
+                <ReadingPreview view={previewView} theme={currentDoc.theme} maxWidth={contentMaxWidth} containerRef={previewContainerRef} onScroll={handlePreviewScroll}/>
               </div>
             )}
 
             {/* Preview Column: A4 Paginated View */}
             {showPreview && previewMode === 'a4' && (
               <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
-                <A4PagePreview
-                  {...(currentDoc.assets===undefined?{}:{assets:currentDoc.assets})}
-                  markdown={currentDoc.markdown}
-                  mathMode={mathMode}
-                  theme={currentDoc.theme}
-                  meta={currentDoc.meta}
-                  fontSize={currentDoc.theme.fontSize || 15}
-                  lineHeight={currentDoc.theme.lineHeight || 1.75}
-                  containerRef={previewContainerRef}
-                  onScroll={handlePreviewScroll}
-                />
+                <A4PagePreview view={previewView} containerRef={previewContainerRef} onScroll={handlePreviewScroll}/>
               </div>
             )}
           </div>
+          {!showEditor&&tabBar}
         </div>
       </div>
 

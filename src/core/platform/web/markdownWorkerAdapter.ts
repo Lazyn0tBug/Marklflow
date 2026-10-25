@@ -2,7 +2,7 @@ import {workerStartSchema,executorMessageSchema,executionIdentitySchema,sameExec
 let sequence=0;
 /** One resident module Worker; hard stop is terminal for this adapter instance. Caller owns dispose. */
 export class MarkdownWorkerAdapter implements WorkerAdapter {
- readonly id:string;readonly cancellation='external';readonly supportedKinds=['preview.flow'] as const;
+ readonly id:string;readonly cancellation='external';readonly supportedKinds=['preview.flow','preview.a4'] as const;
  private readonly worker:Worker;private dead=false;private current:{execution:ExecutionIdentity;receive:(message:unknown)=>void}|undefined;
  constructor(readonly generation=1){
   if(!Number.isSafeInteger(generation)||generation<0||sequence===Number.MAX_SAFE_INTEGER)throw new Error('Invalid Markdown worker instance');
@@ -16,7 +16,7 @@ export class MarkdownWorkerAdapter implements WorkerAdapter {
  start(request:TaskRequest,execution:ExecutionIdentity,receive:(message:unknown)=>void,resources:ExecutionResources):void {
   if(this.dead||this.current)throw new Error('Markdown worker unavailable');
   const command=workerStartSchema.parse({protocolVersion:1,type:'start',request,execution});
-  if(request.kind!=='preview.flow'||execution.executorId!==this.id||execution.executorGeneration!==this.generation)throw new Error('Markdown worker instance or mode mismatch');
+  if(execution.executorId!==this.id||execution.executorGeneration!==this.generation)throw new Error('Markdown worker instance or mode mismatch');
   const run={execution:command.execution,receive};this.current=run;
   try{resources.register('markdown-job','port',0,()=>{if(this.current===run)this.current=undefined});this.worker.postMessage(command)}catch(error){this.current=undefined;throw error}
  }

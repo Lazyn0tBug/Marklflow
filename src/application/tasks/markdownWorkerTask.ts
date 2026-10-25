@@ -6,7 +6,7 @@ export function runMarkdownWorkerTask(raw:unknown,send:(message:ExecutorMessage)
  const parsed=workerStartSchema.safeParse(raw);
  if(!parsed.success){const header=raw&&typeof raw==='object'&&'execution'in raw?executionIdentitySchema.safeParse(raw.execution):undefined;if(header?.success)send({protocolVersion:1,execution:header.data,type:'error',code:'input',message:'Invalid Markdown worker request'});return}
  const {request,execution}=parsed.data;
- if(request.kind!=='preview.flow'||new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes){send({protocolVersion:1,execution,type:'error',code:'input',message:'Unsupported preview mode or Markdown input limit exceeded'});return}
+ if(new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes){send({protocolVersion:1,execution,type:'error',code:'input',message:'Unsupported preview mode or Markdown input limit exceeded'});return}
  send({protocolVersion:1,execution,type:'start',stage:'parse'});
  try{
   const summary=summarizeMarkdown(request.document.markdown,taskBudget.input.semanticNodes);

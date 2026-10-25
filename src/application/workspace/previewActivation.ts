@@ -1,6 +1,6 @@
 import {DocumentSessions} from '../sessions/documentSessions';
 import {IdentityGate} from '../tasks/identity';
-import {RoleTaskScheduler} from '../tasks/roleScheduler';
+import {RoleTaskScheduler,type RoleSchedulerHooks} from '../tasks/roleScheduler';
 import {createPreviewSubmission,samePreviewCacheKey,type PreviewCacheKey} from '../tasks/previewIdentity';
 import {type TaskClock,type TaskArtifact} from '../tasks/contracts';
 import type {RoleClaim} from '../tasks/roleQueue';
@@ -17,8 +17,8 @@ export class PreviewActivation {
  readonly scheduler:RoleTaskScheduler;
  private readonly gate=new IdentityGate();private displayed:PreviewReference|undefined;
  private selected:PreviewCacheKey|undefined;private foregroundTaskId:string|undefined;
- constructor(private readonly sessions:DocumentSessions,clock:TaskClock,private readonly configVersion:(doc:DocumentRecord,kind:PreviewKind)=>number,private readonly cache:MemoryPreviewCache,private readonly validateArtifact:PreviewArtifactValidator,released?:(role:WorkerRole)=>void){
-  this.scheduler=new RoleTaskScheduler(this.gate,clock,(id,kind)=>{if(!this.sessions.documentIds.includes(id))return;const doc=this.sessions.read(id).document;return {document:doc,renderConfigVersion:this.configVersion(doc,kind)}},{generated:(claim,artifact)=>this.commit(claim,artifact),...(released?{released}:{})});
+ constructor(private readonly sessions:DocumentSessions,clock:TaskClock,private readonly configVersion:(doc:DocumentRecord,kind:PreviewKind)=>number,private readonly cache:MemoryPreviewCache,private readonly validateArtifact:PreviewArtifactValidator,released?:(role:WorkerRole)=>void,prepareDom?:RoleSchedulerHooks['prepareDom']){
+  this.scheduler=new RoleTaskScheduler(this.gate,clock,(id,kind)=>{if(!this.sessions.documentIds.includes(id))return;const doc=this.sessions.read(id).document;return {document:doc,renderConfigVersion:this.configVersion(doc,kind)}},{generated:(claim,artifact)=>this.commit(claim,artifact),...(released?{released}:{}),...(prepareDom?{prepareDom}:{})});
  }
  private submission(id:string,kind:PreviewKind,role:'foreground'|'background'){
   const doc=this.sessions.read(id).document;

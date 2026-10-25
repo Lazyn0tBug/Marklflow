@@ -1,4 +1,6 @@
 import {MarkdownWorkerAdapter} from './markdownWorkerAdapter';
+import type {RoleSchedulerHooks} from '../../../application/tasks/roleScheduler';
+import type {PreviewArtifactValidator} from '../../../application/workspace/previewActivation';
 import {PreviewActivation} from '../../../application/workspace/previewActivation';
 import {validateMarkdownWorkerArtifact} from '../../../application/workspace/markdownPreviewValidation';
 import type {DocumentSessions} from '../../../application/sessions/documentSessions';
@@ -8,12 +10,13 @@ import type {WorkerRole} from '../../../application/tasks/roleQueue';
 import type {PreviewCacheKey} from '../../../application/tasks/previewIdentity';
 import type {DocumentRecord} from '../../model/document';
 const roles=['foreground','background'] as const;
-/** Fixed two-role Web composition, not a worker pool. Application UI does not instantiate it yet. */
+export interface RuntimeOptions {prepareDom?:RoleSchedulerHooks['prepareDom'];validateArtifact?:PreviewArtifactValidator;changed?:()=>void}
+/** Fixed two-role Web composition, not a worker pool. */
 export class MarkdownWorkerRuntime {
  readonly coordinator:PreviewActivation;
  private adapters:Partial<Record<WorkerRole,MarkdownWorkerAdapter>>={};private errors:Partial<Record<WorkerRole,string>>={};private disposed=false;
- constructor(sessions:DocumentSessions,clock:TaskClock,configVersion:(doc:DocumentRecord,kind:PreviewCacheKey['previewKind'])=>number,cache:MemoryPreviewCache){
-  this.coordinator=new PreviewActivation(sessions,clock,configVersion,cache,validateMarkdownWorkerArtifact,role=>{this.replaceStopped(role)});
+ constructor(sessions:DocumentSessions,clock:TaskClock,configVersion:(doc:DocumentRecord,kind:PreviewCacheKey['previewKind'])=>number,cache:MemoryPreviewCache,private readonly options:RuntimeOptions={}){
+  this.coordinator=new PreviewActivation(sessions,clock,configVersion,cache,options.validateArtifact??validateMarkdownWorkerArtifact,role=>{this.replaceStopped(role);this.options.changed?.()},options.prepareDom);
   try{for(const role of roles){const adapter=new MarkdownWorkerAdapter();this.adapters[role]=adapter;this.coordinator.scheduler.install(role,adapter)}}catch(error){this.dispose();throw error}
  }
  private replaceStopped(role:WorkerRole):boolean {

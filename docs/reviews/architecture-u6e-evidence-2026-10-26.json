@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-26",
+  "branch": "architecture-refactor",
+  "parentCommit": "ead41a02cdd80ddafe1f099e6521d10668493cd6",
+  "scope": "U6e production bottom Tab UI, sessions, activation, complete memory preview cache and fixed foreground/background compute pipeline",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 150,
+      "strictProfiles": 4,
+      "unitFiles": 42,
+      "unitTestsPassed": 280,
+      "newUnitTests": 5,
+      "includes": [
+        "strict types",
+        "source/module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 57,
+      "newWorkbenchTests": 6,
+      "reportedDuration": "1.7m"
+    },
+    {
+      "command": "impeccable detect --json (four changed UI files)",
+      "exitCode": 0,
+      "findings": []
+    }
+  ],
+  "browserAssertions": [
+    "A/B/C bottom tabs and independent undo/selection/scroll",
+    "same reference and zero compute restarts on valid cache hit",
+    "unfinished foreground discarded and background cache never changes active display",
+    "flow/A4 independent cache and math config invalidation",
+    "closing final tab preserves workspace files",
+    "save failure retains dirty draft",
+    "ordinary insecure HTTP production Workers and cache"
+  ],
+  "visualReview": {
+    "desktop": [
+      1280,
+      720
+    ],
+    "narrow": [
+      390,
+      844
+    ],
+    "screenshots": [
+      "docs/acceptance/architecture-u6e-tabs-desktop.png",
+      "docs/acceptance/architecture-u6e-tabs-narrow.png"
+    ],
+    "reviewed": true,
+    "narrowBehavior": "user-visible panes retained with horizontal workbench scrolling"
+  },
+  "logSha256": {
+    "check": "f049af48ca5cb90250eb5ea0ac662f79b9cf9200a82ce2e5afda092d89dae420",
+    "fullChromium": "61876c4317b00b0ce320343fb914bbaebe3d2338f8bb9188a99cad460c15f48a",
+    "uiDetector": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-u6e-tabs-desktop.png": "607a9eee36b0abd82d743f71ab35f667d980e610c9ffd908f3adfc4674b8ab3b",
+    "docs/acceptance/architecture-u6e-tabs-narrow.png": "444a7f12a128017ca7d6fb0567fe08b50f5c52764667e3965b594740cc22742e",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "201ccc75130abf0d5d6bc6fb7ac81fa6888eab0e8478eadbf824c7adb55d2db2",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "ac14cb421444e615ca4083be9135e9c9c646511dadb8cb85c3458e92afa74e4c",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "479625dd48a6e56a56d19a64cbd10208c3ccd041ea7940ed4adc409f029690d7",
+    "docs/reviews/architecture-u6e-implementation-2026-10-26.md": "8c39c7aaab23aaa76f9c7ee2b5611cbf51d5ef2d501aa96697a387b8cd62a660",
+    "src/App.tsx": "d40d4fd419da64c8378cce2e8074332f35750de8a6aaeef01e7288aaa39bbdde",
+    "src/application/tasks/markdownWorkerTask.ts": "bf8bf7ab339311ef24c76390c20bf46331043ac858e5489f158f3661d3f2234f",
+    "src/application/workspace/markdownPreviewValidation.ts": "968d9ae9e86f5718ee04b1417c372cd6c7b0e9c0a0a76482fd661a7326f88e92",
+    "src/application/workspace/previewActivation.ts": "73e696092c7f22bbfad6077c9adb7c8df7b2f23ae8f4c40f53abe6e2aba09032",
+    "src/application/workspace/renderedPreview.ts": "69d724996cbc916cfb59c9baa2bcd536f517206fc772e6b585d2c91ed4849d3c",
+    "src/components/preview/A4PagePreview.tsx": "209b879e437544260318310aa2552b1042e0e0b1697a2a5f2d3e420696666688",
+    "src/components/preview/ReadingPreview.tsx": "46857d983b6a35df5c13013662dc3e60e59c059806981b461d2ecff9e16d1020",
+    "src/components/workspace/DocumentTabs.tsx": "310f2254c8c5fc20aa4f42c5f7c078cbdac1a2b629062ddc9aa06ba7af7267d6",
+    "src/core/platform/web/markdownWorkerAdapter.ts": "dec0b90c4f5a00781f60da10dec1814f30f909e874a3d25fcd5a43ade2c79870",
+    "src/core/platform/web/markdownWorkerRuntime.ts": "95e38eb486d4eab08d3feadcd93694fef208af843bf0b3f17d68160dfc35eaac",
+    "src/core/platform/web/workbenchPreviewRuntime.ts": "ccaba3b4d4248d4cbdf20f5e8ba9085892663d23a26c45908236fcb748a55354",
+    "tests/e2e/workbench-tabs.spec.ts": "4813159fa8e1989c74cd78aaef57bf04ea3ee234a27227590b8a462d3062c9cd",
+    "tests/unit/markdown-worker.test.ts": "bfd924a3cef4aae4544ed9c040ef5134312bcd0e9f045d23863ecc3020f2c396",
+    "tests/unit/workbench-preview-runtime.test.ts": "b7351cad67899dd7df1dad48503c67f5762d63a88db16d83b4de1cf38e74b0a2"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/tasks/roleScheduler.ts": "e531940d64084934506786fc7e02aadc126212c1e85e54d94c07388330614d69",
+    "src/application/tasks/roleQueue.ts": "469fbcbbd9a773d3ca8133675b92dd68f2f98656c703fdb02249a888c3b0c051",
+    "src/application/tasks/sharedDom.ts": "19eb2d88b67f1a903dd43395734cf8400ba4cfa7b2acaa31f42c8167fa22c239",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/exports/exportService.ts": "5a07f3635c9c994651376415eee58248f3a0b829ab375eff129411493488cd51",
+    "src/core/platform/web/documentRepository.ts": "16a4e417f5b81cd9d3e957b370ac36d92f9b32bf3ddd8767d1ed94698c5df35e",
+    "src/core/render/documentRenderer.ts": "96834f8cc199d5bb022503039b24b2789b0d6953c8ade90832c196d0b55a63a7",
+    "src/core/render/documentPaginator.ts": "77366cabd66e0186a0c82d37020e844fd1f82ed3aeb6a5350702b61b117f2410",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mermaidRender.ts": "93fdc0694bebaa80737478486e2de4f8d1e310ea111d8ee79ecdffb2accd24db",
+    "src/core/render/diagramRender.ts": "88ea1412418164988be2af5dee31e9554881897817f111e3568da11d66bf6f74"
+  },
+  "tagsBeforeCommit": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "notValidated": [
+    "other browsers",
+    "Tauri",
+    "physical print"
+  ],
+  "deferred": [
+    "U6f",
+    "persistent preview cache",
+    "closed-tab history recovery",
+    "P/V stages"
+  ],
+  "pushed": false,
+  "dependencyChanges": false
+}
