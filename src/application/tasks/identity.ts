@@ -29,5 +29,7 @@ export class IdentityGate{
  suspend(kind:'preview.flow'|'preview.a4'):void{this.expected.delete(kind);this.restore++}
  beginRestore(request:TaskRequest):RestoreIdentity{if(!this.current(request))throw new Error('Stale restore');return {restoreRequestId:++this.restore,task:{...request.identity},kind:request.kind}}
  restoreCurrent(token:RestoreIdentity):boolean{const expected=this.expected.get(token.kind);return token.restoreRequestId===this.restore&&this.active===token.task.documentId&&this.sessions.get(token.task.documentId)===token.task.sessionGeneration&&this.epoch===token.task.activationEpoch&&token.task.authorizationRevision>=this.authorizationFloor&&!!expected&&sameIdentity(token.task,expected)}
+ hasSession(documentId:string,generation:number):boolean{return this.sessions.get(documentId)===generation}
+ get sessionCount():number{return this.sessions.size}
  get activeDocumentId(){return this.active}
 }
