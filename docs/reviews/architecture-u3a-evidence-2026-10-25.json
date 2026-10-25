@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "13f7e8f968ed54ecd3367e70dff723751d42c2bf",
+  "command": "bun run check",
+  "exitCode": 0,
+  "managedSources": 111,
+  "unitFiles": 31,
+  "unitTestsPassed": 181,
+  "newSessionTests": 8,
+  "checkLogSha256": "40da7e8b2749e896f74cb9a450260793448ccd24174c59ffe939259e33c23fe0",
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "87eddd1abf672ff93949787f65a2762d19018f8b49f1b011695b14d06bc6cc3c",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "86ed7e56ca490273adbeec3811f10fd83089b085cc60c8cc408c15c2f37bc507",
+    "scripts/check-module-boundaries.ts": "68517afa5909eb4fd002fc9bb5f2715160acbd185cea268509b4ef39f22fc2c3",
+    "tsconfig.worker.json": "e9f68921ead1d9a76c4c5e8b20f1d95c0446e9316119063a0db4992a449c5bdf",
+    "src/application/sessions/documentSessions.ts": "7abb0b3ef4504c3b5ff81104bd91c77baf09bb14f1cb8cb17b10dab0c414b5eb",
+    "tests/unit/document-sessions.test.ts": "f8cab3565fa8e7c4017734f20daaf5a464e631d3ca6a2e7e00f782d54926a016",
+    "docs/reviews/architecture-u3a-implementation-2026-10-25.md": "7c0a8329903ce76a1cd54e16dd5e33f155f7c403368c59b3adbe2d612954d52c"
+  },
+  "scope": "U3a in-memory session model only; no UI, storage backend, task switching or cache integration",
+  "browserTestsRun": false,
+  "dependenciesUnchanged": true,
+  "noPush": true
+}
