@@ -1,6 +1,0 @@
-{
-  "summary":  "MarkFlow Tauri 桌面端与纯粹原生导出架构实施方案。\n核心包括：从“打印机弹窗”回归“纯粹文档导出”语义；基于系统原生 WebView (WebView2/WKWebView/WebKitGTK) 实现无感矢量 PDF 导出，拒绝 150MB+ Headless Chromium 膨胀；双模渐进增强（Web/Desktop 同源）；本地文件系统直通（Ctrl+S 原位保存与关联打开）；五阶段实施里程碑与多端 CI 打包流水线。",
-  "updatedAt":  "2026-10-25T12:08:44.451016501Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}
