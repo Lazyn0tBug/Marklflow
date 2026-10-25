@@ -135,3 +135,7 @@ A2仅提供会话代际和异步恢复令牌，不实现编辑器Tab会话、缓
 ### U0/U1契约实施进度（2026-10-25）
 
 U0新版策略及U1前后台角色/MD散列/配置版本/缓存键组件已验证并按步骤本地提交，见[调整执行记录](../reviews/architecture-a2-dual-worker-adjustment-2026-10-25.md)和[独立证据](../acceptance/architecture-u0-u1-evidence.json)。A0预算JSON保持冻结，新策略独立保存；旧运行票据和调度守卫保留。U2队列、U3统一切换、U4缓存提交及后续真实Worker/UI仍未接入，不能宣称双Worker已经运行。
+
+### U2角色队列实施进度（2026-10-25）
+
+U2独立队列/受控执行协调已实现并本地验证，见[执行记录](../reviews/architecture-u2-implementation-2026-10-25.md)及[证据](../acceptance/architecture-u2-evidence.json)。前后台各1活跃，后台按文档/会话/模式保留FIFO位置合并；停止或清理未确认不放行，排队过期保留待更新标记。导出生成优先但不抢占当前步骤，生成租约释放不提前释放交付接受槽。角色是foreground/background，执行环境仍compute；共享DOM及实际UI路径未接入。旧TaskSupervisor仍供原路径使用，U3才协调新切换入口，U4/U5继续后续。此前U0/U1阶段的“U2未实施”为历史状态，以本节为准。

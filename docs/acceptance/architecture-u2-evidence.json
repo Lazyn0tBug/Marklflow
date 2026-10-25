@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "baseline": "6db3ed5c94ddf31f53a92202e7e8e84e31d80a00",
+  "validatedCodeParent": "044d9bc9f5d5cc61e5823e0b767765d0c4c6b59f",
+  "sourceProvenance": "validated code parent plus canonical LF fingerprints; worker fixture and policy status metadata included in final evidence commit",
+  "sourceFingerprintsLF": {
+    "src/application/tasks/identity.ts": "1d41b6b65b77dc932d65d6885de89f3066046917658ecaf46745bb531606c233",
+    "src/application/tasks/deadlines.ts": "3030dba2c6cc6f40d710831ac22c09342368148c53bc1a9fb00d547e32462dff",
+    "src/application/tasks/roleQueue.ts": "cf69628c32d9e3272689ecfcc97883aa4759df7ade7993759017d7382a30fee2",
+    "src/application/tasks/roleScheduler.ts": "bc4897adf375c53ab39212d25930d883f472638963d7cd57e91eabbb10c78e67",
+    "docs/contracts/architecture-dual-worker-budget.json": "291dd8c26d083378e3291c9edbd86c48e0d9304dfb6f3380dee4315b18215975",
+    "tests/unit/tasks-role-queue.test.ts": "f94c4e7d2420f952b168cacf324876dae8d5d84375b99d36c233a22af43b5057",
+    "tests/unit/tasks-role-scheduler.test.ts": "56fa308c2c6a5b99719972bfe7fba567d677dc73d04adac4c29bcc76b6cdb17f",
+    "tests/fixtures/architecture/pure-worker.ts": "cd69a201b11fa1683594ff9badbbb427e4fd1f2984dee42da85c487c90fdb16c",
+    "tests/e2e/architecture-pure-worker.spec.ts": "d6ac872f7dfbe62700c39e4f134c300a40b4f8fad6a653e955a2f20104bcc341"
+  },
+  "stepCommits": {
+    "U2a": "a39023a",
+    "U2b": "cbe4e40",
+    "U2c1": "044d9bc"
+  },
+  "checks": {
+    "frozenInstall": "passed; no dependency changes",
+    "strictProfiles": 4,
+    "managedSources": 109,
+    "sourceAndModuleBoundaries": "passed",
+    "lint": "passed",
+    "unitTests": 176,
+    "unitFiles": 30,
+    "newU2QueueTests": 7,
+    "newU2SchedulerTests": 14,
+    "relatedTestsIncludingDeadlines": 26,
+    "productionBuild": "passed",
+    "chromiumE2E": 30,
+    "browserProbe": "source and built real Worker load/construct role scheduler; not two actual foreground/background workers",
+    "policyStatusMetadataRecheck": "4 policy tests passed after status-only update"
+  },
+  "invariants": {
+    "activePerRoleMaximum": 1,
+    "computeRoles": [
+      "foreground",
+      "background"
+    ],
+    "coalescing": "100 updates preserve pending FIFO position and waiting age",
+    "cycles": "50 pairs foreground/background; no queued input bytes, registered resources or timers retained after each pair",
+    "idleRuntimeReservationBytes": 33554432,
+    "historyMaximum": 16,
+    "stoppingOrCleanupPending": "claim retained, no next dispatch on that role",
+    "exportReservation": "remains busy after candidate generation until delivery owner explicitly finishes; generation lane is free",
+    "candidateOutcome": "generated is not cache committed or delivered"
+  },
+  "reviewFinding": {
+    "capabilityDrift": "new test reproduced Executor unavailable and stranded claim before repair; now failed and released before continuing",
+    "adapterCompatibility": "explicit interface snapshot supports class getters/methods"
+  },
+  "protectedByteFingerprints": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "a517268e662d34326732aefe4249bf27bc4bf642881eefb573ec8e38a6021119",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/core/render/mathJaxAdapter.ts": "73f9cab65f9401d2a4c3f5d29f123b4f8096205909cf57a8c683bf9eceddbad3",
+    "src/core/render/mathRender.ts": "8088c588de44d46fb473ed66d3d8624a29e6dce6f1de48c1a6a946301e1c898b",
+    "src/core/render/pagedJsAdapter.ts": "b99462ac02dc9b4d02861b7e7ae20c235bf7f7ef68c1145197c1e77b90f0a093",
+    "src/core/platform/crypto.ts": "755ce3198a6f733d70fb5c88515f29c5c972e836bf99c2d1e8cf4c7dbc4bc1bb",
+    "docs/acceptance/architecture-a0-a1-review-evidence.json": "8c0fde77bf8697d11da5375cca187bb481b7a77a4cede1c84e346711682942d0",
+    "docs/acceptance/architecture-a0-a1-review-runtime.json": "fbe4386331308bd6d0ed34c740d69cae533b307e49cf8657782463f5ceacc4d4",
+    "docs/acceptance/architecture-a0-baseline.json": "1f74cdbe5b09713f1199c1c946b57ecc52bab30ff304c8a8052b3010720d3403",
+    "docs/acceptance/architecture-a1-comparison.json": "5831f7ea47aa93d9cae763883aed80b7d42cb410a7916779caa53346179afde9",
+    "docs/acceptance/architecture-a1-evidence.json": "bbe0a7a44e684a83436262f7e8d99176493c34e850faf54fffa45e0bab1a7c5e",
+    "docs/acceptance/architecture-u0-u1-evidence.json": "f63ca39b2ee86ab93ba2c6cd7eda13742b21a0ffa9465a7f9ff3959466fb1702",
+    "docs/acceptance/html-local-2026-10-24.md": "a9f14ee63bd317b733e3df30745655c0e9ca06783eb0a600ad3ab2f0d5c9eecd",
+    "docs/acceptance/html-local-evidence.json": "91fab3eb6569f1696abb1c8c932dd2bdce89abdc8bf1d534ed747f89f3ce8f1e",
+    "docs/acceptance/html-review-evidence.json": "db013016a684c5411bc9d2e87ebbbade9be678ee1f729c2ace32f47090d4c591",
+    "docs/acceptance/html-review-pdf-check.json": "873c801f69877148756e4f53dd37580ac90786aaf9230817352bac77450e02b5",
+    "docs/acceptance/html-review-ui-check.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "docs/acceptance/typescript-strict-2026-10-25.md": "09dce7acfba09e3b7cbd61aac374fa1e0543b81c6210274b355ee9cba7ffaf33",
+    "docs/acceptance/typescript-strict-review-evidence.json": "270c4fd103d5c6d0e9c651901ec743729b00342217c977fce22dbe082bc35214"
+  },
+  "preservedRefs": {
+    "refs/heads/html": "b4446e21c4c7bcf2eeb4a7d8c382223d1580ebfa",
+    "refs/heads/main": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "refs/heads/typescript-strict": "75261ae1e532630a5a5859c397110f31698964af",
+    "refs/remotes/origin/HEAD": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "refs/remotes/origin/html": "b4446e21c4c7bcf2eeb4a7d8c382223d1580ebfa",
+    "refs/remotes/origin/main": "fae43767c2fc5f4d0957b0c610f573e2bfda661f",
+    "refs/tags/0.9": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f",
+    "refs/tags/0.9.1": "fb1618011a4df013de0334fe54c832983977e8e3",
+    "refs/tags/0.9.2": "b55edda904c24a1484e857cfd8aef3f1df323d9d"
+  },
+  "unchanged": "MathJax 3.2.2, Paged.js 0.4.3, A0 budget values, dual-worker budget values, lockfile, vendor and production UI/render source",
+  "notImplemented": [
+    "U3 tab-switch coordination and production wiring",
+    "U4 cache commit and current-view publication",
+    "U5 real dual Worker lifecycle",
+    "shared DOM pipeline integration",
+    "actual file delivery or Tauri"
+  ],
+  "notValidated": [
+    "remote CI",
+    "physical browser heap sizes",
+    "other browsers",
+    "Word/WPS visual editing",
+    "physical printing"
+  ],
+  "warnings": [
+    "existing Vite native configLoader __dirname warning",
+    "existing large production chunks"
+  ],
+  "push": "not performed"
+}

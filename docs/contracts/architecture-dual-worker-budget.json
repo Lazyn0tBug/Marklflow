@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "status": "contract-only; scheduling activation deferred to U2",
+  "status": "implemented in U2 role coordinator; production wiring deferred to U3/U5",
   "baseBudget": "architecture-runtime-budget.json",
   "workers": {
     "foreground": 1,
