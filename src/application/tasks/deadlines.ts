@@ -7,9 +7,10 @@ export class TaskDeadlines{
  private stopTimer:(()=>void)|undefined;private disposed=false;private running=false;
  private total:number;private queue:number;private stageDeadline=Infinity;private cancelDeadline=Infinity;
  private platformDeadline=Infinity;private currentStage:TaskStage='accepted';private lastNow:number;
- constructor(private readonly clock:TaskClock,kind:TaskKind,private readonly expire:(reason:DeadlineReason)=>void){
+ constructor(private readonly clock:TaskClock,kind:TaskKind,private readonly expire:(reason:DeadlineReason)=>void,acceptedAt=clock.now()){
   this.lastNow=clock.now();if(!Number.isFinite(this.lastNow))throw new Error('Invalid monotonic clock');
-  this.total=this.lastNow+totalDeadline(kind);this.queue=this.lastNow+(kind.startsWith('preview.')?taskBudget.deadlinesMs.previewQueue:taskBudget.deadlinesMs.exportQueue);this.arm();
+  if(!Number.isFinite(acceptedAt)||acceptedAt>this.lastNow)throw new Error('Invalid task acceptance time');
+  this.total=acceptedAt+totalDeadline(kind);this.queue=acceptedAt+(kind.startsWith('preview.')?taskBudget.deadlinesMs.previewQueue:taskBudget.deadlinesMs.exportQueue);this.arm();
  }
  private now():number{const now=this.clock.now();if(!Number.isFinite(now)||now<this.lastNow)throw new Error('Clock moved backwards');this.lastNow=now;return now}
  private next():{at:number;reason:DeadlineReason}{

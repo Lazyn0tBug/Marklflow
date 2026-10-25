@@ -2,7 +2,7 @@ import {previewSubmissionSchema,type PreviewSubmission,type PreviewCacheKey} fro
 import {snapshotRequest,isPreview,type TaskRequest,type TaskClock} from './contracts';
 import {IdentityGate} from './identity';
 import {dualWorkerPolicy,backgroundPendingCapacity,assessDualWorkerMemory} from './dualWorkerPolicy';
-import {taskBudget} from './budget';
+import {taskBudget,totalDeadline} from './budget';
 export type WorkerRole=PreviewSubmission['role'];
 export type RoleWork={kind:'preview';submission:PreviewSubmission}|{kind:'export';request:TaskRequest};
 interface Entry {id:string;role:WorkerRole;work:RoleWork;bytes:number;acceptedAt:number;expiresAt:number}
@@ -50,7 +50,7 @@ export class RoleTaskQueue{
   if(!assessDualWorkerMemory({foregroundRuntimeBytes:0,backgroundRuntimeBytes:0,ownedTaskBytes:this.ownedBytes+this.extraInFlightBytes()-(previous?.bytes??0)+bytes,clonePeakBytes:0,otherOwnedBytes:0}).accepted){if(work.kind==='preview')this.mark(work.submission,'capacity');return {status:'capacity'}}
   if(this.sequence===Number.MAX_SAFE_INTEGER)throw new Error('Task id space exhausted');
   const id='role-task-'+(++this.sequence);request.identity.taskId=id;
-  const wait=work.kind==='export'?taskBudget.deadlinesMs.exportQueue:role==='foreground'?taskBudget.deadlinesMs.previewQueue:dualWorkerPolicy.queue.backgroundQueueWaitMs;
+  const wait=work.kind==='export'?Math.min(taskBudget.deadlinesMs.exportQueue,totalDeadline(request.kind)):role==='foreground'?taskBudget.deadlinesMs.previewQueue:dualWorkerPolicy.queue.backgroundQueueWaitMs;
   const acceptedAt=previous?.acceptedAt??this.clock.now();
   const entry:Entry={id,role,work,bytes,acceptedAt,expiresAt:previous?.expiresAt??acceptedAt+wait};
   const list=this.pending[role];if(previous)list[list.indexOf(previous)]=entry;else list.push(entry);
@@ -79,6 +79,9 @@ export class RoleTaskQueue{
    if(entry.work.kind==='preview')this.mark(entry.work.submission,'expired');if(this.exportId===entry.id)this.exportId=undefined;
    expired.push({id:entry.id,role,kind:entry.work.kind});return false;
   });return expired;
+ }
+ cancelPending(id:string):boolean{
+  for(const role of ['foreground','background'] as const){const index=this.pending[role].findIndex(entry=>entry.id===id);if(index>=0){this.pending[role].splice(index,1);if(this.exportId===id)this.exportId=undefined;return true}}return false;
  }
  get ownedBytes():number{return [...this.pending.foreground,...this.pending.background,...this.active.values()].reduce((sum,entry)=>sum+entry.bytes,0)}
  get nextExpiry():number{return Math.min(...this.pending.foreground.map(entry=>entry.expiresAt),...this.pending.background.map(entry=>entry.expiresAt))}
