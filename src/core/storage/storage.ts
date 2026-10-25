@@ -9,11 +9,12 @@ import { DocumentRecord, DEFAULT_THEME, INITIAL_SAMPLE_MARKDOWN } from '../model
 import {webDocumentRepository,recoveryJson} from '../platform/web/documentRepository';
 import {createRenderNonce} from '../platform/crypto';
 export {recoveryJson};
-export async function getAllDocuments():Promise<DocumentRecord[]>{
+export async function loadDocuments(){
  const loaded=await webDocumentRepository.load();
- if(loaded.canInitialize){const doc=createInitialDocument();await saveDocument(doc);return [doc]}
- return loaded.documents;
+ if(loaded.canInitialize){const doc=createInitialDocument();await saveDocument(doc);return {...loaded,documents:[doc]}}
+ return loaded;
 }
+export async function getAllDocuments():Promise<DocumentRecord[]>{return (await loadDocuments()).documents}
 export async function saveDocument(doc:DocumentRecord):Promise<void>{
  await webDocumentRepository.save({...doc,meta:{...doc.meta,updatedAt:new Date().toISOString()}});
 }

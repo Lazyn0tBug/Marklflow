@@ -1,8 +1,8 @@
 import {z} from 'zod';
 import {documentSchema} from './documentSchema';
 import type {DocumentRecord} from './document';
-export interface RecoveryEntry {key:string;source:string;capturedAt:string;reason:string;raw:unknown}
-export interface DocumentLoadResult {documents:DocumentRecord[];canInitialize:boolean}
+export interface RecoveryEntry {key:string;source:string;capturedAt:string;reason:string;raw:unknown;persistence:'persisted'|'session'|'source-only'}
+export interface DocumentLoadResult {documents:DocumentRecord[];canInitialize:boolean;warnings:string[]}
 export interface DocumentRepository {
  load():Promise<DocumentLoadResult>;
  save(document:DocumentRecord):Promise<void>;
@@ -34,4 +34,12 @@ export function replaceStoredRecords(input:unknown,records:unknown[]):unknown{
 export function storedRecordId(raw:unknown):string|undefined{
  const result=z.object({id:z.string()}).safeParse(raw);return result.success?result.data.id:undefined;
 }
-export const recoverySchema=z.object({key:z.string(),source:z.string(),capturedAt:z.string(),reason:z.string(),raw:z.unknown()});
+export const recoverySchema=z.object({key:z.string(),source:z.string(),capturedAt:z.string(),reason:z.string(),raw:z.unknown(),persistence:z.enum(['persisted','session','source-only']).default('persisted')}).refine(value=>Object.hasOwn(value,'raw'),'缺少原始恢复数据');
+
+export function assertDocumentWrite(current:unknown,next:DocumentRecord):void{
+ if(current===undefined)return;
+ const existing=documentSchema.safeParse(current);if(!existing.success)throw new Error('原记录损坏，已拒绝覆盖或删除，请先下载恢复备份');
+ if(existing.data.revision>next.revision)throw new Error('拒绝过期修订保存，较新文档已保留');
+ const content=(doc:DocumentRecord)=>({markdown:doc.markdown,theme:doc.theme,options:doc.options,assets:doc.assets,meta:{title:doc.meta.title,author:doc.meta.author,tags:doc.meta.tags}});
+ if(existing.data.revision===next.revision&&JSON.stringify(content(existing.data))!==JSON.stringify(content(next)))throw new Error('修订冲突：同一修订包含不同内容，原文档已保留');
+}

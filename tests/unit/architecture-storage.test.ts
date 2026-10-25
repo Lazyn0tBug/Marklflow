@@ -10,7 +10,7 @@ it('loads valid legacy records, quarantines invalid records without changing sou
  const repo=new WebDocumentRepository();expect((await repo.load()).documents).toEqual([good]);
  expect(localStorage.getItem('markflow_docs')).toBe(raw);
  expect((await repo.recoveries())[0]?.raw).toEqual(bad);
- await repo.save({...good,markdown:'# changed'});
+ await repo.save({...good,revision:2,markdown:'# changed'});
  expect(JSON.parse(localStorage.getItem('markflow_docs')||'[]')[1]).toEqual(bad);
  await expect(repo.save({...good,id:'bad'})).rejects.toThrow('不能覆盖');
  await expect(repo.delete('bad')).rejects.toThrow('不能删除');
@@ -24,15 +24,15 @@ it('reads known envelopes and refuses unknown migrations instead of resetting th
  const good=createNewDocument('v1');
  localStorage.setItem('markflow_docs',JSON.stringify({storageVersion:1,documents:[good],custom:'keep'}));
  const repo=new WebDocumentRepository();expect((await repo.load()).documents).toEqual([good]);
- await repo.save({...good,markdown:'# update'});expect(JSON.parse(localStorage.getItem('markflow_docs')||'{}').custom).toBe('keep');
+ await repo.save({...good,revision:2,markdown:'# update'});expect(JSON.parse(localStorage.getItem('markflow_docs')||'{}').custom).toBe('keep');
  const unknown=JSON.stringify({storageVersion:42,documents:[good]});localStorage.setItem('markflow_docs',unknown);
- expect(await repo.load()).toEqual({documents:[],canInitialize:false});
+ expect(await repo.load()).toEqual({documents:[],canInitialize:false,warnings:[]});
  await expect(repo.save(good)).rejects.toThrow('不能覆盖');expect(localStorage.getItem('markflow_docs')).toBe(unknown);
 });
 it('preserves source when quarantine storage is full; transient backup remains downloadable',async()=>{
  const raw=JSON.stringify([{id:'bad',schemaVersion:99}]);localStorage.setItem('markflow_docs',raw);
  const original=Storage.prototype.setItem;vi.spyOn(Storage.prototype,'setItem').mockImplementation(function(this:Storage,key,value){if(key==='markflow_recovery_v1')throw new DOMException('full','QuotaExceededError');original.call(this,key,value)});
- const repo=new WebDocumentRepository();await expect(repo.load()).rejects.toThrow('full');
+ const repo=new WebDocumentRepository();expect((await repo.load()).warnings.length).toBeGreaterThan(0);
  expect(localStorage.getItem('markflow_docs')).toBe(raw);expect((await repo.recoveries()).length).toBe(1);
 });
 it('rejects invalid writes before mutation and isolates duplicate identifiers',async()=>{

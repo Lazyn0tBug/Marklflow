@@ -19,7 +19,7 @@ import {
   DocumentRecord,
 } from './core/model/document';
 import {
-  getAllDocuments,
+  loadDocuments,
   saveDocument,
   deleteDocument,
   createNewDocument,
@@ -39,6 +39,8 @@ export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [currentDocId, setCurrentDocId] = useState<string>('');
   const [loadError,setLoadError]=useState('');
+  const [actionError,setActionError]=useState('');
+  const [storageWarnings,setStorageWarnings]=useState<string[]>([]);
   const [recoveryCount,setRecoveryCount]=useState(0);
   const [loadComplete,setLoadComplete]=useState(false);
   const [isDark, setIsDark] = useState<boolean>(true);
@@ -76,8 +78,9 @@ export default function App() {
   // 初始化加载文档
   useEffect(() => {
     let active=true;
-    getAllDocuments().then((docs) => {
+    loadDocuments().then(({documents:docs,warnings}) => {
       if(!active)return;
+      setStorageWarnings(warnings);
       setDocuments(docs);
       const first=docs[0];
       if (first) {
@@ -98,9 +101,9 @@ export default function App() {
       setTimeout(()=>URL.revokeObjectURL(url),1000);
     }catch(error){setLoadError('恢复备份读取失败，原始数据未改写：'+String(error))}
   };
-  const recoveryNotice=(loadError||recoveryCount>0)?<aside role="alert" className="px-4 py-2 text-sm bg-amber-950 text-amber-100">
-    {loadError||`发现 ${recoveryCount} 项损坏或不支持的存储记录，原始数据已保留。`}
-    <button className="ml-3 underline" onClick={()=>{void downloadRecovery()}}>下载恢复备份</button>
+  const recoveryNotice=(loadError||actionError||storageWarnings.length>0||recoveryCount>0)?<aside role="alert" className="px-4 py-2 text-sm bg-amber-950 text-amber-100">
+    {actionError||loadError||storageWarnings.join('；')||`发现 ${recoveryCount} 项损坏或不支持的存储记录，原始数据已保留。`}
+    {(recoveryCount>0||loadError)&&<button className="ml-3 underline" onClick={()=>{void downloadRecovery()}}>下载恢复备份</button>}
   </aside>:null;
 
   // 当前活动文档
@@ -121,6 +124,7 @@ export default function App() {
   // 文档切换或加载时，确保大纲高亮同步指向当前有效章节
   useEffect(() => {
     if (currentDoc) {
+      if(currentDoc.id!==currentDocId)setCurrentDocId(currentDoc.id);
       setMathMode(currentDoc.options.mathMode);
       const outline = extractOutline(currentDoc.markdown);
       const firstHeading=outline[0];
@@ -133,7 +137,7 @@ export default function App() {
         setActiveHeadingId(null);
       }
     }
-  }, [currentDocId, currentDoc?.markdown]);
+  }, [currentDocId, currentDoc?.id, currentDoc?.markdown]);
 
   // Markdown 内容变更处理
   const handleMarkdownChange = useCallback(
@@ -235,6 +239,7 @@ export default function App() {
   };
 
   const handleCreateDoc = () => {
+    setActionError('');
     const newDoc = createNewDocument('新建 Markdown 文档');
     saveDocument(newDoc).then(() => {
       setDocuments((prev) => [newDoc, ...prev]);
@@ -242,28 +247,27 @@ export default function App() {
       setUndoStack([]);
       setRedoStack([]);
       setIsDirty(false);
-    });
+    }).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
 
   const handleDeleteDoc = (id: string) => {
+    setActionError('');
     const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(() => {
-      const remaining = documents.filter((d) => d.id !== id);
-      setDocuments(remaining);
-      if (currentDocId === id) {
-        setCurrentDocId(remaining[0]?.id??'');
-      }
-    });
+      setDocuments(previous=>previous.filter(doc=>doc.id!==id));
+      setCurrentDocId(active=>active===id?'':active);
+    }).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
 
   const handleImportDoc = (importedDoc: DocumentRecord) => {
+    setActionError('');
     saveDocument(importedDoc).then(() => {
       setDocuments((prev) => [importedDoc, ...prev]);
       setCurrentDocId(importedDoc.id);
       setUndoStack([]);
       setRedoStack([]);
       setIsDirty(false);
-    });
+    }).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
 
   const handleDirectScroll=(pane:'editor'|'preview')=>{
