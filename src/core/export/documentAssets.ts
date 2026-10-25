@@ -1,3 +1,4 @@
+import {sha256Hex} from '../platform/crypto';
 import type {DocumentAsset} from '../model/document';
 import {assetSchema} from '../model/documentSchema';
 import {safeUrl} from '../render/htmlPolicy';
@@ -11,8 +12,7 @@ export function decodeImage(data:string):{mime:string;bytes:Uint8Array} {
  if(bytes.length>MAX)throw new Error('图片超过10MB');return {mime:match[1].toLowerCase(),bytes};
 }
 export async function hashBytes(bytes:Uint8Array):Promise<string>{
- const copy=Uint8Array.from(bytes);
- return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',copy))).map(n=>n.toString(16).padStart(2,'0')).join('');
+ return sha256Hex(bytes);
 }
 export async function verifyAssets(assets:DocumentAsset[]=[]):Promise<void>{
  if(assets.length>128)throw new Error('资产数量超过128');

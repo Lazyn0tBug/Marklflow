@@ -1,3 +1,4 @@
+import {createRenderNonce} from '../platform/crypto';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
@@ -28,7 +29,7 @@ export function extractOutline(markdown:string):HeadingItem[] {
 }
 export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{html:string;diagnostics:ContentDiagnostic[]} {
  const diagnostics:ContentDiagnostic[]=[];
- const offset=options.startLineIndex||0,mode=options.mathMode||'mathml',nonce=crypto.randomUUID();
+ const offset=options.startLineIndex||0,mode=options.mathMode||'mathml',nonce=createRenderNonce();
  const math=(v:string,d:boolean)=>mode==='svg'?latexToSVG(v,d):latexToMathML(v,d);
  const processor=reader().use(()=>(tree:Root)=>{
   visit(tree,'html',node=>{diagnostics.push(...inspectAuthorHtml(node.value,(node.position?.start.line||1)+offset))});
