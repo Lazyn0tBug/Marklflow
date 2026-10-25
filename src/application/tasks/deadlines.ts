@@ -28,6 +28,7 @@ export class TaskDeadlines{
   }else this.stageDeadline=this.now()+(stage==='resources'?taskBudget.deadlinesMs.assetFetch:stage==='layout'?taskBudget.deadlinesMs.paginationStage:taskBudget.deadlinesMs.engineStage);
   this.arm();
  }
+ validation():void{if(this.disposed||this.check())return;this.stageDeadline=Math.min(this.stageDeadline,this.now()+taskBudget.deadlinesMs.engineStage);this.arm()}
  requestCancel():void{if(this.disposed)return;if(!Number.isFinite(this.cancelDeadline))this.cancelDeadline=this.now()+taskBudget.deadlinesMs.cancelGrace;this.arm()}
  dispose():void{this.disposed=true;this.stopTimer?.();this.stopTimer=undefined}
 }

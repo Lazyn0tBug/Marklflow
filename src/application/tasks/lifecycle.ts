@@ -13,6 +13,7 @@ export class TaskLifecycle{
  private value:TaskState='queued';
  private transitions:TaskState[]=['queued'];
  get state():TaskState{return this.value}
+ readState():TaskState{return this.value}
  get history():readonly TaskState[]{return [...this.transitions]}
  move(state:TaskState):boolean{
   if(isTerminal(this.value))return false;
