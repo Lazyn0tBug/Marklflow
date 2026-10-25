@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "6dc62ce174ad7f4a895a16e576176c8099887bab",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 126,
+      "unitFiles": 36,
+      "unitTestsPassed": 233,
+      "newUnitTests": 11,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 35,
+      "reportedDuration": "1.2m"
+    },
+    {
+      "command": "bun run test:e2e tests/e2e/markdown-worker.spec.ts",
+      "exitCode": 0,
+      "passed": 3,
+      "reportedDuration": "9.5s",
+      "reason": "final outline validation refinement",
+      "environments": [
+        "development modules",
+        "Vite-built worker assets",
+        "non-secure ordinary HTTP without randomUUID/subtle"
+      ]
+    }
+  ],
+  "logSha256": {
+    "check": "8dd87aa6be515846afbb49425818f8f8496c864f36d30fb712708b1070ef29a1",
+    "fullChromium": "73f14166e959aaf3dfe9e1c776dd0df7fe6150dca1f14cb68cdc29b8ff25f9cf",
+    "finalWorkerChromium": "d7b5f09179feaca9014344894966a40c44999c9fc8ba6afe1e5f805902561460"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "c543bdccb8fc29f03a1e412be745694ac997f4b13cd6cdbfbc3205c8ea8606d0",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "7eb746f3c5449a0ff2705ed9a8a8e457096aad713a252999b71914bd2b57d1fe",
+    "scripts/build-worker-probe.ts": "904727aba45fc6c0aac381e0ddacd7aedc54136151c60279e42eb3ea56c29a69",
+    "src/application/tasks/contracts.ts": "b80028828b6d8b83da89b513db3acc70901921293534e7ead6010b79eb015b02",
+    "src/core/parse/markdown.ts": "bcfd523117710798f84bdc4c6767447cbec5897e009868ef8f9e2f19f550438c",
+    "tsconfig.integration.json": "47377b995d65a0a9c490a8da573de7acc6085a660fad4d1a2c58b7dcca776909",
+    "tsconfig.worker.json": "ec3f4f656d0d40f531152ccc533fab85b9b8488cdf3927f95ea9bf47d0fdbd88",
+    "docs/reviews/architecture-u5a-implementation-2026-10-25.md": "e260734f3b8bc5186b5d5d95d782222284eb53e36c37593625aa09709e311906",
+    "src/application/tasks/markdownWorkerTask.ts": "73b5f1ed928ffa2e7da8246d1ea1cc515c8b28eb43320c30cebc00e8dd48d4e3",
+    "src/application/workspace/markdownPreviewValidation.ts": "617e16e607f660324f0099a11749d09c283101c4e894bf81844bf1a3a8d2b6d7",
+    "src/core/parse/markdownSummary.ts": "214ad9cb1dfd01ae0d21ae3a1877b4ecb41b9e4fbef71190db78d159e208f9ee",
+    "src/core/platform/web/markdownWorkerAdapter.ts": "6e8ec8c6909724d64a8d7e2a65580ebea498d6f35f9906f22c13a2c8a6455c62",
+    "src/workers/markdownWorker.ts": "14261c6915d2afea18aadabebb5b026b819a233da69bd1e34ae08fa90a87f59d",
+    "tests/e2e/markdown-worker.spec.ts": "98774f48d464dd1f9ba43a97e11511341f7c8f2d7837d4c99fb4e787ddbe0c1a",
+    "tests/fixtures/architecture/markdown-worker-probe-client.ts": "4740f9d31737a4f22801fea822c8b02101b3a0242071862774bf4138ee2d5a78",
+    "tests/fixtures/architecture/markdown-worker-probe.html": "3d7f15af665644ed3b78da995b92693fd51f2772a98c7c2e84589de36a0a323f",
+    "tests/unit/markdown-worker-adapter.test.ts": "e606e198a60620dc8f4cdef666b741990022f2ce89cbb1ae4f4058d731048c06",
+    "tests/unit/markdown-worker.test.ts": "060536d49f0bc5f2405cc8f944448e5148a025f88be3751a361686ac8b68ae61"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/workspace/previewActivation.ts": "75f45c8d3622ad4866bd21e6d3773981aa2dfc5a02d58508e1c73c05e6cb2501",
+    "tests/fixtures/architecture/pure-worker.ts": "30b8e5929a2a6bfe3bf3c117567530a32f23068762e2ea6c0cd42ddb17576f4a",
+    "tests/e2e/architecture-pure-worker.spec.ts": "957856e6a41b4a86d105796ff218bb273460c33a717909c10751fce3ca224a18"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "scope": "U5a one compute-worker adapter and pure Markdown parse/source-map pipeline, no app UI or production dual roles",
+  "reviewFixes": [
+    "restore original BOM offsets/columns",
+    "include new browser fixture in strict type coverage",
+    "reject incomplete body/outline summaries",
+    "dispose active adapters via existing termination receipt"
+  ],
+  "limitations": [
+    "returns parse summary, not HTML or rendered formulas/diagrams/pages",
+    "dual physical role scheduling and runtime measurement remain U5b",
+    "browser verification is Chromium only; no Tauri or physical print acceptance",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

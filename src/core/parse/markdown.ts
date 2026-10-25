@@ -7,7 +7,12 @@ import type {Root,RootContent} from 'mdast';
 export interface HeadingItem {id:string;level:number;text:string;line:number}
 export interface SourceRange {start:{line:number;column:number;offset:number};end:{line:number;column:number;offset:number}}
 export interface SemanticBlock {nodeId:string;kind:RootContent['type'];sourceRange:SourceRange}
-export function parseMarkdownSyntax(markdown:string):Root{return createMarkdownReader().parse(markdown)}
+export function parseMarkdownSyntax(markdown:string):Root{
+ const tree=createMarkdownReader().parse(markdown);
+ // remark strips an initial BOM; restore offsets/columns to the original editor text.
+ if(markdown.startsWith('\ufeff'))visit(tree,node=>{if(node.position)for(const point of [node.position.start,node.position.end]){if(point.offset!==undefined)point.offset++;if(point.line===1)point.column++}});
+ return tree;
+}
 export function analyzeMarkdown(markdown:string){
  const tree=parseMarkdownSyntax(markdown);
  const blocks:SemanticBlock[]=tree.children.map(node=>{

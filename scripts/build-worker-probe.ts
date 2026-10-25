@@ -2,4 +2,4 @@ import {build} from 'vite';
 import {resolve,sep} from 'node:path';
 const directory=resolve('test-results/worker-probe-dist');
 if(!directory.startsWith(resolve('test-results')+sep))throw new Error('Unsafe test output path');
-await build({configFile:'vite.config.ts',build:{outDir:directory,emptyOutDir:true,rolldownOptions:{input:resolve('tests/fixtures/architecture/worker-probe.html')}}});
+await build({configFile:'vite.config.ts',build:{outDir:directory,emptyOutDir:true,rolldownOptions:{input:[resolve('tests/fixtures/architecture/worker-probe.html'),resolve('tests/fixtures/architecture/markdown-worker-probe.html')]}}});

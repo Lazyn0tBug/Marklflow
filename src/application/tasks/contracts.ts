@@ -16,6 +16,7 @@ export const stageSchema=z.enum(['accepted','snapshot','parse','resources','gene
 export type TaskStage=z.infer<typeof stageSchema>;
 export const executionIdentitySchema=z.object({executorId:id,executorGeneration:version,task:taskIdentitySchema}).strict();
 export type ExecutionIdentity=z.infer<typeof executionIdentitySchema>;
+export const workerStartSchema=z.object({protocolVersion:z.literal(1),type:z.literal('start'),request:taskRequestSchema,execution:executionIdentitySchema}).strict().refine(command=>sameIdentity(command.request.identity,command.execution.task),'Worker request identity mismatch');
 const point=z.object({line:z.number().int().positive(),column:z.number().int().positive(),offset:version}).strict();
 export const artifactSchema=z.object({schemaVersion:z.literal(1),artifactId:id,mediaType:z.enum(['text/html','application/json']),encoding:z.literal('utf8'),content:z.string().max(taskBudget.memory.activeArtifactBytes),sourceMap:z.array(z.object({nodeId:id,start:point,end:point}).strict().refine(range=>range.end.offset>=range.start.offset)).max(100000),resources:z.array(z.object({source:z.string().min(1).max(15*1024*1024),sha256:z.string().regex(/^[a-f0-9]{64}$/),bytes:version}).strict()).max(128),diagnostics:z.array(z.object({severity:z.enum(['warning','error']),message:z.string().max(8192)}).strict()).max(10000)}).strict();
 export type TaskArtifact=z.infer<typeof artifactSchema>;

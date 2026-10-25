@@ -16,6 +16,7 @@
     "src/application/tasks/**/*",
     "src/application/sessions/**/*",
     "src/application/workspace/**/*",
-    "src/application/previewCache/**/*"
+    "src/application/previewCache/**/*",
+    "src/workers/**/*"
   ]
 }
