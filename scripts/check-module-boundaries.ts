@@ -8,13 +8,14 @@ const taskRoot='src/application/tasks/';
 const exportRoot='src/application/exports/';
 const sessionRoot='src/application/sessions/';
 const workspaceRoot='src/application/workspace/';
+const cacheRoot='src/application/previewcache/';
 const builtins=new Set(builtinModules.map(name=>name.replace(/^node:/,'')));
 const hostGlobals=new Set(['process','Buffer','NodeJS','Bun','require']);
 const domGlobals=new Set(['window','document','HTMLElement','DOMParser','localStorage','indexedDB']);
 const allowed=new Set(['zod','css-tree','unified','remark-parse','remark-gfm','remark-math','unist-util-visit']);
 function portable(file:string){return file.replaceAll('\\','/')}
 export function checkModuleSource(file:string,source:string,root=process.cwd()):string[]{
- const failures:string[]=[],path=portable(relative(root,resolve(root,file))).toLowerCase(),corePure=pureRoots.some(p=>path.startsWith(p)),taskPure=path.startsWith(taskRoot),exportPure=path.startsWith(exportRoot),sessionPure=path.startsWith(sessionRoot),workspacePure=path.startsWith(workspaceRoot),applicationPure=taskPure||exportPure||sessionPure||workspacePure,pure=corePure||applicationPure;
+ const failures:string[]=[],path=portable(relative(root,resolve(root,file))).toLowerCase(),corePure=pureRoots.some(p=>path.startsWith(p)),taskPure=path.startsWith(taskRoot),exportPure=path.startsWith(exportRoot),sessionPure=path.startsWith(sessionRoot),workspacePure=path.startsWith(workspaceRoot),cachePure=path.startsWith(cacheRoot),applicationPure=taskPure||exportPure||sessionPure||workspacePure||cachePure,pure=corePure||applicationPure;
  const tree=parse(source,{sourceType:'module',plugins:['typescript',...(file.endsWith('tsx')?['jsx' as const]:[])],createImportExpressions:true});
  function dependency(name:string,typeOnly=false){
   if(name.startsWith('node:')||builtins.has(name)||name==='bun'||name.startsWith('bun:'))failures.push('browser/core cannot import '+name);
@@ -22,7 +23,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
   if(!pure)return;
   if(name.startsWith('.')){
    const target=portable(relative(root,resolve(root,dirname(file),name))).toLowerCase();
-   if(!pureRoots.some(p=>target.startsWith(p))&&!(workspacePure&&[workspaceRoot,sessionRoot,taskRoot].some(p=>target.startsWith(p)))&&!(sessionPure&&target.startsWith(sessionRoot))&&!(exportPure&&target.startsWith(exportRoot))&&!(taskPure&&(target.startsWith(taskRoot)||['docs/contracts/architecture-runtime-budget.json','docs/contracts/architecture-dual-worker-budget.json'].includes(target))))failures.push('pure module cannot import '+name);
+   if(!pureRoots.some(p=>target.startsWith(p))&&!(workspacePure&&[workspaceRoot,sessionRoot,taskRoot,cacheRoot].some(p=>target.startsWith(p)))&&!(sessionPure&&(target.startsWith(sessionRoot)||target===cacheRoot+'contracts'))&&!(cachePure&&(target.startsWith(cacheRoot)||['src/application/tasks/contracts','src/application/tasks/previewidentity','src/application/tasks/budget'].includes(target)))&&!(exportPure&&target.startsWith(exportRoot))&&!(taskPure&&(target.startsWith(taskRoot)||['docs/contracts/architecture-runtime-budget.json','docs/contracts/architecture-dual-worker-budget.json'].includes(target))))failures.push('pure module cannot import '+name);
   }else if(!allowed.has(name)&&!(path==='src/application/tasks/previewidentity.ts'&&name==='hash.js')&&!(typeOnly&&['mdast','hast','unist'].includes(name)))failures.push('pure dependency not approved: '+name);
  }
  function literal(value:unknown):string|undefined{

@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-25",
+  "branch": "architecture-refactor",
+  "parentCommit": "f2eb0eca4d469cc00efcf459ea30f97b122e6d53",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "managedSources": 116,
+      "unitFiles": 33,
+      "unitTestsPassed": 207,
+      "includes": [
+        "four strict TypeScript profiles",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "integration tsc; bun run lint; bun run test:unit tests/unit/memory-preview-cache.test.ts",
+      "exitCode": 0,
+      "targetedTestsPassed": 13,
+      "reason": "final independent UTF-8 byte-count assertion update"
+    }
+  ],
+  "logSha256": "9f6ce4d53433298f1c5bdd7505bb2fd7041aa95c50d693b32892dc63b0071000",
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "9ff12d6bdff4ea20564213dc49def5f2110fb11805e7dcb662360f5323b4ba48",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "aba2e7470774bf97496bf265be72ba1a1055fa9fd188e969514ac7e7b4fefc9f",
+    "scripts/check-module-boundaries.ts": "ff4c7e3a85557129c14bed93ed7f5a06418bdcf25c1e56361e67df49f685ae71",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "tsconfig.worker.json": "74bf44ce3303447373a37cf11a246c7c0321f87b527115295f1f530715c52227",
+    "docs/reviews/architecture-u4a-implementation-2026-10-25.md": "4428f7e88ba667376da842fa8b2679ac3a39216c91c6436d5cfa0128f26b08f9",
+    "src/application/previewCache/contracts.ts": "c01e64107c5576d66cd00af35bb955792f02f7dffe00775066197c5c825b46b0",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "tests/unit/memory-preview-cache.test.ts": "f5a81bddc753fdd81c856a19fad40604b5f1646d6f5f4718c157fe8fd7346956"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "src/App.tsx": "3147d0b113b643187db6a981a0e0437b63ab66b48612d3b5890cd19b059f4d50",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/workspace/previewActivation.ts": "fc9f21287e2443ad0e69d1ef38866a7d2b9bd5fb0bb2d89a7d8f656007d32347",
+    "src/application/tasks/roleScheduler.ts": "369ee687c91d29e52bf3ea794d32b5fd000738d50a52a040b24214ad9751ad14"
+  },
+  "tagsBeforeCommit": "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9\nfb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1\nb55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2",
+  "scope": "U4a synchronous Map cache, LRU/estimated bytes, single active pointer and expirable session references",
+  "limitations": [
+    "no U4b completion validation or task/cache wiring",
+    "no production UI or real Worker integration",
+    "no persistence, browser interaction rerun or physical heap measurement",
+    "no dependency upgrades, push or tag movement"
+  ]
+}

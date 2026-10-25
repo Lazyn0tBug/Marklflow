@@ -15,6 +15,7 @@
     "tests/fixtures/architecture/pure-worker.ts",
     "src/application/tasks/**/*",
     "src/application/sessions/**/*",
-    "src/application/workspace/**/*"
+    "src/application/workspace/**/*",
+    "src/application/previewCache/**/*"
   ]
 }

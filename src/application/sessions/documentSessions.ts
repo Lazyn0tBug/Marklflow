@@ -1,8 +1,11 @@
 import type {DocumentRecord} from '../../core/model/document';
 import {documentSchema} from '../../core/model/documentSchema';
+import type {PreviewReference} from '../previewCache/contracts';
+type PreviewKind=PreviewReference['key']['previewKind'];
+type PreviewReferences=Partial<Record<PreviewKind,PreviewReference>>;
 export interface EditorPosition {selectionStart:number;selectionEnd:number;scrollTop:number;scrollLeft:number;previewScrollTop:number}
-export interface DocumentSession {document:DocumentRecord;position:EditorPosition;dirty:boolean;canUndo:boolean;canRedo:boolean}
-interface Entry {document:DocumentRecord;position:EditorPosition;savedRevision:number;undo:DocumentRecord[];redo:DocumentRecord[]}
+export interface DocumentSession {document:DocumentRecord;position:EditorPosition;dirty:boolean;canUndo:boolean;canRedo:boolean;previewReferences:PreviewReferences}
+interface Entry {document:DocumentRecord;position:EditorPosition;savedRevision:number;undo:DocumentRecord[];redo:DocumentRecord[];previewReferences:PreviewReferences}
 const origin=():EditorPosition=>({selectionStart:0,selectionEnd:0,scrollTop:0,scrollLeft:0,previewScrollTop:0});
 /** In-memory editing only. No storage, rendering, task cancellation or UI ownership. */
 export class DocumentSessions {
@@ -10,7 +13,7 @@ export class DocumentSessions {
  get activeDocumentId():string|undefined{return this.active}
  get documentIds():string[]{return [...this.entries.keys()]}
  private entry(id:string):Entry {const entry=this.entries.get(id);if(!entry)throw new Error('Unknown document session');return entry}
- private view(entry:Entry):DocumentSession{return structuredClone({document:entry.document,position:entry.position,dirty:entry.document.revision!==entry.savedRevision,canUndo:entry.undo.length>0,canRedo:entry.redo.length>0})}
+ private view(entry:Entry):DocumentSession{return structuredClone({document:entry.document,position:entry.position,dirty:entry.document.revision!==entry.savedRevision,canUndo:entry.undo.length>0,canRedo:entry.redo.length>0,previewReferences:entry.previewReferences})}
  read(id:string):DocumentSession{return this.view(this.entry(id))}
  open(input:DocumentRecord,unsaved=false):DocumentSession {
   // Opening the same document focuses the existing draft, never replaces it with disk data.
@@ -18,7 +21,11 @@ export class DocumentSessions {
   const doc=documentSchema.parse(input);
   if(!Number.isSafeInteger(doc.revision))throw new Error('Invalid document revision');
   if(this.entries.size>=32)throw new Error('Too many open documents');
-  this.entries.set(doc.id,{document:doc,position:origin(),savedRevision:unsaved?-1:doc.revision,undo:[],redo:[]});this.active=doc.id;return this.read(doc.id);
+  this.entries.set(doc.id,{document:doc,position:origin(),savedRevision:unsaved?-1:doc.revision,undo:[],redo:[],previewReferences:{}});this.active=doc.id;return this.read(doc.id);
+ }
+ setPreviewReference(id:string,kind:PreviewKind,reference:PreviewReference|undefined):void{
+  const entry=this.entry(id);if(reference&&(reference.key.documentId!==id||reference.key.previewKind!==kind))throw new Error('Preview reference does not belong to this session');
+  if(reference)entry.previewReferences[kind]=structuredClone(reference);else delete entry.previewReferences[kind];
  }
  activate(id:string):void{this.entry(id);this.active=id}
  setPosition(id:string,position:EditorPosition):void {
