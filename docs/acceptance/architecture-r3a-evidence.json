@@ -1,0 +1,54 @@
+{
+  "step": "R3a",
+  "branch": "architecture-refactor",
+  "parent": "994f782f41911ec4f7e9149298d3ebd571a8184d",
+  "check": "passed",
+  "managedSources": 106,
+  "unitFiles": 29,
+  "unitTests": 167,
+  "targetedTests": 28,
+  "workerBrowserTests": 2,
+  "commands": [
+    "bun run typecheck",
+    "bun run test:unit -- tests/unit/tasks-executors.test.ts tests/unit/tasks-role-scheduler.test.ts",
+    "bun run check",
+    "bun run test:e2e tests/e2e/architecture-pure-worker.spec.ts"
+  ],
+  "review": {
+    "genericPoolRemoved": true,
+    "fixedRoles": [
+      "foreground",
+      "background"
+    ],
+    "adaptersPerRole": 1,
+    "instanceAndTaskIdChecks": true,
+    "stopAndCleanupBeforeReuse": true,
+    "capabilityRegistryRemoved": true,
+    "retryAttemptProtocolRemoved": true,
+    "productionEntrypointsUnchanged": true,
+    "dependenciesAndHistoricalEvidenceUnchanged": true,
+    "protectedRefsUnchangedBeforeCommit": true
+  },
+  "versions": {
+    "MathJax": "3.2.2",
+    "Paged.js": "0.4.3"
+  },
+  "notVerified": [
+    "full application E2E not rerun",
+    "production dual Worker construction/dispatch not implemented",
+    "DOM serial execution not integrated",
+    "R3b cleanup/deadline simplification not implemented",
+    "remote CI not run"
+  ],
+  "removedFiles": [
+    "src/application/tasks/executors.ts"
+  ],
+  "sourceHashes": {
+    "src/application/tasks/contracts.ts": "be7c122478b6d7cc24968853aa0800c2e9b0f7494c626678c4464f0f4057c9c3",
+    "src/application/tasks/roleScheduler.ts": "6e9622354a4e119dcec6da8d432eb8e393cc46b0e61d5cba036ac1cd276f86e2",
+    "tests/types/worker-contracts.ts": "22ed74ed57f2335219c9d4e3478b49f2086e07b54a8094aeb3755890776e20c4",
+    "tests/unit/tasks-executors.test.ts": "f4cba3bac987f13e73d489151a9d5b444e23e8681cc444f128ecbde14d7d599c",
+    "tests/unit/tasks-role-scheduler.test.ts": "af314d1322fbb14e80a143bd2d10117ffa7e46f11da1d7ef5cdedb37fdfe6469",
+    "src/application/tasks/roleExecutor.ts": "30c75aa9fd60d7975926ab8305da6e9e9886b72ca6a4d4d0dc93b636e707dd03"
+  }
+}

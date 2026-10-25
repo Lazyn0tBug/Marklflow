@@ -1,8 +1,8 @@
 import type {PreviewSubmission} from './previewIdentity';
-import {snapshotRequest,type TaskExecutor,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
+import {snapshotRequest,type WorkerAdapter,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
 import {RoleTaskQueue,requestOf,type WorkerRole,type RoleClaim,type RoleAdmission,type PreviewReader} from './roleQueue';
 import {IdentityGate} from './identity';
-import {ExecutorPool} from './executors';
+import {RoleExecutor} from './roleExecutor';
 import {ResourceLedger} from './resources';
 import {TaskDeadlines} from './deadlines';
 import {assessDualWorkerMemory,dualWorkerPolicy} from './dualWorkerPolicy';
@@ -14,53 +14,53 @@ const terminal=(state:RoleRunState)=>state!=='running'&&state!=='stopRequested';
 export interface RoleSchedulerHooks {generated(claim:RoleClaim,artifact:TaskArtifact):undefined}
 export class RoleTaskScheduler{
  private readonly ledger=new ResourceLedger();private readonly queue:RoleTaskQueue;
- private readonly pools:Record<WorkerRole,ExecutorPool>;private readonly installed=new Map<WorkerRole,TaskExecutor>();
+ private readonly executors:Record<WorkerRole,RoleExecutor>;
  private runtime:Record<WorkerRole,number>={foreground:0,background:0};
  private runs=new Map<string,Run>();private history:Outcome[]=[];
  private pumping=false;private notifying=false;
  constructor(private readonly gate:IdentityGate,private readonly clock:TaskClock,readPreview:PreviewReader,private readonly hooks:RoleSchedulerHooks={generated:()=>undefined}){
   const floor=dualWorkerPolicy.memory.reservedRuntimeBytesPerWorker;
   this.queue=new RoleTaskQueue(gate,readPreview,()=>this.ledger.totalBytes+Math.max(0,this.runtime.foreground-floor)+Math.max(0,this.runtime.background-floor));
-  const pool=(role:WorkerRole)=>new ExecutorPool(clock,this.ledger,{message:message=>this.message(role,message),fault:(id,reason)=>{this.end(id,'failed',reason);this.pools[role].stop(id)},stopTimeout:id=>this.end(id,'timedOut','Stop not confirmed'),available:()=>{for(const run of [...this.runs.values()])this.archive(run);this.pump()}});
-  this.pools={foreground:pool('foreground'),background:pool('background')};
+  const executor=(role:WorkerRole)=>new RoleExecutor(role,clock,this.ledger,{message:message=>this.message(role,message),fault:(id,reason)=>{this.end(id,'failed',reason);this.executors[role].stop(id)},stopTimeout:id=>this.end(id,'timedOut','Stop not confirmed'),available:()=>{for(const run of [...this.runs.values()])this.archive(run);this.pump()}});
+  this.executors={foreground:executor('foreground'),background:executor('background')};
  }
  private mutation():void{if(this.notifying)throw new Error('Reentrant generation handoff')}
  private memory(extra=0){return assessDualWorkerMemory({foregroundRuntimeBytes:this.runtime.foreground,backgroundRuntimeBytes:this.runtime.background,ownedTaskBytes:this.queue.ownedBytes+this.ledger.totalBytes+extra,clonePeakBytes:0,otherOwnedBytes:0})}
- install(role:WorkerRole,executor:TaskExecutor,runtimeBytes=0):void{
-  this.mutation();if(executor.lane!=='compute'||executor.capabilities.requiresDOM)throw new Error('Role workers require a compute executor');
-  const other=role==='foreground'?'background':'foreground';if(this.installed.get(other)?.id===executor.id||this.installed.get(other)===executor)throw new Error('Role executors must be independent');
+ install(role:WorkerRole,executor:WorkerAdapter,runtimeBytes=0):void{
+  this.mutation();
+  const other=role==='foreground'?'background':'foreground';if(this.executors[other].matches(executor))throw new Error('Role executors must be independent');
   const old=this.runtime[role];this.runtime[role]=runtimeBytes;
   try{
    if(!this.memory().accepted)throw new Error('Worker runtime budget exceeded');
-   const wrapped:TaskExecutor={id:executor.id,generation:executor.generation,lane:executor.lane,cancellation:executor.cancellation,capabilities:{...executor.capabilities},supportedKinds:[...executor.supportedKinds],start:(request,execution,receive,resources)=>executor.start(request,execution,receive,{register:(id,kind,bytes,cleanup)=>{
+   const wrapped:WorkerAdapter={id:executor.id,generation:executor.generation,cancellation:executor.cancellation,supportedKinds:[...executor.supportedKinds],start:(request,execution,receive,resources)=>executor.start(request,execution,receive,{register:(id,kind,bytes,cleanup)=>{
     if(!this.memory(bytes).accepted)throw new Error('Combined task/resource budget exceeded');resources.register(id,kind,bytes,cleanup);
    }}),stop:execution=>executor.stop(execution)};
-   this.pools[role].install(wrapped);this.installed.set(role,wrapped);
+   this.executors[role].install(wrapped);
   }catch(error){this.runtime[role]=old;throw error}this.pump();
  }
  enqueuePreview(submission:PreviewSubmission):RoleAdmission|{status:'unsupported'}{
   this.mutation();
-  if(!this.pools[submission.role].supports('compute',requestOf({kind:'preview',submission})))return {status:'unsupported'};
+  if(!this.executors[submission.role].supports(requestOf({kind:'preview',submission})))return {status:'unsupported'};
   const admitted=this.queue.enqueuePreview(submission);if(admitted.status==='accepted')for(const id of admitted.replaced)this.record({id,role:submission.role,state:'superseded',reason:'Latest pending intent'});
   this.pump();return admitted;
  }
  enqueueExport(input:unknown):RoleAdmission|{status:'unsupported'}{
-  this.mutation();const request=snapshotRequest(input);if(!this.pools.background.supports('compute',request))return {status:'unsupported'};
+  this.mutation();const request=snapshotRequest(input);if(!this.executors.background.supports(request))return {status:'unsupported'};
   const admitted=this.queue.enqueueExport(request);this.pump();return admitted;
  }
  private pump():void{
   if(this.pumping||this.notifying)return;this.pumping=true;
   try{for(const role of ['foreground','background'] as const){
-   while(this.pools[role].ready('compute')){
+   while(this.executors[role].ready()){
     const claim=this.queue.claim(role);if(!claim)break;
     if('error'in claim){this.record({id:claim.id,role,state:'failed',reason:claim.error});continue}
     const run:Run={claim,state:'running',reason:undefined,deadlines:undefined};this.runs.set(claim.id,run);
-    if(!this.pools[role].supports('compute',requestOf(claim.work))){this.end(claim.id,'failed','Executor no longer supports queued task');continue}
+    if(!this.executors[role].supports(requestOf(claim.work))){this.end(claim.id,'failed','Executor no longer supports queued task');continue}
     try{
      const origin=this.clock.now();
-     run.deadlines=new TaskDeadlines(this.clock,requestOf(claim.work).kind,reason=>{this.end(claim.id,'timedOut',reason);this.pools[role].stop(claim.id)},origin);
-     if(run.deadlines.check())continue;run.deadlines.start();this.pools[role].start('compute',requestOf(claim.work));
-    }catch(error){this.end(claim.id,'failed',String(error));this.pools[role].stop(claim.id)}
+     run.deadlines=new TaskDeadlines(this.clock,requestOf(claim.work).kind,reason=>{this.end(claim.id,'timedOut',reason);this.executors[role].stop(claim.id)},origin);
+     if(run.deadlines.check())continue;run.deadlines.start();this.executors[role].start(requestOf(claim.work));
+    }catch(error){this.end(claim.id,'failed',String(error));this.executors[role].stop(claim.id)}
    }
   }}finally{this.pumping=false}
  }
@@ -81,23 +81,23 @@ export class RoleTaskScheduler{
     this.end(id,'generated');
    }catch(error){this.end(id,'failed',String(error))}finally{this.notifying=false}return;
   }
-  try{if(['artifactReady','delivering','completed'].includes(message.stage))throw new Error('Generation executor cannot announce cache/delivery completion');if(message.stage!=='accepted')run.deadlines?.enter(message.stage)}catch(error){this.end(id,'failed',String(error));this.pools[role].stop(id)}
+  try{if(['artifactReady','delivering','completed'].includes(message.stage))throw new Error('Generation executor cannot announce cache/delivery completion');if(message.stage!=='accepted')run.deadlines?.enter(message.stage)}catch(error){this.end(id,'failed',String(error));this.executors[role].stop(id)}
  }
  cancel(id:string):'accepted'|'alreadyTerminal'{
   this.mutation();if(this.queue.cancelPending(id)){this.record({id,role:undefined,state:'cancelled',reason:'Cancelled pending intent'});this.pump();return 'accepted'}
-  const run=this.runs.get(id);if(!run||terminal(run.state))return 'alreadyTerminal';run.state='stopRequested';run.deadlines?.requestCancel();this.pools[run.claim.role].stop(id);return 'accepted';
+  const run=this.runs.get(id);if(!run||terminal(run.state))return 'alreadyTerminal';run.state='stopRequested';run.deadlines?.requestCancel();this.executors[run.claim.role].stop(id);return 'accepted';
  }
  private end(id:string,state:Exclude<RoleRunState,'running'|'stopRequested'>,reason?:string):void{
   const run=this.runs.get(id);if(!run||terminal(run.state))return;run.state=state;run.reason=reason;run.deadlines?.dispose();this.archive(run);
  }
  private archive(run:Run):void{
-  if(!terminal(run.state)||this.pools[run.claim.role].held(run.claim.id))return;
+  if(!terminal(run.state)||this.executors[run.claim.role].held(run.claim.id))return;
   this.queue.release(run.claim.role,run.claim.id);if(run.claim.work.kind==='export'&&run.state!=='generated')this.queue.finishExport(run.claim.id);this.runs.delete(run.claim.id);this.record({id:run.claim.id,role:run.claim.role,state:run.state,reason:run.reason});
  }
  private record(outcome:Outcome):void{if(this.history.some(item=>item.id===outcome.id))return;this.history.push({...outcome});if(this.history.length>16)this.history.shift()}
  /** Delivery ownership is separate: generation alone cannot release the accepted export slot. */
  releaseExportReservation(id:string):boolean{this.mutation();return this.queue.finishExport(id)}
- async retryCleanup(role:WorkerRole):Promise<void>{this.mutation();await this.pools[role].retryCleanup('compute')}
+ async retryCleanup(role:WorkerRole):Promise<void>{this.mutation();await this.executors[role].retryCleanup()}
  status(id:string){const run=this.runs.get(id);if(run)return {id,state:run.state,reason:run.reason};const result=this.history.find(item=>item.id===id);return result?{...result}:undefined}
- snapshot(){return {queue:this.queue.snapshot(),executors:{foreground:this.pools.foreground.snapshot(),background:this.pools.background.snapshot()},resources:this.ledger.snapshot(),memory:this.memory(),history:this.history.map(item=>({...item}))}}
+ snapshot(){return {queue:this.queue.snapshot(),executors:{foreground:this.executors.foreground.snapshot(),background:this.executors.background.snapshot()},resources:this.ledger.snapshot(),memory:this.memory(),history:this.history.map(item=>({...item}))}}
 }

@@ -17,7 +17,7 @@ export type TaskIdentity=z.infer<typeof taskIdentitySchema>;
 export type TaskKind=z.infer<typeof taskKindSchema>;
 export const stageSchema=z.enum(['accepted','snapshot','parse','resources','generation','validation','layout','packaging','artifactReady','delivering','completed']);
 export type TaskStage=z.infer<typeof stageSchema>;
-export const executionIdentitySchema=z.object({executorId:id,executorGeneration:version,attempt:z.number().int().min(1).max(2),task:taskIdentitySchema}).strict();
+export const executionIdentitySchema=z.object({executorId:id,executorGeneration:version,task:taskIdentitySchema}).strict();
 export type ExecutionIdentity=z.infer<typeof executionIdentitySchema>;
 const point=z.object({line:z.number().int().positive(),column:z.number().int().positive(),offset:version}).strict();
 export const artifactSchema=z.object({schemaVersion:z.literal(1),artifactId:id,mediaType:z.enum(['text/html','text/markdown','application/zip','application/json','application/vnd.openxmlformats-officedocument.wordprocessingml.document']),encoding:z.enum(['utf8','base64']),content:z.string().max(taskBudget.memory.activeArtifactBytes),sourceMap:z.array(z.object({nodeId:id,start:point,end:point}).strict().refine(range=>range.end.offset>=range.start.offset)).max(100000),resources:z.array(z.object({source:z.string().min(1).max(15*1024*1024),sha256:z.string().regex(/^[a-f0-9]{64}$/),bytes:version}).strict()).max(128),diagnostics:z.array(z.object({severity:z.enum(['warning','error']),message:z.string().max(8192)}).strict()).max(10000)}).strict().superRefine((artifact,context)=>{
@@ -38,13 +38,13 @@ export const deliveryReceiptSchema=z.object({artifactId:id,outcome:z.enum(['disp
 export type DeliveryReceipt=z.infer<typeof deliveryReceiptSchema>;
 export function isPreview(kind:TaskKind):boolean{return kind.startsWith('preview.')}
 export function sameIdentity(a:TaskIdentity,b:TaskIdentity):boolean{return Object.keys(taskIdentitySchema.shape).every(key=>Reflect.get(a,key)===Reflect.get(b,key))}
-export function sameExecution(a:ExecutionIdentity,b:ExecutionIdentity):boolean{return a.executorId===b.executorId&&a.executorGeneration===b.executorGeneration&&a.attempt===b.attempt&&sameIdentity(a.task,b.task)}
+export function sameExecution(a:ExecutionIdentity,b:ExecutionIdentity):boolean{return a.executorId===b.executorId&&a.executorGeneration===b.executorGeneration&&sameIdentity(a.task,b.task)}
 /** Zod parses nested objects into an owned snapshot; consumers never receive the caller's object. */
 export function snapshotRequest(input:unknown):TaskRequest{return taskRequestSchema.parse(input)}
 export interface TaskClock {now():number;schedule(delayMs:number,callback:()=>void):()=>void}
-export interface TaskExecutor {
- readonly id:string;readonly generation:number;readonly lane:'compute'|'dom';
- readonly capabilities:{requiresDOM:boolean;isolation:'shared-realm'|'worker'|'process';rebuildable:boolean;concurrency:1};
+/** One concrete compute-worker adapter, installed into one fixed foreground/background role. */
+export interface WorkerAdapter {
+ readonly id:string;readonly generation:number;
  readonly cancellation:'cooperative'|'external';readonly supportedKinds:readonly TaskKind[];
  start(request:TaskRequest,execution:ExecutionIdentity,receive:(message:unknown)=>void,resources:ExecutionResources):void;
  stop(execution:ExecutionIdentity):void;

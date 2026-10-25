@@ -27,3 +27,10 @@ void invalidRole;void invalidCacheKey;
 // @ts-expect-error: Legacy nested requests cannot replace a minimal preview envelope.
 const legacyPreview:PreviewSubmission={request:{}};
 void legacyPreview;
+
+import type {WorkerAdapter,ExecutionIdentity} from '../../src/application/tasks/contracts';
+// @ts-expect-error: Fixed compute adapters cannot expose a generic compute/DOM lane registry.
+const genericLane:WorkerAdapter['lane']='dom';
+// @ts-expect-error: The role adapter runs once, without a retry-attempt protocol.
+const retryAttempt:ExecutionIdentity['attempt']=1;
+void genericLane;void retryAttempt;
