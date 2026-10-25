@@ -1,4 +1,4 @@
-import {previewSubmissionSchema,type PreviewSubmission} from './previewIdentity';
+import {previewSubmissionSchema} from './previewIdentity';
 import {snapshotRequest,artifactSchema,type TaskExecutor,type TaskClock,type ExecutorMessage,type TaskArtifact} from './contracts';
 import {RoleTaskQueue,requestOf,type WorkerRole,type RoleClaim,type RoleAdmission} from './roleQueue';
 import {IdentityGate} from './identity';
@@ -32,7 +32,7 @@ export class RoleTaskScheduler{
   const old=this.runtime[role];this.runtime[role]=runtimeBytes;
   try{
    if(!this.memory().accepted)throw new Error('Worker runtime budget exceeded');
-   const wrapped:TaskExecutor={...executor,capabilities:{...executor.capabilities},supportedKinds:[...executor.supportedKinds],start:(request,execution,receive,resources)=>executor.start(request,execution,receive,{register:(id,kind,bytes,cleanup)=>{
+   const wrapped:TaskExecutor={id:executor.id,generation:executor.generation,lane:executor.lane,cancellation:executor.cancellation,capabilities:{...executor.capabilities},supportedKinds:[...executor.supportedKinds],start:(request,execution,receive,resources)=>executor.start(request,execution,receive,{register:(id,kind,bytes,cleanup)=>{
     if(!this.memory(bytes).accepted)throw new Error('Combined task/resource budget exceeded');resources.register(id,kind,bytes,cleanup);
    }}),stop:execution=>executor.stop(execution)};
    this.pools[role].install(wrapped);this.installed.set(role,wrapped);
@@ -56,11 +56,16 @@ export class RoleTaskScheduler{
  private pump():void{
   if(this.pumping||this.notifying)return;this.pumping=true;
   try{this.expire();for(const role of ['foreground','background'] as const){
-   if(!this.pools[role].ready('compute'))continue;const claim=this.queue.claim(role);if(!claim)continue;
-   const run:Run={claim,state:'running',reason:undefined,deadlines:undefined};this.runs.set(claim.id,run);
-   const origin=claim.work.kind==='preview'&&role==='background'?this.clock.now():claim.acceptedAt;
-   run.deadlines=new TaskDeadlines(this.clock,requestOf(claim.work).kind,reason=>{this.end(claim.id,'timedOut',reason);this.pools[role].stop(claim.id)},origin);
-   if(run.deadlines.check())continue;run.deadlines.start();this.pools[role].start('compute',requestOf(claim.work));
+   while(this.pools[role].ready('compute')){
+    const claim=this.queue.claim(role);if(!claim)break;
+    const run:Run={claim,state:'running',reason:undefined,deadlines:undefined};this.runs.set(claim.id,run);
+    if(!this.pools[role].supports('compute',requestOf(claim.work))){this.end(claim.id,'failed','Executor no longer supports queued task');continue}
+    try{
+     const origin=claim.work.kind==='preview'&&role==='background'?this.clock.now():claim.acceptedAt;
+     run.deadlines=new TaskDeadlines(this.clock,requestOf(claim.work).kind,reason=>{this.end(claim.id,'timedOut',reason);this.pools[role].stop(claim.id)},origin);
+     if(run.deadlines.check())continue;run.deadlines.start();this.pools[role].start('compute',requestOf(claim.work));
+    }catch(error){this.end(claim.id,'failed',String(error));this.pools[role].stop(claim.id)}
+   }
   }}finally{this.pumping=false;this.arm()}
  }
  private message(role:WorkerRole,message:ExecutorMessage):void{
@@ -90,9 +95,11 @@ export class RoleTaskScheduler{
  }
  private archive(run:Run):void{
   if(!terminal(run.state)||this.pools[run.claim.role].held(run.claim.id))return;
-  this.queue.release(run.claim.role,run.claim.id);this.runs.delete(run.claim.id);this.record({id:run.claim.id,role:run.claim.role,state:run.state,reason:run.reason});
+  this.queue.release(run.claim.role,run.claim.id);if(run.claim.work.kind==='export'&&run.state!=='generated')this.queue.finishExport(run.claim.id);this.runs.delete(run.claim.id);this.record({id:run.claim.id,role:run.claim.role,state:run.state,reason:run.reason});
  }
  private record(outcome:Outcome):void{if(this.history.some(item=>item.id===outcome.id))return;this.history.push({...outcome});if(this.history.length>16)this.history.shift()}
+ /** Delivery ownership is separate: generation alone cannot release the accepted export slot. */
+ releaseExportReservation(id:string):boolean{this.mutation();return this.queue.finishExport(id)}
  async retryCleanup(role:WorkerRole):Promise<void>{this.mutation();await this.pools[role].retryCleanup('compute')}
  status(id:string){const run=this.runs.get(id);if(run)return {id,state:run.state,reason:run.reason};const result=this.history.find(item=>item.id===id);return result?{...result}:undefined}
  snapshot(){return {queue:this.queue.snapshot(),executors:{foreground:this.pools.foreground.snapshot(),background:this.pools.background.snapshot()},resources:this.ledger.snapshot(),memory:this.memory(),history:this.history.map(item=>({...item}))}}

@@ -70,7 +70,11 @@ export class RoleTaskQueue{
   }
  }
  release(role:WorkerRole,id:string):boolean{
-  if(this.active.get(role)?.id!==id)return false;this.active.delete(role);if(this.exportId===id)this.exportId=undefined;return true;
+  if(this.active.get(role)?.id!==id)return false;this.active.delete(role);return true;
+ }
+ finishExport(id:string):boolean{
+  if(this.exportId!==id||[...this.active.values(),...this.pending.background].some(entry=>entry.id===id))return false;
+  this.exportId=undefined;return true;
  }
  expire():{id:string;role:WorkerRole;kind:RoleWork['kind']}[]{
   this.prune();const expired:{id:string;role:WorkerRole;kind:RoleWork['kind']}[]=[];
@@ -85,5 +89,5 @@ export class RoleTaskQueue{
  }
  get ownedBytes():number{return [...this.pending.foreground,...this.pending.background,...this.active.values()].reduce((sum,entry)=>sum+entry.bytes,0)}
  get nextExpiry():number{return Math.min(...this.pending.foreground.map(entry=>entry.expiresAt),...this.pending.background.map(entry=>entry.expiresAt))}
- snapshot(){this.prune();return {pending:{foreground:this.pending.foreground.map(entry=>({id:entry.id,work:copy(entry.work)})),background:this.pending.background.map(entry=>({id:entry.id,work:copy(entry.work)}))},active:[...this.active.values()].map(entry=>({id:entry.id,role:entry.role})),needsRender:[...this.dirty.values()].map(marker=>({...marker})),ownedBytes:this.ownedBytes}}
+ snapshot(){this.prune();return {exportTaskId:this.exportId,pending:{foreground:this.pending.foreground.map(entry=>({id:entry.id,work:copy(entry.work)})),background:this.pending.background.map(entry=>({id:entry.id,work:copy(entry.work)}))},active:[...this.active.values()].map(entry=>({id:entry.id,role:entry.role})),needsRender:[...this.dirty.values()].map(marker=>({...marker})),ownedBytes:this.ownedBytes}}
 }
