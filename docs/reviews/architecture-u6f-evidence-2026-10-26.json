@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-26",
+  "branch": "architecture-refactor",
+  "parentCommit": "3b843466779a14edaf51d1e3ce7e68201b578436",
+  "scope": "U6f source-mapped flow/A4 scrolling, outline navigation/highlighting, pane restoration and width settings regression",
+  "checks": [
+    {
+      "command": "bun run check",
+      "exitCode": 0,
+      "strictProfiles": 4,
+      "managedSources": 153,
+      "unitFiles": 43,
+      "unitTestsPassed": 285,
+      "newUnitTests": 5,
+      "includes": [
+        "strict types",
+        "source and module boundaries",
+        "lint",
+        "production build"
+      ]
+    },
+    {
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "browser": "Chromium",
+      "passed": 61,
+      "newSourceScrollTests": 4,
+      "reportedDuration": "2.3m"
+    },
+    {
+      "command": "impeccable detect --json App/sourceScroll and Sidebar",
+      "exitCode": 0,
+      "findings": []
+    }
+  ],
+  "browserAssertions": [
+    "block-mapped forward/reverse scrolling and center chapter highlight",
+    "long code and no-heading content",
+    "sync pause keeps editor independent",
+    "A4 heading/source location and cached Tab restore",
+    "pending outline navigation applied to replacement artifact",
+    "hidden panes resume at current source location",
+    "1024 default and 800/full dialog widths preserve cache reference",
+    "all seven A4 pane combinations and final pane guard",
+    "narrow workbench horizontal scroll survives outline highlight"
+  ],
+  "visualReview": {
+    "reviewed": true,
+    "desktop": [
+      1440,
+      960
+    ],
+    "narrow": [
+      684,
+      900
+    ],
+    "screenshots": [
+      "docs/acceptance/architecture-u6f-a4-source-sync.png",
+      "docs/acceptance/architecture-u6f-a4-three-panes-narrow.png"
+    ],
+    "scope": "UI and CSS pixel page layout; no physical print validation"
+  },
+  "mappingLimit": "linear within source block ranges and combined A4 fragments; not character-exact mapping of layout whitespace",
+  "logSha256": {
+    "check": "27eadb930ea0a16947f3ad515d0d389ab8f9ba8d3f6abbee23b2e3711c87d953",
+    "fullChromium": "6a1ac6e4c6f6cbc5f54b9ecf03c398cdc906c52287bfb5bbd3e69f0b6fc1d248",
+    "uiDetector": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "sidebarDetector": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-u6f-a4-source-sync.png": "c86b9632ecc2b5db651894d5d2db2b33369bc6cf7a4c4819856dd0c5e2eaa945",
+    "docs/acceptance/architecture-u6f-a4-three-panes-narrow.png": "1375c43f311d16d71ff0777800a7fa037e481c0cdb14b712ae3b0915f14d82d3",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "fa257b70e763f953f8bf5328e2617cb0dd1d5edc242221d6b6ee04ca7f656499",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "b947a84b4e443773c44b0ab481f8ac47f6fd1d874e313b0738910e35b72e4a6d",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "52861c6af8d1560e92321b9dd494cf8eaeb536ff0a3e1465b8120fe541dda879",
+    "docs/reviews/architecture-u6f-implementation-2026-10-26.md": "068bbfe338dada006761c11e68724585f6ee7a86b060238407c0c9bed649733a",
+    "src/App.tsx": "0f690186497731966244e0845d133665121ec67d66a5a1ec1d5e8d69c6c7d177",
+    "src/components/workspace/Sidebar.tsx": "c3379594b485d0ce1107d2e831493faeb2a763a107bcf97ed57821254a9bed12",
+    "src/components/workspace/sourceScroll.ts": "dea61c0b170ae98674ecabea41b6ae24a5736f7564d128cc57db4a8ed141731d",
+    "tests/e2e/workbench-source-scroll.spec.ts": "e1c0a556403a844fb9eefc2b93572ece973e705cad50ca280050ed6258608a17",
+    "tests/unit/source-scroll.test.ts": "4efb61dda8f6fc3bc7668a9d3e91a068b8928eb0fb675ca7089e83142f0add19"
+  },
+  "protectedFileSha256": {
+    "package.json": "48f79c5abd7fe24e3cb8d717044dd72573f9b4962e315fabad7729d7d6d22513",
+    "bun.lock": "4645ea377ee3c857d604f8569c965607b89034d13b57c9777172774875a8a5b8",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "src/application/sessions/documentSessions.ts": "b4ca8c552042e65f7771ee3a379eca4743d155c2e5510ace312b02682f8a9175",
+    "src/application/previewCache/memoryPreviewCache.ts": "a81f93fd36937f49a2e31c0660bee9bb31a103e488c1ed20a009976cc3705690",
+    "src/application/workspace/previewActivation.ts": "73e696092c7f22bbfad6077c9adb7c8df7b2f23ae8f4c40f53abe6e2aba09032",
+    "src/application/tasks/roleScheduler.ts": "e531940d64084934506786fc7e02aadc126212c1e85e54d94c07388330614d69",
+    "src/application/tasks/sharedDom.ts": "19eb2d88b67f1a903dd43395734cf8400ba4cfa7b2acaa31f42c8167fa22c239",
+    "src/core/platform/web/workbenchPreviewRuntime.ts": "ccaba3b4d4248d4cbdf20f5e8ba9085892663d23a26c45908236fcb748a55354",
+    "src/core/platform/web/markdownWorkerRuntime.ts": "95e38eb486d4eab08d3feadcd93694fef208af843bf0b3f17d68160dfc35eaac",
+    "src/core/platform/web/documentRepository.ts": "16a4e417f5b81cd9d3e957b370ac36d92f9b32bf3ddd8767d1ed94698c5df35e",
+    "src/application/exports/exportService.ts": "5a07f3635c9c994651376415eee58248f3a0b829ab375eff129411493488cd51",
+    "src/core/render/documentRenderer.ts": "96834f8cc199d5bb022503039b24b2789b0d6953c8ade90832c196d0b55a63a7",
+    "src/core/render/documentPaginator.ts": "77366cabd66e0186a0c82d37020e844fd1f82ed3aeb6a5350702b61b117f2410",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mermaidRender.ts": "93fdc0694bebaa80737478486e2de4f8d1e310ea111d8ee79ecdffb2accd24db",
+    "src/core/render/diagramRender.ts": "88ea1412418164988be2af5dee31e9554881897817f111e3568da11d66bf6f74"
+  },
+  "tagsBeforeCommit": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "notValidated": [
+    "other browsers",
+    "Tauri",
+    "Word/WPS visual rendering",
+    "physical print"
+  ],
+  "deferred": [
+    "P1 and subsequent P/V stages",
+    "persistent preview cache"
+  ],
+  "dependencyChanges": false,
+  "pushed": false
+}

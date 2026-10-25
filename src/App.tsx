@@ -30,13 +30,7 @@ import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
-
-// 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
-function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number {
-  const elRect = el.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  return elRect.top - containerRect.top + container.scrollTop;
-}
+import {editorGeometry,editorLineAt,editorTopAt,previewSourcePoints,interpolate} from './components/workspace/sourceScroll';
 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
@@ -72,11 +66,13 @@ export default function App() {
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
-  const scrollSourceRef = useRef<'editor' | 'preview' | 'outline' | null>(null);
+  const pendingPreviewLine=useRef<{documentId:string;line:number}|undefined>(undefined);
+  const previewLine=useRef(1);
+  const lastEditorGeometry=useRef({lineHeight:24,paddingTop:12});
   const expectedScroll=useRef<{editor:number|null;preview:number|null}>({editor:null,preview:null});
   const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number)=>{const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));expectedScroll.current[pane]=clamped;el.scrollTop=clamped};
   const isProgrammatic=(pane:'editor'|'preview',top:number)=>{const expected=expectedScroll.current[pane];expectedScroll.current[pane]=null;return expected!==null&&Math.abs(expected-top)<2};
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   const pendingSaves=useRef(new Map<string,{timer:ReturnType<typeof setTimeout>;doc:DocumentRecord}>());
 
@@ -136,17 +132,18 @@ export default function App() {
   const capturePosition=()=>{
     if(!currentDoc||!sessions.documentIds.includes(currentDoc.id))return;
     tabHeadings.current.set(currentDoc.id,activeHeadingId);
+    if(editorTextareaRef.current)lastEditorGeometry.current=editorGeometry(editorTextareaRef.current);
     const old=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current,view=previewContainerRef.current;
     sessions.setPosition(currentDoc.id,{selectionStart:editor?.selectionStart??old.selectionStart,selectionEnd:editor?.selectionEnd??old.selectionEnd,scrollTop:editor?.scrollTop??old.scrollTop,scrollLeft:editor?.scrollLeft??old.scrollLeft,previewScrollTop:view?.scrollTop??old.previewScrollTop});
   };
   const selectDocument=(id:string)=>{
     capturePosition();const doc=documents.find(value=>value.id===id);if(!doc)return;
-    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;expectedScroll.current={editor:null,preview:null};scrollSourceRef.current=null;if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current)}catch(error){setActionError(String(error))}
+    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;expectedScroll.current={editor:null,preview:null};pendingPreviewLine.current=undefined}catch(error){setActionError(String(error))}
   };
   const removeSession=(id:string)=>{
     const active=sessions.activeDocumentId===id;if(sessions.documentIds.includes(id))sessions.close(id,true);
     runtime.current?.forget(id);tabModes.current.delete(id);tabHeadings.current.delete(id);setTabs(sessions.documentIds);
-    if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;expectedScroll.current={editor:null,preview:null};scrollSourceRef.current=null;if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current)}
+    if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;expectedScroll.current={editor:null,preview:null};pendingPreviewLine.current=undefined}
     if(!sessions.documentIds.length)runtime.current?.clear();
   };
   const closeTab=async(id:string)=>{
@@ -163,10 +160,24 @@ export default function App() {
     if(!currentDoc)return;const position=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current;
     if(editor){editor.setSelectionRange(position.selectionStart,position.selectionEnd);expectedScroll.current.editor=position.scrollTop;editor.scrollTop=position.scrollTop;editor.scrollLeft=position.scrollLeft}
   },[currentDocId,showEditor]);
+  const previewPoints=()=>{const view=previewContainerRef.current;return view&&currentDoc?previewSourcePoints(view,currentDoc.markdown.split('\n').length):[]};
+  const positionPreview=(line:number)=>{const view=previewContainerRef.current;if(view){previewLine.current=line;syncPosition(view,'preview',interpolate(previewPoints(),line,'line'))}};
   useLayoutEffect(()=>{
-    if(!currentDoc||previewView.state!=='ready'||restorePreview.current!==currentDoc.id)return;
-    const view=previewContainerRef.current;if(view){const top=sessions.read(currentDoc.id).position.previewScrollTop;expectedScroll.current.preview=top;view.scrollTop=top;restorePreview.current=undefined}
-  },[currentDocId,previewView.state,previewView.referenceId,showPreview,previewMode]);
+    if(!currentDoc||previewView.state!=='ready'||!showPreview)return;
+    const view=previewContainerRef.current;if(!view)return;
+    const target=pendingPreviewLine.current;
+    if(target?.documentId===currentDoc.id){positionPreview(target.line);pendingPreviewLine.current=undefined;restorePreview.current=undefined}
+    else if(restorePreview.current===currentDoc.id){syncPosition(view,'preview',sessions.read(currentDoc.id).position.previewScrollTop);previewLine.current=interpolate(previewPoints(),view.scrollTop,'top');restorePreview.current=undefined}
+    else if(syncScroll&&editorTextareaRef.current){positionPreview(editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current)))}
+    else positionPreview(previewLine.current);
+  },[currentDocId,previewView.state,previewView.referenceId,showPreview,showEditor,previewMode,contentMaxWidth,sidebarOpen]);
+  useEffect(()=>{
+    const view=previewContainerRef.current,editor=editorTextareaRef.current;
+    if(!view||previewView.state!=='ready')return;
+    const observer=new ResizeObserver(()=>{if(syncScroll&&editor)positionPreview(editorLineAt(editor.scrollTop,editorGeometry(editor)));else positionPreview(previewLine.current)});
+    observer.observe(view);if(editor)observer.observe(editor);
+    return()=>observer.disconnect();
+  },[currentDocId,previewView.state,previewView.referenceId,showPreview,showEditor,syncScroll]);
 
   // 文档切换或加载时，确保大纲高亮同步指向当前有效章节
   useEffect(() => {
@@ -240,268 +251,51 @@ export default function App() {
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
 
-  const handleDirectScroll=(pane:'editor'|'preview')=>{
-    if(scrollTimeoutRef.current)clearTimeout(scrollTimeoutRef.current);
-    scrollSourceRef.current=pane;
-    for(const [name,el] of [['editor',editorTextareaRef.current],['preview',previewContainerRef.current]] as const){
-      if(el){expectedScroll.current[name]=name===pane?null:el.scrollTop;el.scrollTo({top:el.scrollTop,behavior:'instant'})}
-    }
+  const handleDirectScroll=(pane:'editor'|'preview')=>{expectedScroll.current[pane]=null};
+  const highlightLine=(line:number)=>{
+    if(!currentDoc)return;
+    const outline=extractOutline(currentDoc.markdown);
+    const heading=[...outline].reverse().find(value=>value.line<=line)??outline[0];
+    setActiveHeadingId(heading?.id??null);
   };
-
-  // 1. 大纲选中 → 对应标题在编辑器、HTML 中居顶
-  const handleScrollToHeading = (headingId: string, line?: number) => {
+  const handleScrollToHeading=(headingId:string,line?:number)=>{
+    if(!currentDoc)return;
+    const target=line??extractOutline(currentDoc.markdown).find(value=>value.id===headingId)?.line;if(!target)return;
     setActiveHeadingId(headingId);
-
-    // 设立互斥锁，防止平滑滚动时级联产生抖动与死循环
-    scrollSourceRef.current = 'outline';
-    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    scrollTimeoutRef.current = setTimeout(() => {
-      scrollSourceRef.current = null;
-    }, 600);
-
-    // 1.1 编辑器视窗滚动：目标标题行居顶
-    const textarea = editorTextareaRef.current;
-    if (textarea && currentDoc) {
-      let targetLine = line;
-      if (!targetLine) {
-        const outline = extractOutline(currentDoc.markdown);
-        const item = outline.find((h) => h.id === headingId);
-        if (item) targetLine = item.line;
-      }
-      if (targetLine) {
-        const approxLineHeight = 24;
-        const targetScrollTop = Math.max(0, (targetLine - 1) * approxLineHeight);
-        textarea.scrollTo({
-          top: targetScrollTop,
-          behavior: 'smooth',
-        });
-      }
-    }
-
-    // 1.2 HTML 预览视窗滚动：目标标题居顶
-    const preview = previewContainerRef.current;
-    if (preview) {
-      const targetEl =
-        (preview.querySelector(`[data-heading-id="${headingId}"]`) as HTMLElement) ||
-        document.getElementById(headingId);
-      if (targetEl) {
-        const targetTop = getElementRelativeTop(targetEl, preview);
-        preview.scrollTo({
-          top: Math.max(0, targetTop - 12),
-          behavior: 'smooth',
-        });
-      }
-    }
+    const editor=editorTextareaRef.current;if(editor)lastEditorGeometry.current=editorGeometry(editor);
+    const top=editorTopAt(target,lastEditorGeometry.current);
+    if(editor)syncPosition(editor,'editor',top);
+    const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:top});
+    if(previewView.state==='ready'&&previewContainerRef.current)positionPreview(target);
+    else pendingPreviewLine.current={documentId:currentDoc.id,line:target};
   };
-
-  // 2. 编辑器滚动 → 大纲视口中心章节着重显示，HTML 视窗按源码区块同步滚动
-  const handleEditorScroll = useCallback(
-    (ratio: number, scrollTop: number) => {
-      const textarea = editorTextareaRef.current;
-      if (!textarea || !currentDoc) return;
-      if(isProgrammatic('editor',scrollTop))return;
-
-      const docLines = currentDoc.markdown.split('\n');
-      const totalLines = docLines.length;
-
-      // 2.1 计算编辑器视口中心所在行，实时着重显示大纲视图所属章节
-      const centerScrollTop = scrollTop + textarea.clientHeight / 2;
-      const paddingTop=parseFloat(getComputedStyle(textarea).paddingTop)||0;
-      const centerLine = Math.min(totalLines, Math.max(1, Math.floor((centerScrollTop-paddingTop)/24)+1));
-
-      const outline = extractOutline(currentDoc.markdown);
-      if (outline.length > 0) {
-        let currentCenterHeading = outline[0];
-        for (let i = outline.length - 1; i >= 0; i--) {
-          const heading=outline[i];
-          if (heading && heading.line <= centerLine) {
-            currentCenterHeading = heading;
-            break;
-          }
-        }
-        if (currentCenterHeading && currentCenterHeading.id !== activeHeadingId) {
-          setActiveHeadingId(currentCenterHeading.id);
-        }
-      }
-
-      // 2.2 如果未开启同步滚动，或滚动来自预览/大纲触发，则不反向驱动预览
-      if (!syncScroll) return;
-      if (scrollSourceRef.current === 'preview' || scrollSourceRef.current === 'outline') return;
-
-      scrollSourceRef.current = 'editor';
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        scrollSourceRef.current = null;
-      }, 90);
-
-      const preview = previewContainerRef.current;
-      if (!preview) return;
-
-      const maxPreviewScroll = preview.scrollHeight - preview.clientHeight;
-      const maxEditorScroll = textarea.scrollHeight - textarea.clientHeight;
-      if (maxPreviewScroll <= 0) return;
-
-      // 边缘精准吸附
-      if (scrollTop <= 2) {
-        syncPosition(preview,'preview',0);
-        return;
-      }
-      if (maxEditorScroll > 0 && scrollTop >= maxEditorScroll - 3) {
-        syncPosition(preview,'preview',maxPreviewScroll);
-        return;
-      }
-
-      // 源码区块（Heading Anchors）精细插值定位
-      const headingEls = Array.from(preview.querySelectorAll<HTMLElement>('[data-heading-id]'));
-      if (headingEls.length === 0) {
-        syncPosition(preview,'preview',Math.round(ratio * maxPreviewScroll));
-        return;
-      }
-
-      const anchors = headingEls
-        .map((el) => ({
-          id: el.getAttribute('data-heading-id')!,
-          line: Number(el.getAttribute('data-line') || 1),
-          top: getElementRelativeTop(el, preview),
-        }))
-        .sort((a, b) => a.line - b.line);
-
-      const topLine = Math.max(1, Math.floor((scrollTop-paddingTop)/24) + 1);
-      let targetPreviewTop = 0;
-
-      const first=anchors[0],last=anchors.at(-1);
-      if(!first||!last)return;
-      if (topLine <= first.line) {
-        const progress = first.line > 1 ? (topLine - 1) / (first.line - 1) : 0;
-        targetPreviewTop = progress * first.top;
-      } else if (topLine >= last.line) {
-        const span = Math.max(1, totalLines - last.line);
-        const progress = (topLine - last.line) / span;
-        targetPreviewTop = last.top + progress * (maxPreviewScroll - last.top);
-      } else {
-        let prev = first;
-        let next = last;
-        for (const [i,anchor] of anchors.entries()) {
-          const after=anchors[i+1];
-          if (after && topLine >= anchor.line && topLine < after.line) {
-            prev = anchor;
-            next = after;
-            break;
-          }
-        }
-        const span = Math.max(1, next.line - prev.line);
-        const progress = (topLine - prev.line) / span;
-        targetPreviewTop = prev.top + progress * (next.top - prev.top);
-      }
-
-      syncPosition(preview,'preview',Math.min(maxPreviewScroll, Math.max(0, Math.round(targetPreviewTop))));
-    },
-    [syncScroll, activeHeadingId, currentDoc]
-  );
-
-  // 3. HTML 视图滚动 → 大纲视口中心章节着重显示，编辑器视窗按源码区块同步滚动
-  const handlePreviewScroll = useCallback(
-    (ratio: number, scrollTop: number) => {
-      const preview = previewContainerRef.current;
-      const textarea = editorTextareaRef.current;
-      if (!preview || !currentDoc) return;
-      if(isProgrammatic('preview',scrollTop))return;
-
-      // 3.1 计算 HTML 预览视口中心所在的章节标题，实时更新大纲着重高亮
-      const containerRect = preview.getBoundingClientRect();
-      const centerY = containerRect.top + containerRect.height / 2;
-      const headingEls = Array.from(preview.querySelectorAll<HTMLElement>('[data-heading-id]'));
-
-      if (headingEls.length > 0) {
-        let centerHeadingId: string | null = null;
-        for (const heading of headingEls) {
-          const rect = heading.getBoundingClientRect();
-          if (rect.top <= centerY) {
-            centerHeadingId = heading.getAttribute('data-heading-id');
-          } else {
-            break;
-          }
-        }
-        if (!centerHeadingId && headingEls.length > 0) {
-          centerHeadingId = headingEls[0]?.getAttribute('data-heading-id')??null;
-        }
-        if (centerHeadingId && centerHeadingId !== activeHeadingId) {
-          setActiveHeadingId(centerHeadingId);
-        }
-      }
-
-      // 3.2 如果未开启同步滚动，或滚动来自编辑器/大纲触发，则不反向驱动编辑器
-      if (!syncScroll) return;
-      if (scrollSourceRef.current === 'editor' || scrollSourceRef.current === 'outline') return;
-
-      scrollSourceRef.current = 'preview';
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        scrollSourceRef.current = null;
-      }, 90);
-
-      if (!textarea) return;
-      const maxEditorScroll = textarea.scrollHeight - textarea.clientHeight;
-      const maxPreviewScroll = preview.scrollHeight - preview.clientHeight;
-      if (maxEditorScroll <= 0) return;
-
-      // 边缘精准吸附
-      if (scrollTop <= 2) {
-        syncPosition(textarea,'editor',0);
-        return;
-      }
-      if (maxPreviewScroll > 0 && scrollTop >= maxPreviewScroll - 3) {
-        syncPosition(textarea,'editor',maxEditorScroll);
-        return;
-      }
-
-      if (headingEls.length === 0) {
-        syncPosition(textarea,'editor',Math.round(ratio * maxEditorScroll));
-        return;
-      }
-
-      const anchors = headingEls
-        .map((el) => ({
-          id: el.getAttribute('data-heading-id')!,
-          line: Number(el.getAttribute('data-line') || 1),
-          top: getElementRelativeTop(el, preview),
-        }))
-        .sort((a, b) => a.top - b.top);
-
-      const docLines = currentDoc.markdown.split('\n');
-      const totalLines = docLines.length;
-      let targetLine = 1;
-
-      const first=anchors[0],last=anchors.at(-1);
-      if(!first||!last)return;
-      if (scrollTop <= first.top) {
-        const progress = first.top > 0 ? scrollTop / first.top : 0;
-        targetLine = 1 + progress * (first.line - 1);
-      } else if (scrollTop >= last.top) {
-        const span = Math.max(1, maxPreviewScroll - last.top);
-        const progress = (scrollTop - last.top) / span;
-        targetLine = last.line + progress * (totalLines - last.line);
-      } else {
-        let prev = first;
-        let next = last;
-        for (const [i,anchor] of anchors.entries()) {
-          const after=anchors[i+1];
-          if (after && scrollTop >= anchor.top && scrollTop < after.top) {
-            prev = anchor;
-            next = after;
-            break;
-          }
-        }
-        const span = Math.max(1, next.top - prev.top);
-        const progress = (scrollTop - prev.top) / span;
-        targetLine = prev.line + progress * (next.line - prev.line);
-      }
-
-      const targetEditorTop = (targetLine - 1) * 24;
-      syncPosition(textarea,'editor',Math.min(maxEditorScroll, Math.max(0, Math.round(targetEditorTop))));
-    },
-    [syncScroll, activeHeadingId, currentDoc]
-  );
+  const handleEditorScroll=(_ratio:number,top:number)=>{
+    const editor=editorTextareaRef.current;if(!editor||!currentDoc||isProgrammatic('editor',top))return;
+    const geometry=editorGeometry(editor);lastEditorGeometry.current=geometry;
+    highlightLine(editorLineAt(top+editor.clientHeight/2,geometry));
+    if(!syncScroll||previewView.state!=='ready')return;
+    const view=previewContainerRef.current;if(!view)return;
+    const max=editor.scrollHeight-editor.clientHeight;
+    if(top<=2)syncPosition(view,'preview',0);
+    else if(max>0&&top>=max-3)syncPosition(view,'preview',view.scrollHeight-view.clientHeight);
+    else positionPreview(editorLineAt(top,geometry));
+  };
+  const handlePreviewScroll=(_ratio:number,top:number)=>{
+    const view=previewContainerRef.current;if(!view||!currentDoc||previewView.state!=='ready'||isProgrammatic('preview',top))return;
+    const points=previewPoints();previewLine.current=interpolate(points,top,'top');
+    highlightLine(interpolate(points,top+view.clientHeight/2,'top'));
+    const editor=editorTextareaRef.current;if(!syncScroll)return;
+    if(!editor){const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:editorTopAt(previewLine.current,lastEditorGeometry.current)});return}
+    const max=view.scrollHeight-view.clientHeight;
+    if(top<=2)syncPosition(editor,'editor',0);
+    else if(max>0&&top>=max-3)syncPosition(editor,'editor',editor.scrollHeight-editor.clientHeight);
+    else syncPosition(editor,'editor',editorTopAt(previewLine.current,editorGeometry(editor)));
+  };
+  const changePreviewMode=(mode:'flow'|'a4')=>{
+    capturePosition();
+    if(currentDoc){const editor=editorTextareaRef.current;const line=previewView.state==='ready'&&previewContainerRef.current?interpolate(previewPoints(),previewContainerRef.current.scrollTop,'top'):editor?editorLineAt(editor.scrollTop,editorGeometry(editor)):1;tabModes.current.set(currentDoc.id,mode);pendingPreviewLine.current={documentId:currentDoc.id,line};restorePreview.current=undefined}
+    setPreviewMode(mode);
+  };
 
   const handleMathModeToggle = () => {
     const nextMode = mathMode === 'mathml' ? 'svg' : 'mathml';
@@ -523,7 +317,7 @@ export default function App() {
   const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
   const handleToggleSidebar=()=>{if(!sidebarOpen||visibleCount>1)setSidebarOpen(v=>!v)};
   const handleToggleEditor=()=>{capturePosition();if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
-  const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
+  const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview&&syncScroll&&editorTextareaRef.current){pendingPreviewLine.current={documentId:currentDocId,line:editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current))};restorePreview.current=undefined}if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
   if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportDoc={handleImportDoc} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
 
@@ -546,7 +340,7 @@ export default function App() {
         onToggleEditor={handleToggleEditor}
         onTogglePreview={handleTogglePreview}
         previewMode={previewMode}
-        onPreviewModeChange={mode=>{capturePosition();tabModes.current.set(currentDoc.id,mode);restorePreview.current=currentDoc.id;setPreviewMode(mode)}}
+        onPreviewModeChange={changePreviewMode}
         maxWidth={contentMaxWidth}
         onMaxWidthChange={setContentMaxWidth}
         mathMode={mathMode}

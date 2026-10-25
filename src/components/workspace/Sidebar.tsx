@@ -49,21 +49,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [outlineFilter, setOutlineFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
+  const listRef=useRef<HTMLDivElement>(null);
 
   const outline = extractOutline(currentMarkdown);
   const filteredOutline = outline.filter((h) =>
     h.text.toLowerCase().includes(outlineFilter.toLowerCase())
   );
 
-  // 当当前视口中心章节发生变化时，平滑滚动大纲列表使其保持在视野内
-  React.useEffect(() => {
-    if (activeHeadingId && activeItemRef.current&&!activeItemRef.current.closest('[inert]')) {
-      activeItemRef.current.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth',
-      });
-    }
-  }, [activeHeadingId]);
+  // Only scroll the outline list; highlighting must never move the horizontal workbench.
+  React.useEffect(()=>{
+    const item=activeItemRef.current,list=listRef.current;
+    if(!item||!list||item.closest('[inert]')||activeTab!=='outline')return;
+    const target=item.getBoundingClientRect(),viewport=list.getBoundingClientRect();
+    if(target.top<viewport.top)list.scrollTop+=target.top-viewport.top;
+    else if(target.bottom>viewport.bottom)list.scrollTop+=target.bottom-viewport.bottom;
+  },[activeHeadingId,activeTab]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -177,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Main Tab Content */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-2">
         {activeTab === 'docs' ? (
           <div className="space-y-1">
             {/* Action Bar */}
