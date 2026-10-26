@@ -52,6 +52,20 @@ export default function App() {
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
   const [roadmapModalOpen, setRoadmapModalOpen] = useState<boolean>(false);
 
+  // 编辑器与浏览器预览视图分栏比例 (0.15 ~ 0.85，默认 0.5)
+  const [splitRatio, setSplitRatio] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('markflow_split_ratio');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val >= 0.15 && val <= 0.85) return val;
+      }
+    } catch {}
+    return 0.5;
+  });
+  const [isResizingSplit, setIsResizingSplit] = useState<boolean>(false);
+  const splitContainerRef = useRef<HTMLDivElement | null>(null);
+
   // 撤销重做栈
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [redoStack, setRedoStack] = useState<string[]>([]);
@@ -347,6 +361,70 @@ export default function App() {
     return () => {
       cleanup?.();
     };
+  }, []);
+
+  // 拖拽调整编辑器与浏览器预览视图宽度比例
+  const handleSplitPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const container = splitContainerRef.current;
+    if (!container) return;
+
+    setIsResizingSplit(true);
+    const rect = container.getBoundingClientRect();
+    const totalWidth = rect.width;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const offsetX = moveEvent.clientX - rect.left;
+      // 保持在 15% 到 85% 之间，两端各至少保留 180px 宽度
+      const minRatio = Math.max(0.15, 180 / totalWidth);
+      const maxRatio = Math.min(0.85, (totalWidth - 180) / totalWidth);
+      const newRatio = Math.min(Math.max(offsetX / totalWidth, minRatio), maxRatio);
+      setSplitRatio(newRatio);
+    };
+
+    const handlePointerUp = () => {
+      setIsResizingSplit(false);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      try {
+        setSplitRatio((current) => {
+          localStorage.setItem('markflow_split_ratio', current.toFixed(4));
+          return current;
+        });
+      } catch {}
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  }, []);
+
+  const handleSplitDoubleClick = useCallback(() => {
+    setSplitRatio(0.5);
+    try {
+      localStorage.setItem('markflow_split_ratio', '0.5');
+    } catch {}
+  }, []);
+
+  const handleSplitKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setSplitRatio((r) => {
+        const next = Math.max(0.15, Number((r - 0.02).toFixed(4)));
+        try { localStorage.setItem('markflow_split_ratio', next.toFixed(4)); } catch {}
+        return next;
+      });
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setSplitRatio((r) => {
+        const next = Math.min(0.85, Number((r + 0.02).toFixed(4)));
+        try { localStorage.setItem('markflow_split_ratio', next.toFixed(4)); } catch {}
+        return next;
+      });
+    } else if (e.key === 'Home' || e.key === 'Enter') {
+      e.preventDefault();
+      setSplitRatio(0.5);
+      try { localStorage.setItem('markflow_split_ratio', '0.5'); } catch {}
+    }
   }, []);
 
   const handleDirectScroll=(pane:'editor'|'preview')=>{
@@ -808,10 +886,20 @@ export default function App() {
           )}
 
           {/* Viewports Split Panels */}
-          <div className="flex-1 flex overflow-hidden">
+          <div
+            ref={splitContainerRef}
+            className={`flex-1 flex overflow-hidden relative ${isResizingSplit ? 'select-none cursor-col-resize' : ''}`}
+          >
             {/* Editor Column */}
             {showEditor && (
-              <div data-view="editor" onWheelCapture={()=>handleDirectScroll('editor')} onPointerDownCapture={()=>handleDirectScroll('editor')} onKeyDownCapture={()=>handleDirectScroll('editor')} className="h-full flex-1 min-w-0 flex flex-col">
+              <div
+                data-view="editor"
+                onWheelCapture={() => handleDirectScroll('editor')}
+                onPointerDownCapture={() => handleDirectScroll('editor')}
+                onKeyDownCapture={() => handleDirectScroll('editor')}
+                style={showPreview ? { width: `calc(${splitRatio * 100}% - 4px)` } : { width: '100%' }}
+                className={`h-full min-w-0 flex flex-col shrink-0 overflow-hidden ${isResizingSplit ? 'pointer-events-none' : ''}`}
+              >
                 <Editor
                   value={currentDoc.markdown}
                   onChange={handleMarkdownChange}
@@ -828,11 +916,45 @@ export default function App() {
               </div>
             )}
 
+            {/* Split Resizer Divider: 仅在两栏均激活时呈现 */}
+            {showEditor && showPreview && (
+              <div
+                role="separator"
+                tabIndex={0}
+                aria-orientation="vertical"
+                aria-valuenow={Math.round(splitRatio * 100)}
+                aria-label="拖动调整编辑器与浏览器视图宽度"
+                onPointerDown={handleSplitPointerDown}
+                onDoubleClick={handleSplitDoubleClick}
+                onKeyDown={handleSplitKeyDown}
+                title="拖动调整左右分栏宽度 (双击重置为 1:1，方向键微调)"
+                className={`w-2 shrink-0 group relative cursor-col-resize select-none flex items-center justify-center transition-colors z-20 outline-hidden ${
+                  isResizingSplit
+                    ? 'bg-teal-500/80 shadow-[0_0_8px_rgba(20,184,166,0.6)]'
+                    : 'bg-neutral-800 hover:bg-teal-500/50 border-x border-neutral-700/60 focus-visible:bg-teal-500/60'
+                }`}
+              >
+                {/* 居中把手指示器 */}
+                <div
+                  className={`h-8 w-1 rounded-full transition-colors ${
+                    isResizingSplit ? 'bg-white' : 'bg-neutral-500 group-hover:bg-teal-200'
+                  }`}
+                />
+              </div>
+            )}
+
             {/* Preview Column: Reading View */}
             {showPreview && previewMode === 'flow' && (
-              <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
+              <div
+                data-view="html"
+                onWheelCapture={() => handleDirectScroll('preview')}
+                onPointerDownCapture={() => handleDirectScroll('preview')}
+                onKeyDownCapture={() => handleDirectScroll('preview')}
+                style={showEditor ? { width: `calc(${(1 - splitRatio) * 100}% - 4px)` } : { width: '100%' }}
+                className={`h-full min-w-0 flex flex-col shrink-0 overflow-hidden ${isResizingSplit ? 'pointer-events-none' : ''}`}
+              >
                 <ReadingPreview
-                  {...(currentDoc.assets===undefined?{}:{assets:currentDoc.assets})}
+                  {...(currentDoc.assets === undefined ? {} : { assets: currentDoc.assets })}
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
                   theme={currentDoc.theme}
@@ -848,9 +970,16 @@ export default function App() {
 
             {/* Preview Column: A4 Paginated View */}
             {showPreview && previewMode === 'a4' && (
-              <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
+              <div
+                data-view="html"
+                onWheelCapture={() => handleDirectScroll('preview')}
+                onPointerDownCapture={() => handleDirectScroll('preview')}
+                onKeyDownCapture={() => handleDirectScroll('preview')}
+                style={showEditor ? { width: `calc(${(1 - splitRatio) * 100}% - 4px)` } : { width: '100%' }}
+                className={`h-full min-w-0 flex flex-col shrink-0 overflow-hidden ${isResizingSplit ? 'pointer-events-none' : ''}`}
+              >
                 <A4PagePreview
-                  {...(currentDoc.assets===undefined?{}:{assets:currentDoc.assets})}
+                  {...(currentDoc.assets === undefined ? {} : { assets: currentDoc.assets })}
                   markdown={currentDoc.markdown}
                   mathMode={mathMode}
                   theme={currentDoc.theme}
