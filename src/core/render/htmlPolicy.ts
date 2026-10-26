@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import {parse,walk,generate} from 'css-tree';
-import {safeUrl,cleanStyle} from '../policy/htmlRules';
+import {safeUrl,cleanStyle,AUTHOR_MATHML_SELECTOR} from '../policy/htmlRules';
 export {escapeHtml,safeUrl,cleanStyle,documentColor,rewriteFragments} from '../policy/htmlRules';
 export {themeSchema} from '../model/themeSchema';
 // Compatibility exports remain browser-side; pure modules import policy/model directly.
@@ -34,7 +34,7 @@ export interface ContentDiagnostic {nodeId:string;message:string;severity:'error
 export function inspectAuthorHtml(value:string,line:number):ContentDiagnostic[]{
  const root=document.createElement('template');root.innerHTML=value;
  const diagnostics:ContentDiagnostic[]=[];
- if(root.content.querySelector('math,mfrac,msqrt,mrow,msup,msub,msubsup,mtable'))diagnostics.push({nodeId:'line-'+line,message:'原始MathML需目标格式显式适配，无法保留的片段已记录',severity:'warning',contentKind:'author-mathml'});
+ if(root.content.querySelector(AUTHOR_MATHML_SELECTOR))diagnostics.push({nodeId:'line-'+line,message:'原始MathML需目标格式显式适配，无法保留的片段已记录',severity:'warning',contentKind:'author-mathml'});
  const add=(message:string,severity:'error'|'warning'='warning')=>diagnostics.push({nodeId:'line-'+line,message,severity});
  for(const el of root.content.querySelectorAll('*')){
   const tag=el.localName;

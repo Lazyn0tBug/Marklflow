@@ -27,3 +27,8 @@ it('retains a blocker in canonical HTML when sanitization removes an orphan Math
 });
 
 it('keeps distinct formula occurrences on the same source line',()=>{expect(inspectDocx(diagnosticArtifact('$a$ and $a$')).filter(issue=>issue.message===DOCX_FORMULA_IMAGE_MESSAGE)).toHaveLength(2)});
+
+it.each(['mi','mn','mo','mroot','mover','munder','mmultiscripts','mtext'])('records unsupported orphan %s before sanitization can erase it',async tag=>{
+ const input=await prepareExportContent({...createNewDocument('Orphan MathML'),markdown:'<'+tag+'>x</'+tag+'>'});
+ expect(input.html).toContain('data-mf-author-mathml');expect(inspectDocx(input).some(issue=>issue.adaptation==='unsupported'&&issue.message.includes('MathML'))).toBe(true);
+});
