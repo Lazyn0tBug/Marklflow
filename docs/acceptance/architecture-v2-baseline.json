@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-26T00:02:21.633Z",
+  "sourceStatus": "",
+  "sourceFingerprints": {
+    "bun.lock": "31f1f1ada5cc72c8e4b17214b336d35997f318f63492a225d8d2d388259e3ed6",
+    "package.json": "a4066e0d0613d84d9b1bf3625a8d186e7a404fb1924167e521497a3d87cec5d4",
+    "scripts/architecture-baseline-contract.ts": "426729f184e57c76b6ca4c7c8e1067f7de09333fc3840b2415a5fbeb055bcf91",
+    "scripts/build-worker-probe.ts": "44f99e3fba92a43e3b0fefa159b0559ca04af438b17c4fffc9f566e4458b718c",
+    "scripts/check-architecture-baseline.ts": "bc5c93a57714d4fb051c0ecd05ff148d7a3f7bfa6bda664b02d3191c75630e89",
+    "scripts/check-module-boundaries.ts": "87d80b1f64199fe6ca179d753d92067d4f9952335410aed227beba7691ee0cd4",
+    "scripts/check-source-policy.ts": "0091cdabb58f07a648e0c78372d4e4053ba485a808136413f5e048622dd1ce9f",
+    "scripts/check-type-coverage.ts": "641499395a01b77310320537bdab92b9c2680fddd09b2a19242adebf5ea0ce22",
+    "scripts/measure-architecture-baseline.ts": "bd9dfdab22ef560edcd09d98fe3868af5609286fcb0bddc14d29bdd191a8ee57",
+    "src/App.tsx": "06137faeabe7f58f43659377f4ea4596b041337081c773dbedd3fb4c9e7b7f16",
+    "src/application/exports/exportService.ts": "d76d4f5dba353626e3d39806cb51b8cb254bbe9116f8634db85d65927170cbfc",
+    "src/application/previewCache/contracts.ts": "bf64232e16eaa4014a839440c0fb8d723b05a4eaec206bfd7ee769d41fc7c994",
+    "src/application/previewCache/memoryPreviewCache.ts": "8a9c6886cf35767047aca0b61cb947901d4b4e7cc3f6c4086fa1c95d55d0959c",
+    "src/application/sessions/documentSessions.ts": "d76098cf5072bbca1f924ea8688609a31ca44fec404fbfd0283b803d8c82e78a",
+    "src/application/tasks/budget.ts": "66dc621771630d783e133bd786ffd3d8dc2cf7439d7f97f54180693f37293345",
+    "src/application/tasks/cleanup.ts": "64c9882e7edf079e84b138db0d4a1acfd7f584bfd44cff708b6ed02476f1e2b2",
+    "src/application/tasks/contracts.ts": "a0c16c2343bbfc4a46ebdc7bbe5a25ca2647c54e6a0084ad3241f3cd8a29d8be",
+    "src/application/tasks/deadlines.ts": "6c848fe00d2a16aa59bebc8f0a061fd012f0f6c6d1a8af285c28c58346bd1f1c",
+    "src/application/tasks/dualWorkerPolicy.ts": "320bd97c19317d2baca28102342f335d10bcaf9ed0c8f2b71378419380517f5d",
+    "src/application/tasks/identity.ts": "c86eff7b9a93711763f6f96048cbeeba5d1df5559406d98f8757786139a8dd42",
+    "src/application/tasks/markdownWorkerTask.ts": "20519f06846c1fb69ee3ff090c586681d8bb473df7a7600860b4e90de4925d82",
+    "src/application/tasks/previewIdentity.ts": "97772797d604931113772cf1a0d23520911cf12406759a0153e1b9ab77b5a9f6",
+    "src/application/tasks/roleExecutor.ts": "731efe5079c5337931e3b21dcc3f59e5abe3b519e31c12f374945fe10289903e",
+    "src/application/tasks/roleQueue.ts": "a7869094d8e50388e76564beee781f93381db8185acf4c21d759f9e15088ca98",
+    "src/application/tasks/roleScheduler.ts": "bdb5b78c0740484d0bbed75bdc8437c9409797e5691ea8e2a1831bd9dc99d2af",
+    "src/application/tasks/sharedDom.ts": "5d73405fd4c5f4888fbef12c22981b6e0e9f527ac0419217b795265b70fef7ff",
+    "src/application/workspace/markdownPreviewValidation.ts": "1e30c4a398aeb4764992c7b34d6ef776870dca8816c5336ba2cc0e83b89a5d55",
+    "src/application/workspace/previewActivation.ts": "053fa6bf32685d5f9158574ee9554de83473da692d02c52d6c141987c2769c88",
+    "src/application/workspace/renderedPreview.ts": "3d852e1cfc79d4a22f4828dcb4e259f2d3141da446882ffbe65bc5a327dcb633",
+    "src/application/workspace/sourceImport.ts": "9b6c65d2806e9787167bb51734604b7c15b4c7c3b0282eec5f05f7e759f9c693",
+    "src/application/workspace/sourceSave.ts": "8d4ff46378e9a02e231c8c34ce71a2b8be314380395b50bad29df68af7bbe521",
+    "src/components/editor/Editor.tsx": "3b7171d9173c63042deb4d88af2f55f1ba701c65f9a34adb07edddf02405f79f",
+    "src/components/export/ExportModal.tsx": "9ce804f56c7b1217c19e54796177cecf66ab3cac50a2e79de28c0c154f7961ff",
+    "src/components/footer/StatusBar.tsx": "b42593d0d953680a94ec70d782264ff285ca3390f12d3db36ea7fa6fe95006da",
+    "src/components/header/TopBar.tsx": "835bbe54d6b213d387391a21d7039a3cc75c8be6cb5500fa0fdb308a6b55c5e7",
+    "src/components/preview/A4PagePreview.tsx": "80e72fd507fe50a26583fb44896a3b8167c8f97a26b93d075ae94de855e823ea",
+    "src/components/preview/ReadingPreview.tsx": "e85f7bacf86c4146f4caa53d504ade674e73c788c8ac48d7e70b3095773edd61",
+    "src/components/roadmap/RoadmapModal.tsx": "d72f71b02cdfa14e6332d63d6f87de519296fb7ec4a7b6c15bd1ab042e4f074f",
+    "src/components/toolbar/WorkbenchToolbar.tsx": "d30941b778e513d97c763414bf30b6f6ec39dd26a2a7e27c3ed552cef2c0ca1d",
+    "src/components/workspace/DocumentTabs.tsx": "5b3dcff4f4f3728c288998ee1bf049dd350ba52d73ecece6c89b814725e57bfd",
+    "src/components/workspace/Sidebar.tsx": "271ed8d419a54cb52eab02ad57afba6cd0a58a946f193c1c0876c462175440e3",
+    "src/components/workspace/sourceScroll.ts": "6f63cf68d21b120e3513e44b7f71abd588a84c78d553581491eaa59422310c0a",
+    "src/core/export/documentAssets.ts": "a84c74263ef1fc26d56a64b41c03d848f9df12bb1bbb17c27ba95542c6334588",
+    "src/core/export/documentPrint.ts": "ab1ccce29d93df8f1ab05ae32c36c09a996e2777f5aaf4bb2ceccb2fa03ff395",
+    "src/core/export/docxExporter.ts": "c2185b3738817812ee5365163964b3522c488cbd77588c1c663daaeae79f9de7",
+    "src/core/export/exportContent.ts": "73ef1770923227f224c97705fc3eaeba52bf91a9ccce52ef540ab3e5c27f071d",
+    "src/core/export/htmlExporter.ts": "9f59069f2cd55c64e8bfd55f83c21e0cc7865b6ed0fd410be442d62168f09a3c",
+    "src/core/export/markdownBundle.ts": "eb1517eb24a0008382feeb4c91cac63660b10ea5eb580cff576920deae205d2a",
+    "src/core/export/outputCapabilities.ts": "25c44c0bbdee81aa74a8adcc9b48483e9813510a73962775f631ea048f444013",
+    "src/core/export/pdfExporter.ts": "96073da64524a860a60861c29597cdf217cd1ce8539af8a3b9f25befa7fba6bd",
+    "src/core/model/document.ts": "95e3b17650e1b282e621c5119e345a2cfab9aeea13debe9ae1435ab4de3c3c5a",
+    "src/core/model/documentRepository.ts": "7191fdee6596e7bc31d868ad008e7b029ab077fececab86691d9bdc8d9a227b5",
+    "src/core/model/documentSchema.ts": "1066f46860f77a7175886e6fe6af6aa3f8c5ccd67a9080a58b385255eb1fff42",
+    "src/core/model/recoveryEncoding.ts": "169d85a3d961a432658f4c69b1783dcf2bbdf3b02e005134465032d2c5cb293d",
+    "src/core/model/themeSchema.ts": "575b7125e8b95cc28c465dfdae0e6024509716a0322179a00ee38aced6a7948c",
+    "src/core/parse/markdown.ts": "4a283c1fc948c70a707b81e76bf132f4bb91ad06450cb5ca702ba6a09643e3dc",
+    "src/core/parse/markdownSummary.ts": "918ee846468e4475a9ef70f66012adb135af5db4950cb06433f2b739152b5ae6",
+    "src/core/parser/markdownParser.ts": "e9df703c35f41eb347182ccbff6215f20de89915035ef30926c3988a48e49d30",
+    "src/core/platform/crypto.ts": "b73a00798bcd382fe18799eea14e94e7d78e720a43762467c59f7aa3971ef6b7",
+    "src/core/platform/externalApi.ts": "9d49d9dcf5ef8a17fa8dc5c8d432178567997902d7497f832c02344b41266248",
+    "src/core/platform/web/documentRepository.ts": "7f16e2ed42b381aaf37596c26500e7aff70c3c732e3d5ea0061d5de5063bdb06",
+    "src/core/platform/web/exportService.ts": "e878b11f580a6d3c33c0c63f2f5128b7f1a1afad6b6d7ab68ea54372d9055e39",
+    "src/core/platform/web/markdownWorkerAdapter.ts": "de6e9ccd41154171e83a04e35f93f7936023ef3755b14d57734063142124c8ed",
+    "src/core/platform/web/markdownWorkerRuntime.ts": "d8944679e542f10f69f8c7395d2593a6372bb20d6608d6945f566597655fa555",
+    "src/core/platform/web/sharedDom.ts": "54545eb7685e9422f58ea25ab40163e605bf6ad23e3316b0667adde42bcb6b12",
+    "src/core/platform/web/sourceImport.ts": "20da005daa801163277786016e28ae51fc19936e5557ba3d6f7bbbb47b5fc06f",
+    "src/core/platform/web/workbenchPreviewRuntime.ts": "4b67bed6dd5052590f7dabf3b95d0087bf6ac0f5291016bb54abfa6d4535b62f",
+    "src/core/policy/htmlRules.ts": "caab51b6844ff7e68e1c98d3340a5ff83f13530d833e6fcbbd63dcf2dca4e2be",
+    "src/core/render/diagramRender.ts": "a84946e34d5e5f618884b060cccdf287ec0d3d32ea161fa6c1fc842c1f50eac4",
+    "src/core/render/documentPaginator.ts": "669554b8c4baa14630dbd542a99aedd487b693658c8a1542b3041c8974b347a7",
+    "src/core/render/documentPresentation.ts": "96b8f9fe29374ee8a3be31a856214eaa90fddbb010a00fd40199de0738ed074d",
+    "src/core/render/documentRenderer.ts": "85996b17072f9f4add8677a5cce8bcd6236a05055c8d93544e0f11077fcbabe6",
+    "src/core/render/graphvizRender.ts": "8264aa5173e3b197e3a923e636fe4c55c4eb15d5d319293aa4329cfe17ea055b",
+    "src/core/render/htmlPolicy.ts": "fdd8d609526e1267f79952e7d3aed4bfb35ae1f598d025c53511fb45f09b47af",
+    "src/core/render/markdownHtml.ts": "128fc44742ce2bf0dae8fec1e74a5d10a56822555e50bb551e6f50fb2e7ae21d",
+    "src/core/render/mathJaxAdapter.ts": "0ea725010b07493d77243b96a7dbc5241ca1956ccc7b3c82a6914068b2aaac75",
+    "src/core/render/mathRender.ts": "27844ffcc9d5b1c8cedbfe63c646742ab1faf01f8db40a6b0686fcfea25d6f74",
+    "src/core/render/mermaidRender.ts": "acf3c9e620f60b130fe3cb36ef7b1a01a28d7fd446f99e49fb17712d2f5044e7",
+    "src/core/render/pagedJsAdapter.ts": "e2a47782e03732b932e1f3e93ca5da63e8ba430c303498f8e6b27f90ebdddfcc",
+    "src/core/storage/storage.ts": "c4a962a6e5eddccb0f22936bd6217ccb84622b28b581d4a84b926d2278917d21",
+    "src/index.css": "56bdc16b8ebce2d8da58b221f6e4acd81c1b7c287812e0a9b68abdcbb9c949a7",
+    "src/main.tsx": "ef97beb765477d82ed0df9606026728b97f0db91057e24033469f477a137476c",
+    "src/styles/document.css": "1ee025b40ae9f238b2ee355a7bdca089425913f50cedf7a292c3c2d77f686591",
+    "src/types/pagedjs.d.ts": "bce4d42f6332a03e8c2a0e1deb84835e693a13cae8ad81121b21d396c1050d8f",
+    "src/workers/markdownWorker.ts": "aa1d419241fb66307f76156a3d987a3097943b225a050faab0085b83f9755dd6",
+    "vite.config.ts": "b067006798c68a8888a60d6522e9f5a91e9887b51d554b2b0755e559b128075a"
+  },
+  "negativeDiagnostics": [
+    "Error: 公式解析失败：\\unknowncommand{x}",
+    "当前静态模式不支持 canvas，请提供静态语义替代",
+    "Error: 图片读取失败：https://invalid.example/missing.png"
+  ],
+  "sourceCommit": "1c8839be4f3b728cb2541c696d7d294537e00ef3",
+  "harness": "Vite development source modules, real Chromium, 3 sequential render samples and 1 pagination sample per workload; not production performance or release coverage",
+  "environment": {
+    "os": "win32",
+    "release": "10.0.26300",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12500H",
+    "logicalCpus": 16,
+    "memoryBytes": 16892026880,
+    "browser": "156.0.8078.4",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    }
+  },
+  "results": [
+    {
+      "id": "small",
+      "sha256": "a77d24447b387670c1dba55bb7a5f33c8d290a427be90d2f35e1ada7dfcc8905",
+      "parseMs": [
+        2.300000011920929,
+        3.0999999940395355,
+        2.5999999940395355
+      ],
+      "renderMs": [
+        417.59999999403954,
+        74.30000001192093,
+        74.40000000596046
+      ],
+      "paginateMs": 243,
+      "pages": 3,
+      "artifactBytes": 81211,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "medium",
+      "sha256": "d7fdb32ad81efc885893558b9ae568ffd28e6797b9f209856d085f99c128e3fb",
+      "parseMs": [
+        11.5,
+        9,
+        12.699999988079071
+      ],
+      "renderMs": [
+        115.30000001192093,
+        110.40000000596046,
+        107.2000000178814
+      ],
+      "paginateMs": 299.09999999403954,
+      "pages": 9,
+      "artifactBytes": 154814,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    },
+    {
+      "id": "large",
+      "sha256": "f2bdbb68c350eb8a17f2ad3d7c53c0a7bd76e552ad879fe781419fcdde5ba94f",
+      "parseMs": [
+        25.600000023841858,
+        28.5,
+        29.599999994039536
+      ],
+      "renderMs": [
+        213.69999998807907,
+        180.59999999403954,
+        174.60000002384186
+      ],
+      "paginateMs": 630.1999999880791,
+      "pages": 23,
+      "artifactBytes": 322683,
+      "before": {
+        "stages": 0,
+        "styles": 5
+      },
+      "after": {
+        "stages": 0,
+        "styles": 5
+      },
+      "fonts": [],
+      "bodyFont": "\"Plus Jakarta Sans\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif"
+    }
+  ]
+}

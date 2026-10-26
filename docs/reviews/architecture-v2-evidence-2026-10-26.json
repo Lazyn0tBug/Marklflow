@@ -1,0 +1,39 @@
+{
+  "step": "v2",
+  "parentCommit": "1c8839be4f3b728cb2541c696d7d294537e00ef3",
+  "checks": {
+    "checkExitCode": 0,
+    "managedSources": 167,
+    "unitTests": 309,
+    "chromiumExitCode": 0,
+    "chromiumTests": 75,
+    "duration": "2.9m"
+  },
+  "logSha256": {
+    "check": "cf721a23dec653536a78935673c9bf560171740132d70b9f95667bc970fc0ede",
+    "chromium": "e4b90ba4b74b000b0267093f9555ecf4b59beccf9ba599900c738fb78f1f2d0f"
+  },
+  "changedFileSha256": {
+    "docs/acceptance/architecture-v2-baseline.json": "676682dd7225b509049b62e40222ea7fbd33c9e006c1ead27bb67148cce8f2ff",
+    "docs/acceptance/architecture-v2-comparison.json": "5e1bd8aeb1de6b9345cd80940bb746b283fac6b101d790cc358fe2b5d72133e2",
+    "docs/acceptance/architecture-v2-pdf-check.json": "ebccc9ff4b7cc1b0baaa0d498abde8bff65b6d2e72392f54d03c205a4041483d",
+    "docs/acceptance/architecture-v2-runtime.json": "13019b47e05cd86e0cd339aaf23ca43a39cdf2b2eb8653941d978e3689f0b456",
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "98be41287fbfe182bc696f0e77aa0b3fcb5bd59f6d1cfc9d6f9b2fc4cdf5655c",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "2874e94bff88a5c0bc2b82ac5f58096e678929943f5c5680b8f8f63c431db4cc",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "50be1b77b7c9f8c3e37481c44d8c2444739ca8388c8e447b9ec100916b221ed5",
+    "docs/reviews/architecture-v2-implementation-2026-10-26.md": "a4c92d0d015e58d227bb6be710e681a086d062250e50ec84d060349478536136"
+  },
+  "protectedSha256": {
+    "package.json": "65eaa0c3921dfd49279d141d5bc2c4ce4d188ab9f5bcf6dc09dacc530cc46b1c",
+    "bun.lock": "31f1f1ada5cc72c8e4b17214b336d35997f318f63492a225d8d2d388259e3ed6",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}

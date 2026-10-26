@@ -1,0 +1,580 @@
+{
+  "sourceCommit": "1c8839be4f3b728cb2541c696d7d294537e00ef3",
+  "bun": "1.4.2",
+  "packages": {
+    "react": "19.3.1",
+    "vite": "8.3.5",
+    "typescript": "7.0.2",
+    "mathjax": "3.2.2",
+    "pagedjs": "0.4.3",
+    "mermaid": "12.2.0",
+    "jszip": "3.10.2"
+  },
+  "dualWorker": {
+    "development": {
+      "fault": false,
+      "constructionMs": 1.300000011920929,
+      "cold": {
+        "foregroundMs": 454.2000000178814,
+        "backgroundMs": 454.2000000178814,
+        "wallMs": 477,
+        "includesFirstModuleLoad": true
+      },
+      "warm": [
+        {
+          "round": 0,
+          "foregroundMs": 34.80000001192093,
+          "backgroundMs": 34.900000005960464,
+          "wallMs": 43
+        },
+        {
+          "round": 1,
+          "foregroundMs": 36.599999994039536,
+          "backgroundMs": 36.599999994039536,
+          "wallMs": 40
+        },
+        {
+          "round": 2,
+          "foregroundMs": 34.69999998807907,
+          "backgroundMs": 34.80000001192093,
+          "wallMs": 38.30000001192093
+        }
+      ],
+      "peakForeground": 1,
+      "peakBackground": 1,
+      "peakActive": 2,
+      "timerDelayMs": 42.20000001788139,
+      "inputUtf8Bytes": 9646,
+      "inputSnapshotBytes": 11583,
+      "artifactSerializedBytes": 100882,
+      "cacheBytes": 1603670,
+      "pageHeapReported": {
+        "usedJSHeapSize": 17100000,
+        "totalJSHeapSize": 20500000
+      },
+      "workerPhysicalHeapBytes": null,
+      "fifo": [
+        "C",
+        "B",
+        "D"
+      ],
+      "replacedPendingState": "cancelled",
+      "cancel": {
+        "oldState": "cancelled",
+        "foregroundRebuilt": true,
+        "unrelatedBackgroundPreserved": true,
+        "oldTask": "role-task-13",
+        "newArtifactTask": "role-task-15",
+        "newTask": "role-task-15"
+      },
+      "promotion": {
+        "oldForegroundState": "cancelled",
+        "oldBackgroundState": "cancelled",
+        "foregroundRebuilt": true,
+        "backgroundRebuilt": true,
+        "foregroundArtifactTask": "role-task-20",
+        "foregroundTask": "role-task-20",
+        "backgroundArtifactTask": "role-task-19",
+        "backgroundTask": "role-task-19"
+      },
+      "cacheHitNoGeneration": true,
+      "finalQueue": {
+        "pending": {
+          "foreground": [],
+          "background": []
+        },
+        "active": [],
+        "ownedBytes": 0
+      },
+      "roles": [
+        {
+          "role": "foreground",
+          "id": "markdown-worker-5",
+          "generation": 3,
+          "stopped": false
+        },
+        {
+          "role": "background",
+          "id": "markdown-worker-4",
+          "generation": 2,
+          "stopped": false
+        }
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+      "hardwareConcurrency": 16,
+      "secure": true,
+      "uuid": "function",
+      "subtle": "object",
+      "memoryTrend": [
+        {
+          "stage": "beforeWorkers",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 0,
+          "liveRoleInstances": 0,
+          "resources": 0
+        },
+        {
+          "stage": "afterConstruction",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 0,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterCold",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 199028,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-0",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 398690,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-1",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 598986,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-2",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 799916,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterSwitches",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 1603670,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterDispose",
+          "pageHeapReported": {
+            "usedJSHeapSize": 17100000,
+            "totalJSHeapSize": 20500000
+          },
+          "cacheBytes": 1603670,
+          "liveRoleInstances": 0,
+          "resources": 0
+        }
+      ],
+      "activePinAfterDispose": null,
+      "disposed": true,
+      "retainedResources": 0,
+      "remainingPending": 0
+    },
+    "http": {
+      "fault": false,
+      "constructionMs": 1,
+      "cold": {
+        "foregroundMs": 150.7999999821186,
+        "backgroundMs": 162,
+        "wallMs": 182.90000000596046,
+        "includesFirstModuleLoad": true
+      },
+      "warm": [
+        {
+          "round": 0,
+          "foregroundMs": 26.400000005960464,
+          "backgroundMs": 26.400000005960464,
+          "wallMs": 33.70000001788139
+        },
+        {
+          "round": 1,
+          "foregroundMs": 28.099999994039536,
+          "backgroundMs": 28.099999994039536,
+          "wallMs": 31.099999994039536
+        },
+        {
+          "round": 2,
+          "foregroundMs": 25.80000001192093,
+          "backgroundMs": 25.80000001192093,
+          "wallMs": 28.900000005960464
+        }
+      ],
+      "peakForeground": 1,
+      "peakBackground": 1,
+      "peakActive": 2,
+      "timerDelayMs": 22.100000023841858,
+      "inputUtf8Bytes": 9646,
+      "inputSnapshotBytes": 11583,
+      "artifactSerializedBytes": 100882,
+      "cacheBytes": 1603670,
+      "pageHeapReported": {
+        "usedJSHeapSize": 10000000,
+        "totalJSHeapSize": 10000000
+      },
+      "workerPhysicalHeapBytes": null,
+      "fifo": [
+        "C",
+        "B",
+        "D"
+      ],
+      "replacedPendingState": "cancelled",
+      "cancel": {
+        "oldState": "cancelled",
+        "foregroundRebuilt": true,
+        "unrelatedBackgroundPreserved": true,
+        "oldTask": "role-task-13",
+        "newArtifactTask": "role-task-15",
+        "newTask": "role-task-15"
+      },
+      "promotion": {
+        "oldForegroundState": "cancelled",
+        "oldBackgroundState": "cancelled",
+        "foregroundRebuilt": true,
+        "backgroundRebuilt": true,
+        "foregroundArtifactTask": "role-task-20",
+        "foregroundTask": "role-task-20",
+        "backgroundArtifactTask": "role-task-19",
+        "backgroundTask": "role-task-19"
+      },
+      "cacheHitNoGeneration": true,
+      "finalQueue": {
+        "pending": {
+          "foreground": [],
+          "background": []
+        },
+        "active": [],
+        "ownedBytes": 0
+      },
+      "roles": [
+        {
+          "role": "foreground",
+          "id": "markdown-worker-5",
+          "generation": 3,
+          "stopped": false
+        },
+        {
+          "role": "background",
+          "id": "markdown-worker-4",
+          "generation": 2,
+          "stopped": false
+        }
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+      "hardwareConcurrency": 16,
+      "secure": false,
+      "uuid": "undefined",
+      "subtle": "undefined",
+      "memoryTrend": [
+        {
+          "stage": "beforeWorkers",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 0,
+          "liveRoleInstances": 0,
+          "resources": 0
+        },
+        {
+          "stage": "afterConstruction",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 0,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterCold",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 199028,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-0",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 398690,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-1",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 598986,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-2",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 799916,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterSwitches",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 1603670,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterDispose",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 1603670,
+          "liveRoleInstances": 0,
+          "resources": 0
+        }
+      ],
+      "activePinAfterDispose": null,
+      "disposed": true,
+      "retainedResources": 0,
+      "remainingPending": 0
+    },
+    "built": {
+      "fault": false,
+      "constructionMs": 1.100000023841858,
+      "cold": {
+        "foregroundMs": 155.90000000596046,
+        "backgroundMs": 155.90000000596046,
+        "wallMs": 179.09999999403954,
+        "includesFirstModuleLoad": true
+      },
+      "warm": [
+        {
+          "round": 0,
+          "foregroundMs": 31.900000005960464,
+          "backgroundMs": 31.900000005960464,
+          "wallMs": 40.5
+        },
+        {
+          "round": 1,
+          "foregroundMs": 27.899999976158142,
+          "backgroundMs": 27.899999976158142,
+          "wallMs": 31.099999994039536
+        },
+        {
+          "round": 2,
+          "foregroundMs": 29.5,
+          "backgroundMs": 29.5,
+          "wallMs": 32.29999998211861
+        }
+      ],
+      "peakForeground": 1,
+      "peakBackground": 1,
+      "peakActive": 2,
+      "timerDelayMs": 28.400000005960464,
+      "inputUtf8Bytes": 9646,
+      "inputSnapshotBytes": 11583,
+      "artifactSerializedBytes": 100882,
+      "cacheBytes": 1603670,
+      "pageHeapReported": {
+        "usedJSHeapSize": 10000000,
+        "totalJSHeapSize": 10000000
+      },
+      "workerPhysicalHeapBytes": null,
+      "fifo": [
+        "C",
+        "B",
+        "D"
+      ],
+      "replacedPendingState": "cancelled",
+      "cancel": {
+        "oldState": "cancelled",
+        "foregroundRebuilt": true,
+        "unrelatedBackgroundPreserved": true,
+        "oldTask": "role-task-13",
+        "newArtifactTask": "role-task-15",
+        "newTask": "role-task-15"
+      },
+      "promotion": {
+        "oldForegroundState": "cancelled",
+        "oldBackgroundState": "cancelled",
+        "foregroundRebuilt": true,
+        "backgroundRebuilt": true,
+        "foregroundArtifactTask": "role-task-20",
+        "foregroundTask": "role-task-20",
+        "backgroundArtifactTask": "role-task-19",
+        "backgroundTask": "role-task-19"
+      },
+      "cacheHitNoGeneration": true,
+      "finalQueue": {
+        "pending": {
+          "foreground": [],
+          "background": []
+        },
+        "active": [],
+        "ownedBytes": 0
+      },
+      "roles": [
+        {
+          "role": "foreground",
+          "id": "markdown-worker-5",
+          "generation": 3,
+          "stopped": false
+        },
+        {
+          "role": "background",
+          "id": "markdown-worker-4",
+          "generation": 2,
+          "stopped": false
+        }
+      ],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+      "hardwareConcurrency": 16,
+      "secure": true,
+      "uuid": "function",
+      "subtle": "object",
+      "memoryTrend": [
+        {
+          "stage": "beforeWorkers",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 0,
+          "liveRoleInstances": 0,
+          "resources": 0
+        },
+        {
+          "stage": "afterConstruction",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 0,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterCold",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 199028,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-0",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 398690,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-1",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 598986,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "warm-2",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 799916,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterSwitches",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 1603670,
+          "liveRoleInstances": 2,
+          "resources": 0
+        },
+        {
+          "stage": "afterDispose",
+          "pageHeapReported": {
+            "usedJSHeapSize": 10000000,
+            "totalJSHeapSize": 10000000
+          },
+          "cacheBytes": 1603670,
+          "liveRoleInstances": 0,
+          "resources": 0
+        }
+      ],
+      "activePinAfterDispose": null,
+      "disposed": true,
+      "retainedResources": 0,
+      "remainingPending": 0
+    }
+  },
+  "capabilities": {
+    "browser": "156.0.8078.4",
+    "platform": "win32",
+    "date": "2026-10-26T00:05:20.173Z",
+    "probes": {
+      "grid": true,
+      "namedContainer": true,
+      "containerUnits": true,
+      "fluidUnits": true,
+      "oklch": true,
+      "cryptoDigest": true,
+      "dialog": true,
+      "fontStatus": "loaded"
+    },
+    "limits": "API/grammar detection is not glyph coverage, Word, physical print or cross-browser acceptance"
+  },
+  "limits": "Real Worker fixture, API detection and production browser cases remain distinct; no heap/cross-browser/Tauri proof",
+  "logSha256": {
+    "install": "200a4627a5cb8523125b3dec148b0a14e95536e04368869b3c97b37e40070d39",
+    "measure": "d3bc479d7628cf6804fe4e660e339707060d57275cd8aa652c8a33a2dbb8d0c8",
+    "comparison": "c1d28aa0914c81816971bcde70a68a51d1b097b582c7e88126d0b92b483785aa"
+  }
+}

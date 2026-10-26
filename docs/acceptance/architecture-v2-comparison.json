@@ -1,0 +1,101 @@
+[
+  {
+    "id": "small",
+    "checks": [
+      {
+        "metric": "outlineMax",
+        "before": 8,
+        "after": 3.0999999940395355,
+        "limit": 74,
+        "passed": true
+      },
+      {
+        "metric": "firstRender",
+        "before": 421.5,
+        "after": 417.59999999403954,
+        "limit": 1364.5,
+        "passed": true
+      },
+      {
+        "metric": "warmRenderMax",
+        "before": 82.40000000596046,
+        "after": 74.40000000596046,
+        "limit": 347.2000000178814,
+        "passed": true
+      },
+      {
+        "metric": "pagination",
+        "before": 247.69999998807907,
+        "after": 243,
+        "limit": 993.0999999642372,
+        "passed": true
+      }
+    ]
+  },
+  {
+    "id": "medium",
+    "checks": [
+      {
+        "metric": "outlineMax",
+        "before": 13.5,
+        "after": 12.699999988079071,
+        "limit": 90.5,
+        "passed": true
+      },
+      {
+        "metric": "firstRender",
+        "before": 133.39999997615814,
+        "after": 115.30000001192093,
+        "limit": 500.1999999284744,
+        "passed": true
+      },
+      {
+        "metric": "warmRenderMax",
+        "before": 117.90000000596046,
+        "after": 110.40000000596046,
+        "limit": 453.7000000178814,
+        "passed": true
+      },
+      {
+        "metric": "pagination",
+        "before": 299.30000001192093,
+        "after": 299.09999999403954,
+        "limit": 1147.9000000357628,
+        "passed": true
+      }
+    ]
+  },
+  {
+    "id": "large",
+    "checks": [
+      {
+        "metric": "outlineMax",
+        "before": 45.70000001788139,
+        "after": 29.599999994039536,
+        "limit": 187.10000005364418,
+        "passed": true
+      },
+      {
+        "metric": "firstRender",
+        "before": 199.09999999403954,
+        "after": 213.69999998807907,
+        "limit": 697.2999999821186,
+        "passed": true
+      },
+      {
+        "metric": "warmRenderMax",
+        "before": 209,
+        "after": 180.59999999403954,
+        "limit": 727,
+        "passed": true
+      },
+      {
+        "metric": "pagination",
+        "before": 677.6999999880791,
+        "after": 630.1999999880791,
+        "limit": 2283.099999964237,
+        "passed": true
+      }
+    ]
+  }
+]
