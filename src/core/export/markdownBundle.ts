@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import {parseFragment,type DefaultTreeAdapterTypes} from 'parse5';
 import {visit} from 'unist-util-visit';
 import {parseMarkdownSyntax} from '../parse/markdown';
 import type {DocumentRecord,DocumentAsset} from '../model/document';
@@ -19,12 +20,27 @@ export function bundleMarkdown(markdown:string,assets:DocumentAsset[]):string{
    const title=node.title?' '+JSON.stringify(Array.from(node.title).map(c=>c.charCodeAt(0)<32?' ':c).join('')):'';
    text=node.type==='image'?'!['+label(node.alt??'')+']('+path+title+')':'['+label(node.label??node.identifier)+']: '+path+title;
   }else if(node.type==='html'){
-   const template=document.createElement('template');template.innerHTML=node.value;let changed=false;
-   for(const el of template.content.querySelectorAll('img,svg image')){
-    const attr=el.hasAttribute('src')?'src':el.hasAttribute('href')?'href':'xlink:href',value=el.getAttribute(attr),path=value?lookup(value):undefined;
-    if(path){el.setAttribute(attr,path);changed=true}
-   }
-   if(changed)text=template.innerHTML;
+   // HTML blocks can leave wrappers open across Markdown nodes. Never serialize a repaired DOM.
+   const rewrite=(element:DefaultTreeAdapterTypes.Element)=>{
+    if(element.tagName==='img'||element.tagName==='image'){
+     const attribute=['src','href','xlink:href'].map(name=>element.attrs.find(attr=>(attr.prefix?attr.prefix+':':'')+attr.name===name)).find(attr=>attr!==undefined);
+     const path=attribute?lookup(attribute.value):undefined;
+     const name=attribute?(attribute.prefix?attribute.prefix+':':'')+attribute.name:undefined;
+     const location=name?element.sourceCodeLocation?.attrs?.[name]:undefined;
+     if(path&&location){
+      const raw=node.value.slice(location.startOffset,location.endOffset),equals=raw.indexOf('=');
+      if(equals>=0){
+       let from=equals+1;while(/\s/.test(raw[from]??''))from++;
+       const quote=raw[from],quoted=quote==='"'||quote==="'";
+       if(quoted)from++;
+       const to=quoted?raw.lastIndexOf(quote):raw.length;
+       if(to>=from)edits.push({start:start+location.startOffset+from,end:start+location.startOffset+to,text:path});
+      }
+     }
+    }
+    for(const child of element.childNodes)if('tagName'in child)rewrite(child);
+   };
+   for(const child of parseFragment(node.value,{sourceCodeLocationInfo:true}).childNodes)if('tagName'in child)rewrite(child);
   }
   if(text!==undefined)edits.push({start,end,text});
  });

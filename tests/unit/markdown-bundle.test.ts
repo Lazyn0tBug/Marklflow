@@ -10,3 +10,14 @@ it('rewrites inline, reference and HTML images while preserving unrelated source
 it('leaves exact Markdown untouched when no asset references need rewriting',()=>{const source='# Source\r\n\n![missing](other.png)\n';expect(bundleMarkdown(source,[])).toBe(source)});
 it('writes a portable ZIP with byte-identical assets and license/hash manifest',async()=>{vi.stubGlobal('Blob',NodeBlob);const {assets}=await collectAssets('<img src="'+data+'">');assets[0]!.license='CC0';const document={...createNewDocument('Bundle'),assets,markdown:'![image]('+data+')'};const blob=await buildMarkdownBundle({document,html:''});const zip=await JSZip.loadAsync(await blob.arrayBuffer());const asset=assets[0]!,path='assets/'+asset.sha256+'.png';expect(await zip.file('document.md')!.async('string')).toContain(path);expect(await zip.file(path)!.async('base64')).toBe(data.split(',')[1]);expect(await zip.file('manifest.json')!.async('string')).toContain('CC0');expect(await zip.file('manifest.json')!.async('string')).toContain(asset.sha256)});
 it('preserves escaped reference labels as valid Markdown',async()=>{const {assets}=await collectAssets('<img src="'+data+'">');const asset={...assets[0]!,source:'/image.png'},slash=String.fromCharCode(92),source='![ref][a'+slash+']]'+String.fromCharCode(10,10)+'[a'+slash+']]: /image.png';const result=bundleMarkdown(source,[asset]);expect(result).toContain('[a'+slash+']]: assets/');});
+it('preserves open HTML wrappers, raw text and CRLF while rewriting only image attributes',async()=>{
+ const {assets}=await collectAssets('<img src="'+data+'">');const asset={...assets[0]!,source:'/image.png'};
+ const source='<div class="wrapper">\r\n<IMG SRC=\'/image.png\' alt="a > b">\r\n\r\n# Inner heading\r\n\r\n</div>\r\n';
+ expect(bundleMarkdown(source,[asset])).toBe(source.replace("SRC='/image.png'", "SRC='assets/"+asset.sha256+".png'"));
+});
+it('keeps comments and raw text intact and rewrites SVG and unquoted image URLs by source offset',async()=>{
+ const {assets}=await collectAssets('<img src="'+data+'">');const asset={...assets[0]!,source:'/image.png'},path='assets/'+asset.sha256+'.png';
+ const source='<!-- <img src="/image.png"> -->\n<script>const value="<img src=\'/image.png\'>";</script>\n<img src=/image.png alt="x > y">\n<svg><image xlink:href="/image.png" /></svg>';
+ const expected=source.replace('src=/image.png','src='+path).replace('xlink:href="/image.png"','xlink:href="'+path+'"');
+ expect(bundleMarkdown(source,[asset])).toBe(expected);
+});

@@ -1,0 +1,32 @@
+{
+  "step": "f1",
+  "parentCommit": "90701aeb10388aa45a9f803340165422b0a05f51",
+  "managedSources": 167,
+  "unitTests": 311,
+  "chromiumTests": 76,
+  "logSha256": {
+    "check": "29a2e9b998ca30bf60f643c0414262b6a9e374cd589e7942173928ab844ee3ad",
+    "e2e": "c3d98580b57e5f824704217e793f8335af66be63e598292ac355b806e5a8aced"
+  },
+  "changedFileSha256": {
+    "bun.lock": "4266afb0f0d16e1e18551f533f143dda8afca0bb92430f41c469d9e44a68f24e",
+    "docs/reviews/architecture-final-f1-2026-10-26.md": "d1b6d055b9d377a870d04b1ed79628aecfd3dc63ab05d4e471abda29980bdbb1",
+    "package.json": "f50274ca0a857ec2fa66a2282093e50c17898e3085d113aab2c88a37a6fc80ce",
+    "src/core/export/markdownBundle.ts": "6e34296dbdf700b191a1b0e2057ca9fbe58ab6de3195aadb4f2afa8ae89dd649",
+    "tests/e2e/markdown-bundle.spec.ts": "4350ee659a72d5fb2812bd4ba2e02bace8366dd98eb6d036e655eaa380eed84b",
+    "tests/unit/markdown-bundle.test.ts": "80e5d61182f675dbf8cef64c22a8ad1437e01515d2c07247153276f06b1a3243"
+  },
+  "protectedSha256": {
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mathJaxAdapter.ts": "77e52f84eb76e823eaec632c884320d4be395c1bd774f036f3ff7377dce3bac9",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "docs/acceptance/architecture-a0-baseline.json": "1f74cdbe5b09713f1199c1c946b57ecc52bab30ff304c8a8052b3010720d3403"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}
