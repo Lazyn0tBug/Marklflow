@@ -34,11 +34,11 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
  const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',...(tag==='code'?{font:'Consolas'}:{}),superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};
- const runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,context,next)))).flat();
+ let runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,context,next)))).flat();
  if(tag==='a'&&node.getAttribute('href')){
   const href=node.getAttribute('href')!;
-  if(href.startsWith('#')){const id=href.slice(1);let decoded=id;try{decoded=decodeURIComponent(id)}catch{}const anchor=context.bookmarks.get(id)||context.bookmarks.get(decoded);if(anchor)return [new InternalHyperlink({anchor,children:runs})]}
-  else return [new ExternalHyperlink({link:href,children:runs})];
+  if(href.startsWith('#')){const id=href.slice(1);let decoded=id;try{decoded=decodeURIComponent(id)}catch{}const anchor=context.bookmarks.get(id)||context.bookmarks.get(decoded);if(anchor)runs=[new InternalHyperlink({anchor,children:runs})]}
+  else runs=[new ExternalHyperlink({link:href,children:runs})];
  }
  if(node.id&&context.bookmarks.has(node.id))return [new Bookmark({id:context.bookmarks.get(node.id)!,children:runs})];
  return runs;
@@ -72,7 +72,8 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
     const tag=node.localName;
     if(!blockTags.has(tag)&&!node.classList.contains('mf-math')){pending.push(node);continue}
     await flush();
-    const heading=headings[tag];
+    const heading=headings[tag],blockStart=out.length;
+    const paragraphBlock=!!heading||['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math');
     if(heading)await paragraph([...node.childNodes],{heading,keepNext:true},node.id);
     else if(node.classList.contains('mf-page-break'))out.push(new Paragraph({children:[new PageBreak()]}));
     else if(tag==='table'){
@@ -90,12 +91,18 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
      }
      if(rows.length)out.push(new Table({width:{size:100,type:WidthType.PERCENTAGE},rows}));
     }else if(tag==='ul'||tag==='ol'){
-     const ordered=tag==='ol',reference='mf_list_'+numbering.length,start=Math.max(1,Math.min(2147483647,Number(node.getAttribute('start'))||1));
+     const ordered=tag==='ol',reference='mf_list_'+numbering.length,start=ordered?(node as HTMLOListElement).start:1;
      numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:ordered?LevelFormat.DECIMAL:LevelFormat.BULLET,text:ordered?'%'+(i+1)+'.':'•',start,alignment:AlignmentType.LEFT}))});
      for(const li of Array.from(node.children).filter(n=>n.localName==='li'))out.push(...await blocks([...li.childNodes],level+1,{numbering:{reference,level:Math.min(8,level)}}));
     }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph([...node.childNodes],node.classList.contains('mf-math')?{alignment:AlignmentType.CENTER}:{},node.id);
     else if(tag==='hr')await paragraph([document.createTextNode('—')]);
     else {const nested=await blocks([...node.childNodes],level,first?firstOptions:{});out.push(...nested);if(nested.length)first=false}
+    if(node.id&&context.bookmarks.has(node.id)&&!paragraphBlock){
+     const bookmark=new Bookmark({id:context.bookmarks.get(node.id)!,children:[]});
+     const destination=out.slice(blockStart).find(item=>item instanceof Paragraph);
+     if(destination){destination.addChildElement(bookmark.start);destination.addChildElement(bookmark.end)}
+     else out.splice(blockStart,0,new Paragraph({children:[bookmark],spacing:{before:0,after:0}}));
+    }
    }
    await flush();return out;
   }

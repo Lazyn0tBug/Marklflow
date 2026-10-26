@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import {it,expect,vi} from 'vitest';
 vi.mock('../../src/core/export/documentPrint',async original=>({...await original<typeof import('../../src/core/export/documentPrint')>(),waitForLayout:vi.fn(async()=>{})}));
 import {exportDocumentToDocx} from '../../src/core/export/docxExporter';
@@ -11,4 +12,14 @@ it('waits for the existing DOM step and releases the measurement host before ret
 });
 it('cleans failed measurement and allows the next explicit export',async()=>{
  vi.mocked(waitForLayout).mockRejectedValueOnce(new Error('layout failed'));await expect(exportDocumentToDocx(htmlArtifact('<p>x</p>'))).rejects.toThrow('layout failed');expect(document.querySelector('.mf-docx-export-stage')).toBeNull();expect((await exportDocumentToDocx(htmlArtifact('<p>retry</p>'))).size).toBeGreaterThan(0);
+});
+
+async function xmlParts(html:string){const blob=await exportDocumentToDocx(htmlArtifact(html),{allowSourceFallback:true});const zip=await JSZip.loadAsync(await blob.arrayBuffer());return {document:await zip.file('word/document.xml')!.async('string'),numbering:await zip.file('word/numbering.xml')!.async('string')}}
+it('preserves zero and negative ordered list starts from canonical HTML',async()=>{
+ const xml=await xmlParts('<ol start="0"><li>zero</li></ol><ol start="-2"><li>negative</li></ol>');expect(xml.numbering).toContain('<w:start w:val="0"');expect(xml.numbering).toContain('<w:start w:val="-2"');
+});
+it('emits actual destinations for container and linked inline HTML anchors',async()=>{
+ const xml=await xmlParts('<section id="target"><p>Target</p></section><p><a id="linked" href="#target">Linked anchor</a><a href="#linked">Return</a></p>');
+ const root=document.createElement('div');root.innerHTML=xml.document;const names=[...root.getElementsByTagName('w:bookmarkStart')].map(node=>node.getAttribute('w:name'));const targets=[...root.getElementsByTagName('w:hyperlink')].map(node=>node.getAttribute('w:anchor')).filter(Boolean);
+ expect(targets).toHaveLength(2);for(const target of targets)expect(names).toContain(target);
 });
