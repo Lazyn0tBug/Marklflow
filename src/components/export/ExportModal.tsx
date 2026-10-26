@@ -22,11 +22,11 @@ export type {ExportFormat} from '../../application/exports/exportService';
 
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode }) => {
   const dialogRef=useRef<HTMLDivElement>(null),closeRef=useRef(onClose);
-  const openRef=useRef(isOpen),reviewResolver=useRef<((accepted:boolean)=>void)|null>(null);openRef.current=isOpen;
+  const reviewDismissed=useRef(false),openRef=useRef(isOpen),reviewResolver=useRef<((accepted:boolean)=>void)|null>(null);openRef.current=isOpen;
   const [reviewing,setReviewing]=useState(false),[docxIssues,setDocxIssues]=useState<readonly OutputIssue[]>([]);
   const [exportStatus,setExportStatus]=useState<'completed'|'cancelled'|'blocked'|null>(null);
   const finishReview=(accepted:boolean)=>{const resolve=reviewResolver.current;reviewResolver.current=null;setReviewing(false);resolve?.(accepted)};
-  closeRef.current=()=>{finishReview(false);onClose()};
+  closeRef.current=()=>{reviewDismissed.current=true;finishReview(false);onClose()};
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('editable-html');
   const [fileName, setFileName] = useState<string>(doc.meta.title || 'MarkFlow-Document');
   const [allowSourceFallback, setAllowSourceFallback] = useState(false);
@@ -38,8 +38,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const docxBlocked=docxIssues.some(issue=>issue.adaptation==='unsupported');
   useEffect(()=>{if(!webExportService.busy){setAllowSourceFallback(false);setDocxIssues([]);setExportSuccess(null);setExportStatus(null)}},[doc.id,doc.markdown,selectedFormat]);
   useEffect(()=>{if(isOpen&&!webExportService.busy){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setAllowSourceFallback(false);setAllowRemoteAssets(false);setDocxIssues([]);setExportStatus(null)}},[isOpen,doc.id]);
-  useEffect(()=>{if(!isOpen&&reviewResolver.current)finishReview(false)},[isOpen]);
-  useEffect(()=>{openRef.current=isOpen;return()=>{openRef.current=false;reviewResolver.current?.(false);reviewResolver.current=null}},[]);
+  useEffect(()=>{if(!isOpen){reviewDismissed.current=true;if(reviewResolver.current)finishReview(false)}},[isOpen]);
+  useEffect(()=>{openRef.current=isOpen;return()=>{openRef.current=false;reviewDismissed.current=true;reviewResolver.current?.(false);reviewResolver.current=null}},[]);
   useEffect(()=>{if(reviewing)dialogRef.current?.querySelector<HTMLInputElement>('#export-docx-consent')?.focus()},[reviewing]);
   useEffect(()=>{
     if(!isOpen)return;
@@ -62,10 +62,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const handleExport = async () => {
     if(reviewing){if(allowSourceFallback&&!docxBlocked)finishReview(true);return}
     if(webExportService.busy){setExportSuccess('正在导出，请稍候');return}
-    setIsExporting(true);setExportSuccess(null);setExportStatus(null);setDocxIssues([]);
+    reviewDismissed.current=false;setIsExporting(true);setExportSuccess(null);setExportStatus(null);setDocxIssues([]);
     try{
       const result=await webExportService.run({document:doc,format:selectedFormat,fileName,mathMode,allowRemoteAssets},{confirmDocx:(issues)=>{
-        if(!openRef.current)return Promise.resolve(false);
+        if(!openRef.current||reviewDismissed.current)return Promise.resolve(false);
         setDocxIssues(issues);setAllowSourceFallback(false);setReviewing(true);
         return new Promise<boolean>(resolve=>{reviewResolver.current=resolve});
       }});

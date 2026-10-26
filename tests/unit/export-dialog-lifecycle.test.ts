@@ -15,3 +15,15 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
   await act(async()=>{root.unmount()});await act(async()=>{resolve(htmlArtifact('<span data-mf-math-id="math-0"><svg xmlns="http://www.w3.org/2000/svg"></svg></span>',doc));for(let i=0;i<12;i++)await Promise.resolve()});expect(webExportService.busy).toBe(false);
  }finally{host.remove();vi.unstubAllGlobals()}
 });
+
+it('does not revive a dismissed confirmation when the dialog is reopened during preparation',async()=>{
+ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);const host=document.createElement('div');document.body.append(host);const root=createRoot(host),doc=createNewDocument('Reopened');let resolve=(value:ReturnType<typeof htmlArtifact>)=>{void value};state.prepare.mockReturnValue(new Promise(done=>{resolve=done}));
+ const render=(isOpen:boolean)=>root.render(createElement(ExportModal,{isOpen,onClose:()=>{},document:doc,mathMode:'svg'}));
+ const button=(text:string)=>[...host.querySelectorAll('button')].find(node=>node.textContent?.includes(text))!;
+ try{
+  await act(async()=>{render(true)});await act(async()=>{button('Word 原生文档').click()});await act(async()=>{button('立即导出并保存').click()});
+  await act(async()=>{render(false)});await act(async()=>{render(true)});
+  await act(async()=>{resolve(htmlArtifact('<span data-mf-math-id="math-0"><svg xmlns="http://www.w3.org/2000/svg"></svg></span>',doc));for(let i=0;i<12;i++)await Promise.resolve()});
+  expect(webExportService.busy).toBe(false);expect(host.querySelector('#export-docx-consent')).toBeNull();
+ }finally{await act(async()=>{root.unmount()});host.remove();vi.unstubAllGlobals()}
+});
