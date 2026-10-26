@@ -43,7 +43,7 @@ test('opens HTML offline and restores editable source and assets',async({page,co
  expect(nodeFill).not.toBe('rgb(51, 51, 51)');
  await recipient.screenshot({path:info.outputPath('offline-html.png'),fullPage:true});
  await recipient.pdf({path:info.outputPath('document.pdf'),format:'A4',printBackground:true});
- await recipient.close();await context.setOffline(false);await page.getByRole('button',{name:'取消',exact:true}).click();
+ await recipient.close();await context.setOffline(false);await page.getByRole('button',{name:'关闭',exact:true}).click();
  await page.locator('input[type=file]').setInputFiles(file);await expect(page.locator('textarea').first()).toHaveValue(sourceFixture);
  await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
 });

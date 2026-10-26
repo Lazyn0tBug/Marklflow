@@ -1,0 +1,41 @@
+{
+  "step": "v1",
+  "parentCommit": "3e1917ccdb25e6b5c5516c1d7076d45e328d4dda",
+  "checks": {
+    "checkExitCode": 0,
+    "managedSources": 167,
+    "unitTests": 309,
+    "chromiumExitCode": 0,
+    "chromiumTests": 75,
+    "duration": "2.9m"
+  },
+  "logSha256": {
+    "check": "06862cb1c1806f54f02c2cc4d76eb68f37bc42a05fd45b77bfc3d8e7dc506418",
+    "chromium": "77156b426830283a4e3cc0a91fb9f53ae210021366ca4a323538eba98bec4cfa"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "fec42a9be2bfa0f0332eb2dd85e4dba753cedd8d9209ac484c1297206d10f06b",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "d98d5a9d672f2350693759ed21d8f1859eeac85ca6c5d45b41a6391eb5b5292f",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "ff9645996d5ac2f0b6a16b53a1293b438980e70aa65ac927ca787a8ee17c5023",
+    "docs/reviews/architecture-simplification-review-2026-10-25.md": "b0de3130888426a1f92ec74b93cbb3ea9dfff08536f9152c3b5c4baa8395509e",
+    "docs/reviews/architecture-v1-implementation-2026-10-26.md": "2e6779a155bc58c0bc4384f3630ade5cfdc2822b9a4b3b5e2dc638646ec03d67",
+    "src/components/export/ExportModal.tsx": "2fef624a89e3ba06edcb49685d4ba58f2a60840dbb886766981eee955810daa6",
+    "tests/e2e/export-dialog.spec.ts": "9779e58503c3ea5d04400e193ae1c36350b5ff816008da929f371de5a6b1a961",
+    "tests/e2e/export-service.spec.ts": "4d6728b5012ff8a9af9bfa1d9d8dcb7452accc12b6bccd9e2728dfd9c5f04be9",
+    "tests/e2e/html-compatibility.spec.ts": "69ca50b68d2a81b14dbf5e335d785da8a61f7611d3ae2fee108a89e10471ee5a",
+    "tests/e2e/http-compatibility.spec.ts": "e38a7cafb80220122cf150c4f1ddfaf0a8b9fd4fc0224ac20cd66dd7ab402c91"
+  },
+  "protectedSha256": {
+    "package.json": "65eaa0c3921dfd49279d141d5bc2c4ce4d188ab9f5bcf6dc09dacc530cc46b1c",
+    "bun.lock": "31f1f1ada5cc72c8e4b17214b336d35997f318f63492a225d8d2d388259e3ed6",
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}
