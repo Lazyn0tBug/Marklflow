@@ -1,0 +1,63 @@
+{
+  "scope": "EX-H0—EX-H2 full code review",
+  "date": "2026-10-26",
+  "branch": "architecture-refactor",
+  "reviewBaseline": "5f11fdc",
+  "fixedFindings": [
+    "orphan MathML diagnostics missing",
+    "dismissed confirmation revived after reopen",
+    "zero and negative HTML list starts clamped",
+    "container and linked inline anchor destinations missing",
+    "sibling image conversion outlives failed DOM step"
+  ],
+  "validation": {
+    "managedSourcesAndConfigs": 185,
+    "unitTests": 353,
+    "chromiumE2e": 86,
+    "check": "passed",
+    "build": "passed",
+    "lint": "passed",
+    "visualWidths": [
+      390,
+      1280
+    ],
+    "impeccableDetect": []
+  },
+  "logs": [
+    "D:/codex/ex-h-review-reproduce.log",
+    "D:/codex/ex-h-review-docx-reproduce.log",
+    "D:/codex/ex-h-review-cleanup-reproduce.log",
+    "D:/codex/ex-h-review-final-check.log",
+    "D:/codex/ex-h-review-final-e2e.log"
+  ],
+  "corpusSha256": "a2cfe985dcfb3e9bcd0688d2b8d3b3cd2a4d73e5edaabcb7cf466153a599fad9",
+  "files": [
+    {
+      "path": "src/application/exports/exportService.ts",
+      "sha256": "badf69c7af7eaa0fa361791684bbb5da2ff82d80bfdfa6a4de2b5a18c447e80a"
+    },
+    {
+      "path": "src/core/export/exportContent.ts",
+      "sha256": "6dd43622ed857668171e2e74a5568aedd8563bc531c4f4f9cee4decb145a145e"
+    },
+    {
+      "path": "src/core/export/docxExporter.ts",
+      "sha256": "ba77ca39db23afe4efaffbd4d633f54278c5a5e3f918f34f0007edfaa73b952b"
+    },
+    {
+      "path": "src/core/export/outputCapabilities.ts",
+      "sha256": "18b6fa9a04635b9e599e2d3c80267b39201664034fe9aff57094b979c38bd001"
+    },
+    {
+      "path": "src/components/export/ExportModal.tsx",
+      "sha256": "9c4f18fa57a6788879dc452e83c75be753a1c18ffdacf8182463523908eddff6"
+    }
+  ],
+  "notValidated": [
+    "system PDF save/default filename",
+    "Word/WPS visual behavior",
+    "Tauri"
+  ],
+  "dependencyChanges": false,
+  "pushed": false
+}

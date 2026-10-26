@@ -23,3 +23,12 @@ it('emits actual destinations for container and linked inline HTML anchors',asyn
  const root=document.createElement('div');root.innerHTML=xml.document;const names=[...root.getElementsByTagName('w:bookmarkStart')].map(node=>node.getAttribute('w:name'));const targets=[...root.getElementsByTagName('w:hyperlink')].map(node=>node.getAttribute('w:anchor')).filter(Boolean);
  expect(targets).toHaveLength(2);for(const target of targets)expect(names).toContain(target);
 });
+
+it('does not leave sibling image conversions running after a failed image releases the DOM host',async()=>{
+ let calls=0,rejectSibling=()=>{};
+ vi.stubGlobal('Image',vi.fn(function(){const image=document.createElement('img');image.decode=()=>{calls++;return calls===1?Promise.reject(new Error('bad image')):new Promise<void>((_resolve,reject)=>{rejectSibling=()=>reject(new Error('discard sibling'))})};return image}));
+ try{
+  await expect(exportDocumentToDocx(htmlArtifact('<p><img src="data:image/png;base64,AAAA"><img src="data:image/png;base64,AAAA"></p>'),{allowSourceFallback:true})).rejects.toThrow('bad image');
+  expect(document.querySelector('.mf-docx-export-stage')).toBeNull();expect(sharedDom.snapshot().active).toBeUndefined();expect(calls).toBe(1);
+ }finally{rejectSibling();await flush();vi.unstubAllGlobals()}
+});

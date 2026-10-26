@@ -49,10 +49,10 @@ EX-H1已在core/model/exportHtml.ts实现版本化只读契约，prepareExportCo
 
 | 格式 | 目标路径 | 现状与改造要求 |
 | --- | --- | --- |
-| 阅读HTML | 统一HTML→样式/资源封装→HTML文件 | 现有prepareExportContent可作为迁移起点；需收敛为共同输入 |
+| 阅读HTML | 统一HTML→样式/资源封装→HTML文件 | EX-H1/H2已统一只读HTML输入，封装器不读取源文 |
 | 可编辑HTML | 同一阅读内容+隔离的源附件→HTML文件 | 源附件只负责恢复编辑，不可变成其他导出器的旁路 |
-| DOCX | HTML语义/表格/链接/样式→OOXML；HTML内MathML→OMML | 当前已从prepared.html转换主体，但端口仍接DocumentRecord、诊断再解析MD，公式固定SVG；需收紧边界，O0完成不等于OMML完成 |
-| PDF | 统一HTML→Paged.js完整分页→Web浏览器原生输出，或Tauri系统WebView原生PDF能力 | 保留Web原生路径并收紧统一边界；Tauri未验证；系统默认文件名限制如实说明，不要求Web取得PDF字节 |
+| DOCX | HTML语义/表格/链接/样式→OOXML；HTML内MathML→OMML | EX-H2已使转换与诊断仅接HTML，单次准备与确认已接入；公式仍使用经确认SVG/PNG，O0完成不等于OMML完成 |
+| PDF | 统一HTML→Paged.js完整分页→Web浏览器原生输出，或Tauri系统WebView原生PDF能力 | EX-H2已收紧HTML/PDF输入边界，保留Web原生路径；EX-W系统文件验收及Tauri未验证；系统默认文件名限制如实说明，不要求Web取得PDF字节 |
 | 原样MD/资源包 | 源保存分支保留MD；资源冻结/打包与HTML映射资产协调 | 不用HTML反推原MD，防止源语法损坏；禁止被内容转换器调用作旁路 |
 | EPUB（后续） | HTML→受支持XHTML/CSS/资源/导航→EPUB | 尚未实施；明确目标格式兼容范围，不提前扩展当前版本 |
 
@@ -101,7 +101,7 @@ EX-H2只收紧现有DOCX边界，不一次实现所有公式转换。OMML O1以E
 
 共同验收编号E13—E16定义于AR-03第12节。记录HTML产物/资源散列、来源修订、配置/引擎/浏览器/字体版本、实际生成文件及未验证项。PDF需检查真实文本对象、Unicode搜索/复制、矢量对象及最后内容；只有视觉截图、只有PDF头或系统对话框均不足。格式结构、视觉、实际Word/WPS编辑和平台文件写入分开验证。
 
-规划编制轮仅审查源码与一手文档、更新方案；未安装PDF库或执行原生PDF PoC。EX-H0/EX-H1后续实施的实际代码验证见各自记录，不把文档检查当成EX-W/EX-T门槛已通过。原Windows系统驱动默认文件名仍未解决，作为Web平台限制保留；Tauri建议名由原生保存控制，不能用其结果宣称Web已修复。
+规划编制轮仅审查源码与一手文档、更新方案；未安装PDF库或执行原生PDF PoC。EX-H0—EX-H2实际代码验证见各自记录，不把文档检查当成EX-W/EX-T门槛已通过。原Windows系统驱动默认文件名仍未解决，作为Web平台限制保留；Tauri建议名由原生保存控制，不能用其结果宣称Web已修复。
 
 审查修正及验证范围见[文档审查记录](../reviews/html-export-architecture-doc-review-2026-10-26.md)。EX-H2涉及多格式，执行前可按HTML封装、DOCX/诊断边界、交付组合分成连续的小提交单位；必须先确定各子步验收，不能把跨格式大改一次提交。
 
@@ -118,3 +118,7 @@ EX-H2只收紧现有DOCX边界，不一次实现所有公式转换。OMML O1以E
 每行审查验证通过后一次本地提交，不推送。EX-H2a/b期间应用组合允许暂时准备包装及旧UI预检，必须在EX-H2c删除，不作为最终双入口。Web原生PDF路径不变，不推进EX-W/T；不升级MathJax/Paged.js，不引入Chromium/Puppeteer。
 
 EX-H2c在开始前细化为c1/c2，避免源资源包改造与实际弹窗确认一次性耦合。c1保持原服务端口由组合入口准备，c2再原子切换到唯一准备入口；不创建第二套长期导出服务。
+
+## 8. EX-H0—EX-H2 完整代码审查
+
+实现审查及修复见[审查记录](../reviews/export-source-h0-h2-review-2026-10-26.md)。单次准备、HTML内容权威与源附件例外保持；关闭期间尚未发出的确认不得因重开弹窗恢复。DOCX资源转换在所属共享DOM步骤内按内容顺序完成或失败，失败后不留兄弟转换继续使用已清理宿主。EX-W/EX-T及OMML后续门槛不因本轮回归通过而提前完成。

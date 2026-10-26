@@ -34,7 +34,7 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
  const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',...(tag==='code'?{font:'Consolas'}:{}),superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};
- let runs=(await Promise.all(Array.from(node.childNodes,n=>inline(n,context,next)))).flat();
+ let runs:Run[]=[];for(const child of node.childNodes)runs.push(...await inline(child,context,next));
  if(tag==='a'&&node.getAttribute('href')){
   const href=node.getAttribute('href')!;
   if(href.startsWith('#')){const id=href.slice(1);let decoded=id;try{decoded=decodeURIComponent(id)}catch{}const anchor=context.bookmarks.get(id)||context.bookmarks.get(decoded);if(anchor)runs=[new InternalHyperlink({anchor,children:runs})]}
@@ -62,7 +62,7 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
   async function blocks(nodes:Node[],level=0,firstOptions:IParagraphOptions={}):Promise<(Paragraph|Table)[]>{
    const out:(Paragraph|Table)[]=[];let pending:Node[]=[],first=true;
    async function paragraph(nodes:Node[],extra:IParagraphOptions={},id?:string){
-    let children=(await Promise.all(nodes.map(n=>inline(n,context)))).flat();
+    let children:Run[]=[];for(const node of nodes)children.push(...await inline(node,context));
     if(id&&context.bookmarks.has(id))children=[new Bookmark({id:context.bookmarks.get(id)!,children})];
     out.push(new Paragraph({children,spacing:{after:120},...(first?firstOptions:{}),...extra}));first=false;
    }
