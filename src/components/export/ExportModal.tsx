@@ -56,13 +56,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
   const copyPatchText = async () => {
     try {
-      const res = await fetch('/tauri.patch');
+      const res = await fetch('/tauri-since-394245b.patch');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       await navigator.clipboard.writeText(text);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
-      setExportSuccess('已将 tauri.patch 全量补丁复制到剪贴板！');
+      setExportSuccess('已将自 394245b 起的增量 Patch 复制到剪贴板！');
     } catch (err) {
       setExportError(`复制失败: ${String(err)}`);
     }
@@ -318,48 +318,62 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </span>
               </div>
 
-              {/* 3 种下载快捷操作卡片 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {/* 快捷下载操作卡片 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => downloadStaticFile('tauri.patch')}
+                  onClick={() => downloadStaticFile('tauri-since-394245b.patch')}
                   disabled={isExporting}
-                  className="p-3 rounded-lg border border-purple-800/60 bg-purple-950/30 hover:bg-purple-900/50 text-left transition-all group cursor-pointer"
+                  className="p-3 rounded-lg border border-purple-800/80 bg-purple-950/40 hover:bg-purple-900/60 text-left transition-all group cursor-pointer ring-1 ring-purple-600/30"
                 >
-                  <div className="text-xs font-medium text-purple-200 flex items-center justify-between">
-                    <span>tauri.patch</span>
+                  <div className="text-xs font-semibold text-purple-200 flex items-center justify-between">
+                    <span>tauri-since-394245b.patch</span>
                     <Download className="w-3.5 h-3.5 text-purple-400 group-hover:translate-y-0.5 transition-transform" />
                   </div>
-                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">158 KB · 完整补丁</div>
-                  <div className="text-[10px] text-purple-400/80 mt-0.5">含 10 个独立提交历史</div>
+                  <div className="text-[10px] text-neutral-300 mt-1 font-mono">32 KB · 自 394245b 增量补丁</div>
+                  <div className="text-[10px] text-purple-300/80 mt-0.5">含双栏拖拽分栏与导出中心</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => downloadStaticFile('tauri.diff')}
+                  onClick={() => downloadStaticFile('tauri-since-394245b.diff')}
                   disabled={isExporting}
                   className="p-3 rounded-lg border border-neutral-700/80 bg-neutral-900/60 hover:bg-neutral-800 text-left transition-all group cursor-pointer"
                 >
                   <div className="text-xs font-medium text-neutral-200 flex items-center justify-between">
-                    <span>tauri.diff</span>
+                    <span>tauri-since-394245b.diff</span>
                     <Download className="w-3.5 h-3.5 text-neutral-400 group-hover:translate-y-0.5 transition-transform" />
                   </div>
-                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">108 KB · 纯文本差异</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">git apply 格式补丁</div>
+                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">31 KB · 纯差异文件</div>
+                  <div className="text-[10px] text-neutral-400 mt-0.5">git apply 专用格式</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => downloadStaticFile('tauri-branch.bundle')}
+                  onClick={() => downloadStaticFile('tauri-since-7cef907.patch')}
                   disabled={isExporting}
-                  className="p-3 rounded-lg border border-teal-800/60 bg-teal-950/30 hover:bg-teal-900/50 text-left transition-all group cursor-pointer"
+                  className="p-3 rounded-lg border border-neutral-800 bg-neutral-900/40 hover:bg-neutral-800 text-left transition-all group cursor-pointer"
                 >
-                  <div className="text-xs font-medium text-teal-200 flex items-center justify-between">
-                    <span>tauri.bundle</span>
-                    <Download className="w-3.5 h-3.5 text-teal-400 group-hover:translate-y-0.5 transition-transform" />
+                  <div className="text-xs font-medium text-neutral-300 flex items-center justify-between">
+                    <span>tauri-since-7cef907.patch</span>
+                    <Download className="w-3.5 h-3.5 text-neutral-400 group-hover:translate-y-0.5 transition-transform" />
                   </div>
-                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">1.2 MB · 完整镜像包</div>
-                  <div className="text-[10px] text-teal-400/80 mt-0.5">Git 离线分支对象</div>
+                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">23 KB · 自 7cef907 补丁</div>
+                  <div className="text-[10px] text-neutral-400 mt-0.5">若已拉取 7cef907 时使用</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => downloadStaticFile('tauri.patch')}
+                  disabled={isExporting}
+                  className="p-3 rounded-lg border border-neutral-800 bg-neutral-900/40 hover:bg-neutral-800 text-left transition-all group cursor-pointer"
+                >
+                  <div className="text-xs font-medium text-neutral-300 flex items-center justify-between">
+                    <span>tauri.patch (全量)</span>
+                    <Download className="w-3.5 h-3.5 text-neutral-400 group-hover:translate-y-0.5 transition-transform" />
+                  </div>
+                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">158 KB · 全量历史补丁</div>
+                  <div className="text-[10px] text-neutral-400 mt-0.5">含全部 10 个完整 Commit</div>
                 </button>
               </div>
 
@@ -373,19 +387,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                     className="flex items-center gap-1 text-[11px] text-purple-300 hover:text-purple-200 underline cursor-pointer"
                   >
                     <Copy className="w-3 h-3" />
-                    <span>{copiedCode ? '已复制 Patch！' : '复制 Patch 全文'}</span>
+                    <span>{copiedCode ? '已复制 Patch！' : '复制自 394245b Patch 全文'}</span>
                   </button>
                 </div>
                 <pre className="text-[11px] text-neutral-300 leading-relaxed overflow-x-auto whitespace-pre p-2 bg-neutral-950 rounded border border-neutral-800/80">
-{`# 方案 1: 应用完整补丁 (保留所有 10 个独立 Commit 与作者信息)
-git am < tauri.patch
+{`# 方案 1: 应用自 394245b 起的增量补丁 (推荐)
+git am < tauri-since-394245b.patch
 
-# 方案 2: 单次工作区差异应用
-git apply tauri.diff
+# 方案 2: 使用 git apply 单次工作区差异应用
+git apply tauri-since-394245b.diff
 
-# 方案 3: 从 bundle 创建 tauri 分支并直接推送到远程
-git fetch tauri-branch.bundle tauri:tauri
-git push -u origin tauri`}
+# 方案 3: 若本地已包含 7cef907，应用最新补丁
+git am < tauri-since-7cef907.patch`}
                 </pre>
               </div>
             </div>
