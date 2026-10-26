@@ -1,7 +1,7 @@
 import {afterEach,it,expect,vi} from 'vitest';
 import {prepareMath} from '../../src/core/render/mathRender';
 import {loadMathJaxAdapter} from '../../src/core/render/mathJaxAdapter';
-import {renderDocument} from '../../src/core/render/documentRenderer';
+import {renderDocument,uniqueSvgIds} from '../../src/core/render/documentRenderer';
 import {parseMarkdownDocument} from '../../src/core/render/markdownHtml';
 const flush=async()=>{for(let i=0;i<60;i++)await Promise.resolve()};
 function runtime(){
@@ -60,4 +60,20 @@ it('maps formula occurrences by source offset when footnotes change output order
 
 it('preserves original formula offsets with a BOM, CJK, emoji and CRLF',async()=>{
  runtime();const rendered=await renderDocument('\ufeff# 中文🧪\r\n\r\n$a$ and $b$','mathml');const root=document.createElement('div');root.innerHTML=rendered.html;expect([...root.querySelectorAll('math mi')].map(node=>node.textContent)).toEqual(['a','b']);
+});
+
+it('namespaces nested SVG definitions once while preserving references to the outer graphic',()=>{
+ const root=document.createElement('div');root.innerHTML='<svg><defs><path id="outer"/></defs><svg><defs><path id="inner"/></defs><use href="#outer"/><use href="#inner"/></svg></svg><svg><path id="outer"/><use href="#outer"/></svg>';
+ uniqueSvgIds(root);const outer=root.querySelector('svg')!,second=root.children[1]!;
+ const ids=[...outer.querySelectorAll('[id]')].map(node=>node.id);for(const use of outer.querySelectorAll('use'))expect(ids).toContain(use.getAttribute('href')?.slice(1));
+ expect(new Set([...root.querySelectorAll('[id]')].map(node=>node.id)).size).toBe(3);expect(second.querySelector('use')?.getAttribute('href')).toBe('#'+second.querySelector('path')?.id);
+});
+
+it('keeps source mapping on generated math boundaries instead of generated serialization lines',()=>{
+ const source='# Heading\n\n$x$';const result=parseMarkdownDocument(source,{mathSemantics:true,preparedMath:()=>'<math><mrow>\n<mi>x</mi>\n</mrow></math>'});const root=document.createElement('div');root.innerHTML=result.html;
+ const math=root.querySelector('math')!;expect(math.hasAttribute('data-line')).toBe(false);expect(math.closest('[data-mf-math-id]')?.getAttribute('data-line')).toBe('3');expect(math.closest('[data-mf-math-id]')?.getAttribute('data-source-end')).toBe('3');
+});
+it('preserves encoded links to author CJK anchors when sanitization namespaces IDs',()=>{
+ const result=parseMarkdownDocument('[jump](#目标)\n\n<span id="目标">target</span>'),root=document.createElement('div');root.innerHTML=result.html;
+ expect(root.querySelector('a')?.getAttribute('href')).toBe('#'+root.querySelector('span')?.id);
 });

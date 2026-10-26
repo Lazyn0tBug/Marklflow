@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "step": "EX-H1",
+  "baselineCommit": "55fcf1c",
+  "checks": {
+    "managedTypeCoverage": 173,
+    "unitTests": 327,
+    "chromiumTests": 83,
+    "sourcePolicy": "passed",
+    "moduleBoundaries": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "developmentBuiltInsecureHttp": "passed"
+  },
+  "sourceFiles": [
+    {
+      "path": "scripts/build-worker-probe.ts",
+      "sha256": "c18323fe095c7af3b53228f2f190c0bb5e33fcc53bfd25154772050460baa80c"
+    },
+    {
+      "path": "src/core/export/docxExporter.ts",
+      "sha256": "0c1a6df3f3f1b3ac49b072596d772298cb85bab222121762abe7a86f2199d8ed"
+    },
+    {
+      "path": "src/core/export/exportContent.ts",
+      "sha256": "b198492d40c76bce9a02301c61ffe036b97c466c35f6a3650355caa23a580861"
+    },
+    {
+      "path": "src/core/export/markdownBundle.ts",
+      "sha256": "f9cad71972cdda6481359815ca51b10cd63cbfb76e68b10e39fd129fe048960a"
+    },
+    {
+      "path": "src/core/model/exportHtml.ts",
+      "sha256": "d0a3a43c40ce600a0e3aa89496da9dad2569f077fc53bb85a00e8ca0fdc0476e"
+    },
+    {
+      "path": "src/core/policy/htmlRules.ts",
+      "sha256": "ebf44be3d1a3f166b57455c0ac1de6b5d7a730001b4029c7240d6a6d1ff04fb3"
+    },
+    {
+      "path": "src/core/render/documentRenderer.ts",
+      "sha256": "256f5c17b9933c4d8d0cf51ed7fb16d19a94432ba17f24b9a55717c1dea5c381"
+    },
+    {
+      "path": "src/core/render/markdownHtml.ts",
+      "sha256": "3e103f818074513f3f65180142a83c8276516bd254fb5a3b7ac477d2fb62968b"
+    },
+    {
+      "path": "src/core/render/mathJaxAdapter.ts",
+      "sha256": "abf5f35d01a0ff5a1dacda997002af82c2982fe6a4dce75a0f64f60ff2d4db3d"
+    },
+    {
+      "path": "src/core/render/mathRender.ts",
+      "sha256": "a64badc52d736d1b0cca97fa28aff06d6d536d8bab62a350c223fa0b6971ca00"
+    },
+    {
+      "path": "tests/e2e/export-html-contract.spec.ts",
+      "sha256": "2d376b51033288c7bab09f88742b7d0c940f40d0f7b898d5b6c90d43fe11aba4"
+    },
+    {
+      "path": "tests/fixtures/architecture/export-html-probe-client.ts",
+      "sha256": "d775e50beb371cb39596c83c2a9bd9e4b445f3dfd879aac1787b989abb3c488b"
+    },
+    {
+      "path": "tests/fixtures/architecture/export-html-probe.html",
+      "sha256": "9ac5016d48b676ec4edc05190948d49b8867dffdd53b3563e65c4847e5a69d03"
+    },
+    {
+      "path": "tests/unit/export-content.test.ts",
+      "sha256": "677900a881ab9704b053c5aadcd899e1d497128798d4abaf0f3a846c5325afca"
+    },
+    {
+      "path": "tests/unit/math-shared-dom.test.ts",
+      "sha256": "980be3a2895f0da470f2e75c2d8519c967a90f6db95a2ecb0987086f6ebb00b2"
+    },
+    {
+      "path": "tests/unit/review-mathjax-boundary.test.ts",
+      "sha256": "6fb76e976919e5af1703c0d953552821610701b4b2ce32334f134d93adcab227"
+    },
+    {
+      "path": "tsconfig.integration.json",
+      "sha256": "82f6feb05c9364ea95553e4c5e80de67356f8343451b7e14c8e661cfcee925d2"
+    }
+  ],
+  "logs": [
+    {
+      "path": "D:\\codex\\ex-h1-check-verified.log",
+      "command": "bun run check",
+      "exitCode": 0,
+      "sha256": "da882660d136527d1e36ed87ad935da0ea9835294bd776ad25080271c66da6e6"
+    },
+    {
+      "path": "D:\\codex\\ex-h1-e2e.log",
+      "command": "bun run test:e2e",
+      "exitCode": 0,
+      "sha256": "bcc0a229674101bcb6aea0cfffbac767b5d648d3afc6a1e35e4c929bdc0b7a88"
+    }
+  ],
+  "engineVersions": {
+    "mathjax": "3.2.2",
+    "pagedjs": "0.4.3"
+  },
+  "unchangedCorpusSha256": "a2cfe985dcfb3e9bcd0688d2b8d3b3cd2a4d73e5edaabcb7cf466153a599fad9",
+  "notVerified": [
+    "EX-H2 format input migration",
+    "OMML editing in Word/WPS",
+    "native system PDF save/default filename",
+    "Tauri WebView PDF",
+    "non-Chromium browsers"
+  ],
+  "noPush": true,
+  "noBundledBrowserAdded": true
+}

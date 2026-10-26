@@ -58,3 +58,18 @@ it('detects error elements and attributes while allowing surrounding whitespace'
   source.tex2mmlPromise.mockResolvedValue(html);await expect(adapter.convert('x',false,'mathml')).rejects.toThrow('公式解析失败');
  }
 });
+
+it('serializes the same compilation root for SVG semantics and restores the input method',async()=>{
+ const compile=vi.fn(()=>({kind:'math',value:'same'})),input={name:'TeX',compile};
+ const toMML=vi.fn((root:unknown)=>{expect(root).toEqual({kind:'math',value:'same'});return '<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>same</mi></math>'});
+ const source=runtime();source.startup.getInputJax=()=>[input];
+ const adapter=await loadMathJaxAdapter({...source,startup:{...source.startup,toMML},tex2svgPromise:async()=>{input.compile();const node=document.createElement('mjx-container');node.innerHTML='<svg xmlns="http://www.w3.org/2000/svg"/>';return node}});adapter.resetDocument();
+ const html=await adapter.convert('same',false,'svg',true),root=document.createElement('div');root.innerHTML=html;
+ expect(compile).toHaveBeenCalledOnce();expect(source.tex2mmlPromise).not.toHaveBeenCalled();expect(toMML).toHaveBeenCalledOnce();expect(root.querySelector('.mf-math-semantics[hidden] math')?.textContent).toBe('same');expect(input.compile).toBe(compile);
+ adapter.releaseDocument();
+});
+it('fails closed if SVG semantics cannot be captured and leaves future documents usable',async()=>{
+ const input={name:'TeX',compile:vi.fn(()=>({kind:'math'}))},source=runtime();source.startup.getInputJax=()=>[input];const original=input.compile;
+ const adapter=await loadMathJaxAdapter({...source,startup:{...source.startup,toMML:()=>'<math><merror>broken</merror></math>'},tex2svgPromise:async()=>{input.compile();const node=document.createElement('mjx-container');node.innerHTML='<svg xmlns="http://www.w3.org/2000/svg"/>';return node}});adapter.resetDocument();
+ await expect(adapter.convert('same',false,'svg',true)).rejects.toThrow('公式解析失败');expect(input.compile).toBe(original);adapter.releaseDocument();adapter.resetDocument();await expect(adapter.convert('x',false,'mathml')).resolves.toContain('<mi>x');adapter.releaseDocument();
+});

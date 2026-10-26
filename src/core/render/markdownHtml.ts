@@ -7,7 +7,7 @@ import type { Root } from 'mdast';
 import type { Element } from 'hast';
 import {unpreparedMath,type PreparedMath} from './mathRender';
 import { escapeHtml, sanitizeDocumentHtml, inspectAuthorHtml, rewriteFragments, type ContentDiagnostic } from './htmlPolicy';
-export interface ParseOptions {mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number;preparedMath?:PreparedMath}
+export interface ParseOptions {mathSemantics?:boolean;mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number;preparedMath?:PreparedMath}
 import {createMarkdownReader,createHeadingId,textOf} from '../parse/markdown';
 export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{html:string;diagnostics:ContentDiagnostic[]} {
  const diagnostics:ContentDiagnostic[]=[];
@@ -42,18 +42,21 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
    const html=lang==='mermaid'?'<figure class="mf-diagram" '+position+' data-mermaid-code="'+encodeURIComponent(node.value)+'"><figcaption>Mermaid 渲染中</figcaption></figure>':/^(dot|graphviz)$/.test(lang)?'<figure class="mf-diagram" '+position+' data-dot-code="'+encodeURIComponent(node.value)+'"><figcaption>DOT 渲染中</figcaption></figure>':'<pre class="mf-code" '+position+'><code class="language-'+escapeHtml(lang)+'">'+escapeHtml(node.value)+'\n</code></pre>';
    return {type:'raw' as const,value:html};
   },
-  math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-mf-origin="'+nonce+'" data-line="'+(node.position!.start.line+offset)+'">'+math(node.value,true,originalOffset(node.position?.start.offset))+'</div>'}},
-  inlineMath(_state,node){return {type:'raw' as const,value:math(node.value,false,originalOffset(node.position?.start.offset))}},
+  math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-mf-origin="'+nonce+'" data-line="'+(node.position!.start.line+offset)+'" data-source-end="'+(node.position!.end.line+offset)+'"'+(options.mathSemantics?' data-mf-math-id="math-'+originalOffset(node.position?.start.offset)+'"':'')+'>'+math(node.value,true,originalOffset(node.position?.start.offset))+'</div>'}},
+  inlineMath(_state,node){const content=math(node.value,false,originalOffset(node.position?.start.offset));return {type:'raw' as const,value:options.mathSemantics?'<span data-mf-origin="'+nonce+'" data-mf-math-id="math-'+originalOffset(node.position?.start.offset)+'" data-line="'+(node.position!.start.line+offset)+'" data-source-end="'+(node.position!.end.line+offset)+'">'+content+'</span>':content}},
  }}).use(rehypeRaw).use(()=>(tree)=>{
   const authorIds=new Map<string,string>();
   visit(tree,'element',(node:Element)=>{if(node.properties.id&&node.properties.dataMfOrigin!==nonce)authorIds.set(String(node.properties.id),'mf_author_'+encodeURIComponent(String(node.properties.id)))});
-  visit(tree,'element',(node:Element)=>{
+  const generatedNodes=new WeakSet<Element>();
+  visit(tree as import('hast').Root,'element',(node:Element,_index,parent)=>{
    const trusted=node.properties.dataMfOrigin===nonce;
+   const generated=trusted||parent?.type==='element'&&generatedNodes.has(parent);
+   if(generated)generatedNodes.add(node);
    if(!trusted&&node.properties.id)node.properties.id=authorIds.get(String(node.properties.id))!;
    for(const [key,value]of Object.entries(node.properties)){if(typeof value!=='string'||key==='id')continue;node.properties[key]=rewriteFragments(value,authorIds,key)}
-   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode','dataDotCode'].includes(key)))delete node.properties[key];
-   if(node.position&&!trusted)node.properties.dataLine=node.position.start.line+offset;
-   if(node.position&&!trusted)node.properties.dataSourceEnd=node.position.end.line+offset;
+   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode','dataDotCode','dataMfMathId'].includes(key)))delete node.properties[key];
+   if(node.position&&!generated)node.properties.dataLine=node.position.start.line+offset;
+   if(node.position&&!generated)node.properties.dataSourceEnd=node.position.end.line+offset;
    if(node.tagName==='table')node.properties.className=['mf-table'];
   });
   visit(tree as import('hast').Root,'element',(node:Element,index:number|undefined,parent)=>{if(node.tagName==='table'&&parent&&index!==undefined){parent.children[index]={type:'element',tagName:'div',properties:{className:['mf-table-scroll']},children:[node]};return SKIP}});

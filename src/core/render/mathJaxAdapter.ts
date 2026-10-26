@@ -5,7 +5,7 @@ declare global {interface Window {MathJax?:unknown}}
 export interface MathJaxAdapter {
  resetDocument():void;
  releaseDocument():void;
- convert(value:string,display:boolean,mode:'mathml'|'svg'):Promise<string>;
+ convert(value:string,display:boolean,mode:'mathml'|'svg',retainMathML?:boolean):Promise<string>;
 }
 interface EngineState {input:unknown;document:unknown;busy:boolean}
 const baselines=new WeakMap<object,EngineState>();
@@ -52,12 +52,24 @@ export async function loadMathJaxAdapter(raw:unknown):Promise<MathJaxAdapter>{
    }finally{restore()}
   },
   releaseDocument(){if(busy||state.busy)throw new Error('MathJax 转换未结束，不能释放文档');ready=false;session=undefined;restore()},
-  async convert(value,display,mode){
+  async convert(value,display,mode,retainMathML=false){
    if(!ready||!session)throw new Error('MathJax 文档尚未成功初始化');
    if(busy||state.busy)throw new Error('MathJax 同一会话不能并发转换');
    busy=true;state.busy=true;
+   const restoreCompile:(()=>void)[]=[];let semanticRoot:unknown;
    try{
     select(session.input,session.document);
+    // Capture the very same TeX compilation used for SVG, never parse LaTeX twice.
+    if(retainMathML&&mode==='svg'){
+     if(!Array.isArray(session.input))throw new Error('MathJax 输入引擎无效');
+     apiMethod(startup,'toMML','MathJax 语义序列化');
+     for(const rawInput of session.input){
+      const input=apiObject(rawInput,'MathJax 输入引擎'),compile=apiMethod(input,'compile','MathJax 输入引擎');
+      const descriptor=Object.getOwnPropertyDescriptor(input,'compile');
+      restoreCompile.push(()=>{if(descriptor)Object.defineProperty(input,'compile',descriptor);else delete input.compile});
+      input.compile=(...args:unknown[]):unknown=>{const root=apiSyncResult(compile(...args),'MathJax 编译');semanticRoot=apiObject(root,'MathJax 语义树');return root};
+     }
+    }
     const method=apiMethod(engine,mode==='svg'?'tex2svgPromise':'tex2mmlPromise','MathJax');
     const result=await apiPromise(method(value,{display}),'MathJax 公式转换');
     if(mode==='mathml'){
@@ -70,8 +82,18 @@ export async function loadMathJaxAdapter(raw:unknown):Promise<MathJaxAdapter>{
     if(!(result instanceof Element)||result.localName!=='mjx-container'||result.children.length!==1||extraText(result))throw new Error('MathJax SVG 输出结构无效');
     const svg=result.firstElementChild;
     if(svg?.localName!=='svg'||svg.namespaceURI!=='http://www.w3.org/2000/svg')throw new Error('MathJax SVG 输出结构无效');
-    assertNoMathError(result,value);return result.outerHTML;
-   }finally{busy=false;state.busy=false;restore()}
+    assertNoMathError(result,value);
+    if(retainMathML){
+     const mml=apiSyncResult(apiMethod(startup,'toMML','MathJax 语义序列化')(apiObject(semanticRoot,'MathJax 语义树')),'MathJax 语义序列化');
+     if(typeof mml!=='string')throw new Error('MathJax MathML 输出类型无效');
+     const template=document.createElement('template');template.innerHTML=mml;
+     const math=template.content.firstElementChild;
+     if(template.content.children.length!==1||math?.localName!=='math'||math.namespaceURI!=='http://www.w3.org/1998/Math/MathML'||extraText(template.content))throw new Error('MathJax MathML 输出结构无效');
+     assertNoMathError(math,value);
+     const semantics=document.createElement('span');semantics.className='mf-math-semantics';semantics.hidden=true;semantics.setAttribute('aria-hidden','true');semantics.append(math);result.append(semantics);
+    }
+    return result.outerHTML;
+   }finally{try{for(const undo of restoreCompile.reverse())undo()}finally{busy=false;state.busy=false;restore()}}
   }
  };
 }

@@ -31,6 +31,8 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
  if(node.nodeType===Node.TEXT_NODE){const text=node.textContent||'';return node.parentElement?.closest('pre')?text.split('\n').flatMap((part,i)=>i?[new TextRun({break:1}),new TextRun({...style,text:part})]:[new TextRun({...style,text:part})]):[new TextRun({...style,text})]}
  if(!(node instanceof Element))return [];
  const tag=node.tagName.toLowerCase();
+ // Semantic MathML accompanies SVG in canonical HTML; only the selected presentation is drawn here.
+ if(node.classList.contains('mf-math-semantics')&&node.hasAttribute('hidden'))return [];
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
  const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',...(tag==='code'?{font:'Consolas'}:{}),superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};

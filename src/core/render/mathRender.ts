@@ -5,7 +5,7 @@ import {loadMathJaxAdapter,type MathJaxAdapter} from './mathJaxAdapter';
 export interface MathExpression {value:string;display:boolean;sourceOffset?:number}
 export type PreparedMath=(value:string,display:boolean,sourceOffset?:number)=>string;
 export function unpreparedMath(value:string):string{return '<span class="mf-diagnostic" data-mjx-error="not-prepared">公式未就绪：'+escapeHtml(value)+'</span>'}
-export async function prepareMath(input:readonly MathExpression[],mode:'mathml'|'svg',options:DomScheduling={}):Promise<PreparedMath>{
+export async function prepareMath(input:readonly MathExpression[],mode:'mathml'|'svg',options:DomScheduling={},retainMathML=false):Promise<PreparedMath>{
  const expressions=input.map(expression=>({...expression})),signal=options.signal??new AbortController().signal,priority=options.priority??'foreground';
  const outputs:string[]=[];let engine:MathJaxAdapter|undefined;
  try{
@@ -16,7 +16,7 @@ export async function prepareMath(input:readonly MathExpression[],mode:'mathml'|
   for(const expression of expressions){
    const output=await sharedDom.step(priority,'engine',signal,async()=>{
     if(!engine)throw new Error('MathJax 文档未初始化');
-    return engine.convert(expression.value,expression.display,mode);
+    return engine.convert(expression.value,expression.display,mode,retainMathML);
    });
    outputs.push(expression.display?output:'<span class="markflow-inline-math">'+output+'</span>');
   }

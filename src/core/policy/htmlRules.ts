@@ -32,7 +32,8 @@ export function documentColor(value:string):string {
 }
 /** Rewrite fragment references with CSS parsing, including quoted URL() and escaped identifiers. */
 export function rewriteFragments(value:string,ids:Map<string,string>,attribute:string):string{
- if(['href','xlink:href','xLinkHref'].includes(attribute)&&value.startsWith('#'))return '#'+(ids.get(value.slice(1))||value.slice(1));
+ const lookup=(id:string):string|undefined=>{const exact=ids.get(id);if(exact!==undefined)return exact;try{return ids.get(decodeURIComponent(id))}catch{return undefined}};
+ if(['href','xlink:href','xLinkHref'].includes(attribute)&&value.startsWith('#'))return '#'+(lookup(value.slice(1))??value.slice(1));
  if(['aria-labelledby','aria-describedby'].includes(attribute))return value.split(/\s+/).map(id=>ids.get(id)||id).join(' ');
  if(!['fill','stroke','filter','clip-path','clipPath','mask','marker-start','marker-mid','marker-end','markerStart','markerMid','markerEnd','style'].includes(attribute))return value;
  try{const tree=parse(value,{context:attribute==='style'?'declarationList':'value'});let changed=false;walk(tree,n=>{if(n.type==='Url'&&n.value.startsWith('#')&&ids.has(n.value.slice(1))){n.value='#'+ids.get(n.value.slice(1));changed=true}});return changed?generate(tree):value}catch{return value}

@@ -47,7 +47,7 @@ export function bundleMarkdown(markdown:string,assets:DocumentAsset[]):string{
  let result=markdown;for(const edit of edits.sort((a,b)=>b.start-a.start))result=result.slice(0,edit.start)+edit.text+result.slice(edit.end);
  return result;
 }
-export async function buildMarkdownBundle(prepared:PreparedExportContent):Promise<Blob>{
+export async function buildMarkdownBundle(prepared:Pick<PreparedExportContent,'document'|'html'>):Promise<Blob>{
  const {assets,...source}=prepared.document,zip=new JSZip();
  zip.file('document.md',bundleMarkdown(source.markdown,assets));
  const manifest=assets.map(asset=>{const {data,...record}=asset;zip.file(pathFor(asset),decodeImage(data).bytes);return {...record,path:pathFor(asset)}});
