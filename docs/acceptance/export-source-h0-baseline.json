@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "step": "EX-H0",
+  "commit": "7feb3bf1389ebb97414d9035a1796289d60aaf30",
+  "files": [
+    {
+      "path": "src/application/exports/exportService.ts",
+      "sha256": "05b634f0917d452174d5d9c1f2b590beebeb859c9a328d46163b66a9ab0d093f"
+    },
+    {
+      "path": "src/core/export/exportContent.ts",
+      "sha256": "4bff48f1bd8b48d50cd5d3446651c7b5e7b1388fc99b8fe7b234387214e105e2"
+    },
+    {
+      "path": "src/core/export/htmlExporter.ts",
+      "sha256": "fc764795cf14e046086bfccade2bd25baad410dd2d744420d786b250af4f13c6"
+    },
+    {
+      "path": "src/core/export/docxExporter.ts",
+      "sha256": "1004ae153baa9f5f4fde3e955988e56e7f9022b5e3e6db7925c8b8f726af7113"
+    },
+    {
+      "path": "src/core/export/pdfExporter.ts",
+      "sha256": "ee6a9abe60226e3589a48990ad41bacda88642435abaae471060286e0ed60c2c"
+    },
+    {
+      "path": "src/core/export/markdownBundle.ts",
+      "sha256": "6e34296dbdf700b191a1b0e2057ca9fbe58ab6de3195aadb4f2afa8ae89dd649"
+    },
+    {
+      "path": "src/core/render/mathJaxAdapter.ts",
+      "sha256": "77e52f84eb76e823eaec632c884320d4be395c1bd774f036f3ff7377dce3bac9"
+    },
+    {
+      "path": "src/core/render/mathRender.ts",
+      "sha256": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00"
+    },
+    {
+      "path": "src/core/render/documentRenderer.ts",
+      "sha256": "96834f8cc199d5bb022503039b24b2789b0d6953c8ade90832c196d0b55a63a7"
+    }
+  ],
+  "corpusSha256": "a2cfe985dcfb3e9bcd0688d2b8d3b3cd2a4d73e5edaabcb7cf466153a599fad9",
+  "engines": {
+    "mathjax": "3.2.2",
+    "pagedjs": "0.4.3"
+  },
+  "implemented": false,
+  "limitations": [
+    "format ports still accept DocumentRecord",
+    "DOCX diagnostics parse Markdown",
+    "SVG formula path does not retain MathML",
+    "Web print has no save/cancel confirmation or guaranteed default name",
+    "Tauri native generation not verified"
+  ]
+}

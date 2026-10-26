@@ -13,21 +13,19 @@
 
 本轮只读检查源码，不运行原生构建或命令；不能把API命名、注释“原生静默导出”或Web单元替身当成PDF生成/落盘证据。这里指出的是当前可访问的本地提交状态，不推断其他未同步修改。
 
-## 2. 建议：现在不继续修改PDF文件名路径
+## 2. 当前裁决：撤回等待Tauri解决Web问题的建议
 
-当前Web已将所选名称放进交付文档title。系统Microsoft Print to PDF的保存框不由网页控制，继续改title不构成可保证的命名修复。当前分支也没有原生运行环境；提前引入Tauri SDK、额外浏览器或新的Web PDF排版器，会扩大本轮O0范围并与后续合入重复。
+此前建议“保留Web现状、等Tauri再迁移”已被用户确认的双平台统一导出原则取代。当前轻量方案允许Web以浏览器原生输出交接文档型PDF；系统window.print不能保证默认名，作为明确限制，不再要求Web直接生成PDF字节。按[HTML唯一输出源规划](../design/html-export-source-plan-2026-10-26.md)先共同架构，再Web验证与接入，最后Tauri；本次仍只改文档。
 
-建议保留现有Web交付及明确反馈，Windows系统默认名问题继续标记未解决；未来Tauri合入时实现“原生保存对话框建议名 → 实际PDF生成 → 文件提交 → 成功反馈”，从系统PDF设备路径迁移到应用可控制的保存路径。既有OMML O0工作不等待该迁移。
-
-不增加应用打印预览，不要求用户先打开A4视图，不以截图拼页替代可选择文本PDF。无需为当前未接入平台预建通用任务/权限/交付状态机。
+PDF输入必须为统一冻结HTML；截图拼页、正文栅格化及任何截图后备全部排除，不仅是不默认。不能从Markdown另建PDF内容模型。无合格路径时记录缺口，不宣称解决或自动降级。以下Tauri接入细节仅为最后阶段候选，不构成已实现能力。
 
 ## 3. 将来如何接入现有架构
 
-1. 保留ExportService的单busy和接受时冻结源/配置，复用当前generatePdfHtml完成完整A4排版；不从当前预览DOM取内容，也不复制旧弹窗内生成流程。
+1. 保留ExportService的单busy和接受时冻结源/配置，复用当前HTML构建与分页职责；跨宿主传未分页的统一HTML，在最终系统WebView内完成一次A4分页，不直接照搬浏览器内已分页DOM；不从当前预览DOM取内容，也不复制旧弹窗内生成流程。
 2. 在平台组合入口选择Web或Tauri交付适配器。需要时把既有print端口演进为有限的PDF交付函数，接收冻结HTML和建议名；不在UI直接调用invoke、文件系统或原生PDF API。本轮不提前加空接口。
 3. Tauri适配器沿用save({defaultPath})取得用户选择，取消就是取消，不提示失败或自动回退系统PDF设备。具体路径只在平台边界流转，原生命令验证选择/授权范围；不能接受任意前端target_path便创建目录并写入。
-4. 在独立、可清理的原生渲染宿主加载冻结HTML，等待真实字体/图片/布局就绪，调用对应平台PDF生成API；不能用固定sleep代替就绪。原生生成完成后才确认目标写入，失败或取消不伪报成功。
-5. Windows评估WebView2 PrintToPdf接口；macOS评估WKWebView createPDF等原生能力。Tauri/Rust绑定方式、A4分页、背景、页数及全文覆盖须分别证明，不由“都使用WebView”推断等价。若平台API不能维持现有分页，再独立比较其他受控生成方案。
+4. 在独立、可清理的原生渲染宿主加载冻结HTML和冻结资产，只执行受信任渲染脚本并完成一次Paged.js分页，等待真实字体/图片/布局就绪，调用对应平台PDF生成API；不能用固定sleep代替就绪。原生生成完成后才确认目标写入，失败或取消不伪报成功。
+5. Windows评估WebView2 PrintToPdf接口；macOS评估WKWebView createPDF等原生能力。Tauri/Rust绑定方式、A4分页、背景、页数及全文覆盖须分别证明，不由“都使用WebView”推断等价。若平台API不能维持现有分页，先记录缺口并讨论支持范围；不自动引入随包Chromium、Puppeteer或截图后备。
 6. 使用本次操作的临时文件/宿主并finally清理；按真实文件系统安排暂存/提交及失败保留原件，避免失败后留下被截断的已有PDF。只处理当前一个导出，不新增任务池。
 
 参考：[WebView2打印与PDF导出](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/print)、[Apple WKWebView createPDF](<https://developer.apple.com/documentation/webkit/wkwebview/createpdf(configuration:completionhandler:)>)、[Web window.print接口](https://developer.mozilla.org/en-US/docs/Web/API/Window/print)。这些是平台能力参考，不代表本项目已接入或跨平台已验证。
@@ -40,4 +38,6 @@
 - 必须实际创建目标PDF，核对PDF头/可读性、A4尺寸与页数、最后内容、可提取正文、公式/图表/图片完整性。仅对话框返回路径或Rust返回Ok不能通过。
 - 仅在生成与目标文件提交完成后反馈“已保存”；Web系统交付继续使用“已交由浏览器处理”，不能把两种成功语义混用。
 
-当前建议：不立即调整architecture-refactor的PDF实现；保存本评估供未来Tauri合入使用。O0仍独立完成并验证，不升级MathJax、不替换Paged.js。
+当前安排：本轮仅更新文档；后续按EX-H→EX-W→EX-T路线实施，Web不等待Tauri。O0完成事实保留，不升级MathJax、不替换Paged.js。
+
+轻量路线确认：保留Paged.js，不封装Chromium、不采用Puppeteer；Web浏览器原生输出与Tauri系统WebView原生PDF可采用不同实现，应用操作保持一致。系统WebView能力、运行时发布条件与分页兼容性尚未实际验证。

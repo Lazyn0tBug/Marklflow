@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "ownership": "repository-authored; not user document",
+  "isolation": {
+    "markdown": "# 编辑源标题\n\n原样源只用于保存。\\unknownCommand\n",
+    "html": "<h1 id=\"html-title\" data-line=\"1\" data-source-end=\"1\">HTML权威标题</h1><ol start=\"3\" data-line=\"3\" data-source-end=\"5\"><li>项目三</li><li>项目四</li></ol><table data-line=\"7\" data-source-end=\"9\"><tbody><tr><td colspan=\"2\">合并单元格</td></tr></tbody></table><p data-line=\"11\" data-source-end=\"11\"><a href=\"#html-title\">内部链接</a><a href=\"https://example.com/\">外部链接</a></p><pre data-line=\"13\" data-source-end=\"15\"><code class=\"language-typescript\">const n = 1;\n</code></pre><p data-line=\"17\" data-source-end=\"17\">行内<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mi>x</mi></math></p>",
+    "expectedText": "HTML权威标题",
+    "excludedText": "编辑源标题"
+  },
+  "render": {
+    "markdown": "# 输出基线\n\n3. 项目三\n4. 项目四\n\n<table><tr><td colspan=\"2\">合并单元格</td></tr></table>\n\n[定位](#目标)\n\n<span id=\"目标\">锚点</span>\n\n```typescript\nconst n = 1;\n```\n\n行内 $x^2$。\n\n$$\\newcommand{\\myvalue}{Q}\\myvalue$$\n\n$$\\begin{equation}\\myvalue+1\\end{equation}$$\n\n$$\\begin{equation}x+2\\end{equation}$$\n\n主文 $a$[^n]。\n\n[^n]: 注释 $b$。\n\n尾部 $c$。",
+    "expectedFormulaCount": 7
+  },
+  "asset": {
+    "source": "/baseline.png",
+    "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aOt8AAAAASUVORK5CYII="
+  },
+  "rejectedMarkdown": "<math><mi>author</mi></math>"
+}
