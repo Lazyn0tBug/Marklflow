@@ -1,13 +1,13 @@
 import { webExportService } from '../../core/platform/web/exportService';
 import type {ExportFormat} from '../../application/exports/exportService';
-import { inspectDocx } from '../../core/export/outputCapabilities';
+import { inspectDocx,groupDocxIssues } from '../../core/export/outputCapabilities';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
  * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、浏览器打印 A4 PDF、原生 DOCX
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Download, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 
@@ -30,6 +30,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
+  const docxIssues=useMemo(()=>isOpen&&selectedFormat==='docx'?inspectDocx(doc.markdown):[],[isOpen,selectedFormat,doc.markdown]);
+  const docxGroups=useMemo(()=>groupDocxIssues(docxIssues),[docxIssues]);
+  const docxBlocked=docxIssues.some(issue=>issue.adaptation==='unsupported');
+  useEffect(()=>{setAllowSourceFallback(false)},[doc.id,doc.markdown]);
   useEffect(()=>{if(isOpen){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setAllowSourceFallback(false);setAllowRemoteAssets(false)}},[isOpen,doc.id]);
   useEffect(()=>{
     if(!isOpen)return;
@@ -39,7 +43,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
     const keydown=(event:KeyboardEvent)=>{
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeRef.current();return}
       if(event.key!=='Tab')return;
-      const items=[...panel.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),[tabindex="0"]')].filter(item=>item.getClientRects().length);
+      const items=[...panel.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),summary,[tabindex="0"]')].filter(item=>item.getClientRects().length);
       const first=items[0],last=items.at(-1),active=window.document.activeElement;
       if(event.shiftKey&&(active===first||!panel.contains(active))){event.preventDefault();last?.focus()}
       else if(!event.shiftKey&&(active===last||!panel.contains(active))){event.preventDefault();first?.focus()}
@@ -62,7 +66,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="export-dialog-title" className="w-full max-w-2xl max-h-[90dvh] rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col">
-        {selectedFormat === 'docx' && inspectDocx(doc.markdown).length > 0 && <section className="m-4 text-xs text-amber-200" aria-label="DOCX 兼容性提示"><ul>{inspectDocx(doc.markdown).map((issue,i)=><li key={i}>{issue.nodeId}：{issue.message}</li>)}</ul><label className="flex gap-2 mt-2"><input type="checkbox" checked={allowSourceFallback} onChange={e=>setAllowSourceFallback(e.target.checked)}/>接受图片静态化及语义重排</label></section>}
+
         <label className="m-4 flex gap-2 text-xs"><input type="checkbox" checked={allowRemoteAssets} onChange={e=>setAllowRemoteAssets(e.target.checked)}/>允许联网收集文档外部图片（受 CORS 限制）</label>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/40">
@@ -88,6 +92,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
         {/* Content */}
         <div className="p-6 space-y-5 overflow-y-auto min-h-0">
+          {selectedFormat==='docx'&&docxIssues.length>0&&<section className="text-xs text-amber-200 space-y-3" aria-label="DOCX 兼容性提示">
+            <ul className="space-y-1">{docxGroups.map((group,index)=><li key={index}>{group.adaptation==='unsupported'?'不支持：':''}{group.summary}</li>)}</ul>
+            {docxBlocked&&<p role="alert">存在不支持的内容，请修改后再导出；勾选降级确认不会绕过此限制。</p>}
+            <details><summary className="cursor-pointer underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-teal-400">查看兼容性详情（{docxIssues.length}项）</summary><ul className="mt-3 space-y-1 wrap-anywhere">{docxIssues.map((issue,index)=><li key={index}>{issue.nodeId}：{issue.message}</li>)}</ul></details>
+            {!docxBlocked&&<label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5 shrink-0" checked={allowSourceFallback} onChange={event=>setAllowSourceFallback(event.target.checked)}/>接受图片静态化及语义重排</label>}
+          </section>}
           {/* File Name */}
           <div>
             <label htmlFor="export-file-name" className="block text-xs font-medium text-neutral-300 mb-1.5">导出文件主名称</label>
@@ -255,7 +265,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             <button
               type="button"
               onClick={handleExport}
-              disabled={isExporting||(selectedFormat==='docx'&&inspectDocx(doc.markdown).some(i=>i.adaptation==='unsupported'))}
+              disabled={isExporting||(selectedFormat==='docx'&&(docxBlocked||docxIssues.length>0&&!allowSourceFallback))}
               className="flex items-center whitespace-nowrap gap-1.5 px-5 py-2 rounded-lg text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 shadow-md shadow-teal-950/30"
             >
               <Download className="w-4 h-4" />

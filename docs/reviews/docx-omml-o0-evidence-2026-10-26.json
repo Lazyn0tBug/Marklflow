@@ -1,0 +1,40 @@
+{
+  "parentCommit": "626ec63d6c282b86f1053f6a133849af31360a86",
+  "unitTests": 318,
+  "managedSources": 169,
+  "chromiumFullTests": 80,
+  "latestTargetTests": 4,
+  "nativeOmmlImplemented": false,
+  "pdfImplementationChanged": false,
+  "tauriInspectedCommit": "7cef9071cac1f2a6377b28368918fe6def938e43",
+  "logSha256": {
+    "o0-check": "d81e2c09881a6efe8a6816b899e503fe6888b07c2175c3d157e8f97c7d6470d3",
+    "o0-e2e": "06a5d60aa332973001bc05b70caf58271959f6d7610ce56cf48f8134b6732e97",
+    "o0-target-final": "570d3e076561b00ce802e74c3953ee19ee190b935cb286e0f9d9affbe8d2ba49",
+    "o0-lint-final": "52911fccc9862daadaf2926674212b4bd4bedeb363b9404ee8c46e59b1e88be3"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "b967e223d3192eb9da0536df059fca8af143539e421ff261ecbd3455c500b51a",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "1822b1bf246154fa499d4b856f86d4f71f6a4a14afc5dd4040e03c21973570a0",
+    "docs/design/docx-omml-implementation-plan-2026-10-26.md": "80ebd74ee6fdd2f755b04bed7871b59fd22cb395a46ff88bac429533d0300878",
+    "src/components/export/ExportModal.tsx": "cd4de00730b2f68560bf0508abb83bbb74d255951e3ed1d01a00d05225c49142",
+    "src/core/export/docxExporter.ts": "1004ae153baa9f5f4fde3e955988e56e7f9022b5e3e6db7925c8b8f726af7113",
+    "src/core/export/outputCapabilities.ts": "3114334d205721f5027ee4a2c1e3db8632fa044cdf5e4d0fbb54dd9b2c6f2673",
+    "docs/reviews/docx-omml-o0-2026-10-26.md": "dda4def3e8bf614f27b1105b80590f2d3f7f238f786b3f2b598a79c04d8f4277",
+    "tests/e2e/docx-diagnostics.spec.ts": "fcde2173a619f21c7dd8b17f1ccd233f3541a6b0d5ff3a4eea158de4925875a7",
+    "tests/fixtures/docx-math/o0-cases.json": "69a1771e8b3c88fc5e35aadf23055b0023611a352c50a0f799ba8745416b39a8",
+    "tests/unit/docx-diagnostics.test.ts": "36d2e6066bf48543ec333d1a32b79bbe24468ac62c3564faf87f1f6bb1a2f290"
+  },
+  "screenshotSha256": {
+    "docx-details-390.png": "803a4c3790f63a3cff9381a8bab6664af7a5b090dd35d71f07242b5647d3fcad",
+    "docx-summary-390.png": "c670cffc3f8ed120648a87f6e9a7cf021755847bc57f5021d8fbbcc5f1d980b5",
+    "docx-details-1280.png": "667aa211b49e5201b07b6b664d1238834a18e089c0b8cc1145bde2a4c8f9829d",
+    "docx-summary-1280.png": "db7a22b02f077820564d989e74b767e23413a639fafd47cfb73bae9f81688cc4"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false
+}

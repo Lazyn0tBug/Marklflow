@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "provenance": "Repository-authored O0 regression fixtures; not a user-provided document or native OMML coverage proof",
+  "cases": [
+    {
+      "id": "formula-heavy",
+      "markdown": "# Formula-heavy document\n\nParagraph 1: $x_{1}^2 + y^2$\n\nParagraph 2: $x_{2}^2 + y^2$\n\nParagraph 3: $x_{3}^2 + y^2$\n\nParagraph 4: $x_{4}^2 + y^2$\n\nParagraph 5: $x_{5}^2 + y^2$\n\nParagraph 6: $x_{6}^2 + y^2$\n\nParagraph 7: $x_{7}^2 + y^2$\n\nParagraph 8: $x_{8}^2 + y^2$\n\nParagraph 9: $x_{9}^2 + y^2$\n\nParagraph 10: $x_{10}^2 + y^2$\n\nParagraph 11: $x_{11}^2 + y^2$\n\nParagraph 12: $x_{12}^2 + y^2$\n\nParagraph 13: $x_{13}^2 + y^2$\n\nParagraph 14: $x_{14}^2 + y^2$\n\nParagraph 15: $x_{15}^2 + y^2$\n\nParagraph 16: $x_{16}^2 + y^2$\n\nParagraph 17: $x_{17}^2 + y^2$\n\nParagraph 18: $x_{18}^2 + y^2$\n\nParagraph 19: $x_{19}^2 + y^2$\n\nParagraph 20: $x_{20}^2 + y^2$\n\nParagraph 21: $x_{21}^2 + y^2$\n\nParagraph 22: $x_{22}^2 + y^2$\n\nParagraph 23: $x_{23}^2 + y^2$\n\nParagraph 24: $x_{24}^2 + y^2$\n",
+      "formulaCount": 24,
+      "firstNodeId": "line-3",
+      "lastNodeId": "line-49"
+    },
+    {
+      "id": "mixed-blocked",
+      "markdown": "# Mixed\n\n$x^2$\n\n<math><mi>x</mi></math>",
+      "formulaCount": 1,
+      "blocked": true
+    },
+    {
+      "id": "unknown-latex",
+      "markdown": "# Invalid\n\n$\\unknowncommand{x}$",
+      "formulaCount": 1,
+      "renderMustFail": true
+    },
+    {
+      "id": "existing-app-sample",
+      "provenance": "Frozen from INITIAL_SAMPLE_MARKDOWN at architecture-refactor 93f84de",
+      "markdown": "# 量子退相干与量子计算系统工程报告\n\n> **编制单位**：MarkFlow 量子系统架构组  \n> **文档版本**：v0.9-RC2 (基线稳定版)  \n> **保密级别**：公开技术报告 · 遵守 CC-BY 4.0 协议\n\n---\n\n## 1. 摘要与背景\n\n在现代物理与量子信息处理中，微观量子比特（Qubit）与宏观外界环境的不可逆相互作用会导致**量子退相干（Quantum Decoherence）**。\n\n本工程报告评估超导量子处理芯片在极低温环境（$T < 15\\text{ mK}$）下的相干衰减动力学模型，并给出基于纠错编码的稳定容错阈值。\n\n### 1.1 关键物理指标\n- 超导传输子（Transmon）主频：$f_{01} \\approx 4.852\\text{ GHz}$\n- 平均横向相干弛豫时间：$T_2^* = 124.6\\ \\mu\\text{s}$\n- 双比特受控非门保真度：$\\mathcal{F}_{\\text{CZ}} \\ge 99.82\\%$\n\n---\n\n## 2. 动力学理论与数学公式\n\n超导量子比特体系的密度矩阵演化由 **Lindblad 主方程** 精确描述：\n\n$$\\frac{d\\rho}{dt} = -\\frac{i}{\\hbar}[H, \\rho] + \\sum_{k} \\left( L_k \\rho L_k^\\dagger - \\frac{1}{2} \\{L_k^\\dagger L_k, \\rho\\} \\right)$$\n\n### 2.1 行内物理公式推导\n当纯态处于基态 $|0\\rangle$ 与激发态 $|1\\rangle$ 的相干叠加态 $|\\psi(0)\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle$ 时，在布洛赫球面上的退相位因子为 $\\gamma(t) = \\exp(-t / T_2)$，满足概率归一条件 $|\\alpha|^2 + |\\beta|^2 = 1$。\n\n### 2.2 矩阵表示与多行推导\n量子哈密顿量矩阵与测量跃迁算符如下式所示：\n\n$$H = \\hbar \\begin{pmatrix} \\frac{\\omega_q}{2} & g \\cos(\\omega_d t) \\\\ g \\cos(\\omega_d t) & -\\frac{\\omega_q}{2} \\end{pmatrix}$$\n\n高斯退相干分布的概率密度函数可表述为：\n\n$$P(x) = \\frac{1}{\\sigma \\sqrt{2\\pi}} \\exp\\left( -\\frac{(x - \\mu)^2}{2\\sigma^2} \\right)$$\n\n著名的欧拉恒等式展现了代数与几何的统一：\n\n$$e^{i\\pi} + 1 = 0$$\n\n---pagebreak---\n\n## 3. 系统架构与硬件工作流\n\n量子测控主机（QPU Controller）通过低温微波链路实现纳秒级脉冲下发。以下时序图展示了一个单次量子测量与实时前馈纠错循环：\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant FPGA as 极速测控 FPGA\n    participant DAC as AWG 微波发生器\n    participant QPU as 低温超导芯片\n    participant ADC as 量子放大量子探测器\n\n    FPGA->>DAC: 触发预失真高斯测控脉冲\n    DAC->>QPU: 注入微波调制共振腔 (4.85 GHz)\n    QPU-->>ADC: 腔反射信号相位偏转\n    ADC->>FPGA: 快速解调 I/Q 信号 (20ns 采样)\n    Note over FPGA: 实时阈值判决与错误校正\n    FPGA->>DAC: 发送动态纠错相位补偿\n```\n\n### 3.1 测控网络拓扑图 (Graphviz DOT)\n分布式多通道量子测控机箱连接架构如下所示：\n\n```dot\ndigraph QuantumControlTopology {\n    rankdir=LR;\n    node [shape=box, style=filled, fillcolor=\"#f0fdf4\", color=\"#16a34a\", fontname=\"sans-serif\"];\n    edge [color=\"#0d9488\", fontname=\"sans-serif\"];\n\n    MasterClock [label=\"超稳铷原子钟基准\\n(10 MHz)\", fillcolor=\"#e0f2fe\", color=\"#0284c7\"];\n    HostPC [label=\"中央编译控制器\\n(MarkFlow 调度器)\", fillcolor=\"#fef3c7\", color=\"#d97706\"];\n    SubRackA [label=\"通道机箱 A\\n(Q0 - Q31)\"];\n    SubRackB [label=\"通道机箱 B\\n(Q32 - Q63)\"];\n    QPU [label=\"64 量子比特超导芯片\\n(稀释制冷机 15mK)\", fillcolor=\"#ede9fe\", color=\"#7c3aed\"];\n\n    MasterClock -> SubRackA [label=\"高精度同步时钟\"];\n    MasterClock -> SubRackB [label=\"时钟分配\"];\n    HostPC -> SubRackA [label=\"QASM 脉冲指令\"];\n    HostPC -> SubRackB [label=\"QASM 脉冲指令\"];\n    SubRackA -> QPU [label=\"XY / Z 测控线\"];\n    SubRackB -> QPU [label=\"读出谐振腔\"];\n}\n```\n\n---\n\n## 4. 实验测试数据汇总\n\n测试机组对不同微波驱动功率下的退相干时间进行了 10,000 次蒙特卡洛统计：\n\n| 测控组别 | 微波功率 (dBm) | 平均 $T_1$ (μs) | 平均 $T_2^*$ (μs) | 读出保真度 | 状态判定 |\n| :--- | :---: | :---: | :---: | :---: | :--- |\n| **Control-A1** | -30.5 | 118.2 | 96.4 | 98.4% | 符合工程标准 |\n| **Control-A2** | -28.0 | 134.7 | 112.9 | 99.1% | 优异表现 |\n| **Control-B1** | -25.0 | 142.1 | 124.6 | 99.8% | 最佳工作点 |\n| **Control-B2** | -22.5 | 98.4 | 64.2 | 96.5% | 存在功率展宽 |\n\n---\n\n## 5. 软件与测控算法实现\n\n算法调度核心采用 TypeScript 实现，保证无阻断响应时间：\n\n```typescript\ninterface QuantumPulse {\n  channelId: number;\n  frequencyHz: number;\n  durationNs: number;\n  amplitude: number;\n}\n\nexport function scheduleSyndromeExtraction(rounds: number): QuantumPulse[] {\n  const pulseQueue: QuantumPulse[] = [];\n  for (let r = 0; r < rounds; r++) {\n    // 注入 X 轴校准脉冲\n    pulseQueue.push({\n      channelId: r % 4,\n      frequencyHz: 4.852e9,\n      durationNs: 24,\n      amplitude: 0.85\n    });\n  }\n  return pulseQueue;\n}\n```\n\n---\n\n## 6. 结论与发布建议\n\n本批次超导量子芯片在 $T < 15\\text{ mK}$ 环境下完全具备容错表面码运行能力。建议直接在 **0.9 候选基线** 冻结当前配置，并进入 **1.0 正式验证与验收流程**。\n",
+      "formulaCount": 16
+    }
+  ]
+}

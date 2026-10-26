@@ -1,5 +1,7 @@
 # 架构重构分步实施与验收计划
 
+OMML进度补充（2026-10-26）：O0重复诊断汇总、折叠详情及一次降级确认已实现验证，见[O0执行记录](../reviews/docx-omml-o0-2026-10-26.md)；O1—O5仍未实施，当前公式仍采用图片路径。PDF命名仅完成[Tauri只读评估](../reviews/tauri-pdf-delivery-assessment-2026-10-26.md)，本轮不改实现。
+
 最终审查补充（2026-10-26）：F1资源包源文保真及F2执行器结算守卫已修复；完整范围、需求一致性及验证见[最终审查记录](../reviews/architecture-final-f2-2026-10-26.md)。历史进度以最新补充为准，仍未推送、不升级MathJax、不替换Paged.js。
 
 本步实施补充（2026-10-26）：V2已审查验证，见[V2执行记录](../reviews/architecture-v2-implementation-2026-10-26.md)。历史进度条目以最新补充为准。

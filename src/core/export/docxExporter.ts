@@ -1,7 +1,7 @@
 import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat,Bookmark,InternalHyperlink,type ParagraphChild,type IParagraphOptions,type INumberingOptions,PageBreak} from 'docx';
 import {documentSchema} from '../model/documentSchema';
 import type {DocumentRecord} from '../model/document';
-import {inspectDocx} from './outputCapabilities';
+import {inspectDocx,groupDocxIssues} from './outputCapabilities';
 import {prepareExportContent} from './exportContent';
 import {documentStyle} from '../render/documentPresentation';
 import {waitForLayout,withDeadline} from './documentPrint';
@@ -46,7 +46,7 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
 export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSourceFallback?:boolean;allowRemoteAssets?:boolean}={}):Promise<Blob>{
  const frozenOptions={...options};
  const doc=documentSchema.parse(structuredClone(input)),issues=inspectDocx(doc.markdown);
- if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
+ if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(groupDocxIssues(issues).map(group=>group.summary+'（'+group.issues[0]!.nodeId+'等，详情见导出窗口）').join('\n'));
  const prepared=await prepareExportContent(doc,{mathMode:'svg',allowRemoteAssets:frozenOptions.allowRemoteAssets??false});
  const root=document.createElement('article');root.className='mf-document-shell mf-doc';
  for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
