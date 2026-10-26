@@ -2,7 +2,7 @@
 
 轻量路线确认：不封装Chromium、不采用Puppeteer，保留Paged.js；Web使用浏览器原生输出，Tauri优先验证系统WebView。操作一致性不要求实现一致或所有平台均返回PDF字节。
 
-日期：2026-10-26。状态：EX-H0基线与夹具已验证并本地提交55fcf1c；EX-H1统一HTML契约已实施，验证与审查见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)；EX-H2a已审查验证，见[执行记录](../reviews/export-source-h2a-2026-10-26.md)；EX-H2b已审查验证，见[执行记录](../reviews/export-source-h2b-2026-10-26.md)；EX-H2c1/c2及后续未实施。原方案编制轮只改文档；当前按用户授权每步验证后本地提交，不推送。MathJax 3.2.2与Paged.js 0.4.3保持不变。本文修正AR-01/02/03与OMML方案的导出边界，不重写历史验证证据；后续实施需另行授权。
+日期：2026-10-26。状态：EX-H0基线与夹具已验证并本地提交55fcf1c；EX-H1统一HTML契约已实施，验证与审查见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)；EX-H2a已审查验证，见[执行记录](../reviews/export-source-h2a-2026-10-26.md)；EX-H2b已审查验证，见[执行记录](../reviews/export-source-h2b-2026-10-26.md)；EX-H2c1已审查验证，见[执行记录](../reviews/export-source-h2c1-2026-10-26.md)；EX-H2c2及后续未实施。原方案编制轮只改文档；当前按用户授权每步验证后本地提交，不推送。MathJax 3.2.2与Paged.js 0.4.3保持不变。本文修正AR-01/02/03与OMML方案的导出边界，不重写历史验证证据；后续实施需另行授权。
 
 ## 1. 不可偏离的约束
 
@@ -27,7 +27,7 @@ PDF是文档产物：正文保留真实文本对象、可搜索/复制/选取，
 - 交付适配器负责建议名、保存目标、字节写入或浏览器下载、取消及清理。文件路径只在平台边界流转。应用保留单busy和局部finally清理，不建立新的导出队列/任务平台。
 - 仅以实际所需能力在组合根选择Web/Tauri适配；禁止在UI散布系统判断。生成能力与保存能力分别判断，保存API不能替代PDF生成能力。
 
-EX-H1已在core/model/exportHtml.ts实现版本化只读契约，prepareExportContent返回独立artifact。旧document/html兼容字段暂保留，格式端口与诊断迁移仍属EX-H2；不能由新产物存在推定所有旁路已移除。
+EX-H1已在core/model/exportHtml.ts实现版本化只读契约，prepareExportContent返回独立artifact。旧document/html兼容字段已于EX-H2c1移除，格式适配及HTML诊断已于a/b完成；应用统一准备与UI确认仍属c2；不能由新产物存在推定所有旁路已移除。
 
 ### 2.1 同一HTML内容与不同布局宿主
 

@@ -15,7 +15,7 @@ void(async()=>{try{
  const reports=[];
  for(const mathMode of ['mathml','svg'] as const){
   const doc=createNewDocument('HTML canonical');doc.markdown=corpus.render.markdown.replace(/\$\$(.*?)\$\$/g,(_match,value:string)=>'$$\n'+value+'\n$$');
-  const first=await prepareExportContent(doc,{mathMode});const artifact=first.artifact,root=document.createElement('article');root.className='mf-doc';root.innerHTML=artifact.html;
+  const first=await prepareExportContent(doc,{mathMode});const artifact=first,root=document.createElement('article');root.className='mf-doc';root.innerHTML=artifact.html;
   const math=[...root.querySelectorAll('[data-mf-math-id]')].map(node=>({id:node.getAttribute('data-mf-math-id'),line:node.getAttribute('data-line'),end:node.getAttribute('data-source-end'),text:node.querySelector('math')?.textContent||'',display:node.classList.contains('mf-math'),hasSvg:!!node.querySelector('svg'),hasHidden:!!node.querySelector('.mf-math-semantics[hidden]')}));
   const stage=document.createElement('section');stage.className='mf-document-shell';const style=document.createElement('style');style.textContent=artifact.presentation.css;stage.append(style,root);document.body.append(stage);
   const hiddenInvisible=[...root.querySelectorAll<HTMLElement>('.mf-math-semantics')].every(node=>getComputedStyle(node).display==='none'&&node.getBoundingClientRect().height===0);
@@ -25,7 +25,7 @@ void(async()=>{try{
   const repeated=await prepareExportContent(doc,{mathMode});const again=document.createElement('article');again.innerHTML=repeated.html;
   let unknown='';const bad=createNewDocument('Bad');bad.markdown='$\\notDefinedHere$';try{await prepareExportContent(bad,{mathMode})}catch(error){unknown=String(error)}
   const recovery=await prepareExportContent(other,{mathMode});
-  reports.push({mathMode,math,hiddenInvisible,html:artifact.html,other:otherRoot.querySelector('math')?.textContent||'',repeat:[...again.querySelectorAll('[data-mf-math-id] math')].map(node=>node.textContent),unknown,recovered:!!recovery.artifact.html,config:artifact.source.renderConfigVersion,serialized:JSON.parse(JSON.stringify(artifact)).schemaVersion,frozen:Object.isFrozen(artifact)&&Object.isFrozen(artifact.presentation.page.margins),sourceAttached:'markdown' in artifact||'document' in artifact});
+  reports.push({mathMode,math,hiddenInvisible,html:artifact.html,other:otherRoot.querySelector('math')?.textContent||'',repeat:[...again.querySelectorAll('[data-mf-math-id] math')].map(node=>node.textContent),unknown,recovered:!!recovery.html,config:artifact.source.renderConfigVersion,serialized:JSON.parse(JSON.stringify(artifact)).schemaVersion,frozen:Object.isFrozen(artifact)&&Object.isFrozen(artifact.presentation.page.margins),sourceAttached:'markdown' in artifact||'document' in artifact});
  }
  // Duplicate source URLs are fetched once and remain frozen after caller mutations.
  const originalFetch=window.fetch;let reads=0;
@@ -33,11 +33,11 @@ void(async()=>{try{
  let assetReport;
  try{
   const doc=createNewDocument('Frozen');doc.markdown='![one](/baseline.png) ![two](/baseline.png)';const pending=prepareExportContent(doc);doc.markdown='MUTATED';doc.meta.title='MUTATED';doc.theme.fontSize=18;
-  const {artifact}=await pending;
+  const artifact=await pending;
   assetReport={reads,assets:artifact.assets.length,title:artifact.meta.title,images:(artifact.html.match(/data:image\/png;base64,/g)||[]).length,hash:artifact.assets[0]?.sha256,immutable:Object.isFrozen(artifact.assets[0]),size:artifact.presentation.variables['--mf-size']};
  }finally{window.fetch=originalFetch}
  const seed=await prepareExportContent({...createNewDocument('Isolation'),markdown:'# seed'});
- const canonical=exportHtmlSchema.parse({...seed.artifact,html:corpus.isolation.html});
+ const canonical=exportHtmlSchema.parse({...seed,html:corpus.isolation.html});
  const htmlRoot=document.createElement('html');htmlRoot.innerHTML=await generateExportHtml(canonical,{editablePayload:btoa(encodeURIComponent(corpus.isolation.markdown))});
  const pdfRoot=document.createElement('html');pdfRoot.innerHTML=await generatePdfHtml(canonical);
  const supportedWordHtml=corpus.isolation.html.replace(/<math[\s\S]*?<\/math>/g,'');

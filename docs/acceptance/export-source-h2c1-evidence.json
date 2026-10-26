@@ -1,0 +1,22 @@
+{
+  "step": "EX-H2c1",
+  "baseline": "5cde670",
+  "managedSources": 182,
+  "unitTests": 334,
+  "chromiumTests": 83,
+  "logs": [
+    {
+      "path": "D:\\codex\\ex-h2c1-check.log",
+      "sha256": "76e01bd63bbdf718efd323e87cb659739a817200adf802b50a652f028709899d",
+      "exitCode": 0
+    },
+    {
+      "path": "D:\\codex\\ex-h2c1-e2e.log",
+      "sha256": "f62f3c36af9093826db74520ea7a652a3201e6a7b698ae2aef798cc1dc0e8a75",
+      "exitCode": 0
+    }
+  ],
+  "remaining": [
+    "EX-H2c2 unified preparation and UI confirmation"
+  ]
+}
