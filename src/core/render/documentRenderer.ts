@@ -6,7 +6,7 @@ import type {DomScheduling} from '../platform/web/sharedDom';
 import {renderDotDiagram} from './diagramRender';
 import { renderMermaidDiagram,mermaidError } from './mermaidRender';
 import { sanitizeDocumentHtml,escapeHtml,rewriteFragments } from './htmlPolicy';
-export interface RenderDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
+export interface RenderDiagnostic {nodeId:string;message:string;severity:'error'|'warning';contentKind?:'author-mathml'}
 export interface DocumentArtifact {html:string;diagnostics:RenderDiagnostic[]}
 let sequence=0;
 export {throwIfAborted} from './renderCancellation';
@@ -50,7 +50,7 @@ export async function renderDocument(markdown:string,mode:'mathml'|'svg',signal?
  }
  for(const image of root.querySelectorAll('img:not([src])'))diagnostics.push({nodeId:image.getAttribute('data-line')||'image',message:'图片来源被拒绝或缺失',severity:'error'});
  for(const el of root.querySelectorAll('.markflow-dot-error,[data-mjx-error],merror'))diagnostics.push({nodeId:el.closest('[data-line]')?.getAttribute('data-line')||'unknown',message:el.textContent||'渲染失败',severity:'error'});
- if(diagnostics.length){const notice=document.createElement('aside');notice.className='mf-diagnostic';notice.setAttribute('role','note');notice.innerHTML='<strong>内容兼容性提示</strong><ul>'+diagnostics.map(d=>'<li>'+escapeHtml(d.nodeId+'：'+d.message)+'</li>').join('')+'</ul>';root.prepend(notice)}
+ if(diagnostics.length){const notice=document.createElement('aside');notice.className='mf-diagnostic';notice.setAttribute('role','note');notice.innerHTML='<strong>内容兼容性提示</strong><ul>'+diagnostics.map(d=>'<li'+(d.contentKind==='author-mathml'?' data-mf-author-mathml="true" data-line="'+escapeHtml(d.nodeId.slice(5))+'"':'')+'>'+escapeHtml(d.nodeId+'：'+d.message)+'</li>').join('')+'</ul>';root.prepend(notice)}
  return {html:root.innerHTML,diagnostics};
 }
 export function assertArtifact(artifact:DocumentArtifact):void{

@@ -29,11 +29,12 @@ export function sanitizeDocumentHtml(html:string,allowGeneratedData=true):string
   FORBID_ATTR:['srcset','srcdoc','autofocus','contenteditable','formaction','ping'],ALLOW_DATA_ATTR:allowGeneratedData,
  });
 }
-export interface ContentDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
+export interface ContentDiagnostic {nodeId:string;message:string;severity:'error'|'warning';contentKind?:'author-mathml'}
 /** Inspect only author HTML; generated plugin markup uses the same sanitizer without author diagnostics. */
 export function inspectAuthorHtml(value:string,line:number):ContentDiagnostic[]{
  const root=document.createElement('template');root.innerHTML=value;
  const diagnostics:ContentDiagnostic[]=[];
+ if(root.content.querySelector('math,mfrac,msqrt,mrow,msup,msub,msubsup,mtable'))diagnostics.push({nodeId:'line-'+line,message:'原始MathML需目标格式显式适配，无法保留的片段已记录',severity:'warning',contentKind:'author-mathml'});
  const add=(message:string,severity:'error'|'warning'='warning')=>diagnostics.push({nodeId:'line-'+line,message,severity});
  for(const el of root.content.querySelectorAll('*')){
   const tag=el.localName;

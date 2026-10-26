@@ -39,7 +39,7 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
   code(_state,node){
    const lang=(node.lang||'plaintext').toLowerCase(),line=node.position!.start.line+offset;
    const position='data-mf-origin="'+nonce+'" data-line="'+line+'" data-source-end="'+(node.position!.end.line+offset)+'"';
-   const html=lang==='mermaid'?'<figure class="mf-diagram" '+position+' data-mermaid-code="'+encodeURIComponent(node.value)+'"><figcaption>Mermaid 渲染中</figcaption></figure>':/^(dot|graphviz)$/.test(lang)?'<figure class="mf-diagram" '+position+' data-dot-code="'+encodeURIComponent(node.value)+'"><figcaption>DOT 渲染中</figcaption></figure>':'<pre class="mf-code" '+position+'><code class="language-'+escapeHtml(lang)+'">'+escapeHtml(node.value)+'\n</code></pre>';
+   const html=lang==='mermaid'?'<figure class="mf-diagram" '+position+' data-mf-diagram="mermaid" data-mermaid-code="'+encodeURIComponent(node.value)+'"><figcaption>Mermaid 渲染中</figcaption></figure>':/^(dot|graphviz)$/.test(lang)?'<figure class="mf-diagram" '+position+' data-mf-diagram="dot" data-dot-code="'+encodeURIComponent(node.value)+'"><figcaption>DOT 渲染中</figcaption></figure>':'<pre class="mf-code" '+position+'><code class="language-'+escapeHtml(lang)+'">'+escapeHtml(node.value)+'\n</code></pre>';
    return {type:'raw' as const,value:html};
   },
   math(_state,node){return {type:'raw' as const,value:'<div class="mf-math" data-mf-origin="'+nonce+'" data-line="'+(node.position!.start.line+offset)+'" data-source-end="'+(node.position!.end.line+offset)+'"'+(options.mathSemantics?' data-mf-math-id="math-'+originalOffset(node.position?.start.offset)+'"':'')+'>'+math(node.value,true,originalOffset(node.position?.start.offset))+'</div>'}},
@@ -54,7 +54,9 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
    if(generated)generatedNodes.add(node);
    if(!trusted&&node.properties.id)node.properties.id=authorIds.get(String(node.properties.id))!;
    for(const [key,value]of Object.entries(node.properties)){if(typeof value!=='string'||key==='id')continue;node.properties[key]=rewriteFragments(value,authorIds,key)}
-   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode','dataDotCode','dataMfMathId'].includes(key)))delete node.properties[key];
+   for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode','dataDotCode','dataMfMathId','dataMfDiagram'].includes(key)))delete node.properties[key];
+   const sourceOffset=originalOffset(node.position?.start.offset),opening=sourceOffset===undefined?'':markdown.slice(sourceOffset),prefix='<'+node.tagName;
+   if(!generated&&opening.slice(0,prefix.length).toLowerCase()===prefix&&/[\s/>]/.test(opening[prefix.length]??''))node.properties.dataMfAuthorHtml='true';
    if(node.position&&!generated)node.properties.dataLine=node.position.start.line+offset;
    if(node.position&&!generated)node.properties.dataSourceEnd=node.position.end.line+offset;
    if(node.tagName==='table')node.properties.className=['mf-table'];

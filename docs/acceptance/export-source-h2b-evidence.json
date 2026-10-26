@@ -1,0 +1,23 @@
+{
+  "step": "EX-H2b",
+  "baseline": "2655b5d",
+  "managedSources": 180,
+  "unitTests": 332,
+  "chromiumTests": 83,
+  "logs": [
+    {
+      "path": "D:\\codex\\ex-h2b-check-verified.log",
+      "sha256": "3f6b0d660fc67859c00f022622a3d7da97518e4587f9871b638712faac42d6ed",
+      "exitCode": 0
+    },
+    {
+      "path": "D:\\codex\\ex-h2b-e2e-verified.log",
+      "sha256": "5bc47faffe4374c414e031f63549846b540ccf99c57f0f17f42b38ac9628c978",
+      "exitCode": 0
+    }
+  ],
+  "remaining": [
+    "EX-H2c1 source save and direct artifact return",
+    "EX-H2c2 unified preparation, UI and parser import gates"
+  ]
+}

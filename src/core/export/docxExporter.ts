@@ -1,9 +1,6 @@
 import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat,Bookmark,InternalHyperlink,type ParagraphChild,type IParagraphOptions,type INumberingOptions,PageBreak} from 'docx';
-import {documentSchema} from '../model/documentSchema';
-import type {DocumentRecord} from '../model/document';
+import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {inspectDocx,groupDocxIssues} from './outputCapabilities';
-import {prepareExportContent} from './exportContent';
-import {documentStyle} from '../render/documentPresentation';
 import {waitForLayout,withDeadline} from './documentPrint';
 type Run=ParagraphChild;
 interface InlineContext {bookmarks:Map<string,string>;width:number;height:number}
@@ -45,17 +42,16 @@ async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Prom
  if(node.id&&context.bookmarks.has(node.id))return [new Bookmark({id:context.bookmarks.get(node.id)!,children:runs})];
  return runs;
 }
-export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSourceFallback?:boolean;allowRemoteAssets?:boolean}={}):Promise<Blob>{
+export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{allowSourceFallback?:boolean}={}):Promise<Blob>{
  const frozenOptions={...options};
- const doc=documentSchema.parse(structuredClone(input)),issues=inspectDocx(doc.markdown);
+ const issues=inspectDocx(input);
  if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(groupDocxIssues(issues).map(group=>group.summary+'（'+group.issues[0]!.nodeId+'等，详情见导出窗口）').join('\n'));
- const prepared=await prepareExportContent(doc,{mathMode:'svg',allowRemoteAssets:frozenOptions.allowRemoteAssets??false});
  const root=document.createElement('article');root.className='mf-document-shell mf-doc';
- for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
- const m=doc.theme.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
+ for(const [name,value]of Object.entries(input.presentation.variables))root.style.setProperty(name,value);
+ const m=input.presentation.page.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
  const context:InlineContext={bookmarks:new Map(),width:(210-m.left-m.right)*96/25.4,height:(297-m.top-m.bottom)*96/25.4-20};
  root.style.cssText+=';position:fixed;left:-20000px;top:0;width:'+context.width+'px;visibility:hidden';
- root.innerHTML=prepared.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');document.body.append(root);
+ root.innerHTML=input.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');const stage=document.createElement('div'),style=document.createElement('style');style.textContent=input.presentation.css;stage.append(style,root);document.body.append(stage);
  try{
   await waitForLayout(root);
   for(const el of root.querySelectorAll('[id]'))if(!context.bookmarks.has(el.id))context.bookmarks.set(el.id,'mf_bookmark_'+context.bookmarks.size);
@@ -103,7 +99,7 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
    await flush();return out;
   }
   const children=await blocks([...root.childNodes]);
-  const word=new WordDocument({styles:{default:{document:{run:{font:doc.theme.fontFamily==='mono'?'Consolas':doc.theme.fontFamily==='serif'?'SimSun':'Microsoft YaHei',size:Math.round(doc.theme.fontSize*1.5)},paragraph:{spacing:{line:Math.round(doc.theme.lineHeight*240)}}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:twips(210),height:twips(297)},margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
+  const word=new WordDocument({styles:{default:{document:{run:{font:(input.presentation.variables['--mf-font']||'').includes('Consolas')?'Consolas':(input.presentation.variables['--mf-font']||'').includes('Noto Serif')?'SimSun':'Microsoft YaHei',size:Math.round(Number.parseFloat(input.presentation.variables['--mf-size']||'15')*1.5)},paragraph:{spacing:{line:Math.round(Number.parseFloat(input.presentation.variables['--mf-leading']||'1.75')*240)}}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:twips(210),height:twips(297)},margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
   return await Packer.toBlob(word);
- }finally{root.remove()}
+ }finally{stage.remove()}
 }

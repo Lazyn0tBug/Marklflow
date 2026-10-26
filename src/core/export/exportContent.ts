@@ -16,7 +16,7 @@ export async function prepareExportContent(input:DocumentRecord,options:{mathMod
  if(encode(collected.html).byteLength+encode(DOCUMENT_CSS).byteLength>50*1024*1024)throw new Error('HTML导出内容超过50MB限制');
  const mdHash=await sha256Hex(encode(doc.markdown));
  // Advance this renderer contract when engine/policy behavior changes; never hash transient SVG IDs.
- const renderConfigVersion=await sha256Hex(encode(JSON.stringify({contract:'export-html-v1',theme:doc.theme,options:{...doc.options,mathMode:mode},css:DOCUMENT_CSS,assets:collected.assets.map(asset=>[asset.source,asset.sha256])})));
+ const renderConfigVersion=await sha256Hex(encode(JSON.stringify({contract:'export-html-v2',theme:doc.theme,options:{...doc.options,mathMode:mode},css:DOCUMENT_CSS,assets:collected.assets.map(asset=>[asset.source,asset.sha256])})));
  const artifact=exportHtmlSchema.parse({schemaVersion:1,source:{documentId:doc.id,revision:doc.revision,mdHash,renderConfigVersion},meta:doc.meta,html:collected.html,presentation:{css:DOCUMENT_CSS,variables:documentStyle(doc.theme),page:{size:'A4',margins:doc.theme.margins}},mathMode:mode,assets:collected.assets,diagnostics:rendered.diagnostics});
  return {document:{...doc,options:{...doc.options,mathMode:mode},assets:collected.assets},html:artifact.html,artifact};
 }

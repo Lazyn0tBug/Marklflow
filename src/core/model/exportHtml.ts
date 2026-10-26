@@ -9,6 +9,6 @@ export const exportHtmlSchema=z.object({
  html:z.string().max(50*1024*1024),
  presentation:z.object({css:z.string(),variables:z.record(z.string(),z.string()).readonly(),page:z.object({size:z.literal('A4'),margins:z.object({top:z.number(),right:z.number(),bottom:z.number(),left:z.number()}).readonly()}).readonly()}).readonly(),
  mathMode:z.enum(['mathml','svg']),assets:z.array(assetSchema.readonly()).max(128).readonly(),
- diagnostics:z.array(z.object({nodeId:z.string(),message:z.string(),severity:z.enum(['error','warning'])}).readonly()).readonly(),
+ diagnostics:z.array(z.object({nodeId:z.string(),message:z.string(),severity:z.enum(['error','warning']),contentKind:z.literal('author-mathml').optional()}).readonly()).readonly(),
 }).strict().readonly();
 export type ExportHtmlArtifact=z.infer<typeof exportHtmlSchema>;

@@ -1,6 +1,7 @@
+import {inspectDocxSource as inspectDocx} from '../../core/export/legacyDocxSourceDiagnostics';
 import { webExportService } from '../../core/platform/web/exportService';
 import type {ExportFormat} from '../../application/exports/exportService';
-import { inspectDocx,groupDocxIssues } from '../../core/export/outputCapabilities';
+import { groupDocxIssues } from '../../core/export/outputCapabilities';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现

@@ -1,31 +1,17 @@
-import {unified} from 'unified';
-import remarkParse from 'remark-parse';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import {visit} from 'unist-util-visit';
-export interface OutputIssue {nodeId:string;adaptation:'mapped'|'static'|'unsupported';message:string}
-export const DOCX_FORMULA_IMAGE_MESSAGE='公式输出SVG/PNG图片，不是Word原生可编辑公式';
-export interface DocxIssueGroup {adaptation:OutputIssue['adaptation'];summary:string;issues:OutputIssue[]}
-/** Keep source-level details, but show repeated capability information once. */
-export function groupDocxIssues(issues:readonly OutputIssue[]):DocxIssueGroup[]{
- const groups=new Map<string,DocxIssueGroup>();
- for(const issue of issues){const key=issue.adaptation+'\0'+issue.message;let group=groups.get(key);if(!group){group={adaptation:issue.adaptation,summary:'',issues:[]};groups.set(key,group)}group.issues.push(issue)}
- for(const group of groups.values()){const message=group.issues[0]!.message,count=group.issues.length;group.summary=message===DOCX_FORMULA_IMAGE_MESSAGE?'本次 '+count+' 个公式将以图片输出，不是Word原生可编辑公式':count+' 处：'+message}
- return [...groups.values()];
-}
-export function inspectDocx(markdown:string):OutputIssue[]{
- const tree=unified().use(remarkParse).use(remarkGfm).use(remarkMath).parse(markdown);
- const issues:OutputIssue[]=[];
- visit(tree,node=>{
-  const id='line-'+(node.position?.start.line||0);
-  if(node.type==='html'){
-   const template=document.createElement('template');template.innerHTML=node.value;
-   if(template.content.querySelector('math,mfrac,msqrt,mrow'))issues.push({nodeId:id,adaptation:'unsupported',message:'原始MathML尚无DOCX适配器，请改用LaTeX公式或静态图像'});
-   if(template.content.querySelector('[rowspan],[reversed],li[value]'))issues.push({nodeId:id,adaptation:'unsupported',message:'当前不支持原始HTML的跨行表格或逐项/倒序列表编号，请改用简单表格和顺序列表'});
-  }
-  if(node.type==='html')issues.push({nodeId:id,adaptation:'mapped',message:'原始HTML采用安全语义重排，Grid/容器布局和交互不保留'});
-  if(node.type==='math'||node.type==='inlineMath')issues.push({nodeId:id,adaptation:'static',message:DOCX_FORMULA_IMAGE_MESSAGE});
-  if(node.type==='image')issues.push({nodeId:id,adaptation:'static',message:'图片封装进DOCX，外部资源须先收集完成'});
-  if(node.type==='code'&&/^(mermaid|dot|graphviz)$/.test(node.lang||''))issues.push({nodeId:id,adaptation:'static',message:'图表输出SVG/PNG图片，不保留运行交互'});
- });return issues;
+import type {ExportHtmlArtifact} from '../model/exportHtml';
+import {DOCX_FORMULA_IMAGE_MESSAGE,type OutputIssue} from '../model/exportDiagnostics';
+export {DOCX_FORMULA_IMAGE_MESSAGE,groupDocxIssues,type OutputIssue,type DocxIssueGroup} from '../model/exportDiagnostics';
+/** Capability decisions are made from accepted HTML, never from editable source. */
+export function inspectDocx(input:ExportHtmlArtifact):OutputIssue[]{
+ const root=document.createElement('article');root.innerHTML=input.html;const issues:OutputIssue[]=[];
+ const add=(node:Element,adaptation:OutputIssue['adaptation'],message:string)=>{const nodeId='line-'+(node.closest('[data-line]')?.getAttribute('data-line')||'0');if(adaptation==='unsupported'&&issues.some(issue=>issue.nodeId===nodeId&&issue.message===message&&issue.adaptation===adaptation))return;issues.push({nodeId,adaptation,message})};
+ for(const node of root.querySelectorAll('*')){
+  if(node.hasAttribute('data-mf-math-id'))add(node,node.querySelector('svg')?'static':'unsupported',node.querySelector('svg')?DOCX_FORMULA_IMAGE_MESSAGE:'DOCX公式需要HTML内已生成的SVG，当前不重新解析源公式');
+  if(node.hasAttribute('data-mf-author-mathml')||node.matches('math,mfrac,msqrt,mrow,msup,msub,msubsup,mtable')&&!node.closest('[data-mf-math-id]')&&!node.parentElement?.closest('math,mfrac,msqrt,mrow,msup,msub,msubsup,mtable'))add(node,'unsupported','原始MathML尚无DOCX适配器，请改用LaTeX公式或静态图像');
+  if(node.matches('[rowspan],[reversed],li[value]'))add(node,'unsupported','当前不支持原始HTML的跨行表格或逐项/倒序列表编号，请改用简单表格和顺序列表');
+  if(node.hasAttribute('data-mf-author-html')&&!node.parentElement?.closest('[data-mf-author-html]'))add(node,'mapped','原始HTML采用安全语义重排，Grid/容器布局和交互不保留');
+  if(node.localName==='img')add(node,'static','图片封装进DOCX，外部资源须先收集完成');
+  if(node.hasAttribute('data-mf-diagram'))add(node,'static','图表输出SVG/PNG图片，不保留运行交互');
+ }
+ return issues.sort((a,b)=>Number(a.nodeId.slice(5))-Number(b.nodeId.slice(5)));
 }

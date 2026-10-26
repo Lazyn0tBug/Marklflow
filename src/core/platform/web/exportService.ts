@@ -16,4 +16,4 @@ export function downloadBlob(blob:Blob,name:string):void{
 export const webExportService=new ExportService({generatePdfHtml:async(doc,options)=>generatePdfHtml((await prepareExportContent(doc,options)).artifact,{title:options.title}),generateMarkdownBundle,generateHtml:async(doc,options)=>{
  const prepared=await prepareExportContent(doc,options);
  return generateExportHtml(prepared.artifact,options.includeEditablePayload?{editablePayload:encodeSourcePayload(prepared.document)}:{});
-},generateDocx:exportDocumentToDocx,download:downloadBlob,print:printFrozenHtml});
+},generateDocx:async(doc,options)=>exportDocumentToDocx((await prepareExportContent(doc,{mathMode:'svg',allowRemoteAssets:options.allowRemoteAssets})).artifact,{allowSourceFallback:options.allowSourceFallback}),download:downloadBlob,print:printFrozenHtml});
