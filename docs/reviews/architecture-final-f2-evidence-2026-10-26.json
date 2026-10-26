@@ -1,0 +1,38 @@
+{
+  "step": "f2",
+  "parentCommit": "c9e0c08189e01990228b48624212d106b4966143",
+  "managedSources": 167,
+  "unitTests": 312,
+  "chromiumTests": 76,
+  "logSha256": {
+    "check": "16bd5428de294415d4519eb18297d8819974aebf0f901670ffca8c4a381f06c4",
+    "e2e": "9f50d2e69e386e1e16e13aad2b285fc616f43f0850e56c34bb066a9c87e23fad"
+  },
+  "changedFileSha256": {
+    "docs/design/architecture-implementation-acceptance-2026-10-25.md": "e553cf46cdaca4266caf54f1db68d046912652450d0773cb1a0f66de2c231919",
+    "docs/design/architecture-refactor-plan-2026-10-25.md": "0fd2f01fa10fd225eb03e6d4500a378ba179aa581d8afe39957186e7f1c97607",
+    "docs/design/architecture-stack-assessment-2026-10-25.md": "6d2f85952fdc7f6184289d76b738d7e4ce16e79bcc1ea67ed3db1d335788cda5",
+    "docs/reviews/architecture-final-f2-2026-10-26.md": "6fc5e680a6a971ea6567e61955bdcd56b406e429073378a0454156aa6a9277cb",
+    "src/application/tasks/roleExecutor.ts": "85e6eb1794b99e1175e4e0832c88a7cb08325f2d9f3bc5a4868599000a8317b9",
+    "tests/unit/tasks-executors.test.ts": "74de0bd11d13d31ac124f96191cc4329d7dccc7755661be4b09f9c31539fcf05"
+  },
+  "protectedSha256": {
+    "src/core/render/mathRender.ts": "15cab9eb9145f28c4cb80fd792ab5f25fcbbb7a4756ff448282c75e7e2b03e00",
+    "src/core/render/mathJaxAdapter.ts": "77e52f84eb76e823eaec632c884320d4be395c1bd774f036f3ff7377dce3bac9",
+    "src/core/render/pagedJsAdapter.ts": "d194b30105ca6946a320f068441e5a067b9dd5fcc32342fa7a13ea332a945dc4",
+    "docs/contracts/architecture-runtime-budget.json": "7aef81baead0634fe86b7e04db33066cbc60b2879057ba1f69db4fc95547b893",
+    "docs/acceptance/architecture-a0-baseline.json": "1f74cdbe5b09713f1199c1c946b57ecc52bab30ff304c8a8052b3010720d3403"
+  },
+  "tags": [
+    "7dd7b1b21d375772eba5cd9af63f3f1e989ebd7f refs/tags/0.9",
+    "fb1618011a4df013de0334fe54c832983977e8e3 refs/tags/0.9.1",
+    "b55edda904c24a1484e857cfd8aef3f1df323d9d refs/tags/0.9.2"
+  ],
+  "pushed": false,
+  "extraLogSha256": {
+    "final-f2-repro": "cfec0a46e13c909fcde92c357767842b1180dc6a48d565dbd9c1e62b5705b157",
+    "final-f2-repro-unit": "dbeb58d4f86d9314f995cde0ddfd7780ae93dd4f0265bc84ca941e90116c5189",
+    "final-f2-target": "04b41c4c049bbaa0f57f62500a47ef9d2202fcb176c31b3f3efe31e97d81357f",
+    "final-f2-install": "4bd4fed45946bed46f1964812ab5fdc94426230ac6208e54653fa6e65c108731"
+  }
+}

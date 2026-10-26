@@ -42,7 +42,10 @@ export class RoleExecutor{
   const parsed=executorMessageSchema.safeParse(raw);
   if(!parsed.success){this.fail(slot,run,'Invalid worker message');return}
   const message=parsed.data;if(!sameExecution(message.execution,run.identity))return;
-  if(run.deadlines?.check()&&(message.type==='start'||message.type==='progress'))return;
+  const expired=run.deadlines?.check();
+  // Deadline expiry may synchronously stop the adapter and reenter receive with its stop proof.
+  if(this.installed!==slot||slot.run!==run||run.settled)return;
+  if(expired&&(message.type==='start'||message.type==='progress'))return;
   if(message.type==='stop-ack'&&(!run.stopping||message.proof==='terminated'&&slot.adapter.cancellation!=='external')){this.fail(slot,run,'Invalid stop receipt');return}
   if(message.type==='error'&&message.code==='host'){run.invalidated=true;slot.blocked=true}
   if(message.type==='result'||message.type==='error'||message.type==='stop-ack'){
