@@ -1,0 +1,20 @@
+{
+  "parentCommit": "fea23dd32d7bc72329ce59265477a23b61244ac4",
+  "unitTests": 314,
+  "chromiumTests": 76,
+  "systemSaveDialogValidated": false,
+  "windowsBlankNameResolved": false,
+  "scope": "Pass accepted export name into frozen PDF delivery title; does not control system PDF drivers",
+  "logSha256": {
+    "pdf-title-check": "e41fb74dfb92e6bda96daab49c4b95a9598e829b5f5043c3a2be1bcae5bfb8d1",
+    "pdf-title-e2e": "8fe9e1b4c3b296dd67ec7f0ed4410f69f5fc6df9acac6d4cd3486ba9c62f9779"
+  },
+  "changedFileSha256": {
+    "docs/reviews/pdf-export-filename-2026-10-26.md": "9d2ea821adb4a3bc1c683672f9debcbb8f867342ac858b1f3e6964e646cccb93",
+    "src/application/exports/exportService.ts": "05b634f0917d452174d5d9c1f2b590beebeb859c9a328d46163b66a9ab0d093f",
+    "src/core/export/pdfExporter.ts": "ee6a9abe60226e3589a48990ad41bacda88642435abaae471060286e0ed60c2c",
+    "tests/e2e/pdf-export.spec.ts": "178117b91a02d25a9e4d0dc90c9a3167d40a5e63fb5d58312bbaf53aa53172ac",
+    "tests/unit/export-service.test.ts": "85c281c913045e36526f226b1fd29bd647f890eb961599f9962cb4154465ada4",
+    "tests/unit/pdf-export.test.ts": "828aa0aafa1dcbcb8243f15327f9782dbbe4ee2afde385c30cfed6da55fe51a7"
+  }
+}
