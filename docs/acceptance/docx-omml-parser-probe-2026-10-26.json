@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fraction",
+    "source": "\\frac{a}{b}",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "scripts",
+    "source": "x_i^2",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "radical",
+    "source": "\\sqrt[3]{x}",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "sum",
+    "source": "\\sum_{i=1}^{n} i",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "matrix",
+    "source": "\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "cases",
+    "source": "\\begin{cases}x&x>0\\\\-x&x\\le0\\end{cases}",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "aligned",
+    "source": "\\begin{aligned}a&=b\\\\c&=d\\end{aligned}",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "macro",
+    "source": "\\newcommand{\\RR}{\\mathbb{R}}\\RR",
+    "parsed": false,
+    "message": "Error: latexToMath: unknown command \\newcommand, at character 1 of \"\\newcommand{\\RR}{\\mathbb{R}}\\R…\""
+  },
+  {
+    "id": "color",
+    "source": "\\color{red}{x}",
+    "parsed": true,
+    "components": 1
+  },
+  {
+    "id": "unknown",
+    "source": "\\unknowncommand{x}",
+    "parsed": false,
+    "message": "Error: latexToMath: unknown command \\unknowncommand, at character 1 of \"\\unknowncommand{x}\""
+  }
+]

@@ -86,6 +86,10 @@ Shiki候选4.5.0尚未安装，可对比JavaScript正则引擎与WASM引擎的�
 
 参考：[Shiki性能指南](https://shiki.style/guide/best-performance)、[CodeMirror架构指南](https://codemirror.net/docs/guide/)。
 
+### 4.4 DOCX原生公式后续规划（2026-10-26）
+
+新增[OMML规划](docx-omml-implementation-plan-2026-10-26.md)：优先评估现有docx 9.14.0的docx/math、latexToMath与MathJax MathML适配，不升级MathJax、不重写预览语法。O0—O5依次为诊断汇总、路线PoC、基础/复杂结构、生产接入及外部阅读器验收；全部为后续规划。当前少量解析探针不等于OMML可编辑/视觉已验收。现有公式图片降级及明确接受仍保留，不能直接删除警告来宣称原生公式实现。
+
 ## 5. 基础依赖与可清理项
 
 hash.js发布时间较早，替换可考虑@noble/hashes候选2.4.0，但须比较普通HTTP可用性、SHA-256输出一致性、类型、包体和供应链成本。随机ID继续使用randomUUID/getRandomValues适配；密码哈希不能替代随机ID或资产校验。即使移除直接依赖，docx等传递依赖仍可能保留hash.js。参考：[noble-hashes](https://github.com/paulmillr/noble-hashes)。

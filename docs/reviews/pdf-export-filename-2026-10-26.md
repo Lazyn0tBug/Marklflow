@@ -1,6 +1,6 @@
 # PDF导出名称传递及系统保存边界
 
-日期：2026-10-26；分支architecture-refactor；基线b77267b。用户反馈Windows系统Microsoft Print to PDF保存名为空，macOS系统PDF保存带默认名称；两端均使用应用既有系统交付路径，不能假设用户可选择应用未提供的另一条PDF路径。
+日期：2026-10-26；分支architecture-refactor；基线fea23dd。用户反馈Windows系统Microsoft Print to PDF保存名为空，macOS系统PDF保存带默认名称；两端均使用应用既有系统交付路径，不能假设用户可选择应用未提供的另一条PDF路径。
 
 代码核对确认：ExportService已冻结fileName，但PDF分支未传给生成器，生成器仅使用文档meta.title。因此应用自定义导出名称此前对PDF标题无效，与其他格式的名称选项不一致。
 

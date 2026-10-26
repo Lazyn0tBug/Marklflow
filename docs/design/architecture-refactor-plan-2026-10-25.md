@@ -1,5 +1,7 @@
 # MarkFlow 架构重构方案：文档任务管理与平台适配
 
+输出后续规划补充（2026-10-26）：[OMML原生公式方案](docx-omml-implementation-plan-2026-10-26.md)已制定，尚未生产接入；重构路线范围不变。PDF所选名称传入交付文档标题，系统PDF驱动自动填名仍有平台限制，见[名称说明](../reviews/pdf-export-filename-2026-10-26.md)。
+
 最终审查补充（2026-10-26）：F1资源包源文保真及F2执行器结算守卫已修复；完整范围、需求一致性及验证见[最终审查记录](../reviews/architecture-final-f2-2026-10-26.md)。历史进度以最新补充为准，仍未推送、不升级MathJax、不替换Paged.js。
 
 本步实施补充（2026-10-26）：V2已审查验证，见[V2执行记录](../reviews/architecture-v2-implementation-2026-10-26.md)。历史进度条目以最新补充为准。
