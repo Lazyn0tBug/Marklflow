@@ -1,3 +1,6 @@
+import {paginatePreparedContent} from '../../src/core/render/htmlPaginator';
+import {htmlArtifact} from './export-fixtures';
+import corpus from '../fixtures/export-source/corpus.json';
 import {afterEach,beforeEach,it,expect,vi} from 'vitest';
 const state=vi.hoisted(()=>({calls:[] as string[],hold:false,finish:()=>{},reported:1,pages:1}));
 vi.mock('pagedjs',()=>({Previewer:class{
@@ -27,4 +30,9 @@ it('holds active pagination through cancellation and starts the next only after 
 });
 it('rejects incomplete page counts instead of publishing a partial A4 artifact',async()=>{
  state.reported=2;await expect(paginateDocument(doc('INCOMPLETE'))).rejects.toThrow('数量');state.reported=1;expect((await paginateDocument(doc('RECOVERED'))).total).toBe(1);
+});
+
+it('lays out authoritative HTML without reading the incompatible editable source fixture',async()=>{
+ const source=doc('EDITABLE_SOURCE');source.markdown=corpus.isolation.markdown;const input=htmlArtifact(corpus.isolation.html,source);
+ const result=await paginatePreparedContent(input,undefined,{priority:'export'});expect(result.html).toContain(corpus.isolation.expectedText);expect(result.html).not.toContain(corpus.isolation.excludedText);expect(state.calls).toHaveLength(1);expect(result.html).toContain('start="3"');
 });

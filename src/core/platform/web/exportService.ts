@@ -1,3 +1,5 @@
+import {prepareExportContent} from '../../export/exportContent';
+import {encodeSourcePayload} from '../../storage/storage';
 import {ExportService} from '../../../application/exports/exportService';
 import {generatePdfHtml} from '../../export/pdfExporter';
 import {generateMarkdownBundle} from '../../export/markdownBundle';
@@ -11,4 +13,7 @@ export function downloadBlob(blob:Blob,name:string):void{
  finally{link.remove();URL.revokeObjectURL(url)}
 }
 /** Shared across modal close/reopen; the user operation is independent of preview/Tab state. */
-export const webExportService=new ExportService({generatePdfHtml,generateMarkdownBundle,generateHtml:generateExportHtml,generateDocx:exportDocumentToDocx,download:downloadBlob,print:printFrozenHtml});
+export const webExportService=new ExportService({generatePdfHtml:async(doc,options)=>generatePdfHtml((await prepareExportContent(doc,options)).artifact,{title:options.title}),generateMarkdownBundle,generateHtml:async(doc,options)=>{
+ const prepared=await prepareExportContent(doc,options);
+ return generateExportHtml(prepared.artifact,options.includeEditablePayload?{editablePayload:encodeSourcePayload(prepared.document)}:{});
+},generateDocx:exportDocumentToDocx,download:downloadBlob,print:printFrozenHtml});

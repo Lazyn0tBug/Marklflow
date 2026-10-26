@@ -1,0 +1,24 @@
+{
+  "step": "EX-H2a",
+  "baseline": "ce21820",
+  "managedSources": 178,
+  "unitTests": 329,
+  "chromiumTests": 83,
+  "logs": [
+    {
+      "path": "D:\\codex\\ex-h2a-check-final.log",
+      "sha256": "3be4c653273ab244a87f6e8061ec6624e6738e093657dbb69dad985f49f9e8af",
+      "exitCode": 0
+    },
+    {
+      "path": "D:\\codex\\ex-h2a-e2e.log",
+      "sha256": "a6c6c42b1a64d2cec0922cc8730ea830ec3528f6cd3ab31e43972af12e9b68cc",
+      "exitCode": 0
+    }
+  ],
+  "noDependencyChange": true,
+  "remaining": [
+    "EX-H2b DOCX/HTML diagnostics",
+    "EX-H2c single preparation and source isolation"
+  ]
+}

@@ -1,3 +1,4 @@
+import {throwIfAborted} from './renderCancellation';
 import {mathExpressions} from '../parse/markdown';
 import {parseMarkdownDocument} from './markdownHtml';
 import { prepareMath } from './mathRender';
@@ -8,7 +9,7 @@ import { sanitizeDocumentHtml,escapeHtml,rewriteFragments } from './htmlPolicy';
 export interface RenderDiagnostic {nodeId:string;message:string;severity:'error'|'warning'}
 export interface DocumentArtifact {html:string;diagnostics:RenderDiagnostic[]}
 let sequence=0;
-export function throwIfAborted(signal?:AbortSignal):void {if(signal?.aborted)throw new DOMException('已取消','AbortError')}
+export {throwIfAborted} from './renderCancellation';
 export function uniqueSvgIds(root:HTMLElement):void {
  for(const svg of root.querySelectorAll('svg')){
   if(svg.parentElement?.closest('svg'))continue;

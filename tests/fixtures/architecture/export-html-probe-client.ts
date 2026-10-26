@@ -1,3 +1,6 @@
+import {generateExportHtml} from '../../../src/core/export/htmlExporter';
+import {generatePdfHtml} from '../../../src/core/export/pdfExporter';
+import {exportHtmlSchema} from '../../../src/core/model/exportHtml';
 import {prepareExportContent} from '../../../src/core/export/exportContent';
 import {createNewDocument} from '../../../src/core/storage/storage';
 import {apiObject,apiPromise} from '../../../src/core/platform/externalApi';
@@ -31,5 +34,10 @@ void(async()=>{try{
   const {artifact}=await pending;
   assetReport={reads,assets:artifact.assets.length,title:artifact.meta.title,images:(artifact.html.match(/data:image\/png;base64,/g)||[]).length,hash:artifact.assets[0]?.sha256,immutable:Object.isFrozen(artifact.assets[0]),size:artifact.presentation.variables['--mf-size']};
  }finally{window.fetch=originalFetch}
- if(!output)throw new Error('No report');output.textContent=JSON.stringify({reports,assetReport,baselineRestored:startup.document===baseline&&startup.input===baselineInput,dom:sharedDom.snapshot(),secure:isSecureContext,version:engine.version});output.setAttribute('data-state','ready');
+ const seed=await prepareExportContent({...createNewDocument('Isolation'),markdown:'# seed'});
+ const canonical=exportHtmlSchema.parse({...seed.artifact,html:corpus.isolation.html});
+ const htmlRoot=document.createElement('html');htmlRoot.innerHTML=await generateExportHtml(canonical,{editablePayload:btoa(encodeURIComponent(corpus.isolation.markdown))});
+ const pdfRoot=document.createElement('html');pdfRoot.innerHTML=await generatePdfHtml(canonical);
+ const isolation={htmlText:htmlRoot.querySelector('article')?.textContent||'',pdfText:pdfRoot.querySelector('body')?.textContent||''};
+ if(!output)throw new Error('No report');output.textContent=JSON.stringify({reports,assetReport,isolation,baselineRestored:startup.document===baseline&&startup.input===baselineInput,dom:sharedDom.snapshot(),secure:isSecureContext,version:engine.version});output.setAttribute('data-state','ready');
  }catch(error){if(output){output.textContent=String(error);output.setAttribute('data-state','error')}}})();

@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {z} from 'zod';
 const math=z.object({id:z.string(),line:z.string(),end:z.string(),text:z.string(),display:z.boolean(),hasSvg:z.boolean(),hasHidden:z.boolean()});
-const reportSchema=z.object({reports:z.array(z.object({mathMode:z.enum(['mathml','svg']),math:z.array(math),hiddenInvisible:z.boolean(),html:z.string(),other:z.string(),repeat:z.array(z.string()),unknown:z.string(),recovered:z.boolean(),config:z.string(),serialized:z.number(),frozen:z.boolean(),sourceAttached:z.boolean()})),assetReport:z.object({reads:z.number(),assets:z.number(),title:z.string(),images:z.number(),hash:z.string(),immutable:z.boolean(),size:z.string()}),baselineRestored:z.boolean(),secure:z.boolean(),version:z.string(),dom:z.object({waiting:z.array(z.string()),blocked:z.boolean()})});
+const reportSchema=z.object({isolation:z.object({htmlText:z.string(),pdfText:z.string()}),reports:z.array(z.object({mathMode:z.enum(['mathml','svg']),math:z.array(math),hiddenInvisible:z.boolean(),html:z.string(),other:z.string(),repeat:z.array(z.string()),unknown:z.string(),recovered:z.boolean(),config:z.string(),serialized:z.number(),frozen:z.boolean(),sourceAttached:z.boolean()})),assetReport:z.object({reads:z.number(),assets:z.number(),title:z.string(),images:z.number(),hash:z.string(),immutable:z.boolean(),size:z.string()}),baselineRestored:z.boolean(),secure:z.boolean(),version:z.string(),dom:z.object({waiting:z.array(z.string()),blocked:z.boolean()})});
 for(const environment of ['development','built','http'] as const)test(`canonical export HTML retains same-compilation math and frozen resources in ${environment}`,async({page},testInfo)=>{
  if(environment==='http')await page.route('http://markflow-export.test/**',async route=>{const url=new URL(route.request().url()),response=await route.fetch({url:'http://127.0.0.1:4176'+url.pathname+url.search});await route.fulfill({response})});
  const origin=environment==='development'?'http://127.0.0.1:4175':environment==='built'?'http://127.0.0.1:4176':'http://markflow-export.test';
@@ -15,6 +15,7 @@ for(const environment of ['development','built','http'] as const)test(`canonical
   expect(item.math.slice(-3).map(node=>node.text.trim())).toEqual(['a','c','b']);expect(item.unknown).toContain('公式解析失败');expect(item.config).toMatch(/^[a-f0-9]{64}$/);
   expect(item.html).toContain('start="3"');expect(item.html).toContain('colspan="2"');expect(item.html).toContain('language-typescript');expect(item.html).not.toContain('<script');expect(item.html).toContain('href="#mf_author_%E7%9B%AE%E6%A0%87"');
  }
+ for(const content of Object.values(report.isolation)){expect(content).toContain('HTML权威标题');expect(content).not.toContain('编辑源标题')}
  expect(report.reports[1]?.math.map(node=>node.text.replace(/\s+/g,''))).toEqual(report.reports[0]?.math.map(node=>node.text.replace(/\s+/g,'')));
  if(environment==='http')expect(report.secure).toBe(false);
 });

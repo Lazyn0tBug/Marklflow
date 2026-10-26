@@ -1,3 +1,4 @@
+import {prepareExportContent} from '../../src/core/export/exportContent';
 import {expect,it,vi} from 'vitest';
 vi.mock('../../src/core/render/mermaidRender',()=>({renderMermaidDiagram:vi.fn(async()=>'<svg viewBox="0 0 10 10"><defs><path id="glyph" d="M0 0L1 1"/></defs><use href="#glyph"/></svg>'),mermaidError:()=>'<pre>error</pre>'}));
 import {renderDocument} from '../../src/core/render/documentRenderer';
@@ -13,7 +14,7 @@ it('completes diagrams and gives SVG references a unique scope',async()=>{
 it('rejects cancelled preview work',async()=>{const c=new AbortController();c.abort();await expect(renderDocument('# x','mathml',c.signal)).rejects.toThrow('已取消')});
 it('freezes source before an async export yields',async()=>{
  const doc=createNewDocument('冻结');doc.markdown='# 旧版本';
- const promise=generateExportHtml(doc);doc.markdown='# 新版本';
+ const promise=prepareExportContent(doc).then(prepared=>generateExportHtml(prepared.artifact));doc.markdown='# 新版本';
  const html=await promise;expect(html).toContain('旧版本');expect(html).not.toContain('新版本');
 });
 
@@ -30,7 +31,7 @@ it('does not report complete SVG when a required glyph is missing',async()=>{
 });
 
 it('freezes output options along with source before asynchronous work',async()=>{
- const doc=createNewDocument('选项');doc.markdown='# 内容';const options={title:'冻结标题',includeEditablePayload:true};
- const pending=generateExportHtml(doc,options);options.title='后续标题';options.includeEditablePayload=false;
+ const doc=createNewDocument('选项');doc.markdown='# 内容';const options={title:'冻结标题',editablePayload:'frozen-source'};
+ const prepared=await prepareExportContent(doc);const pending=generateExportHtml(prepared.artifact,options);options.title='后续标题';options.editablePayload='';
  const html=await pending;expect(html).toContain('<title>冻结标题</title>');expect(html).toContain('id="markflow-source-payload"');
 });

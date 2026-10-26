@@ -12,3 +12,5 @@ export function documentStyle(theme:ThemeSpec=DEFAULT_THEME):Record<string,strin
 export function documentStyleAttribute(theme:ThemeSpec):string {
  return escapeHtml(Object.entries(documentStyle(theme)).map(([k,v])=>k+':'+v).join(';'));
 }
+
+export function variableStyleAttribute(variables:Readonly<Record<string,string>>):string {return escapeHtml(Object.entries(variables).map(([key,value])=>key+':'+value).join(';'))}
