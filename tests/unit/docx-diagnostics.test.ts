@@ -1,3 +1,4 @@
+import {prepareExportContent} from '../../src/core/export/exportContent';
 import {diagnosticArtifact} from './export-fixtures';
 import {it,expect} from 'vitest';
 import {groupDocxIssues,inspectDocx,DOCX_FORMULA_IMAGE_MESSAGE} from '../../src/core/export/outputCapabilities';
@@ -21,8 +22,8 @@ it('cannot promote raw author MathML to generated math using forged data markers
  expect(input.html).not.toContain('data-mf-math-id');expect(inspectDocx(input).some(issue=>issue.adaptation==='unsupported'&&issue.message.includes('原始MathML'))).toBe(true);
 });
 
-it('retains a blocker in canonical HTML when sanitization removes an orphan MathML fragment',()=>{
- const input=diagnosticArtifact('<mrow><mi>x</mi></mrow>');expect(inspectDocx(input).some(issue=>issue.adaptation==='unsupported'&&issue.message.includes('MathML'))).toBe(true);
+it('retains a blocker in canonical HTML when sanitization removes an orphan MathML fragment',async()=>{
+ const input=await prepareExportContent({...createNewDocument('Orphan MathML'),markdown:'<mrow><mi>x</mi></mrow>'});expect(input.html).toContain('data-mf-author-mathml');expect(inspectDocx(input).some(issue=>issue.adaptation==='unsupported'&&issue.message.includes('MathML'))).toBe(true);
 });
 
 it('keeps distinct formula occurrences on the same source line',()=>{expect(inspectDocx(diagnosticArtifact('$a$ and $a$')).filter(issue=>issue.message===DOCX_FORMULA_IMAGE_MESSAGE)).toHaveLength(2)});

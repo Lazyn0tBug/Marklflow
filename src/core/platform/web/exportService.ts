@@ -1,3 +1,4 @@
+import {inspectDocx} from '../../export/outputCapabilities';
 import {prepareExportContent} from '../../export/exportContent';
 import {encodeEditableSource} from '../../export/sourceAttachment';
 import {ExportService} from '../../../application/exports/exportService';
@@ -13,7 +14,4 @@ export function downloadBlob(blob:Blob,name:string):void{
  finally{link.remove();URL.revokeObjectURL(url)}
 }
 /** Shared across modal close/reopen; the user operation is independent of preview/Tab state. */
-export const webExportService=new ExportService({generatePdfHtml:async(doc,options)=>generatePdfHtml((await prepareExportContent(doc,options)),{title:options.title}),generateMarkdownBundle,generateHtml:async(doc,options)=>{
- const prepared=await prepareExportContent(doc,options);
- return generateExportHtml(prepared,options.includeEditablePayload?{editablePayload:await encodeEditableSource(doc,prepared)}:{});
-},generateDocx:async(doc,options)=>exportDocumentToDocx((await prepareExportContent(doc,{mathMode:'svg',allowRemoteAssets:options.allowRemoteAssets})),{allowSourceFallback:options.allowSourceFallback}),download:downloadBlob,print:printFrozenHtml});
+export const webExportService=new ExportService({prepare:prepareExportContent,inspectDocx,encodeEditableSource,generatePdfHtml,generateMarkdownBundle,generateHtml:generateExportHtml,generateDocx:exportDocumentToDocx,download:downloadBlob,print:printFrozenHtml});

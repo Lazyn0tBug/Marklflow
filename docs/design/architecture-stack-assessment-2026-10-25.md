@@ -1,6 +1,6 @@
 # 架构重构技术栈评估
 
-EX实施进度（2026-10-26）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。格式端口收紧EX-H2及EX-W/EX-T仍未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
+EX实施进度（2026-10-26）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W/EX-T仍未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
 
 轻量PDF路线（当前有效）：不封装Chromium、不采用Puppeteer，保留Paged.js；Web使用浏览器原生输出，Tauri优先验证系统WebView。历史隔离研究中的随包浏览器候选不进入当前实施范围；不要求Web直接生成PDF字节，系统默认文件名限制单列。
 

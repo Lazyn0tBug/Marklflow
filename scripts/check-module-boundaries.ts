@@ -4,6 +4,7 @@ import {resolve,relative,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {builtinModules} from 'node:module';
 const pureRoots=['src/core/model/','src/core/parse/','src/core/policy/'];
+const htmlFormats=new Set(['src/core/export/htmlexporter.ts','src/core/export/pdfexporter.ts','src/core/export/docxexporter.ts','src/core/export/outputcapabilities.ts','src/core/render/htmlpaginator.ts']);
 const taskRoot='src/application/tasks/';
 const exportRoot='src/application/exports/';
 const sessionRoot='src/application/sessions/';
@@ -17,7 +18,9 @@ function portable(file:string){return file.replaceAll('\\','/')}
 export function checkModuleSource(file:string,source:string,root=process.cwd()):string[]{
  const failures:string[]=[],path=portable(relative(root,resolve(root,file))).toLowerCase(),corePure=pureRoots.some(p=>path.startsWith(p)),taskPure=path.startsWith(taskRoot),exportPure=path.startsWith(exportRoot),sessionPure=path.startsWith(sessionRoot),workspacePure=path.startsWith(workspaceRoot),cachePure=path.startsWith(cacheRoot),applicationPure=taskPure||exportPure||sessionPure||workspacePure||cachePure,pure=corePure||applicationPure;
  const tree=parse(source,{sourceType:'module',plugins:['typescript',...(file.endsWith('tsx')?['jsx' as const]:[])],createImportExpressions:true});
+ const htmlFormat=htmlFormats.has(path);
  function dependency(name:string,typeOnly=false){
+  if(htmlFormat&&(/(?:^|\/)(?:remark-[^/]*|rehype-[^/]*|unified|mathjax|mermaid)(?:\/|$)/.test(name)||/(?:parse\/|documentRenderer|documentPaginator|mathRender|mathJaxAdapter|exportContent|markdownBundle|sourceAttachment|storage|model\/document$)/i.test(name)))failures.push('HTML format adapter cannot depend on source parsing/preparation: '+name);
   if(name.startsWith('node:')||builtins.has(name)||name==='bun'||name.startsWith('bun:'))failures.push('browser/core cannot import '+name);
   if(name.startsWith('@tauri-apps/')&&!['src/core/platform/tauri/','src/platform/tauri/'].some(p=>path.startsWith(p)))failures.push('native SDK must stay inside a platform adapter: '+name);
   if(!pure)return;
@@ -35,7 +38,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
   if('type'in node){
    if(['ImportDeclaration','ExportNamedDeclaration','ExportAllDeclaration'].includes(String(node.type))&&'source'in node){const name=literal(node.source);if(name!==undefined)dependency(name,'importKind'in node&&node.importKind==='type'||'exportKind'in node&&node.exportKind==='type')}
    if(node.type==='TSImportType'&&'argument'in node){const name=literal(node.argument);if(name!==undefined)dependency(name,true)}
-   if(node.type==='ImportExpression'&&'source'in node){const name=literal(node.source);if(name!==undefined)dependency(name);else if(pure)failures.push('pure module cannot use computed dynamic import')}
+   if(node.type==='ImportExpression'&&'source'in node){const name=literal(node.source);if(name!==undefined)dependency(name);else if(pure||htmlFormat)failures.push('pure/HTML format module cannot use computed dynamic import')}
    if(['MemberExpression','OptionalMemberExpression'].includes(String(node.type))&&'object'in node&&node.object&&typeof node.object==='object'&&'type'in node.object&&node.object.type==='Identifier'&&'name'in node.object&&['globalThis','self','window'].includes(String(node.object.name))&&'property'in node){
     const prop=node.property;
     const name=literal(prop)??(prop&&typeof prop==='object'&&'type'in prop&&prop.type==='Identifier'&&'name'in prop?String(prop.name):undefined);

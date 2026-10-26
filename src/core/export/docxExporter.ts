@@ -1,3 +1,4 @@
+import {sharedDom} from '../platform/web/sharedDom';
 import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat,Bookmark,InternalHyperlink,type ParagraphChild,type IParagraphOptions,type INumberingOptions,PageBreak} from 'docx';
 import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {inspectDocx,groupDocxIssues} from './outputCapabilities';
@@ -46,13 +47,13 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
  const frozenOptions={...options};
  const issues=inspectDocx(input);
  if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(groupDocxIssues(issues).map(group=>group.summary+'（'+group.issues[0]!.nodeId+'等，详情见导出窗口）').join('\n'));
+ const word=await sharedDom.step('export','engine',new AbortController().signal,async({resources})=>{
  const root=document.createElement('article');root.className='mf-document-shell mf-doc';
  for(const [name,value]of Object.entries(input.presentation.variables))root.style.setProperty(name,value);
  const m=input.presentation.page.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
  const context:InlineContext={bookmarks:new Map(),width:(210-m.left-m.right)*96/25.4,height:(297-m.top-m.bottom)*96/25.4-20};
  root.style.cssText+=';position:fixed;left:-20000px;top:0;width:'+context.width+'px;visibility:hidden';
- root.innerHTML=input.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');const stage=document.createElement('div'),style=document.createElement('style');style.textContent=input.presentation.css;stage.append(style,root);document.body.append(stage);
- try{
+ root.innerHTML=input.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');const stage=document.createElement('div'),style=document.createElement('style');style.textContent=input.presentation.css;stage.className='mf-docx-export-stage';resources.register('docx-export-stage','host',0,()=>stage.remove());stage.append(style,root);document.body.append(stage);
   await waitForLayout(root);
   for(const el of root.querySelectorAll('[id]'))if(!context.bookmarks.has(el.id))context.bookmarks.set(el.id,'mf_bookmark_'+context.bookmarks.size);
   const numbering:INumberingOptions['config'][number][]=[];
@@ -99,7 +100,7 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
    await flush();return out;
   }
   const children=await blocks([...root.childNodes]);
-  const word=new WordDocument({styles:{default:{document:{run:{font:(input.presentation.variables['--mf-font']||'').includes('Consolas')?'Consolas':(input.presentation.variables['--mf-font']||'').includes('Noto Serif')?'SimSun':'Microsoft YaHei',size:Math.round(Number.parseFloat(input.presentation.variables['--mf-size']||'15')*1.5)},paragraph:{spacing:{line:Math.round(Number.parseFloat(input.presentation.variables['--mf-leading']||'1.75')*240)}}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:twips(210),height:twips(297)},margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
-  return await Packer.toBlob(word);
- }finally{stage.remove()}
+  return new WordDocument({styles:{default:{document:{run:{font:(input.presentation.variables['--mf-font']||'').includes('Consolas')?'Consolas':(input.presentation.variables['--mf-font']||'').includes('Noto Serif')?'SimSun':'Microsoft YaHei',size:Math.round(Number.parseFloat(input.presentation.variables['--mf-size']||'15')*1.5)},paragraph:{spacing:{line:Math.round(Number.parseFloat(input.presentation.variables['--mf-leading']||'1.75')*240)}}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:twips(210),height:twips(297)},margin:{top:twips(m.top),right:twips(m.right),bottom:twips(m.bottom),left:twips(m.left)}}},children}]});
+ });
+ return Packer.toBlob(word);
 }

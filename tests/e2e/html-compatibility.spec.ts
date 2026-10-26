@@ -57,16 +57,16 @@ test('paginates long content without losing final text or source mappings',async
  await page.locator('.pagedjs_page').first().screenshot({path:info.outputPath('first-page.png')});
 });
 test('reports static DOCX mappings before explicit consent',async({page})=>{
- await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();
+ await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
  await expect(page.getByRole('region',{name:'DOCX 兼容性提示'})).toContainText('图片');
  await expect(page.getByRole('checkbox',{name:'接受图片静态化及语义重排'})).not.toBeChecked();
 });
 
 
 test('exports native DOCX structure with embedded formula and diagram pictures',async({page},info)=>{
- await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();
+ await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
  await page.getByRole('checkbox',{name:'接受图片静态化及语义重排'}).check();
- const event=page.waitForEvent('download');await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();const result=await event;
+ const event=page.waitForEvent('download');await page.getByRole('button',{name:'确认并导出',exact:true}).click();const result=await event;
  const file=info.outputPath('document.docx');await result.saveAs(file);
  const zip=await JSZip.loadAsync(await readFile(file));const xml=await zip.file('word/document.xml')!.async('string');
  expect(xml).toContain('正文结束');expect(xml).toContain('w:tbl');expect((xml.match(/<w:drawing>/g)||[]).length).toBeGreaterThanOrEqual(3);

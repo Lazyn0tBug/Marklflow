@@ -18,3 +18,15 @@ function implicitParameter(value){return value}
 const requiredString:string=null;
 function schemaOutput(input:unknown):DocumentRecord{return documentSchema.parse(input)}
 void indexedAccess;void optionalProperties;void implicitParameter;void requiredString;void schemaOutput;
+
+import type {ExportHtmlArtifact} from '../../src/core/model/exportHtml';
+import type {ExportPorts} from '../../src/application/exports/exportService';
+function htmlOnlyFormats(doc:DocumentRecord,html:ExportHtmlArtifact,ports:ExportPorts):void{
+ // @ts-expect-error: A source record is not a content format input.
+ void ports.generateDocx(doc,{allowSourceFallback:false});
+ // @ts-expect-error: Canonical content cannot be changed after acceptance.
+ html.html='different';
+ // @ts-expect-error: Editable Markdown does not exist in the format contract.
+ void html.markdown;
+}
+void htmlOnlyFormats;
