@@ -8,7 +8,7 @@ import { isTauri, saveExportBinaryOrText, exportPdfDirect } from '../../core/pla
  */
 
 import React, { useEffect, useState } from 'react';
-import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers, Save, GitBranch, Copy, Terminal } from 'lucide-react';
+import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers, Save } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 import { generateExportHtml } from '../../core/export/htmlExporter';
 import { exportDocumentToDocx } from '../../core/export/docxExporter';
@@ -20,7 +20,7 @@ interface ExportModalProps {
   mathMode: 'mathml' | 'svg';
 }
 
-export type ExportFormat = 'editable-html' | 'reading-html' | 'docx' | 'print-pdf' | 'markdown' | 'git-patch';
+export type ExportFormat = 'editable-html' | 'reading-html' | 'docx' | 'print-pdf' | 'markdown';
 
 export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode }) => {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('editable-html');
@@ -30,43 +30,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [copiedCode, setCopiedCode] = useState<boolean>(false);
-
-  const downloadStaticFile = async (name: string) => {
-    try {
-      setIsExporting(true);
-      const res = await fetch(`/${name}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setExportSuccess(`已成功下载 ${name}`);
-    } catch (err) {
-      setExportError(`下载失败: ${String(err)}`);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const copyPatchText = async () => {
-    try {
-      const res = await fetch('/bun-ci.patch');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      await navigator.clipboard.writeText(text);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-      setExportSuccess('已将 bun-ci.patch 补丁复制到剪贴板！');
-    } catch (err) {
-      setExportError(`复制失败: ${String(err)}`);
-    }
-  };
 
   useEffect(()=>{if(isOpen){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setExportError(null);setAllowSourceFallback(false);setAllowRemoteAssets(false)}},[isOpen,doc.id]);
   if (!isOpen) return null;
@@ -79,11 +42,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
     const safeName = fileName.trim() || 'MarkFlow-Document';
 
     try {
-      if (selectedFormat === 'git-patch') {
-        await downloadStaticFile('bun-ci.patch');
-        return;
-      }
-
       if (selectedFormat === 'print-pdf') {
         const frozen = await generateExportHtml(doc, { mathMode, allowRemoteAssets });
         if (isTauri()) {
@@ -279,125 +237,30 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </div>
               </button>
 
-              {/* Git 分支与差异补丁包 */}
-              <button
-                type="button"
-                onClick={() => setSelectedFormat('git-patch')}
-                className={`p-3 rounded-lg border text-left transition-all flex items-start gap-3 md:col-span-2 ${
-                  selectedFormat === 'git-patch'
-                    ? 'bg-neutral-800 border-purple-500 ring-1 ring-purple-500/30'
-                    : 'bg-neutral-950/50 border-neutral-800 hover:border-neutral-700'
-                }`}
-              >
-                <div className="p-2 rounded bg-purple-500/10 text-purple-400 shrink-0 mt-0.5">
-                  <GitBranch className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-1.5 font-medium text-xs text-neutral-100">
-                    Git 差异补丁与分支镜像 (Git Patch & Bundle)
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-900/60 text-purple-300 font-mono">10 Commits</span>
-                  </div>
-                  <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    包含当前 tauri 分支的完整 Git 补丁（.patch）、差异（.diff）与离线镜像（.bundle），可在任意本地终端一键合并或推送至远程。
-                  </p>
-                </div>
-              </button>
             </div>
           </div>
 
-          {/* Conditional Content: Git Patch Details or Capabilities Diagnostics */}
-          {selectedFormat === 'git-patch' ? (
-            <div className="space-y-3.5 p-4 rounded-xl bg-neutral-950/80 border border-purple-900/40">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
-                  <Terminal className="w-4 h-4 text-purple-400" />
-                  <span>已生成离线补丁产物（点击卡片即可在浏览器中直接下载）：</span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-purple-950 border border-purple-800/80 text-purple-300 font-mono">
-                  分支: tauri
-                </span>
-              </div>
-
-              {/* 快捷下载操作卡片 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => downloadStaticFile('bun-ci.patch')}
-                  disabled={isExporting}
-                  className="p-3.5 rounded-lg border border-teal-600/80 bg-teal-950/50 hover:bg-teal-900/70 text-left transition-all group cursor-pointer ring-1 ring-teal-500/40"
-                >
-                  <div className="text-xs font-semibold text-teal-200 flex items-center justify-between">
-                    <span>bun-ci.patch</span>
-                    <Download className="w-4 h-4 text-teal-400 group-hover:translate-y-0.5 transition-transform" />
-                  </div>
-                  <div className="text-[10px] text-neutral-300 mt-1 font-mono">2.5 KB · Git 格式完整补丁</div>
-                  <div className="text-[10px] text-teal-300/90 mt-0.5 font-medium">全平台切换至 Bun CI/CD 构建</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => downloadStaticFile('bun-ci.diff')}
-                  disabled={isExporting}
-                  className="p-3.5 rounded-lg border border-neutral-700/80 bg-neutral-900/60 hover:bg-neutral-800 text-left transition-all group cursor-pointer"
-                >
-                  <div className="text-xs font-medium text-neutral-200 flex items-center justify-between">
-                    <span>bun-ci.diff</span>
-                    <Download className="w-4 h-4 text-neutral-400 group-hover:translate-y-0.5 transition-transform" />
-                  </div>
-                  <div className="text-[10px] text-neutral-400 mt-1 font-mono">2.1 KB · 纯文本差异文件</div>
-                  <div className="text-[10px] text-neutral-400 mt-0.5">git apply 专用格式</div>
-                </button>
-              </div>
-
-              {/* 终端应用指南 */}
-              <div className="p-3 rounded-lg bg-neutral-900/90 border border-neutral-800 text-xs font-mono">
-                <div className="flex items-center justify-between text-neutral-400 mb-1.5 font-sans">
-                  <span>本地终端导入命令 (HEAD: e0c4e82)：</span>
-                  <button
-                    type="button"
-                    onClick={copyPatchText}
-                    className="flex items-center gap-1 text-[11px] text-teal-300 hover:text-teal-200 underline cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedCode ? '已复制 Patch！' : '复制 bun-ci.patch 全文'}</span>
-                  </button>
-                </div>
-                <pre className="text-[11px] text-neutral-300 leading-relaxed overflow-x-auto whitespace-pre p-2 bg-neutral-950 rounded border border-neutral-800/80">
-{`# 方案 1: 直接应用并提交 (推荐)
-git am < bun-ci.patch
-
-# 方案 2: 使用 git apply 应用差异
-git apply bun-ci.diff
-git commit -am "ci: migrate Tauri desktop build workflow and tauri.conf.json to Bun"
-
-# 推送后 GitHub Actions 将全面采用 Bun 构建，无 npm Windows 缺陷！
-git push origin tauri`}
-                </pre>
-              </div>
+          {/* Capabilities Diagnostics Box */}
+          <div className="p-3 rounded-lg bg-neutral-950/60 border border-neutral-800 text-xs">
+            <div className="flex items-center gap-2 font-medium text-neutral-300 mb-1">
+              <AlertTriangle className="w-3.5 h-3.5 text-teal-400" />
+              <span>当前格式排版特性与能力矩阵诊断</span>
             </div>
-          ) : (
-            /* Capabilities Diagnostics Box */
-            <div className="p-3 rounded-lg bg-neutral-950/60 border border-neutral-800 text-xs">
-              <div className="flex items-center gap-2 font-medium text-neutral-300 mb-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-teal-400" />
-                <span>当前格式排版特性与能力矩阵诊断</span>
-              </div>
-              <div className="text-[11px] text-neutral-400 space-y-0.5">
-                {selectedFormat === 'editable-html' && (
-                  <div>• 公式采用 <strong>{mathMode.toUpperCase()}</strong> 渲染；源载荷支持再次导入 MarkFlow 无损重构。</div>
-                )}
-                {selectedFormat === 'print-pdf' && (
-                  <div>• 打印使用冻结文档，等待图片/字体就绪；系统打印设置及实际分页须另行核对。</div>
-                )}
-                {selectedFormat === 'docx' && (
-                  <div>• 段落与表格映射为 Word 原生对象；公式和图表以图片输出，原始HTML按语义重排；须明确接受，不能原生编辑公式或保留交互。</div>
-                )}
-                {selectedFormat === 'reading-html' && (
-                  <div>• 页面内嵌自包含 CSS 与公式渲染，接收方无需安装任何插件或字体库即可阅读。</div>
-                )}
-              </div>
+            <div className="text-[11px] text-neutral-400 space-y-0.5">
+              {selectedFormat === 'editable-html' && (
+                <div>• 公式采用 <strong>{mathMode.toUpperCase()}</strong> 渲染；源载荷支持再次导入 MarkFlow 无损重构。</div>
+              )}
+              {selectedFormat === 'print-pdf' && (
+                <div>• 打印使用冻结文档，等待图片/字体就绪；系统打印设置及实际分页须另行核对。</div>
+              )}
+              {selectedFormat === 'docx' && (
+                <div>• 段落与表格映射为 Word 原生对象；公式和图表以图片输出，原始HTML按语义重排；须明确接受，不能原生编辑公式或保留交互。</div>
+              )}
+              {selectedFormat === 'reading-html' && (
+                <div>• 页面内嵌自包含 CSS 与公式渲染，接收方无需安装任何插件或字体库即可阅读。</div>
+              )}
             </div>
-          )}
+          </div>
 
           {exportSuccess && (
             <div className="p-2.5 rounded-lg bg-teal-950/50 border border-teal-800/80 text-xs text-teal-300 flex items-center gap-2">
@@ -446,8 +309,6 @@ git push origin tauri`}
               <Download className="w-4 h-4" />
               {isExporting
                 ? '正在生成...'
-                : selectedFormat === 'git-patch'
-                ? '下载 bun-ci.patch 补丁'
                 : selectedFormat === 'print-pdf'
                 ? (isTauri() ? '导出为 PDF 文件' : '唤起系统打印')
                 : '立即导出并保存'}
