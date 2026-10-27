@@ -31,3 +31,22 @@ test('native print invocation failure cleans the actual delivery frame and relea
  await page.goto('http://127.0.0.1:4176/tests/fixtures/architecture/web-native-pdf-probe.html');await page.locator('#svg').click();const output=page.locator('[data-state]');await expect(output).toHaveAttribute('data-state','error',{timeout:60000});
  const report:unknown=JSON.parse(await output.textContent()||'{}');expect(report).toMatchObject({error:'Error: native-handoff-failed',busy:false,remainingFrames:0,saveObservedByApplication:false});expect(report).not.toHaveProperty('result');await expect(page.locator('iframe[title="PDF导出文档"]')).toHaveCount(0);
 });
+
+test('leaving during native frame readiness aborts delivery and removes the host',async({page})=>{
+ await page.addInitScript(()=>document.addEventListener('load',event=>{
+  if(!(event.target instanceof HTMLIFrameElement)||event.target.title!=='PDF导出文档')return;
+  const frame=event.target;frame.contentWindow!.print=()=>{frame.setAttribute('data-unexpected-print','true')};
+  Object.defineProperty(frame.contentDocument!.fonts,'ready',{value:new Promise<void>(()=>{})});
+  setTimeout(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})),0);
+ },true));
+ await page.goto('http://127.0.0.1:4176/tests/fixtures/architecture/web-native-pdf-probe.html');await page.locator('#svg').click();
+ await expect(page.locator('[data-state]')).toHaveAttribute('data-state','error',{timeout:5000});await expect(page.locator('iframe[title="PDF导出文档"]')).toHaveCount(0);
+ const report:unknown=JSON.parse(await page.locator('[data-state]').textContent()||'{}');expect(report).toMatchObject({busy:false,remainingFrames:0,error:'Error: PDF导出页面已离开'});expect(report).not.toHaveProperty('result');
+});
+
+test('page departure after native handoff removes the delivery frame without claiming a saved file',async({page})=>{
+ await page.addInitScript(()=>document.addEventListener('load',event=>{if(event.target instanceof HTMLIFrameElement&&event.target.title==='PDF导出文档')event.target.contentWindow!.print=()=>{}},true));
+ await page.goto('http://127.0.0.1:4176/tests/fixtures/architecture/web-native-pdf-probe.html');await page.locator('#svg').click();await expect(page.locator('[data-state]')).toHaveAttribute('data-state','completed',{timeout:60000});
+ await expect(page.locator('iframe[title="PDF导出文档"]')).toHaveCount(1);await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));await expect(page.locator('iframe[title="PDF导出文档"]')).toHaveCount(0);
+ const report:unknown=JSON.parse(await page.locator('[data-state]').textContent()||'{}');expect(report).toMatchObject({saveObservedByApplication:false,result:{status:'completed'}});
+});
