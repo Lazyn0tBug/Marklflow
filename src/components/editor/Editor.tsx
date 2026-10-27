@@ -4,7 +4,7 @@
  * 支持与 HTML 渲染视窗双向精准同步滚动与联动锁保护
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { generateMarkdownTable } from '../../core/parser/markdownParser';
 
 interface EditorProps {
@@ -33,9 +33,37 @@ export const Editor: React.FC<EditorProps> = ({
   const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const activeTextareaRef = externalTextareaRef || internalTextareaRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [lineHeights, setLineHeights] = useState<number[]>([]);
 
   const lines = value.split('\n');
   const lineCount = lines.length;
+
+  // 测量每一行在自动折行 (wrap) 状态下的实际像素高度，保证行号与正文精确对齐
+  useEffect(() => {
+    const textarea = activeTextareaRef.current;
+    if (!textarea) return;
+
+    const updateHeights = () => {
+      const measure = measureRef.current;
+      if (!measure) return;
+      const clientWidth = textarea.clientWidth;
+      if (clientWidth <= 0) return;
+      measure.style.width = `${clientWidth}px`;
+      const children = measure.children;
+      const heights: number[] = [];
+      for (let i = 0; i < children.length; i++) {
+        heights.push((children[i] as HTMLElement).offsetHeight || 24);
+      }
+      setLineHeights(heights);
+    };
+
+    updateHeights();
+
+    const ro = new ResizeObserver(updateHeights);
+    ro.observe(textarea);
+    return () => ro.disconnect();
+  }, [value, lineCount]);
 
   // 同步行号及向外通知编辑器滚动进度
   const handleScroll = () => {
@@ -119,7 +147,26 @@ export const Editor: React.FC<EditorProps> = ({
             className="w-12 py-3 px-1 text-right select-none bg-neutral-950 text-neutral-600 font-mono text-xs border-r border-neutral-900 overflow-hidden leading-6 shrink-0"
           >
             {Array.from({ length: lineCount }).map((_, i) => (
-              <div key={i}>{i + 1}</div>
+              <div
+                key={i}
+                style={{
+                  height: lineHeights[i] ? `${lineHeights[i]}px` : '24px',
+                  lineHeight: '24px',
+                }}
+              >
+                {i + 1}
+              </div>
+            ))}
+          </div>
+
+          {/* Hidden measurement container to calculate wrapped line heights */}
+          <div
+            ref={measureRef}
+            aria-hidden="true"
+            className="absolute left-[-9999px] top-0 pointer-events-none opacity-0 select-none p-3 font-mono text-sm leading-6 box-border break-words [overflow-wrap:anywhere] whitespace-pre-wrap"
+          >
+            {lines.map((line, i) => (
+              <div key={i}>{line || '\u00A0'}</div>
             ))}
           </div>
 
@@ -130,14 +177,14 @@ export const Editor: React.FC<EditorProps> = ({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
-            wrap="off"
+            wrap="soft"
             aria-label="Markdown 编辑器"
             spellCheck={false}
             autoCapitalize="off"
             autoComplete="off"
             autoCorrect="off"
             placeholder="在此键入 Markdown 正文..."
-            className="flex-1 h-full p-3 resize-none bg-transparent text-neutral-200 outline-none leading-6 font-mono overflow-y-auto selection:bg-teal-900/60 selection:text-teal-100"
+            className="flex-1 h-full p-3 resize-none bg-transparent text-neutral-200 outline-none leading-6 font-mono overflow-y-auto break-words [overflow-wrap:anywhere] selection:bg-teal-900/60 selection:text-teal-100"
           />
         </div>
       </div>
