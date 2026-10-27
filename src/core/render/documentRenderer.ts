@@ -17,10 +17,10 @@ export function uniqueSvgIds(root:HTMLElement):void {
   }
  }
 }
-export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:AbortSignal):Promise<DocumentArtifact> {
+export function renderDocument(markdown:string,mode:'mathml'|'svg',signal?:AbortSignal,docFilePath?:string):Promise<DocumentArtifact> {
  const task=async()=>{
   throwIfAborted(signal);await prepareMath(mathExpressions(markdown),mode);throwIfAborted(signal);
-  const parsed=parseMarkdownDocument(markdown,{mathMode:mode});
+  const parsed=parseMarkdownDocument(markdown,{mathMode:mode,docFilePath});
   const root=document.createElement('div');root.innerHTML=parsed.html;
   const diagnostics:RenderDiagnostic[]=[...parsed.diagnostics];
   for(const el of root.querySelectorAll<HTMLElement>('[data-mermaid-code]')){

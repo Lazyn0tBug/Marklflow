@@ -13,7 +13,7 @@ export function paginateDocument(input:DocumentRecord,signal?:AbortSignal):Promi
  let pendingCleanup:Promise<unknown>|undefined;
  const task=async()=>{
   throwIfAborted(signal);
-  const artifact=await renderDocument(doc.markdown,doc.options.mathMode,signal);assertArtifact(artifact);
+  const artifact=await renderDocument(doc.markdown,doc.options.mathMode,signal,doc.meta?.filePath);assertArtifact(artifact);
   const collected=await collectAssets(artifact.html,doc.assets,false);throwIfAborted(signal);
   const stage=document.createElement('div');stage.className='mf-pagination';
   let nativeStyle:HTMLStyleElement|undefined;

@@ -10,8 +10,9 @@ export function safeUrl(value:string,image=false):boolean {
  const v=value.trim();
  if(/[\u0000-\u0020\u007f]/.test(v))return false;
  if(v.startsWith('#'))return true;
- if(image&&/^data:image\/(png|jpeg|gif|webp|avif);base64,[a-z0-9+/=]+$/i.test(v))return true;
+ if(image&&/^data:image\/(png|jpeg|gif|webp|avif|svg\+xml);base64,[a-z0-9+/=]+$/i.test(v))return true;
  if(image&&/^blob:https?:\/\//i.test(v))return true;
+ if(image&&/^(asset:\/\/localhost\/|https?:\/\/asset\.localhost\/)/i.test(v))return true;
  if(/^(https?:|mailto:)/i.test(v))return image?/^https?:/i.test(v):true;
  return !/^[a-z][\w+.-]*:|^\/\//i.test(v);
 }
@@ -43,6 +44,7 @@ export function sanitizeDocumentHtml(html:string,allowGeneratedData=true):string
   ADD_TAGS:['use','mjx-container'],
   FORBID_TAGS:['script','style','iframe','object','embed','form','input','textarea','select','button','link','meta','base','foreignObject','video','audio','canvas','animate','animateMotion','animateTransform','set'],
   FORBID_ATTR:['srcset','srcdoc','autofocus','contenteditable','formaction','ping'],ALLOW_DATA_ATTR:allowGeneratedData,
+  ALLOWED_URI_REGEXP:/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|asset):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
  });
 }
 export function documentColor(value:string):string {

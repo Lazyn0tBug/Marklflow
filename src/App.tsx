@@ -964,6 +964,7 @@ export default function App() {
                   maxWidth={contentMaxWidth}
                   containerRef={previewContainerRef}
                   onScroll={handlePreviewScroll}
+                  filePath={currentDoc.meta.filePath}
                 />
               </div>
             )}

@@ -12,8 +12,9 @@ import type { Element } from 'hast';
 import { latexToMathML, latexToSVG } from '../render/mathRender';
 import { renderDotToSVG } from '../render/graphvizRender';
 import { escapeHtml, sanitizeDocumentHtml, inspectAuthorHtml, rewriteFragments, type ContentDiagnostic } from '../render/htmlPolicy';
+import { resolveMarkdownImageUrl } from '../platform/assetResolver';
 export interface HeadingItem {id:string;level:number;text:string;line:number}
-export interface ParseOptions {mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number}
+export interface ParseOptions {mathMode?:'mathml'|'svg';isDark?:boolean;startLineIndex?:number;docFilePath?:string|undefined}
 export function createHeadingId(lineIndex:number,text:string):string {
  const clean=text.replace(/[*_\x60~[\]]/g,'').replace(/\$(.*?)\$/g,'$1');
  return 'heading_'+lineIndex+'_'+encodeURIComponent(clean.slice(0,24).toLowerCase().replace(/\s+/g,'-'));
@@ -32,6 +33,7 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
  const offset=options.startLineIndex||0,mode=options.mathMode||'mathml',nonce=createRenderNonce();
  const math=(v:string,d:boolean)=>mode==='svg'?latexToSVG(v,d):latexToMathML(v,d);
  const processor=reader().use(()=>(tree:Root)=>{
+  visit(tree,'image',node=>{if(node.url)node.url=resolveMarkdownImageUrl(node.url,options.docFilePath)});
   visit(tree,'html',node=>{diagnostics.push(...inspectAuthorHtml(node.value,(node.position?.start.line||1)+offset))});
   visit(tree,'listItem',node=>{
    if(typeof node.checked==='boolean'){
@@ -71,6 +73,7 @@ export function parseMarkdownDocument(markdown:string,options:ParseOptions={}):{
    for(const key of Object.keys(node.properties))if(key.startsWith('data')&&(!trusted||!['dataLine','dataSourceEnd','dataHeadingId','dataMermaidCode'].includes(key)))delete node.properties[key];
    if(node.position&&!trusted)node.properties.dataLine=node.position.start.line+offset;
    if(node.position&&!trusted)node.properties.dataSourceEnd=node.position.end.line+offset;
+   if(node.tagName==='img'&&typeof node.properties.src==='string')node.properties.src=resolveMarkdownImageUrl(node.properties.src,options.docFilePath);
    if(node.tagName==='table')node.properties.className=['mf-table'];
   });
   visit(tree as import('hast').Root,'element',(node:Element,index:number|undefined,parent)=>{if(node.tagName==='table'&&parent&&index!==undefined){parent.children[index]={type:'element',tagName:'div',properties:{className:['mf-table-scroll']},children:[node]};return SKIP}});
