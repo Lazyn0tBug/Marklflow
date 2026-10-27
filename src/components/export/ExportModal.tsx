@@ -84,7 +84,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       }
     } catch (err) {
       console.error('Export error:', err);
-      setExportError('导出过程出错: ' + String(err));
+      const errMsg = '导出过程出错: ' + String(err);
+      setExportError(errMsg);
+      try {
+        window.alert(errMsg);
+      } catch {}
     } finally {
       setIsExporting(false);
     }
