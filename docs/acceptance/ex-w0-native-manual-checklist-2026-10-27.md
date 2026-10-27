@@ -36,6 +36,8 @@ bun run --bun vite --host 127.0.0.1 --port 4180 --strictPort
 | MathML | Microsoft Print to PDF | driver-mathml.pdf | 待填 | 待填 | 待验 |
 | SVG | Microsoft Print to PDF | driver-svg.pdf | 待填 | 待填 | 待验 |
 
+当前夹具提供的标题建议分别为“EXW0 中文冻结文档 mathml”和“EXW0 中文冻结文档 svg”；仅用于比较，不要求设备一定采用。
+
 每行：点击夹具对应模式→选择输出目标→保存框出现时记录原始默认名→使用归档名实际保存→重新打开该文件。浏览器另存和系统PDF设备分别记录；设备不存在则标不可用/未验证，不要求额外安装设备。其他OS使用其实际系统设备另开记录，不由Windows推断macOS。
 
 ## 4. 手动快速检查及后续文件核验

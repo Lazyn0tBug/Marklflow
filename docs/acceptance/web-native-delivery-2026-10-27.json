@@ -1,0 +1,71 @@
+{
+  "stage": "EX-W1",
+  "date": "2026-10-27",
+  "baseline": "64920d0",
+  "branch": "architecture-refactor",
+  "engineeringStatus": "completed",
+  "authorization": "user allowed EX-W1 when missing EX-W0 evidence does not affect engineering",
+  "planningCommit": "0b6a662",
+  "platformBoundaryCommit": "e72f538",
+  "checks": {
+    "managedSourcesAndConfigs": 191,
+    "unitTests": 361,
+    "e2eTests": 96,
+    "types": "passed",
+    "boundaries": "passed",
+    "lint": "passed",
+    "productionBuild": "passed"
+  },
+  "logs": [
+    "D:/codex/ex-w1a-check.log",
+    "D:/codex/ex-w1a-e2e.log",
+    "D:/codex/ex-w1b-check.log",
+    "D:/codex/ex-w1b-e2e.log"
+  ],
+  "nativeCallAssertions": {
+    "test": "tests/e2e/web-pdf-delivery.spec.ts",
+    "exportBusyAtNativeCall": true,
+    "exportPaginationHostCount": 0,
+    "sharedDomIdleInIsolatedFixture": true,
+    "saveObservedByApplication": false
+  },
+  "files": [
+    {
+      "path": "src/core/platform/web/pdfDelivery.ts",
+      "sha256": "d103a8e6ce761672a7a5a128d4556db36daa2a5424379a3f5a19dc9b19ccc0a2"
+    },
+    {
+      "path": "src/core/platform/web/exportService.ts",
+      "sha256": "0eff4b62873c1eb5f84ca43ce16bb11e40d432afccc2aefa1110ff32d7199c26"
+    },
+    {
+      "path": "src/application/exports/exportService.ts",
+      "sha256": "9a06c2d2556df31a1c43ea96efd6fe4cda2674b009e76a8d55040fa0bae70ae2"
+    },
+    {
+      "path": "scripts/check-module-boundaries.ts",
+      "sha256": "ba62351b257ed4de20f39e66f41bf18cd53530b0ce1c28a96dc32f55f1aa5b92"
+    },
+    {
+      "path": "tests/e2e/web-pdf-delivery.spec.ts",
+      "sha256": "0b2068d4e7287eff3a45d3e3c41df8fa3df3320f50f90cbbc9768e9f4a323c3a"
+    }
+  ],
+  "manualChecklist": "ex-w0-native-manual-checklist-2026-10-27.md",
+  "EX-W0": {
+    "status": "in-validation",
+    "nativeSavedFileInspection": "pending",
+    "defaultFilenameRecords": "pending",
+    "notMarkedPassed": true
+  },
+  "releaseGate": "native evidence required for claimed supported paths before EX-W3 complete delivery/release",
+  "nextStage": "EX-W2 not started",
+  "constraints": {
+    "mathjax": "3.2.2 unchanged",
+    "pagedjs": "0.4.3 unchanged",
+    "newBrowserDependency": false,
+    "puppeteer": false,
+    "screenshotGeneration": false,
+    "pushed": false
+  }
+}

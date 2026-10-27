@@ -13,7 +13,7 @@ export interface ExportPorts {
  generateHtml(artifact:ExportHtmlArtifact,options:{editablePayload?:string}):Promise<string>;
  generateDocx(artifact:ExportHtmlArtifact,options:{allowSourceFallback:boolean}):Promise<Blob>;
  download(blob:Blob,name:string):void;
- print(html:string):Promise<void>;
+ deliverPdf(html:string):Promise<void>;
 }
 export interface ExportReview {confirmDocx(issues:readonly OutputIssue[],sourceLabel:string):Promise<boolean>}
 export type ExportResult={status:'busy'}|{status:'completed'|'cancelled'|'blocked';documentId:string;revision:number;message:string;issues?:readonly OutputIssue[]};
@@ -41,7 +41,7 @@ export class ExportService{
      if(issues.length&&!(await confirmDocx?.(issues,label)))return result('cancelled','未确认转换，已取消导出',issues);
      this.ports.download(await this.ports.generateDocx(artifact,{allowSourceFallback:issues.length>0}),name+'.docx');break;
     }
-    case 'print-pdf':await this.ports.print(await this.ports.generatePdfHtml(artifact,{title:name}));return result('completed','PDF导出已交由浏览器处理');
+    case 'print-pdf':await this.ports.deliverPdf(await this.ports.generatePdfHtml(artifact,{title:name}));return result('completed','PDF导出已交由浏览器处理');
     case 'editable-html':case 'reading-html':{
      const options=format==='editable-html'?{editablePayload:await this.ports.encodeEditableSource(doc,artifact)}:{};
      this.ports.download(new Blob([await this.ports.generateHtml(artifact,options)],{type:'text/html;charset=utf-8'}),name+(format==='editable-html'?'.markflow.html':'.html'));break;

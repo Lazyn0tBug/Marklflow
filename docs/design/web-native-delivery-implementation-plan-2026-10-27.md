@@ -13,3 +13,5 @@
 HTML单次准备和Paged.js完整分页保持；目标只消费冻结HTML。Web原生调用仅在平台适配器，转换器不可反向调用交付器。交付阶段不持有分页DOM步骤；busy覆盖准备/生成/实际交接，异常释放。就绪后才调用原生输出，afterprint/pagehide/失败清理仍有效，不强制超时删除系统正在使用的宿主。工作台A4关闭/尚未渲染也可导出，无应用PDF专属预览。
 
 原生保存/默认名清单见[手动验收](../acceptance/ex-w0-native-manual-checklist-2026-10-27.md)。工程完成与系统验收分列；EX-W3完整交付/发布前补齐宣称支持路径的证据。EX-W2/Tauri/OMML不在本轮；不推送、不升级MathJax3.2.2、不替换Paged.js0.4.3，不引入Chromium、Puppeteer、PDF字节库或截图方案。
+
+执行结果：W1-plan、W1a、W1b已按小步完成。W1a提交e72f538；全部验证及系统证据状态见[实施记录](../reviews/web-native-delivery-2026-10-27.md)。EX-W0未标通过，不推进EX-W2。

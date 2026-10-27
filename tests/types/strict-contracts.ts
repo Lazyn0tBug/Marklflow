@@ -30,3 +30,12 @@ function htmlOnlyFormats(doc:DocumentRecord,html:ExportHtmlArtifact,ports:Export
  void html.markdown;
 }
 void htmlOnlyFormats;
+
+function nativePdfDelivery(doc:DocumentRecord,html:ExportHtmlArtifact,ports:ExportPorts):void{
+ // @ts-expect-error: Native PDF delivery accepts complete HTML, never editable source.
+ void ports.deliverPdf(doc);
+ // @ts-expect-error: A native browser handoff does not return PDF bytes.
+ const bytes:Promise<Blob>=ports.deliverPdf(html.html);
+ void bytes;
+}
+void nativePdfDelivery;

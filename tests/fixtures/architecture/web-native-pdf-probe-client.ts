@@ -1,3 +1,4 @@
+import {sharedDom} from '../../../src/core/platform/web/sharedDom';
 import {webExportService} from '../../../src/core/platform/web/exportService';
 import {createNewDocument} from '../../../src/core/storage/storage';
 import {sha256Hex} from '../../../src/core/platform/crypto';
@@ -16,6 +17,7 @@ document.addEventListener('load',event=>{
  const job=report,text=doc.body.textContent||'',html=doc.documentElement.outerHTML;
  Object.assign(job,{jobTitle:doc.title,expectedPages:Number(doc.body.dataset.exportPages),actualPages:doc.querySelectorAll('.pagedjs_page').length,missingRows:rowMarkers.filter(marker=>!text.includes(marker)),missingParagraphs:paragraphMarkers.filter(marker=>!text.includes(marker)),finalMarker:text.includes('EXW0_FINAL_MARKER'),laterSourcePresent:text.includes('EXW0_LATER_SOURCE'),svgCount:doc.querySelectorAll('svg').length,imageCount:doc.querySelectorAll('img').length,links:[...doc.querySelectorAll('a[href]')].map(link=>link.getAttribute('href'))});show(job);
  void sha256Hex(new TextEncoder().encode(html)).then(hash=>{job.htmlSha256=hash;show(job)}).catch(error=>{job.observationError=String(error);show(job)});
+ frame.contentWindow?.addEventListener('beforeprint',()=>{job.beforeprintObserved=true;job.exportBusyAtNativeCall=webExportService.busy;job.domAtNativeCall=sharedDom.snapshot();job.domStagesAtNativeCall=document.querySelectorAll('div.mf-pagination').length;show(job)},{once:true});
  frame.contentWindow?.addEventListener('afterprint',()=>{observeCleanup(job,'afterprint')},{once:true});
 },true);
 for(const mode of ['mathml','svg'] as const)document.querySelector<HTMLButtonElement>('#'+mode)!.onclick=()=>{void run(mode)};
