@@ -47,5 +47,6 @@
     "screenshotGeneration": false,
     "pushed": false
   },
-  "nextStage": "EX-W1 not started"
+  "nextStage": "EX-W1 not started",
+  "latestCodeReview": "web-native-pdf-code-review-2026-10-27.json"
 }

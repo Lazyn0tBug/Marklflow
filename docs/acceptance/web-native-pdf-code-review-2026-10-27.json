@@ -1,0 +1,74 @@
+{
+  "scope": "EX-W0 complete code review",
+  "date": "2026-10-27",
+  "branch": "architecture-refactor",
+  "baseline": "f72b9ef",
+  "productionFixCommit": "501ffff",
+  "codeReview": "passed",
+  "fixes": [
+    "pagehide during native frame readiness cancels waiting and cleans host",
+    "readiness deadlines/listeners/queued layout frames released",
+    "afterprint/pagehide observer records actual post-cleanup state",
+    "MathML visibility, nonzero geometry and numerator/denominator layout assertions"
+  ],
+  "checks": {
+    "managedSourcesAndConfigs": 189,
+    "unitTests": 358,
+    "e2eTests": 95,
+    "strictTypes": "passed",
+    "moduleBoundaries": "passed",
+    "lint": "passed",
+    "productionBuild": "passed"
+  },
+  "logs": [
+    "D:/codex/ex-w0-review-leave-reproduce.log",
+    "D:/codex/ex-w0-review-observer-reproduce.log",
+    "D:/codex/ex-w0-review-readiness-e2e.log",
+    "D:/codex/ex-w0-review-final-check.log",
+    "D:/codex/ex-w0-review-final-e2e.log"
+  ],
+  "preflightEvidence": "web-native-pdf-code-review-preflight-2026-10-27.json",
+  "recordDefinitions": {
+    "htmlSha256": "SHA-256 of UTF-8 serialized loaded frame DOM, matches frozen-paged.html; not PDF hash",
+    "handoffObservation": "captured before afterprint cleanup; remainingFrames=1 is expected at handoff",
+    "cleanupObservation": "afterprint/pagehide live observation and browser assertions; remainingFrames=0",
+    "nativeSave": "not inferred from browser events or automated preflight PDF"
+  },
+  "files": [
+    {
+      "path": "src/core/export/documentPrint.ts",
+      "sha256": "a25939e301caadad4983a289d78423b53927baf293f5a8ca29965c1ad6e61d5b"
+    },
+    {
+      "path": "src/styles/document.css",
+      "sha256": "e2e12f8a3a466f9206bcf6fd7ee7ab02f04214774594ce86c93408baf68df1ba"
+    },
+    {
+      "path": "tests/fixtures/architecture/web-native-pdf-probe-client.ts",
+      "sha256": "a466d098f7ac94f8cb7b5e62801ed4260b4bea3bd3044c2a0bf7edc2622f38cd"
+    },
+    {
+      "path": "tests/e2e/web-native-pdf-baseline.spec.ts",
+      "sha256": "f20416a8b39f9737db2778e2d95a23cf110b1546a33fd4bae3702d4a795697a7"
+    },
+    {
+      "path": "tests/unit/print-readiness.test.ts",
+      "sha256": "0ec39c8140edeb3a7a78989d6cef72a76d1dbd0f62c5e0cdefd73e33e9674c00"
+    }
+  ],
+  "stageGate": {
+    "EX-W0": "in-validation",
+    "nativeSavedBytesVerified": false,
+    "systemDefaultFilenameVerified": false,
+    "EX-W1Started": false
+  },
+  "constraints": {
+    "mathjax": "3.2.2",
+    "pagedjs": "0.4.3",
+    "newBrowserDependency": false,
+    "puppeteer": false,
+    "screenshotGeneration": false,
+    "pushed": false,
+    "userPatch": "tag-release.patch preserved"
+  }
+}
