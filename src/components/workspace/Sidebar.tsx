@@ -160,6 +160,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }
       }
 
+      // 若工作区已有相同物理路径的文档，直接激活切换
+      const existing = documents.find((d) => d.meta?.filePath === nativeFile.path);
+      if (existing) {
+        onSelectDoc(existing.id);
+        return;
+      }
+
       const title = nativeFile.name.replace(/\.[^/.]+$/, '');
       const newDoc: DocumentRecord = {
         schemaVersion: 1,

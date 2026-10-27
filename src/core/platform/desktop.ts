@@ -148,6 +148,32 @@ export async function saveNativeFileAs(
   }
 }
 
+/**
+ * 原生打开本地 Markdown / 文本 / 载荷 HTML 文件对话框
+ * 返回选中的文件物理绝对路径、文件名及文件文本内容；若取消则返回 null
+ */
+export async function openLocalMarkdownFile(): Promise<NativeFileResult | null> {
+  return openNativeFileDialog();
+}
+
+/**
+ * 原位覆盖保存已有关联物理路径的文件 (Ctrl+S / Cmd+S)
+ */
+export async function saveLocalMarkdownFile(filePath: string, content: string): Promise<boolean> {
+  return saveNativeFileInPlace(filePath, content);
+}
+
+/**
+ * 调起原生“另存为”对话框并写入文件 (Ctrl+Shift+S / Cmd+Shift+S)
+ */
+export async function saveAsLocalMarkdownFile(
+  defaultName: string,
+  content: string,
+  extension: string = 'md'
+): Promise<string | null> {
+  return saveNativeFileAs(defaultName, content, extension);
+}
+
 /** 通用原生导出：保存二进制（DOCX/Blob）或文本（HTML/MD）至本地磁盘 */
 export async function saveExportBinaryOrText(
   defaultName: string,

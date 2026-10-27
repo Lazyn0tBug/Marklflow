@@ -26,7 +26,16 @@ import {
   extractPayloadFromHtml,
 } from './core/storage/storage';
 import { extractOutline } from './core/parser/markdownParser';
-import { isTauri, saveNativeFileInPlace, saveNativeFileAs, updateWindowTitle, listenNativeFileDrop } from './core/platform/desktop';
+import {
+  isTauri,
+  saveNativeFileInPlace,
+  saveNativeFileAs,
+  openLocalMarkdownFile,
+  saveLocalMarkdownFile,
+  saveAsLocalMarkdownFile,
+  updateWindowTitle,
+  listenNativeFileDrop,
+} from './core/platform/desktop';
 
 // 计算元素相对于可滚动容器的实际垂直像素距离（处理嵌套与边距）
 function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number {
@@ -37,6 +46,8 @@ function getElementRelativeTop(el: HTMLElement, container: HTMLElement): number 
 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const documentsRef = useRef<DocumentRecord[]>([]);
+  documentsRef.current = documents;
   const [currentDocId, setCurrentDocId] = useState<string>('');
   const [isDark, setIsDark] = useState<boolean>(true);
 
@@ -230,7 +241,152 @@ export default function App() {
     [currentDoc, handleMarkdownChange]
   );
 
-  const handleSaveImmediately = async () => {
+  const handleImportDoc = useCallback((importedDoc: DocumentRecord) => {
+    saveDocument(importedDoc).then(() => {
+      setDocuments((prev) => [importedDoc, ...prev]);
+      setCurrentDocId(importedDoc.id);
+      setUndoStack([]);
+      setRedoStack([]);
+      setIsDirty(false);
+    });
+  }, []);
+
+  const handleOpenFile = useCallback(async () => {
+    if (isTauri()) {
+      const file = await openLocalMarkdownFile();
+      if (!file) return;
+
+      if (/\.html?$/i.test(file.name)) {
+        const restored = extractPayloadFromHtml(file.content);
+        if (restored) {
+          restored.meta.filePath = file.path;
+          handleImportDoc(restored);
+          return;
+        }
+      }
+
+      // 若工作区已有相同物理路径的文档，直接激活切换
+      const existing = documentsRef.current.find((d) => d.meta?.filePath === file.path);
+      if (existing) {
+        setCurrentDocId(existing.id);
+        setIsDirty(false);
+        return;
+      }
+
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      const newDoc: DocumentRecord = {
+        schemaVersion: 1,
+        id: 'doc_' + Math.random().toString(36).substring(2, 9),
+        revision: 1,
+        markdown: file.content,
+        meta: {
+          title,
+          author: 'Local File',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          filePath: file.path,
+        },
+        theme: {
+          fontFamily: 'sans',
+          fontSize: 15,
+          lineHeight: 1.75,
+          primaryColor: '#0d9488',
+          paperTheme: 'clean-white',
+          paperSize: 'A4',
+          margins: { top: 20, bottom: 25, left: 20, right: 20 },
+        },
+        options: {
+          syntaxProfile: 'commonmark-gfm-v1',
+          mathMode: 'mathml',
+        },
+      };
+      handleImportDoc(newDoc);
+    } else {
+      // 浏览器环境回退：虚拟触发文件选择
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.md,.markdown,.txt,.html,.htm';
+      input.onchange = async (event) => {
+        const target = event.target as HTMLInputElement;
+        const selectedFile = target.files?.[0];
+        if (!selectedFile) return;
+        const text = await selectedFile.text();
+        if (/\.html?$/i.test(selectedFile.name)) {
+          const restored = extractPayloadFromHtml(text);
+          if (restored) {
+            handleImportDoc(restored);
+            return;
+          }
+        }
+        const title = selectedFile.name.replace(/\.[^/.]+$/, '');
+        const newDoc: DocumentRecord = {
+          schemaVersion: 1,
+          id: 'doc_' + Math.random().toString(36).substring(2, 9),
+          revision: 1,
+          markdown: text,
+          meta: {
+            title,
+            author: 'Opened File',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          theme: {
+            fontFamily: 'sans',
+            fontSize: 15,
+            lineHeight: 1.75,
+            primaryColor: '#0d9488',
+            paperTheme: 'clean-white',
+            paperSize: 'A4',
+            margins: { top: 20, bottom: 25, left: 20, right: 20 },
+          },
+          options: {
+            syntaxProfile: 'commonmark-gfm-v1',
+            mathMode: 'mathml',
+          },
+        };
+        handleImportDoc(newDoc);
+      };
+      input.click();
+    }
+  }, [handleImportDoc]);
+
+  const handleSaveAsImmediately = useCallback(async () => {
+    if (!currentDoc) return;
+    if (isTauri()) {
+      const defaultName = currentDoc.meta.filePath || currentDoc.meta.title;
+      const targetPath = await saveAsLocalMarkdownFile(defaultName, currentDoc.markdown);
+      if (targetPath) {
+        const pathParts = targetPath.replace(/\\/g, '/').split('/');
+        const fileName = pathParts[pathParts.length - 1]?.replace(/\.[^/.]+$/, '') || currentDoc.meta.title;
+        const updatedDoc: DocumentRecord = {
+          ...currentDoc,
+          meta: {
+            ...currentDoc.meta,
+            title: fileName,
+            filePath: targetPath,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
+        setIsDirty(false);
+        await persist(updatedDoc);
+        return;
+      }
+    } else {
+      const blob = new Blob([currentDoc.markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentDoc.meta.title || 'document'}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setIsDirty(false);
+    }
+  }, [currentDoc, persist]);
+
+  const handleSaveImmediately = useCallback(async () => {
     if (!currentDoc) return;
     const pending = pendingSaves.current.get(currentDoc.id);
     if (pending) clearTimeout(pending.timer);
@@ -238,20 +394,13 @@ export default function App() {
 
     if (isTauri()) {
       if (currentDoc.meta.filePath) {
-        const ok = await saveNativeFileInPlace(currentDoc.meta.filePath, currentDoc.markdown);
+        const ok = await saveLocalMarkdownFile(currentDoc.meta.filePath, currentDoc.markdown);
         if (ok) {
-          setIsDirty(false);
-          await persist(currentDoc);
-          return;
-        }
-      } else {
-        const targetPath = await saveNativeFileAs(currentDoc.meta.title, currentDoc.markdown);
-        if (targetPath) {
           const updatedDoc: DocumentRecord = {
             ...currentDoc,
             meta: {
               ...currentDoc.meta,
-              filePath: targetPath,
+              updatedAt: new Date().toISOString(),
             },
           };
           setDocuments((prev) => prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d)));
@@ -259,22 +408,40 @@ export default function App() {
           await persist(updatedDoc);
           return;
         }
+      } else {
+        await handleSaveAsImmediately();
+        return;
       }
     }
 
+    setIsDirty(false);
     void persist(currentDoc);
-  };
+  }, [currentDoc, handleSaveAsImmediately, persist]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+      // Ctrl/Cmd + O: 打开本地文件
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'o' || e.key === 'O') && !e.altKey) {
+        e.preventDefault();
+        void handleOpenFile();
+        return;
+      }
+      // Ctrl/Cmd + Shift + S: 另存为
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        void handleSaveAsImmediately();
+        return;
+      }
+      // Ctrl/Cmd + S: 保存（已绑定物理文件则原地保存，未绑定则调起另存为）
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         void handleSaveImmediately();
+        return;
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [currentDoc]);
+  }, [handleOpenFile, handleSaveImmediately, handleSaveAsImmediately]);
 
   const handleCreateDoc = () => {
     const newDoc = createNewDocument('新建 Markdown 文档');
@@ -298,16 +465,6 @@ export default function App() {
     });
   };
 
-  const handleImportDoc = (importedDoc: DocumentRecord) => {
-    saveDocument(importedDoc).then(() => {
-      setDocuments((prev) => [importedDoc, ...prev]);
-      setCurrentDocId(importedDoc.id);
-      setUndoStack([]);
-      setRedoStack([]);
-      setIsDirty(false);
-    });
-  };
-
   // 监听 Tauri 桌面端原生拖拽文件 (Windows Explorer / macOS Finder)
   useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -320,6 +477,14 @@ export default function App() {
             handleImportDoc(restored);
             return;
           }
+        }
+
+        // 若工作区已有相同物理路径的文档，直接激活切换
+        const existing = documentsRef.current.find((d) => d.meta?.filePath === nativeFile.path);
+        if (existing) {
+          setCurrentDocId(existing.id);
+          setIsDirty(false);
+          return;
         }
 
         const title = nativeFile.name.replace(/\.[^/.]+$/, '');
