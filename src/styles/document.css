@@ -9,7 +9,7 @@
 .mf-doc pre,.mf-doc code{font-family:Consolas,"Cascadia Code","Microsoft YaHei",monospace}.mf-doc code{font-size:.9em;background:#f3f4f6;padding:.12em .3em;border-radius:3px}
 .mf-doc pre{max-width:100%;overflow:auto;padding:1em;background:#f1f5f9;color:#1e293b;line-height:1.6;tab-size:2;white-space:pre}.mf-doc pre code{background:none;padding:0;color:inherit}
 .mf-doc img,.mf-doc svg{max-width:100%;height:auto}.mf-doc figure{min-width:0}.mf-doc figcaption{font-size:.85em;color:#5f6874}
-.mf-doc math{font-family:"STIX Two Math","Cambria Math","Latin Modern Math",serif;font-size:1.05em}.mf-doc math[display=block]{display:block;margin:1em 0;overflow:auto;text-align:center}
+.mf-doc math{font-family:"STIX Two Math","Cambria Math","Latin Modern Math",serif;font-size:1.05em}.mf-doc math[display=block]{margin:1em 0;overflow:auto;text-align:center}
 .mf-doc .mf-math,.mf-doc .mf-diagram{max-width:100%;overflow:auto;margin:1em 0}.mf-doc .mf-diagram svg{display:block;margin:auto}
 .mf-doc .markflow-inline-math{display:inline;vertical-align:baseline}.mf-doc mjx-container{display:inline-block;vertical-align:middle}.mf-doc mjx-container[display=true]{display:block;text-align:center}.mf-doc mjx-assistive-mml{display:none}
 .mf-doc .mf-diagnostic{padding:.7em;border:1px solid #b45309;background:#fffbeb;color:#78350f;white-space:pre-wrap}

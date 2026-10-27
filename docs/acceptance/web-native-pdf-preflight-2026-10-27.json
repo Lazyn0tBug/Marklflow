@@ -1,0 +1,196 @@
+{
+  "scope": "automated content preflight only; native saved bytes not inspected",
+  "results": [
+    {
+      "kind": "automated-preflight-not-system-save",
+      "mathMode": "svg",
+      "path": "D:\\codex\\ex-w0-native-evidence\\after-fix-svg.pdf",
+      "sha256": "94679f72b4f251f5547d79e0ba0ccc54a9a6fb02a7c10f9e90082fc36a2d2b56",
+      "expectedPages": 6,
+      "pages": 6,
+      "pageSizesPt": [
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ]
+      ],
+      "missingRows": [],
+      "missingParagraphs": [],
+      "cjk": true,
+      "finalMarker": true,
+      "laterSourcePresent": false,
+      "charactersPerPage": [
+        524,
+        781,
+        781,
+        672,
+        730,
+        653
+      ],
+      "vectorObjectsPerPage": [
+        34,
+        2,
+        2,
+        61,
+        139,
+        119
+      ],
+      "imagesPerPage": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pageSizedImages": [],
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "embedded": true,
+          "toUnicode": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "embedded": true,
+          "toUnicode": true
+        },
+        {
+          "name": "/CAAAAA+MicrosoftYaHeiUI",
+          "embedded": true,
+          "toUnicode": true
+        }
+      ],
+      "links": [
+        {
+          "uri": "https://example.com/ex-w0",
+          "destination": "",
+          "destinationExists": null
+        },
+        {
+          "uri": "",
+          "destination": "/mf_author_%E6%9C%80%E7%BB%88%E7%9B%AE%E6%A0%87",
+          "destinationExists": true
+        }
+      ]
+    },
+    {
+      "kind": "automated-preflight-not-system-save",
+      "mathMode": "mathml",
+      "path": "D:\\codex\\ex-w0-native-evidence\\after-fix-mathml.pdf",
+      "sha256": "814c5f0975d548b035820c36c0fdce256a3e7257d28b68095836b73316df3bac",
+      "expectedPages": 6,
+      "pages": 6,
+      "pageSizesPt": [
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ],
+        [
+          594.96,
+          841.92
+        ]
+      ],
+      "missingRows": [],
+      "missingParagraphs": [],
+      "cjk": true,
+      "finalMarker": true,
+      "laterSourcePresent": false,
+      "charactersPerPage": [
+        539,
+        781,
+        781,
+        672,
+        730,
+        653
+      ],
+      "vectorObjectsPerPage": [
+        15,
+        2,
+        2,
+        61,
+        139,
+        119
+      ],
+      "imagesPerPage": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pageSizedImages": [],
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "embedded": true,
+          "toUnicode": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "embedded": true,
+          "toUnicode": true
+        },
+        {
+          "name": "/CAAAAA+MicrosoftYaHeiUI",
+          "embedded": true,
+          "toUnicode": true
+        },
+        {
+          "name": "/DAAAAA+CambriaMath",
+          "embedded": true,
+          "toUnicode": true
+        }
+      ],
+      "links": [
+        {
+          "uri": "https://example.com/ex-w0",
+          "destination": "",
+          "destinationExists": null
+        },
+        {
+          "uri": "",
+          "destination": "/mf_author_%E6%9C%80%E7%BB%88%E7%9B%AE%E6%A0%87",
+          "destinationExists": true
+        }
+      ]
+    }
+  ]
+}

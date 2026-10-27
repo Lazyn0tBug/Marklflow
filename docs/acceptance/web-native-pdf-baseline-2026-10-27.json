@@ -1,0 +1,51 @@
+{
+  "step": "EX-W0",
+  "date": "2026-10-27",
+  "branch": "architecture-refactor",
+  "baseline": "c475056",
+  "fixtureCommit": "bd8dbe8",
+  "status": "in-validation",
+  "gatePassed": false,
+  "automated": {
+    "typeCoverage": 188,
+    "unitTests": 353,
+    "e2eTests": 93,
+    "check": "passed",
+    "logs": [
+      "D:/codex/ex-w0-mathml-check.log",
+      "D:/codex/ex-w0-final-e2e.log"
+    ]
+  },
+  "mathmlFix": {
+    "beforeFractionWidthPx": 642.515625,
+    "afterFractionWidthPx": 39.09375,
+    "afterDisplay": "block math"
+  },
+  "manualDisplay": {
+    "svg": "user confirmed: svg pdf is ok",
+    "mathml": "user confirmed after fix: mathml pdf is ok"
+  },
+  "nativeSavedPdfInspection": {
+    "status": "pending actual file paths",
+    "paths": []
+  },
+  "defaultFilename": {
+    "status": "not observed this run",
+    "guaranteedByApplication": false
+  },
+  "preflightEvidence": "web-native-pdf-preflight-2026-10-27.json",
+  "systemInstalled": {
+    "browser": "Edge155.0.4283.62",
+    "os": "Windows10.0.26300.0",
+    "note": "installed versions; does not prove native saved file metadata"
+  },
+  "constraints": {
+    "mathjax": "3.2.2 unchanged",
+    "pagedjs": "0.4.3 unchanged",
+    "newBrowserDependency": false,
+    "puppeteer": false,
+    "screenshotGeneration": false,
+    "pushed": false
+  },
+  "nextStage": "EX-W1 not started"
+}
