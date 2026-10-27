@@ -24,6 +24,7 @@
     "tests/fixtures/architecture/shared-dom-probe-client.ts",
     "tests/fixtures/architecture/math-dom-probe-client.ts",
     "tests/fixtures/architecture/export-html-probe-client.ts",
+    "tests/fixtures/architecture/web-native-pdf-probe-client.ts",
     "tests/fixtures/architecture/diagram-dom-probe-client.ts",
     "tests/fixtures/architecture/pagination-dom-probe-client.ts"
   ]

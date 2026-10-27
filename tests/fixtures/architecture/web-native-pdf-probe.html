@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>EX-W0 Native PDF acceptance</title>    <script>
+      window.MathJax = {
+        options: {
+          renderActions: {
+            assistiveMml: []
+          }
+        },
+        tex: {
+          tags: 'ams',
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          packages: {'[+]': ['ams', 'newcommand', 'configmacros', 'mathtools'], '[-]': ['autoload', 'require', 'noundefined']}
+        },
+        svg: {
+          fontCache: 'local'
+        },
+        startup: {
+          typeset: false
+        }
+      };
+    </script>
+<script src="/vendor/mathjax/tex-mml-svg.js"></script><body><h1>EX-W0 原生 PDF 验收夹具</h1><p>仅供开发验收：实际导出调用生产服务，不使用 page.pdf 或截图生成。</p><button id="mathml">导出 MathML PDF</button> <button id="svg">导出 SVG PDF</button><pre data-state="idle">尚未导出</pre><script type="module" src="./web-native-pdf-probe-client.ts"></script></body></html>
