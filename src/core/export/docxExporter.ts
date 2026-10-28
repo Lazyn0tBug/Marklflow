@@ -6,6 +6,7 @@ import {renderDocument,assertArtifact} from '../render/documentRenderer';
 import {collectAssets} from './documentAssets';
 import {documentStyle} from '../render/documentPresentation';
 import {waitForLayout,withDeadline} from './documentPrint';
+import {convertMathMLToDocxMath} from './mathmlToOoml';
 type Run=ParagraphChild;
 interface InlineContext {bookmarks:Map<string,string>;width:number;height:number}
 interface InlineStyle {bold?:boolean;italics?:boolean;strike?:boolean;font?:string;superScript?:boolean;subScript?:boolean}
@@ -31,7 +32,14 @@ async function picture(el:Element,context:InlineContext):Promise<ImageRun>{
 async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Promise<Run[]>{
  if(node.nodeType===Node.TEXT_NODE){const text=node.textContent||'';return node.parentElement?.closest('pre')?text.split('\n').flatMap((part,i)=>i?[new TextRun({break:1}),new TextRun({...style,text:part})]:[new TextRun({...style,text:part})]):[new TextRun({...style,text})]}
  if(!(node instanceof Element))return [];
- const tag=node.tagName.toLowerCase();
+ const tag=node.tagName.toLowerCase().replace(/^.*:/,'');
+ if(tag==='math'){
+  return [convertMathMLToDocxMath(node)];
+ }
+ if(node.classList.contains('markflow-inline-math')){
+  const mathEl=node.querySelector('math');
+  if(mathEl)return [convertMathMLToDocxMath(mathEl)];
+ }
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
  const next={...style,bold:style.bold||tag==='strong'||tag==='b',italics:style.italics||tag==='em'||tag==='i',strike:style.strike||tag==='del',...(tag==='code'?{font:'Consolas'}:{}),superScript:style.superScript||tag==='sup',subScript:style.subScript||tag==='sub'};
@@ -48,7 +56,7 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
  const frozenOptions={...options};
  const doc=documentSchema.parse(structuredClone(input)),issues=inspectDocx(doc.markdown);
  if(issues.some(i=>i.adaptation==='unsupported')||issues.length&&!frozenOptions.allowSourceFallback)throw new Error(issues.map(i=>i.nodeId+': '+i.message).join('\n'));
- const artifact=await renderDocument(doc.markdown,'svg',undefined,doc.meta?.filePath);assertArtifact(artifact);
+ const artifact=await renderDocument(doc.markdown,'mathml',undefined,doc.meta?.filePath);assertArtifact(artifact);
  const assets=await collectAssets(artifact.html,doc.assets,frozenOptions.allowRemoteAssets);
  const root=document.createElement('article');root.className='mf-document-shell mf-doc';
  for(const [name,value]of Object.entries(documentStyle(doc.theme)))root.style.setProperty(name,value);
@@ -96,8 +104,20 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
      const ordered=tag==='ol',reference='mf_list_'+numbering.length,start=Math.max(1,Math.min(2147483647,Number(node.getAttribute('start'))||1));
      numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:ordered?LevelFormat.DECIMAL:LevelFormat.BULLET,text:ordered?'%'+(i+1)+'.':'•',start,alignment:AlignmentType.LEFT}))});
      for(const li of Array.from(node.children).filter(n=>n.localName==='li'))out.push(...await blocks([...li.childNodes],level+1,{numbering:{reference,level:Math.min(8,level)}}));
-    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph([...node.childNodes],node.classList.contains('mf-math')?{alignment:AlignmentType.CENTER}:{},node.id);
-    else if(tag==='hr')await paragraph([document.createTextNode('—')]);
+    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math')){
+     if(node.classList.contains('mf-math')){
+      const mathEl=(node as Element).querySelector('math');
+      if(mathEl){
+       const docxMath=convertMathMLToDocxMath(mathEl);
+       let children:Run[]=[docxMath];
+       if(node.id&&context.bookmarks.has(node.id))children=[new Bookmark({id:context.bookmarks.get(node.id)!,children})];
+       out.push(new Paragraph({children,alignment:AlignmentType.CENTER,spacing:{before:120,after:120},...(first?firstOptions:{})}));
+       first=false;
+       continue;
+      }
+     }
+     await paragraph([...node.childNodes],node.classList.contains('mf-math')?{alignment:AlignmentType.CENTER}:{},node.id);
+    }else if(tag==='hr')await paragraph([document.createTextNode('—')]);
     else {const nested=await blocks([...node.childNodes],level,first?firstOptions:{});out.push(...nested);if(nested.length)first=false}
    }
    await flush();return out;

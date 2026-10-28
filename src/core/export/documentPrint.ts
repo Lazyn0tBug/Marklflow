@@ -21,17 +21,62 @@ export async function waitForLayout(root:ParentNode,doc:Document=document):Promi
  const view=doc.defaultView||window;
  await withDeadline(new Promise<void>(resolve=>view.requestAnimationFrame(()=>view.requestAnimationFrame(()=>resolve()))),'布局就绪超时');
 }
+let activePrintFrame: HTMLIFrameElement | null = null;
+
+export function cleanupActivePrintFrame(): void {
+ if (activePrintFrame) {
+  try { activePrintFrame.remove(); } catch {}
+  activePrintFrame = null;
+ }
+}
+
 export async function preparePrintFrame(html:string):Promise<HTMLIFrameElement>{
+ cleanupActivePrintFrame();
  const frame=document.createElement('iframe');frame.title='打印冻结文档';
- frame.setAttribute('sandbox','allow-same-origin allow-modals');
- frame.style.cssText='position:fixed;left:-20000px;top:0;width:794px;height:1123px;border:0';
+ frame.setAttribute('sandbox','allow-same-origin allow-modals allow-scripts');
+ // 保持在激活视口渲染流水线中，避免离屏视口裁剪导致后台打印 Spooler 挂起或第二次点击才唤醒
+ frame.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none;z-index:-9999;border:0';
  const loaded=new Promise<void>((resolve,reject)=>{frame.onload=()=>resolve();frame.onerror=()=>reject(new Error('打印文档加载失败'))});
  frame.srcdoc=html;document.body.append(frame);
- try{await withDeadline(loaded,'打印文档就绪超时');await waitForLayout(frame.contentDocument!,frame.contentDocument!);return frame}catch(error){frame.remove();throw error}
+ activePrintFrame=frame;
+ try{
+  await withDeadline(loaded,'打印文档就绪超时');
+  await waitForLayout(frame.contentDocument!,frame.contentDocument!);
+  return frame;
+ }catch(error){
+  cleanupActivePrintFrame();
+  throw error;
+ }
 }
+
 export async function printFrozenHtml(html:string):Promise<void>{
  const frame=await preparePrintFrame(html);
- frame.contentWindow!.addEventListener('afterprint',()=>frame.remove(),{once:true});
- // Print readiness comes from load/decode/fonts/layout, never an arbitrary sleep.
- try{frame.contentWindow!.focus();frame.contentWindow!.print()}catch(error){frame.remove();throw error}
+ const win=frame.contentWindow;
+ if(!win){
+  cleanupActivePrintFrame();
+  throw new Error('打印窗口不可用');
+ }
+ const scheduleRelease=()=>{
+  // 延迟销毁 iframe，给操作系统 Spooler 与浏览器打印进程充足的写盘/管道刷写时间
+  setTimeout(()=>{
+   if(activePrintFrame===frame){
+    cleanupActivePrintFrame();
+   }else{
+    try{frame.remove()}catch{}
+   }
+  },1500);
+ };
+ win.addEventListener('afterprint',scheduleRelease,{once:true});
+ window.addEventListener('afterprint',scheduleRelease,{once:true});
+
+ const view=frame.contentDocument?.defaultView||win;
+ await new Promise<void>(resolve=>view.requestAnimationFrame(()=>view.requestAnimationFrame(()=>resolve())));
+
+ try{
+  win.focus();
+  win.print();
+ }catch(error){
+  cleanupActivePrintFrame();
+  throw error;
+ }
 }

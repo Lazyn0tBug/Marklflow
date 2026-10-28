@@ -7,9 +7,11 @@ it('uses validated paper margins without clipping content',()=>{
  const doc=createNewDocument('纸张');doc.theme.margins={top:12,bottom:18,left:20,right:16};
  const css=printCss(doc);expect(css).toContain('12mm 16mm 18mm 20mm');expect(css).not.toContain('overflow:hidden');
 });
-it('does not silently claim editable or visual DOCX formulas',async()=>{
+it('maps formulas to native Word OOML and requires ready assets',async()=>{
  const doc=createNewDocument('复杂输出');doc.markdown='公式 $x^2$\n\n<img src="x">';
- const report=inspectDocx(doc.markdown);expect(report.length).toBeGreaterThan(0);expect(report.some(i=>i.adaptation==='static')).toBe(true);
+ const report=inspectDocx(doc.markdown);expect(report.length).toBeGreaterThan(0);
+ expect(report.some(i=>i.adaptation==='mapped'&&i.message.includes('OOML'))).toBe(true);
+ expect(report.some(i=>i.adaptation==='static')).toBe(true);
  await expect(exportDocumentToDocx(doc)).rejects.toThrow('图片');
 });
 it('reports readiness timeouts rather than successful output',async()=>{
