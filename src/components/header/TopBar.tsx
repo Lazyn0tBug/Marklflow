@@ -22,7 +22,12 @@ import {
   SlidersHorizontal,
   ChevronDown,
   Check,
+  FolderOpen,
+  Upload,
+  FileCode,
+  ClipboardPaste,
 } from 'lucide-react';
+import { isTauri } from '../../core/platform/desktop';
 
 export type ViewMode = 'split' | 'edit' | 'reading' | 'a4';
 
@@ -49,6 +54,10 @@ export interface TopBarProps {
   onThemeToggle: () => void;
   isDirty: boolean;
   onSave: () => void;
+  onSaveAs?: (() => void) | undefined;
+  onOpenFile?: (() => void) | undefined;
+  onImportHtmlPayload?: (() => void) | undefined;
+  onImportClipboard?: (() => void) | undefined;
   onOpenExport: () => void;
   onOpenRoadmap: () => void;
   documentTitle: string;
@@ -80,23 +89,47 @@ export const TopBar: React.FC<TopBarProps> = ({
   onThemeToggle,
   isDirty,
   onSave,
+  onSaveAs,
+  onOpenFile,
+  onImportHtmlPayload,
+  onImportClipboard,
   onOpenExport,
   onOpenRoadmap,
   documentTitle,
   filePath,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
-  const settingsRef=useRef<HTMLDialogElement>(null);
-  const settingsButtonRef=useRef<HTMLButtonElement>(null);
-  const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
-  useEffect(()=>{const dialog=settingsRef.current;if(widthMenuOpen&&!dialog?.open)dialog?.showModal();else if(!widthMenuOpen&&dialog?.open)dialog.close()},[widthMenuOpen]);
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDialogElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const visibleCount = Number(sidebarOpen) + Number(showEditor) + Number(showPreview);
+
+  useEffect(() => {
+    const dialog = settingsRef.current;
+    if (widthMenuOpen && !dialog?.open) dialog?.showModal();
+    else if (!widthMenuOpen && dialog?.open) dialog.close();
+  }, [widthMenuOpen]);
+
+  useEffect(() => {
+    if (!fileMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setFileMenuOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, [fileMenuOpen]);
 
   return (
     <header data-tauri-drag-region className="h-13 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-3 md:px-4 text-neutral-100 gap-3 select-none shrink-0 no-print z-40">
       {/* Zone 1: 侧栏侧边触发 + 品牌 & 当前文档 */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
-          disabled={sidebarOpen&&visibleCount===1} aria-pressed={sidebarOpen} onClick={onToggleSidebar}
+          disabled={sidebarOpen && visibleCount === 1}
+          aria-pressed={sidebarOpen}
+          onClick={onToggleSidebar}
           className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
             sidebarOpen
               ? 'border-neutral-700 bg-neutral-800 text-teal-300'
@@ -118,17 +151,28 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div
           className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-neutral-800 text-xs text-neutral-400 max-w-xs truncate"
-          title={filePath ? `本地文件：${filePath}` : undefined}
+          title={filePath ? `本地物理文件：${filePath}` : undefined}
         >
           <span className="truncate">{documentTitle || '未命名技术文档'}</span>
           {filePath && (
-            <span className="shrink-0 px-1 py-0.2 rounded bg-neutral-800 text-teal-400 text-[10px] font-mono border border-teal-900/40">
+            <span
+              className="shrink-0 px-1.5 py-0.5 rounded bg-teal-950/70 text-teal-300 text-[10px] font-mono border border-teal-800/60"
+              title={`物理路径：${filePath}`}
+            >
               本地
             </span>
           )}
-          {isDirty && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="有未写入草稿修改" />
-          )}
+          {isDirty ? (
+            <span
+              className="w-2 h-2 rounded-full bg-amber-400 shrink-0 shadow-xs shadow-amber-400/50"
+              title="有未保存修改 (按 Ctrl+S 原地覆盖保存)"
+            />
+          ) : filePath ? (
+            <span
+              className="w-2 h-2 rounded-full bg-teal-400/80 shrink-0 shadow-xs shadow-teal-400/40"
+              title="已与本地物理文件保持同步"
+            />
+          ) : null}
         </div>
       </div>
 
@@ -246,7 +290,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
       </div>
 
-      {/* Zone 3: 主操作动作 (主题、保存、导出) */}
+      {/* Zone 3: 主操作动作 (主题、打开/导入组合、保存、导出) */}
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onThemeToggle}
@@ -256,10 +300,78 @@ export const TopBar: React.FC<TopBarProps> = ({
           {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
         </button>
 
+        {/* 打开 / 导入复合操作菜单 */}
+        <div ref={fileMenuRef} className="relative flex items-center">
+          <button
+            onClick={() => {
+              setFileMenuOpen(false);
+              onOpenFile?.();
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-l-lg border border-r-0 border-neutral-700/80 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer"
+            title={isTauri() ? '从本地磁盘打开 Markdown 文件 (Ctrl+O)' : '导入 Markdown / HTML 文件'}
+          >
+            {isTauri() ? <FolderOpen className="w-3.5 h-3.5 text-teal-400" /> : <Upload className="w-3.5 h-3.5 text-teal-400" />}
+            <span>{isTauri() ? '打开' : '导入'}</span>
+          </button>
+          <button
+            onClick={() => setFileMenuOpen((prev) => !prev)}
+            className="p-1.5 rounded-r-lg border border-neutral-700/80 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+            title="更多打开与导入选项"
+            aria-haspopup="true"
+            aria-expanded={fileMenuOpen}
+          >
+            <ChevronDown className="w-3 h-3" />
+          </button>
+
+          {fileMenuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-neutral-700 bg-neutral-900/95 backdrop-blur-md p-1.5 text-neutral-200 shadow-2xl z-50 animate-in fade-in slide-in-from-top-1">
+              <button
+                onClick={() => {
+                  setFileMenuOpen(false);
+                  onOpenFile?.();
+                }}
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs hover:bg-neutral-800 hover:text-teal-300 transition-colors text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-teal-400" />
+                  <span>{isTauri() ? '打开本地文件...' : '导入本地文件...'}</span>
+                </div>
+                <span className="text-[10px] text-neutral-500 font-mono group-hover:text-neutral-400">Ctrl+O</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setFileMenuOpen(false);
+                  onImportHtmlPayload?.();
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs hover:bg-neutral-800 hover:text-teal-300 transition-colors text-left cursor-pointer"
+              >
+                <FileCode className="w-4 h-4 text-amber-400" />
+                <span>导入自包含 HTML 载荷...</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setFileMenuOpen(false);
+                  onImportClipboard?.();
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs hover:bg-neutral-800 hover:text-teal-300 transition-colors text-left cursor-pointer"
+              >
+                <ClipboardPaste className="w-4 h-4 text-teal-400" />
+                <span>从剪贴板导入 Markdown</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         <button
           onClick={onSave}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700/80 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer"
-          title="保存当前修改到本地 IndexedDB"
+          title={
+            filePath
+              ? `原位覆盖保存至本地物理文件 (Ctrl+S)：${filePath}`
+              : '保存当前修改到本地工作区 (Ctrl+S)'
+          }
         >
           <Save className="w-3.5 h-3.5" />
           <span>保存</span>

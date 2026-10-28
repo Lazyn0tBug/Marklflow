@@ -350,6 +350,80 @@ export default function App() {
     }
   }, [handleImportDoc]);
 
+  const handleImportHtmlPayload = useCallback(async () => {
+    if (isTauri()) {
+      try {
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        const { readTextFile } = await import('@tauri-apps/plugin-fs');
+        const selected = await open({
+          multiple: false,
+          directory: false,
+          filters: [{ name: 'MarkFlow HTML 文档', extensions: ['html', 'htm'] }],
+        });
+        if (!selected || typeof selected !== 'string') return;
+        const text = await readTextFile(selected);
+        const restored = extractPayloadFromHtml(text);
+        if (restored) {
+          restored.meta.filePath = selected;
+          handleImportDoc(restored);
+        }
+      } catch (err) {
+        console.error('导入 HTML 载荷失败:', err);
+      }
+    } else {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.html,.htm';
+      input.onchange = async (event) => {
+        const target = event.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        const restored = extractPayloadFromHtml(text);
+        if (restored) {
+          handleImportDoc(restored);
+        }
+      };
+      input.click();
+    }
+  }, [handleImportDoc]);
+
+  const handleImportClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) return;
+      const firstLine = text.trim().split('\n')[0]?.replace(/^#+\s*/, '').slice(0, 30) || '剪贴板导入文档';
+      const newDoc: DocumentRecord = {
+        schemaVersion: 1,
+        id: 'doc_' + Math.random().toString(36).substring(2, 9),
+        revision: 1,
+        markdown: text,
+        meta: {
+          title: firstLine,
+          author: 'Clipboard',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        theme: {
+          fontFamily: 'sans',
+          fontSize: 15,
+          lineHeight: 1.75,
+          primaryColor: '#0d9488',
+          paperTheme: 'clean-white',
+          paperSize: 'A4',
+          margins: { top: 20, bottom: 25, left: 20, right: 20 },
+        },
+        options: {
+          syntaxProfile: 'commonmark-gfm-v1',
+          mathMode: 'mathml',
+        },
+      };
+      handleImportDoc(newDoc);
+    } catch (err) {
+      console.error('从剪贴板读取失败:', err);
+    }
+  }, [handleImportDoc]);
+
   const handleSaveAsImmediately = useCallback(async () => {
     if (!currentDoc) return;
     if (isTauri()) {
@@ -987,6 +1061,10 @@ export default function App() {
         onThemeToggle={() => setIsDark((prev) => !prev)}
         isDirty={isDirty}
         onSave={handleSaveImmediately}
+        onSaveAs={handleSaveAsImmediately}
+        onOpenFile={handleOpenFile}
+        onImportHtmlPayload={handleImportHtmlPayload}
+        onImportClipboard={handleImportClipboard}
         onOpenExport={() => setExportModalOpen(true)}
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
         documentTitle={currentDoc.meta.title}

@@ -5,6 +5,7 @@ import {
   resolvePath,
   resolveMarkdownImageUrl,
   isLocalAssetUrl,
+  extractFilePathFromAssetUrl,
 } from '../../src/core/platform/assetResolver';
 import { safeUrl } from '../../src/core/render/htmlPolicy';
 import { parseMarkdownDocument } from '../../src/core/parser/markdownParser';
@@ -122,6 +123,16 @@ describe('AssetResolver Unit Tests', () => {
       expect(isLocalAssetUrl('/Users/foo.png')).toBe(true);
       expect(isLocalAssetUrl('C:\\Users\\foo.png')).toBe(true);
       expect(isLocalAssetUrl('https://example.com/foo.png')).toBe(false);
+    });
+  });
+
+  describe('extractFilePathFromAssetUrl', () => {
+    it('extracts local file path from asset:// URL and local path schemes', () => {
+      expect(extractFilePathFromAssetUrl('asset://localhost/%2FUsers%2Falice%2Fpic.png')).toBe('/Users/alice/pic.png');
+      expect(extractFilePathFromAssetUrl('http://asset.localhost/C%3A%2Fdocs%2Fimg.png')).toBe('C:/docs/img.png');
+      expect(extractFilePathFromAssetUrl('file:///home/user/photo.jpg')).toBe('/home/user/photo.jpg');
+      expect(extractFilePathFromAssetUrl('/home/user/photo.jpg')).toBe('/home/user/photo.jpg');
+      expect(extractFilePathFromAssetUrl('https://example.com/pic.png')).toBeNull();
     });
   });
 });

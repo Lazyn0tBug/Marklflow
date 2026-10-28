@@ -3,10 +3,12 @@ import type {DocumentAsset} from '../model/document';
 import {assetSchema} from '../model/documentSchema';
 import {safeUrl} from '../render/htmlPolicy';
 import {parse,walk} from 'css-tree';
+import {isTauri} from '../platform/desktop';
+import {isLocalAssetUrl,extractFilePathFromAssetUrl} from '../platform/assetResolver';
 const MAX=10*1024*1024,TOTAL=25*1024*1024;
-const mimePattern=/^image\/(png|jpeg|gif|webp|avif)$/;
+const mimePattern=/^image\/(png|jpeg|gif|webp|avif|svg\+xml)$/;
 export function decodeImage(data:string):{mime:string;bytes:Uint8Array} {
- const match=/^data:(image\/(?:png|jpeg|gif|webp|avif));base64,([a-z0-9+/=]+)$/i.exec(data);
+ const match=/^data:(image\/(?:png|jpeg|gif|webp|avif|svg\+xml));base64,([a-z0-9+/=]+)$/i.exec(data);
  if(!match?.[1]||!match[2])throw new Error('不支持的图片类型或编码');
  const bytes=Uint8Array.from(atob(match[2]),c=>c.charCodeAt(0));
  if(bytes.length>MAX)throw new Error('图片超过10MB');return {mime:match[1].toLowerCase(),bytes};
@@ -38,6 +40,27 @@ export async function collectAssets(html:string,existing:DocumentAsset[]=[],allo
   if(found.size>=128||!safeUrl(source,true))throw new Error('图片数量/URL不受支持');
   const previous=existing.find(a=>a.source===source);let data=previous?.data;
   if(!data&&source.startsWith('data:'))data=source;
+  if(!data&&isTauri()&&isLocalAssetUrl(source)){
+   const filePath=extractFilePathFromAssetUrl(source);
+   if(filePath){
+    try{
+     const {readFile}=await import('@tauri-apps/plugin-fs');
+     const fileBytes=await readFile(filePath);
+     if(fileBytes.length>MAX)throw new Error('图片超过10MB');
+     const ext=filePath.split('.').pop()?.toLowerCase();
+     let mime='image/png';
+     if(ext==='jpg'||ext==='jpeg')mime='image/jpeg';
+     else if(ext==='gif')mime='image/gif';
+     else if(ext==='webp')mime='image/webp';
+     else if(ext==='avif')mime='image/avif';
+     else if(ext==='svg')mime='image/svg+xml';
+     data=encode(fileBytes,mime);
+    }catch(err){
+     console.error('读取本地资产失败:',filePath,err);
+     throw new Error('无法读取本地磁盘图片：'+source);
+    }
+   }
+  }
   if(!data){
    const url=new URL(source,location.href);
    if(!['http:','https:','blob:'].includes(url.protocol))throw new Error('无法读取本地相对图片，请先导入资产：'+source);

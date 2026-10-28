@@ -152,3 +152,39 @@ export function isLocalAssetUrl(url: string): boolean {
   const trimmed = url.trim();
   return /^(asset:\/\/|https?:\/\/asset\.localhost\/|file:\/\/)/i.test(trimmed) || isAbsolutePath(trimmed);
 }
+
+/**
+ * 从 Tauri asset 协议 URL 或 file:// URL 中解析还原出本地物理磁盘路径
+ */
+export function extractFilePathFromAssetUrl(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+
+  // 1. asset://localhost/path 或 asset://localhost/C%3A/...
+  if (/^asset:\/\/localhost\//i.test(trimmed)) {
+    const raw = trimmed.replace(/^asset:\/\/localhost\/?/i, '');
+    return decodeURIComponent(raw);
+  }
+
+  // 2. http://asset.localhost/path or https://asset.localhost/path
+  if (/^https?:\/\/asset\.localhost\//i.test(trimmed)) {
+    const raw = trimmed.replace(/^https?:\/\/asset\.localhost\/?/i, '');
+    return decodeURIComponent(raw);
+  }
+
+  // 3. file:///path
+  if (/^file:\/\//i.test(trimmed)) {
+    let fileRaw = trimmed.replace(/^file:\/\/\/?/i, '');
+    if (!/^[a-zA-Z]:/.test(fileRaw) && !fileRaw.startsWith('/')) {
+      fileRaw = '/' + fileRaw;
+    }
+    return decodeURIComponent(fileRaw);
+  }
+
+  // 4. 已经是操作系统绝对路径
+  if (isAbsolutePath(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
