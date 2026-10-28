@@ -46,3 +46,19 @@ it('supports SVG data URL verification in verifyAssets', async () => {
  expect(result.assets[0]?.mime).toBe('image/svg+xml');
  await verifyAssets(result.assets);
 });
+
+it('gracefully falls back to SVG placeholder when relative image returns text/html SPA fallback in Web mode', async () => {
+ const htmlResponse = new Response('<!doctype html><html>SPA</html>', {
+  status: 200,
+  headers: { 'content-type': 'text/html; charset=utf-8' },
+ });
+ const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(htmlResponse);
+
+ const result = await collectAssets('<img src="%E8%A1%8C%E4%B8%9A%E6%95%B0%E6%99%BA%E5%B9%B3%E5%8F%B0%E5.png">');
+ expect(result.assets).toHaveLength(1);
+ expect(result.assets[0]?.mime).toBe('image/svg+xml');
+ expect(result.assets[0]?.data).toContain('data:image/svg+xml;base64,');
+ await verifyAssets(result.assets);
+
+ fetchSpy.mockRestore();
+});

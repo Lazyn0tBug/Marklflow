@@ -232,41 +232,20 @@ export async function saveExportBinaryOrText(
   }
 }
 
-/** 原生静默导出矢量 PDF 文件 */
+/** 原生调起高精度矢量 PDF 打印与保存 */
 export async function exportPdfDirect(
   frozenHtml: string,
-  defaultName: string
+  _defaultName?: string
 ): Promise<{ success: boolean; path?: string; message?: string }> {
-  if (!isTauri()) {
-    return { success: false, message: '非桌面环境' };
-  }
-
   try {
-    const { save } = await import('@tauri-apps/plugin-dialog');
-    const { invoke } = await import('@tauri-apps/api/core');
-
-    const defaultPath = defaultName.endsWith('.pdf') ? defaultName : `${defaultName}.pdf`;
-    const targetPath = await save({
-      defaultPath,
-      filters: [{ name: 'PDF 矢量文档', extensions: ['pdf'] }],
-    });
-
-    if (!targetPath) return { success: false, message: '已取消保存' };
-
-    await invoke('export_pdf_direct', {
-      payload: {
-        html_content: frozenHtml,
-        target_path: targetPath,
-      },
-    });
-
+    const { printFrozenHtml } = await import('../export/documentPrint');
+    await printFrozenHtml(frozenHtml);
     return {
       success: true,
-      path: targetPath,
-      message: `已成功导出矢量 PDF 至：${targetPath}`,
+      message: '已调起系统排版打印窗口，请选择「另存为 PDF」完成保存',
     };
   } catch (error) {
-    console.error('原生导出 PDF 失败:', error);
+    console.error('调起 PDF 打印导出失败:', error);
     return {
       success: false,
       message: String(error),

@@ -7,8 +7,8 @@ import { isTauri, saveExportBinaryOrText, exportPdfDirect } from '../../core/pla
  * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、A4 矢量 PDF 原生导出 / 浏览器打印、原生 DOCX
  */
 
-import React, { useEffect, useState } from 'react';
-import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers, Save, GitBranch, Copy, Terminal } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { X, Download, Printer, FileCode, FileText, CheckCircle, AlertTriangle, Layers, Save, GitBranch, Copy, Terminal, Check } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 import { generateExportHtml } from '../../core/export/htmlExporter';
 import { exportDocumentToDocx } from '../../core/export/docxExporter';
@@ -68,7 +68,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
     }
   };
 
-  useEffect(()=>{if(isOpen){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setExportError(null);setAllowSourceFallback(false);setAllowRemoteAssets(false)}},[isOpen,doc.id]);
+  const docxIssues = useMemo(() => inspectDocx(doc.markdown), [doc.markdown]);
+  const unsupportedIssues = useMemo(() => docxIssues.filter((i) => i.adaptation === 'unsupported'), [docxIssues]);
+  const noticeIssues = useMemo(() => docxIssues.filter((i) => i.adaptation !== 'unsupported'), [docxIssues]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFileName(doc.meta.title || 'MarkFlow-Document');
+      setExportSuccess(null);
+      setExportError(null);
+      setAllowSourceFallback(true);
+      setAllowRemoteAssets(false);
+    }
+  }, [isOpen, doc.id, doc.meta.title]);
+
   if (!isOpen) return null;
 
   const handleExport = async () => {
@@ -86,17 +99,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
       if (selectedFormat === 'print-pdf') {
         const frozen = await generateExportHtml(doc, { mathMode, allowRemoteAssets });
-        if (isTauri()) {
-          const res = await exportPdfDirect(frozen, safeName);
-          if (res.success) {
-            setExportSuccess(res.message || '已成功导出矢量 PDF');
-          } else if (res.message && res.message !== '已取消保存') {
-            setExportError(res.message);
-          }
-        } else {
-          await printFrozenHtml(frozen);
-          onClose();
-        }
+        await printFrozenHtml(frozen);
+        setExportSuccess('已成功调起高精度分页打印，请在打印窗口中选择「另存为 PDF」保存');
         return;
       }
 
@@ -128,9 +132,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       console.error('Export error:', err);
       const errMsg = '导出过程出错: ' + String(err);
       setExportError(errMsg);
-      try {
-        window.alert(errMsg);
-      } catch {}
     } finally {
       setIsExporting(false);
     }
@@ -150,8 +151,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
       <div className="w-full max-w-2xl max-h-[90dvh] rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col">
-        {selectedFormat === 'docx' && inspectDocx(doc.markdown).length > 0 && <section className="m-4 text-xs text-amber-200" aria-label="DOCX 兼容性提示"><ul>{inspectDocx(doc.markdown).map((issue,i)=><li key={i}>{issue.nodeId}：{issue.message}</li>)}</ul><label className="flex gap-2 mt-2"><input type="checkbox" checked={allowSourceFallback} onChange={e=>setAllowSourceFallback(e.target.checked)}/>接受图片静态化及语义重排</label></section>}
-        <label className="m-4 flex gap-2 text-xs"><input type="checkbox" checked={allowRemoteAssets} onChange={e=>setAllowRemoteAssets(e.target.checked)}/>允许联网收集文档外部图片（受 CORS 限制）</label>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/40">
           <div className="flex items-center gap-2.5">
@@ -230,13 +229,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </div>
                 <div>
                   <div className="font-medium text-xs text-neutral-100 flex items-center gap-1.5">
-                    {isTauri() ? 'A4 矢量 PDF (.pdf)' : '打印 / 保存为 A4 PDF'}
-                    {isTauri() && <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-900/60 text-sky-300 font-mono">原生</span>}
+                    A4 矢量 PDF / 打印
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-900/60 text-sky-300 font-mono">
+                      {isTauri() ? '系统打印' : '网页打印'}
+                    </span>
                   </div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    {isTauri()
-                      ? '直接通过系统底层渲染引擎生成高精度矢量 PDF 并落盘保存，无需打印机弹窗。'
-                      : '准备 A4 文档后调用浏览器打印；实际分页、字体及 PDF 结果需在目标环境核对。'}
+                    高精度物理分页预渲染后调起系统打印；可在打印窗口中直接选择「另存为 PDF」生成标准矢量文档。
                   </p>
                 </div>
               </button>
@@ -307,6 +306,64 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </div>
               </button>
             </div>
+          </div>
+
+          {/* DOCX 兼容性与自适应选项 */}
+          {selectedFormat === 'docx' && (
+            <div className="space-y-2.5">
+              {unsupportedIssues.length > 0 && (
+                <div className="p-3 rounded-lg bg-red-950/60 border border-red-800/80 text-xs text-red-200">
+                  <div className="font-semibold flex items-center gap-1.5 mb-1 text-red-300">
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>文档包含暂不支持导出为 DOCX 的特殊结构：</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-red-300/90 pl-1">
+                    {unsupportedIssues.map((issue, idx) => (
+                      <li key={idx}>{issue.nodeId}：{issue.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {noticeIssues.length > 0 && (
+                <div className="p-3 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-300 space-y-2">
+                  <div className="font-medium text-neutral-200 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>Word 排版自适应就绪</span>
+                  </div>
+                  <div className="text-[11px] text-neutral-400 space-y-0.5">
+                    {noticeIssues.slice(0, 3).map((issue, idx) => (
+                      <div key={idx}>• {issue.message}</div>
+                    ))}
+                    {noticeIssues.length > 3 && (
+                      <div className="text-[10px] text-neutral-500">（共 {noticeIssues.length} 处图片与公式将自动封装为高清晰度嵌入图像）</div>
+                    )}
+                  </div>
+                  <label className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-neutral-800 text-[11px] text-teal-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowSourceFallback}
+                      onChange={(e) => setAllowSourceFallback(e.target.checked)}
+                      className="rounded border-neutral-700 bg-neutral-900 text-teal-500"
+                    />
+                    <span>接受图片/公式静态化封装及 HTML 语义重排（推荐开启）</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 外部网络资源收集开关 */}
+          <div className="px-1">
+            <label className="flex items-center gap-2 text-xs text-neutral-400 hover:text-neutral-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowRemoteAssets}
+                onChange={(e) => setAllowRemoteAssets(e.target.checked)}
+                className="rounded border-neutral-700 bg-neutral-900 text-teal-500"
+              />
+              <span>允许联网收集外部 HTTP(S) 图像（受目标源 CORS 限制）</span>
+            </label>
           </div>
 
           {/* Conditional Content: Git Patch Details or Capabilities Diagnostics */}
@@ -391,10 +448,10 @@ git push origin tauri`}
                   <div>• 公式采用 <strong>{mathMode.toUpperCase()}</strong> 渲染；源载荷支持再次导入 MarkFlow 无损重构。</div>
                 )}
                 {selectedFormat === 'print-pdf' && (
-                  <div>• 打印使用冻结文档，等待图片/字体就绪；系统打印设置及实际分页须另行核对。</div>
+                  <div>• 打印使用高精度物理分页预渲染；请在调起的打印窗口中直接选择「另存为 PDF」落盘。</div>
                 )}
                 {selectedFormat === 'docx' && (
-                  <div>• 段落与表格映射为 Word 原生对象；公式和图表以图片输出，原始HTML按语义重排；须明确接受，不能原生编辑公式或保留交互。</div>
+                  <div>• 段落与表格映射为 Word 原生对象；公式和图表以静态图片无损封装进 OpenXML 包。</div>
                 )}
                 {selectedFormat === 'reading-html' && (
                   <div>• 页面内嵌自包含 CSS 与公式渲染，接收方无需安装任何插件或字体库即可阅读。</div>
@@ -444,8 +501,8 @@ git push origin tauri`}
             <button
               type="button"
               onClick={handleExport}
-              disabled={isExporting||(selectedFormat==='docx'&&inspectDocx(doc.markdown).some(i=>i.adaptation==='unsupported'))}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 shadow-md shadow-teal-950/30"
+              disabled={isExporting || (selectedFormat === 'docx' && unsupportedIssues.length > 0)}
+              className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 shadow-md shadow-teal-950/30 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               {isExporting
@@ -453,7 +510,7 @@ git push origin tauri`}
                 : selectedFormat === 'git-patch'
                 ? '下载 markflow-update.patch 补丁'
                 : selectedFormat === 'print-pdf'
-                ? (isTauri() ? '导出为 PDF 文件' : '唤起系统打印')
+                ? '唤起打印 (另存为 PDF)'
                 : '立即导出并保存'}
             </button>
           </div>

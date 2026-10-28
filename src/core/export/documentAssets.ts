@@ -30,6 +30,19 @@ function encode(bytes:Uint8Array,mime:string):string{
  let value='';for(let i=0;i<bytes.length;i+=8192)value+=String.fromCharCode(...bytes.subarray(i,i+8192));
  return 'data:'+mime+';base64,'+btoa(value);
 }
+export function createFallbackImage(source: string, reason = '无法在当前环境加载本地图片'): string {
+ let decoded = source;
+ try { decoded = decodeURIComponent(source); } catch {}
+ const safeName = decoded.replace(/[<>&"']/g, '').split('/').pop()?.slice(0, 32) || 'image';
+ const safeReason = reason.replace(/[<>&"']/g, '');
+ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="560" height="96" viewBox="0 0 560 96">`
+  + `<rect width="100%" height="100%" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" rx="6"/>`
+  + `<text x="24" y="36" fill="#f59e0b" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="13" font-weight="600">⚠️ 本地图片在网页端不可用 (${safeReason})</text>`
+  + `<text x="24" y="60" fill="#94a3b8" font-family="Consolas,monospace,sans-serif" font-size="11">${safeName}</text>`
+  + `<text x="24" y="80" fill="#71717a" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-size="10">提示：本地磁盘图片请在 MarkFlow 桌面客户端中打开并导出</text>`
+  + `</svg>`;
+ return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
 export async function collectAssets(html:string,existing:DocumentAsset[]=[],allowRemote=false):Promise<{html:string;assets:DocumentAsset[]}>{
  await verifyAssets(existing);
  const root=document.createElement('div');root.innerHTML=html;const found=new Map<string,DocumentAsset>();let total=0;
@@ -57,7 +70,7 @@ export async function collectAssets(html:string,existing:DocumentAsset[]=[],allo
      data=encode(fileBytes,mime);
     }catch(err){
      console.error('读取本地资产失败:',filePath,err);
-     throw new Error('无法读取本地磁盘图片：'+source);
+     data=createFallbackImage(source,'本地磁盘文件不存在或读取受限');
     }
    }
   }
@@ -65,16 +78,30 @@ export async function collectAssets(html:string,existing:DocumentAsset[]=[],allo
    const url=new URL(source,location.href);
    if(!['http:','https:','blob:'].includes(url.protocol))throw new Error('无法读取本地相对图片，请先导入资产：'+source);
    if(!allowRemote&&url.origin!==location.origin)throw new Error('外部图片需允许联网收集：'+source);
-   const response=await fetch(url,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});
-   if(!response.ok)throw new Error('图片读取失败：'+source);
-   const mime=(response.headers.get('content-type')||'').split(';',1).join('').toLowerCase();
-   if(!mimePattern.test(mime))throw new Error('图片类型不允许：'+source);
-   if(Number(response.headers.get('content-length')||0)>MAX)throw new Error('图片超过10MB');
-   const chunks:Uint8Array[]=[];let size=0;
-   if(!response.body)throw new Error('图片内容不可读取');
-   const reader=response.body.getReader();
-   try{while(true){const item=await reader.read();if(item.done)break;size+=item.value.length;if(size>MAX){await reader.cancel();throw new Error('图片超过10MB')}chunks.push(item.value)}}finally{reader.releaseLock()}
-   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}data=encode(bytes,mime);
+   try {
+    const response=await fetch(url,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});
+    const mime=(response.headers.get('content-type')||'').split(';',1).join('').toLowerCase();
+    if(!response.ok || mime.includes('text/html') || !mimePattern.test(mime)){
+     if (url.origin === location.origin || !isTauri()) {
+      data=createFallbackImage(source,'网页端无法访问本地文件');
+     } else {
+      throw new Error('图片类型不允许：'+source);
+     }
+    } else {
+     if(Number(response.headers.get('content-length')||0)>MAX)throw new Error('图片超过10MB');
+     const chunks:Uint8Array[]=[];let size=0;
+     if(!response.body)throw new Error('图片内容不可读取');
+     const reader=response.body.getReader();
+     try{while(true){const item=await reader.read();if(item.done)break;size+=item.value.length;if(size>MAX){await reader.cancel();throw new Error('图片超过10MB')}chunks.push(item.value)}}finally{reader.releaseLock()}
+     const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}data=encode(bytes,mime);
+    }
+   } catch(fetchErr: unknown) {
+    if (url.origin === location.origin || !isTauri()) {
+     data=createFallbackImage(source,'网页端无法访问本地文件');
+    } else {
+     throw fetchErr;
+    }
+   }
   }
   const decoded=decodeImage(data);total+=decoded.bytes.length;if(total>TOTAL)throw new Error('文档图片总计超过25MB');
   const asset:DocumentAsset={source,mime:decoded.mime,bytes:decoded.bytes.length,sha256:await hashBytes(decoded.bytes),data,...(previous?.license?{license:previous.license}:{})};
