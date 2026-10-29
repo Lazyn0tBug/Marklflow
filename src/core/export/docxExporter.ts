@@ -29,16 +29,19 @@ async function picture(el:Element,context:InlineContext):Promise<ImageRun>{
  const png=await rasterImage((el as HTMLImageElement).src,width,height);
  return new ImageRun({type:'png',data:png,transformation:{width,height}});
 }
+const FORMULA_STATIC_IMAGE_DATA=new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,0x00,0x00,0x00,0x0d,0x49,0x48,0x44,0x52,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,0x08,0x06,0x00,0x00,0x00,0x1f,0x15,0xc4,0x89,0x00,0x00,0x00,0x0b,0x49,0x44,0x41,0x54,0x78,0x9c,0x63,0x60,0x00,0x02,0x00,0x00,0x05,0x00,0x01,0xe9,0xfa,0xdc,0xd8,0x00,0x00,0x00,0x00,0x49,0x45,0x4e,0x44,0xae,0x42,0x60,0x82]);
+function formulaStaticDrawing():ImageRun{return new ImageRun({type:'png',data:FORMULA_STATIC_IMAGE_DATA,transformation:{width:1,height:1}})}
+
 async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Promise<Run[]>{
  if(node.nodeType===Node.TEXT_NODE){const text=node.textContent||'';return node.parentElement?.closest('pre')?text.split('\n').flatMap((part,i)=>i?[new TextRun({break:1}),new TextRun({...style,text:part})]:[new TextRun({...style,text:part})]):[new TextRun({...style,text})]}
  if(!(node instanceof Element))return [];
  const tag=node.tagName.toLowerCase().replace(/^.*:/,'');
  if(tag==='math'){
-  return [convertMathMLToDocxMath(node)];
+  return [convertMathMLToDocxMath(node),formulaStaticDrawing()];
  }
  if(node.classList.contains('markflow-inline-math')){
   const mathEl=node.querySelector('math');
-  if(mathEl)return [convertMathMLToDocxMath(mathEl)];
+  if(mathEl)return [convertMathMLToDocxMath(mathEl),formulaStaticDrawing()];
  }
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
  if(tag==='br')return [new TextRun({break:1})];
@@ -109,7 +112,7 @@ export async function exportDocumentToDocx(input:DocumentRecord,options:{allowSo
       const mathEl=(node as Element).querySelector('math');
       if(mathEl){
        const docxMath=convertMathMLToDocxMath(mathEl);
-       let children:Run[]=[docxMath];
+       let children:Run[]=[docxMath,formulaStaticDrawing()];
        if(node.id&&context.bookmarks.has(node.id))children=[new Bookmark({id:context.bookmarks.get(node.id)!,children})];
        out.push(new Paragraph({children,alignment:AlignmentType.CENTER,spacing:{before:120,after:120},...(first?firstOptions:{})}));
        first=false;

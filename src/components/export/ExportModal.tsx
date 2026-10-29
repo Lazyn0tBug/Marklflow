@@ -77,7 +77,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       setFileName(doc.meta.title || 'MarkFlow-Document');
       setExportSuccess(null);
       setExportError(null);
-      setAllowSourceFallback(true);
+      setAllowSourceFallback(false);
       setAllowRemoteAssets(false);
     }
   }, [isOpen, doc.id, doc.meta.title]);
@@ -132,6 +132,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       console.error('Export error:', err);
       const errMsg = '导出过程出错: ' + String(err);
       setExportError(errMsg);
+      try {
+        window.alert(errMsg);
+      } catch {
+        // ignore if alerts are not supported
+      }
     } finally {
       setIsExporting(false);
     }
@@ -229,7 +234,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </div>
                 <div>
                   <div className="font-medium text-xs text-neutral-100 flex items-center gap-1.5">
-                    A4 矢量 PDF / 打印
+                    打印 / 保存为 A4 PDF
                     <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-900/60 text-sky-300 font-mono">
                       {isTauri() ? '系统打印' : '网页打印'}
                     </span>
@@ -325,31 +330,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 </div>
               )}
 
-              {noticeIssues.length > 0 && (
-                <div className="p-3 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-300 space-y-2">
-                  <div className="font-medium text-neutral-200 flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                    <span>Word 排版自适应就绪</span>
-                  </div>
-                  <div className="text-[11px] text-neutral-400 space-y-0.5">
-                    {noticeIssues.slice(0, 3).map((issue, idx) => (
-                      <div key={idx}>• {issue.message}</div>
-                    ))}
-                    {noticeIssues.length > 3 && (
-                      <div className="text-[10px] text-neutral-500">（共 {noticeIssues.length} 处图片与公式将自动封装为高清晰度嵌入图像）</div>
-                    )}
-                  </div>
-                  <label className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-neutral-800 text-[11px] text-teal-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={allowSourceFallback}
-                      onChange={(e) => setAllowSourceFallback(e.target.checked)}
-                      className="rounded border-neutral-700 bg-neutral-900 text-teal-500"
-                    />
-                    <span>接受图片/公式静态化封装及 HTML 语义重排（推荐开启）</span>
-                  </label>
+              <section
+                role="region"
+                aria-label="DOCX 兼容性提示"
+                className="p-3 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-300 space-y-2"
+              >
+                <div className="font-medium text-neutral-200 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Word 排版自适应就绪</span>
                 </div>
-              )}
+                <div className="text-[11px] text-neutral-400 space-y-0.5">
+                  {noticeIssues.map((issue, idx) => (
+                    <div key={idx}>• {issue.message}</div>
+                  ))}
+                  {noticeIssues.length === 0 && (
+                    <div>• 纯文本与标准段落，排版规范完全适配 Word 原生格式。</div>
+                  )}
+                </div>
+                <label className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-neutral-800 text-[11px] text-teal-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowSourceFallback}
+                    onChange={(e) => setAllowSourceFallback(e.target.checked)}
+                    className="rounded border-neutral-700 bg-neutral-900 text-teal-500"
+                  />
+                  <span>接受图片静态化及语义重排</span>
+                </label>
+              </section>
             </div>
           )}
 
@@ -510,7 +517,7 @@ git push origin tauri`}
                 : selectedFormat === 'git-patch'
                 ? '下载 markflow-update.patch 补丁'
                 : selectedFormat === 'print-pdf'
-                ? '唤起打印 (另存为 PDF)'
+                ? '唤起系统打印'
                 : '立即导出并保存'}
             </button>
           </div>
