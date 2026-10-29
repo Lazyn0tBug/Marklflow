@@ -1,10 +1,11 @@
 // @vitest-environment node
 import {it,expect,vi} from 'vitest';
 import {ExportService,type ExportInput,type ExportPorts} from '../../src/application/exports/exportService';
+import type {ExportFile} from '../../src/application/exports/exportFile';
 import type {OutputIssue} from '../../src/core/model/exportDiagnostics';
 import {htmlArtifact} from './export-fixtures';
 import {request} from './task-fixtures';
-function setup(){const ports:ExportPorts={prepare:vi.fn(async doc=>htmlArtifact('<h1>CANONICAL HTML</h1>',doc)),inspectDocx:vi.fn(()=>[]),encodeEditableSource:vi.fn(async()=>'frozen-source'),generatePdfHtml:vi.fn(async()=>'<html>frozen</html>'),generateMarkdownBundle:vi.fn(async()=>new Blob(['zip'])),generateHtml:vi.fn(async()=>'<html>frozen</html>'),generateDocx:vi.fn(async()=>new Blob(['docx'])),download:vi.fn(),deliverPdf:vi.fn(async()=>{})};return {ports,service:new ExportService(ports)}}
+function setup(){const ports:ExportPorts & {download(blob:Blob,name:string):void}={prepare:vi.fn(async doc=>htmlArtifact('<h1>CANONICAL HTML</h1>',doc)),inspectDocx:vi.fn(()=>[]),encodeEditableSource:vi.fn(async()=>'frozen-source'),generatePdfHtml:vi.fn(async()=>'<html>frozen</html>'),generateMarkdownBundle:vi.fn(async()=>new Blob(['zip'])),generateHtml:vi.fn(async()=>'<html>frozen</html>'),generateDocx:vi.fn(async()=>new Blob(['docx'])),download:vi.fn(),selectSave:vi.fn(async(file:ExportFile)=>({async save(blob:Blob){ports.download(blob,file.name);return 'download-started' as const}})),deliverPdf:vi.fn(async()=>{})};return {ports,service:new ExportService(ports)}}
 function input(format:ExportInput['format']='editable-html'):ExportInput{return {document:request().document,format,fileName:' original ',mathMode:'mathml',allowRemoteAssets:false}}
 it('holds busy and captures source/options before one HTML preparation',async()=>{
  const {ports,service}=setup(),source=input(),artifact=htmlArtifact('<h1>CANONICAL</h1>',source.document);let complete=()=>{};
@@ -30,7 +31,7 @@ it('passes the accepted name after asynchronous HTML preparation',async()=>{cons
 const notices:OutputIssue[]=[{nodeId:'line-3',adaptation:'static',message:'Formula image'}];
 it('holds the same artifact through one confirmation and ignores later edits',async()=>{
  const {ports,service}=setup(),source=input('docx'),artifact=htmlArtifact('<p>FROZEN</p>',source.document);vi.mocked(ports.prepare).mockResolvedValue(artifact);vi.mocked(ports.inspectDocx).mockReturnValue(notices);let accept=(value:boolean)=>{void value};
- const review={confirmDocx:vi.fn(()=>new Promise<boolean>(resolve=>{accept=resolve}))},running=service.run(source,review);await Promise.resolve();expect(review.confirmDocx).toHaveBeenCalledOnce();expect(service.busy).toBe(true);source.document.markdown='later';source.fileName='later';expect(ports.generateDocx).not.toHaveBeenCalled();expect(await service.run(input())).toEqual({status:'busy'});accept(true);await running;
+ const review={confirmDocx:vi.fn(()=>new Promise<boolean>(resolve=>{accept=resolve}))},running=service.run(source,review);await Promise.resolve();await Promise.resolve();expect(review.confirmDocx).toHaveBeenCalledOnce();expect(service.busy).toBe(true);source.document.markdown='later';source.fileName='later';expect(ports.generateDocx).not.toHaveBeenCalled();expect(await service.run(input())).toEqual({status:'busy'});accept(true);await running;
  expect(ports.prepare).toHaveBeenCalledOnce();expect(ports.generateDocx).toHaveBeenCalledExactlyOnceWith(artifact,{allowSourceFallback:true});expect(ports.download).toHaveBeenCalledWith(expect.any(Blob),'original.docx');
 });
 it('declining or omitting confirmation never delivers fallback output',async()=>{for(const confirm of [undefined,async()=>false]){const {ports,service}=setup();vi.mocked(ports.inspectDocx).mockReturnValue(notices);expect(await service.run(input('docx'),confirm?{confirmDocx:confirm}:undefined)).toMatchObject({status:'cancelled'});expect(ports.generateDocx).not.toHaveBeenCalled();expect(ports.download).not.toHaveBeenCalled();expect(service.busy).toBe(false)}});
@@ -47,4 +48,22 @@ it('releases busy on asynchronous PDF handoff failure without a silent retry or 
  const {ports,service}=setup();let fail=(error:Error)=>{void error};vi.mocked(ports.deliverPdf).mockReturnValue(new Promise<void>((_resolve,reject)=>{fail=reject}));const running=service.run(input('print-pdf'));
  for(let i=0;i<8;i++)await Promise.resolve();expect(service.busy).toBe(true);const rejected=expect(running).rejects.toThrow('native handoff failed');fail(new Error('native handoff failed'));await rejected;
  expect(service.busy).toBe(false);expect(ports.deliverPdf).toHaveBeenCalledOnce();expect(ports.download).not.toHaveBeenCalled();await service.run(input('markdown'));expect(ports.download).toHaveBeenCalledOnce();
+});
+
+it('chooses the byte destination synchronously and cancels without generation',async()=>{
+ const {ports,service}=setup();vi.mocked(ports.selectSave).mockResolvedValue(undefined);const running=service.run(input());
+ expect(ports.selectSave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({name:'original.markflow.html'}));expect(service.busy).toBe(true);
+ expect(await running).toMatchObject({status:'cancelled'});expect(ports.prepare).not.toHaveBeenCalled();expect(ports.download).not.toHaveBeenCalled();expect(service.busy).toBe(false);
+});
+it('freezes the source while selecting and holds busy until a confirmed file commit',async()=>{
+ const {ports,service}=setup(),source=input('markdown');let select=(value:Awaited<ReturnType<ExportPorts['selectSave']>>)=>{void value},commit=()=>{};
+ const save=vi.fn(async(blob:Blob)=>{expect(await blob.text()).toBe('# Test');await new Promise<void>(resolve=>{commit=resolve});return 'saved' as const});
+ vi.mocked(ports.selectSave).mockReturnValue(new Promise(resolve=>{select=resolve}));const running=service.run(source);source.document.markdown='later';source.fileName='later';expect(await service.run(input())).toEqual({status:'busy'});select({save});for(let i=0;i<8;i++)await Promise.resolve();
+ expect(service.busy).toBe(true);expect(save).toHaveBeenCalledOnce();commit();expect(await running).toMatchObject({status:'completed',revision:1,message:expect.stringContaining('已保存文件')});expect(service.busy).toBe(false);expect(ports.download).not.toHaveBeenCalled();
+});
+it('keeps PDF on its native HTML port without a byte destination',async()=>{const {ports,service}=setup();await service.run(input('print-pdf'));expect(ports.selectSave).not.toHaveBeenCalled();expect(ports.deliverPdf).toHaveBeenCalledOnce()});
+it('does not write a selected target when DOCX confirmation is declined',async()=>{const {ports,service}=setup(),save=vi.fn();vi.mocked(ports.selectSave).mockResolvedValue({save});vi.mocked(ports.inspectDocx).mockReturnValue(notices);expect(await service.run(input('docx'),{confirmDocx:async()=>false})).toMatchObject({status:'cancelled'});expect(save).not.toHaveBeenCalled()});
+it('releases busy on selection or file commit failure without a fallback download',async()=>{
+ for(const phase of ['select','save']){const {ports,service}=setup();if(phase==='select')vi.mocked(ports.selectSave).mockRejectedValue(new Error('save denied'));else vi.mocked(ports.selectSave).mockResolvedValue({save:async()=>{throw new Error('save denied')}});
+ await expect(service.run(input('markdown'))).rejects.toThrow('save denied');expect(service.busy).toBe(false);expect(ports.download).not.toHaveBeenCalled();}
 });
