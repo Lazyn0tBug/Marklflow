@@ -1,0 +1,383 @@
+{
+  "stage": "EX-W3b",
+  "sourceCommit": "4825614",
+  "systemSaveEvidence": false,
+  "pdf": [
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium\\document.pdf",
+      "sha256": "e4db9004c3b7d1f8f394f8f177713e6e7e07fcb186bb9aa93f6e9864e9aa24f2",
+      "pages": 1,
+      "characters": 66,
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "",
+          "toUnicode": true,
+          "embedded": false
+        },
+        {
+          "name": "/DAAAAA+MicrosoftYaHeiUI",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/EAAAAA+CambriaMath",
+          "toUnicode": true,
+          "embedded": true
+        }
+      ],
+      "images": [
+        {
+          "width": 687,
+          "height": 130
+        }
+      ],
+      "vectorOperations": 57,
+      "externalLinks": [],
+      "internalLinksResolved": 0,
+      "namedDestinations": 0,
+      "allPagesContact": "D:\\codex\\ex-w3-evidence-2026-10-29\\pdf-1-all-pages.png",
+      "nativePdfCorpus": false,
+      "automatedPreflightOnly": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\pdf-export-exports-A4-from-hidden-without-a-PDF-preview-step-chromium\\a4-export.pdf",
+      "sha256": "30fef6ef48af10fa0b0c724f72107d8941784b16ba62cd149d08b0da117b5f42",
+      "pages": 5,
+      "characters": 4126,
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/CAAAAA+MicrosoftYaHeiUI",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/DAAAAA+CambriaMath",
+          "toUnicode": true,
+          "embedded": true
+        }
+      ],
+      "images": [],
+      "vectorOperations": 50,
+      "externalLinks": [],
+      "internalLinksResolved": 0,
+      "namedDestinations": 0,
+      "allPagesContact": "D:\\codex\\ex-w3-evidence-2026-10-29\\pdf-2-all-pages.png",
+      "nativePdfCorpus": false,
+      "automatedPreflightOnly": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium\\long-document.pdf",
+      "sha256": "32c255b90976ddd7d492197dc9772808412f2db631a3a1a9658bee37f350ac4e",
+      "pages": 8,
+      "characters": 11428,
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/CAAAAA+MicrosoftYaHeiUI",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/DAAAAA+Consolas",
+          "toUnicode": true,
+          "embedded": true
+        }
+      ],
+      "images": [],
+      "vectorOperations": 1048,
+      "externalLinks": [],
+      "internalLinksResolved": 0,
+      "namedDestinations": 0,
+      "allPagesContact": "D:\\codex\\ex-w3-evidence-2026-10-29\\pdf-3-all-pages.png",
+      "nativePdfCorpus": false,
+      "automatedPreflightOnly": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-8eb96--handoff-baseline-built-svg-chromium\\automated-preflight.pdf",
+      "sha256": "059e7a2f725ea75f5516ec044a70f349ee2c23d61eab1fe1c77b5dc421496d1f",
+      "pages": 6,
+      "characters": 4351,
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/CAAAAA+MicrosoftYaHeiUI",
+          "toUnicode": true,
+          "embedded": true
+        }
+      ],
+      "images": [
+        {
+          "width": 1,
+          "height": 1
+        }
+      ],
+      "vectorOperations": 1293,
+      "externalLinks": [
+        "https://example.com/ex-w0"
+      ],
+      "internalLinksResolved": 1,
+      "namedDestinations": 1,
+      "allPagesContact": "D:\\codex\\ex-w3-evidence-2026-10-29\\pdf-4-all-pages.png",
+      "nativePdfCorpus": true,
+      "automatedPreflightOnly": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-97934-ndoff-baseline-built-mathml-chromium\\automated-preflight.pdf",
+      "sha256": "2b9a3e33b1ceb469e5509c534d90a213d4ffbd2a969378f08a8b39b3504cdde6",
+      "pages": 6,
+      "characters": 4369,
+      "fonts": [
+        {
+          "name": "/AAAAAA+MicrosoftYaHei",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/BAAAAA+MicrosoftYaHeiUI-Bold",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/CAAAAA+MicrosoftYaHeiUI",
+          "toUnicode": true,
+          "embedded": true
+        },
+        {
+          "name": "/DAAAAA+CambriaMath",
+          "toUnicode": true,
+          "embedded": true
+        }
+      ],
+      "images": [
+        {
+          "width": 1,
+          "height": 1
+        }
+      ],
+      "vectorOperations": 695,
+      "externalLinks": [
+        "https://example.com/ex-w0"
+      ],
+      "internalLinksResolved": 1,
+      "namedDestinations": 1,
+      "allPagesContact": "D:\\codex\\ex-w3-evidence-2026-10-29\\pdf-5-all-pages.png",
+      "nativePdfCorpus": true,
+      "automatedPreflightOnly": true
+    }
+  ],
+  "docx": [
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\export-confirmation-keeps--17fb8-ven-when-the-source-changes-chromium\\accepted.docx",
+      "sha256": "30423f173bb2ace503606e0091a83f3366a8900881d1ccc84e23eceb53cc9929",
+      "xmlWellFormed": true,
+      "internalRelationshipsResolved": 13,
+      "bookmarks": 1,
+      "tables": 0,
+      "drawings": 1,
+      "media": 2,
+      "officeVisualValidation": "pending"
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\export-service-keeps-accep-365d4-t-changes-during-generation-chromium\\frozen.docx",
+      "sha256": "0ff5cf62ff22b79646b49eda5dd1be01af3c51d749d4ee4dc4dc3a42a1011920",
+      "xmlWellFormed": true,
+      "internalRelationshipsResolved": 11,
+      "bookmarks": 1,
+      "tables": 0,
+      "drawings": 0,
+      "media": 0,
+      "officeVisualValidation": "pending"
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\html-compatibility-exports-deb18-ormula-and-diagram-pictures-chromium\\document.docx",
+      "sha256": "cd3a549d6954e3f74d62f3e8430d556f58e4632fa90dee7916daaef0b8ebe0a5",
+      "xmlWellFormed": true,
+      "internalRelationshipsResolved": 16,
+      "bookmarks": 2,
+      "tables": 1,
+      "drawings": 3,
+      "media": 5,
+      "officeVisualValidation": "pending"
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\review-docx-preserves-mixe-f551f--page-breaks-and-A4-in-DOCX-chromium\\semantic.docx",
+      "sha256": "052943bc89ecb51db209f6e0affe593fd5963a40eb5140a265e42cfc0cb7d4f4",
+      "xmlWellFormed": true,
+      "internalRelationshipsResolved": 11,
+      "bookmarks": 3,
+      "tables": 1,
+      "drawings": 0,
+      "media": 0,
+      "officeVisualValidation": "pending"
+    }
+  ],
+  "bundles": [
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\export-confirmation-source-2c673-m-rendering-cannot-complete-chromium\\source.zip",
+      "sha256": "9fe229254bef972390eace1860c31337669fbb34ade9c5173cc6393aa459b8f2",
+      "assetHashesVerified": 1,
+      "sourceRevision": 2,
+      "sourceId": "doc_quantum_report_001"
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\markdown-bundle-exports-a--23167-e-source-and-verified-bytes-chromium\\source.zip",
+      "sha256": "231744827ef2f2ec21ad7850e48c29271f7de712390ac4f9ea8902b4ce1a5eb3",
+      "assetHashesVerified": 1,
+      "sourceRevision": 2,
+      "sourceId": "doc_quantum_report_001"
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\markdown-bundle-keeps-raw--a85cf-matting-in-the-resource-ZIP-chromium\\wrapper.zip",
+      "sha256": "74efe0a806ee133ca18794510a586fa67b14011bb3970fb984bb4fdd36187094",
+      "assetHashesVerified": 1,
+      "sourceRevision": 1,
+      "sourceId": "doc_c194167f-9343-423c-9383-b09cf6a3eea7"
+    }
+  ],
+  "html": [
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\export-service-uses-the-ac-640a3-diately-after-export-starts-chromium\\frozen-source.html",
+      "sha256": "1b60247b1da885c303e637905e0e5e993ce29e301cfd93181cbd3572f52e790f",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium\\editable.html",
+      "sha256": "a5f4c35636b6ad46c1d1b43e20b8581f46bc2d02e266433ee95a7f855093a32d",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\http-compatibility-preview-39e90-ithout-randomUUID-or-subtle-chromium\\http-export.html",
+      "sha256": "bdb7da6ea2e63a7f68928e0944d7a32db2c24a677f9f81784d84e8b14eae352a",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium\\long-document.html",
+      "sha256": "b19b234ca3a7899ee16dde22681cb43bb494381a154f652204a83cbb89caebc8",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-86bb0-ff-baseline-development-svg-chromium\\frozen-paged.html",
+      "sha256": "5fb0bd6cdf9db5745ec6b4491f199d981d63d2019b560999ad031df228c138ca",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-8eb96--handoff-baseline-built-svg-chromium\\frozen-paged.html",
+      "sha256": "4b13df50575298f99e62fb513f3f12792dd45691d1c45e95c601f0add62600fd",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-97934-ndoff-baseline-built-mathml-chromium\\frozen-paged.html",
+      "sha256": "08e77f27fbad246f954c27dd8443067cd110d668368cd6384293d66412620a18",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-bfd83-F-handoff-baseline-http-svg-chromium\\frozen-paged.html",
+      "sha256": "57ec287589b545710f5f4f5992709e680b25d31e84cb1be03da44481f5b9e0d4",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-d7081-baseline-development-mathml-chromium\\frozen-paged.html",
+      "sha256": "6eadcd304cee9d30cd2d5da62db310de25a489840ac219444aa6ee67ea5a70eb",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-native-pdf-baseline-We-e4ecd-andoff-baseline-http-mathml-chromium\\frozen-paged.html",
+      "sha256": "3dfa7a44847e61fff08671c157921fb91b63e06fb467e4c8394b5e019242f42c",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    },
+    {
+      "path": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifacts\\web-packaged-runtime-produ-f62f7--packaged-runtime-resources-chromium\\packaged-reading.html",
+      "sha256": "09772bc2dfdafecdd2f5d1f04d4b6d8f55f8cfa8ea000c1f8cd06872eca2b1b0",
+      "externalRuntimeReferences": [],
+      "externalCssUrls": [],
+      "executableScripts": [],
+      "runtimeReferencesSelfContained": true
+    }
+  ],
+  "artifactManifest": "D:\\codex\\ex-w3-evidence-2026-10-29\\artifact-manifest.json",
+  "archiveFiles": 66,
+  "date": "2026-10-29",
+  "automaticStatus": "passed-not-system-save-acceptance",
+  "archiveManifestSha256": "16433353e003deaa83a8c36ebde14c9f1e46a1cadc1702b06057cf91338564dc",
+  "helperPath": "D:\\codex\\ex-w3-evidence-2026-10-29\\inspection-helper.py",
+  "helperSha256": "286a7ac89ea0a005c1862bb8b856838e160a59331b185e70f2cea41f252cf629",
+  "visualReview": {
+    "method": "PDFium all-page contact sheets",
+    "pdfFiles": 5,
+    "totalPages": 26,
+    "newVisibleClippingObserved": false,
+    "publicationScalePerPageReview": false,
+    "wordWpsVisual": "pending"
+  },
+  "EX-W0": "system evidence pending",
+  "nativePickerManual": "pending",
+  "fullAcceptancePassed": false
+}
