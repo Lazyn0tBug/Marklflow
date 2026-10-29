@@ -102,40 +102,47 @@
   ],
   "automatedPdfPreflights": [
     {
-      "path": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium\\document.pdf",
+      "path": "D:\\codex\\ex-w2-acceptance-archive\\1-document.pdf",
       "sha256": "da17e74475788da554e3a33966f9028ffb3b03230ee611770dd05236d88812c9",
       "pages": 1,
       "characters": 66,
-      "automatedPreflightOnly": true
+      "automatedPreflightOnly": true,
+      "originalPath": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\html-compatibility-opens-H-6ccdf--editable-source-and-assets-chromium\\document.pdf"
     },
     {
-      "path": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\pdf-export-exports-A4-from-hidden-without-a-PDF-preview-step-chromium\\a4-export.pdf",
+      "path": "D:\\codex\\ex-w2-acceptance-archive\\2-a4-export.pdf",
       "sha256": "a76b4c2a1533a2ec04d5911392d49f1f1177da9e2b10b2ab20df9f4c9d75c067",
       "pages": 5,
       "characters": 4126,
-      "automatedPreflightOnly": true
+      "automatedPreflightOnly": true,
+      "originalPath": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\pdf-export-exports-A4-from-hidden-without-a-PDF-preview-step-chromium\\a4-export.pdf"
     },
     {
-      "path": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium\\long-document.pdf",
+      "path": "D:\\codex\\ex-w2-acceptance-archive\\3-long-document.pdf",
       "sha256": "3178fcff05b23ff010cc0dee9c0406163af859988ae0b342dd7fa1906a261bdc",
       "pages": 8,
       "characters": 11428,
-      "automatedPreflightOnly": true
+      "automatedPreflightOnly": true,
+      "originalPath": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\review-pagination-keeps-lo-925c9-ontainer-layout-in-A4-pages-chromium\\long-document.pdf"
     },
     {
-      "path": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\web-native-pdf-baseline-We-8eb96--handoff-baseline-built-svg-chromium\\automated-preflight.pdf",
+      "path": "D:\\codex\\ex-w2-acceptance-archive\\4-automated-preflight.pdf",
       "sha256": "49a00e3d9498a6a6992ddcd3b23d903d86f2c5212ccc66e5b6589233d02fba7e",
       "pages": 6,
       "characters": 4351,
-      "automatedPreflightOnly": true
+      "automatedPreflightOnly": true,
+      "originalPath": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\web-native-pdf-baseline-We-8eb96--handoff-baseline-built-svg-chromium\\automated-preflight.pdf"
     },
     {
-      "path": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\web-native-pdf-baseline-We-97934-ndoff-baseline-built-mathml-chromium\\automated-preflight.pdf",
+      "path": "D:\\codex\\ex-w2-acceptance-archive\\5-automated-preflight.pdf",
       "sha256": "64e7029d330d9a2e7e1bd08e432040fa68a7cb23ce28bf0a1ef67c7323599453",
       "pages": 6,
       "characters": 4369,
-      "automatedPreflightOnly": true
+      "automatedPreflightOnly": true,
+      "originalPath": "D:\\codex\\worktrees\\marklflow-ex-w1-review\\test-results\\web-native-pdf-baseline-We-97934-ndoff-baseline-built-mathml-chromium\\automated-preflight.pdf"
     }
   ],
-  "pdfVisualReview": "first/last pages contact sheet only, not all pages; D:/codex/ex-w2-preflight-evidence/pdf-contact.png"
+  "pdfVisualReview": "first/last pages contact sheet only, not all pages; D:/codex/ex-w2-preflight-evidence/pdf-contact.png",
+  "sourceSnapshotCommit": "4025491",
+  "archiveNote": "2026-10-29 review: unchanged PDF bytes moved to stable archive references before test-results cleanup; original paths and hashes retained; not new native-save evidence"
 }

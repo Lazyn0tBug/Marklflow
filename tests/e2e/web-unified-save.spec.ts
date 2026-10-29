@@ -1,8 +1,9 @@
 import {test,expect,type Page} from '@playwright/test';
 import JSZip from 'jszip';
+import invalidMath from '../fixtures/docx-math/o0-cases.json' with {type:'json'};
 interface SaveProbe {calls:number;active:boolean;name:string;creates:number;writes:number;closes:number;aborts:number;text:string;base64:string;release?:()=>void}
 declare global {interface Window {saveProbe:SaveProbe}}
-async function install(page:Page,mode:'save'|'cancel'|'permission'|'write-fail'|'close-wait'|'select-wait'='save'){
+async function install(page:Page,mode:'save'|'cancel'|'permission'|'write-fail'|'close-fail'|'close-wait'|'select-wait'='save'){
  await page.addInitScript(mode=>{
   const state:SaveProbe={calls:0,active:false,name:'',creates:0,writes:0,closes:0,aborts:0,text:'',base64:''};window.saveProbe=state;
   Object.defineProperty(window,'showSaveFilePicker',{configurable:true,value:async(options:{suggestedName:string})=>{
@@ -11,7 +12,7 @@ async function install(page:Page,mode:'save'|'cancel'|'permission'|'write-fail'|
    if(mode==='select-wait')await new Promise<void>(resolve=>{state.release=resolve});
    return {async createWritable(){state.creates++;return {
     async write(blob:Blob){state.writes++;if(mode==='write-fail')throw new Error('write denied');state.text=await blob.text();let binary='';for(const byte of new Uint8Array(await blob.arrayBuffer()))binary+=String.fromCharCode(byte);state.base64=btoa(binary)},
-    async close(){if(mode==='close-wait')await new Promise<void>(resolve=>{state.release=resolve});state.closes++},async abort(){state.aborts++},
+    async close(){if(mode==='close-fail')throw new Error('close denied');if(mode==='close-wait')await new Promise<void>(resolve=>{state.release=resolve});state.closes++},async abort(){state.aborts++},
    }}};
   }});
  },mode);
@@ -37,8 +38,8 @@ test('freezes source before an asynchronous picker and releases busy only after 
 test('waits for file close before showing saved feedback',async({page})=>{
  await install(page,'close-wait');await open(page,'原始 Markdown (.md)');await action(page).click();await expect.poll(()=>page.evaluate(()=>Boolean(window.saveProbe.release))).toBe(true);await expect(action(page)).toBeDisabled();await expect(page.getByText(/已保存文件/)).toHaveCount(0);await page.evaluate(()=>window.saveProbe.release?.());await expect(page.getByText(/已保存文件/)).toBeVisible();await expect(action(page)).toBeEnabled();
 });
-for(const mode of ['permission','write-fail'] as const)test('reports '+mode+' without silent download fallback',async({page})=>{
- await install(page,mode);let downloads=0;page.on('download',()=>downloads++);await open(page,'原始 Markdown (.md)');const event=page.waitForEvent('dialog'),click=action(page).click(),dialog=await event;expect(dialog.message()).toContain(mode==='permission'?'picker denied':'write denied');await dialog.accept();await click;await expect(action(page)).toBeEnabled();expect(downloads).toBe(0);expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({aborts:mode==='write-fail'?1:0,closes:0});await expect(page.getByText(/已保存文件/)).toHaveCount(0);
+for(const mode of ['permission','write-fail','close-fail'] as const)test('reports '+mode+' without silent download fallback',async({page})=>{
+ await install(page,mode);let downloads=0;page.on('download',()=>downloads++);await open(page,'原始 Markdown (.md)');const event=page.waitForEvent('dialog'),click=action(page).click(),dialog=await event;expect(dialog.message()).toContain(mode==='permission'?'picker denied':mode==='write-fail'?'write denied':'close denied');await dialog.accept();await click;await expect(action(page)).toBeEnabled();expect(downloads).toBe(0);expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({aborts:mode==='permission'?0:1,closes:0});await expect(page.getByText(/已保存文件/)).toHaveCount(0);
 });
 test('DOCX consent occurs before a selected file is opened for writing',async({page})=>{
  await install(page);await open(page,'Word 原生文档 (.docx)','# CONSENT_SOURCE\n\n$x^2$');await action(page).click();await expect(page.getByRole('checkbox',{name:'接受图片静态化及语义重排'})).toBeVisible();expect(await page.evaluate(()=>window.saveProbe.creates)).toBe(0);await page.getByRole('checkbox',{name:'接受图片静态化及语义重排'}).check();await page.getByRole('button',{name:'确认并导出',exact:true}).click();await expect(page.getByText(/已保存文件/)).toBeVisible();expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:1,creates:1,writes:1,closes:1});
@@ -51,4 +52,17 @@ test('PDF keeps native HTML delivery and the normalized title without a byte pic
 test('ordinary HTTP ignores even a present picker and downloads with the common empty-name rule',async({page})=>{
  await install(page);await page.route('http://markflow-save.test/**',async route=>{const url=new URL(route.request().url()),response=await route.fetch({url:'http://127.0.0.1:4173'+url.pathname+url.search});await route.fulfill({response})});
  await open(page,'原始 Markdown (.md)','# HTTP_SAVE_SOURCE','http://markflow-save.test/');expect(await page.evaluate(()=>isSecureContext)).toBe(false);await page.getByLabel('导出文件主名称').fill('');const downloading=page.waitForEvent('download');await action(page).click();expect((await downloading).suggestedFilename()).toBe('MarkFlow-Document.md');await expect(page.getByText(/已生成并发起下载/)).toBeVisible();expect(await page.evaluate(()=>window.saveProbe.calls)).toBe(0);await expect(page.getByText(/已保存文件/)).toHaveCount(0);
+});
+
+test('bounds long Unicode suggestions in the actual save picker and common filename hint',async({page})=>{
+ await install(page);await open(page,'原始 Markdown (.md)');let expected=0;
+ for(const sourceName of ['中文'.repeat(120),'😀'.repeat(120)]){
+  await page.getByLabel('导出文件主名称').fill(sourceName);await action(page).click();expected++;await expect.poll(()=>page.evaluate(()=>window.saveProbe.closes)).toBe(expected);
+  const state=await page.evaluate(()=>window.saveProbe);expect(new TextEncoder().encode(state.name).length).toBeLessThanOrEqual(255);expect(state.name.length).toBeLessThanOrEqual(255);expect(state.name.endsWith('.md')).toBe(true);await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：'+state.name);
+ }
+});
+test('generation failure never opens the selected file and permits an explicit source-save retry',async({page})=>{
+ await install(page);let downloads=0;page.on('download',()=>downloads++);await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(invalidMath.cases[2]!.markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();
+ const event=page.waitForEvent('dialog'),click=action(page).click(),dialog=await event;expect(dialog.message()).toContain('公式');await dialog.accept();await click;await expect(action(page)).toBeEnabled();expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:1,creates:0,writes:0,closes:0,aborts:0});expect(downloads).toBe(0);
+ await page.getByRole('button',{name:'原始 Markdown (.md)',exact:true}).click();await action(page).click();await expect(page.getByText(/已保存文件/)).toBeVisible();expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:2,creates:1,writes:1,closes:1,text:invalidMath.cases[2]!.markdown});expect(downloads).toBe(0);
 });

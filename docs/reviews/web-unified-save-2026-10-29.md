@@ -27,3 +27,5 @@
 五份既有自动化PDF预检覆盖HTML兼容、隐藏A4导出、长表格/代码、SVG/MathML，核对正文/末尾标记并渲染首尾页查看，无新增可见截断或MathML整行分数线问题。它们是既有测试浏览器生成的矢量/文本预检，不是截图PDF或原生系统保存，不能填补EX-W0。字节格式真实选择框补验见[手动清单](../acceptance/web-unified-save-manual-checklist-2026-10-29.md)。
 
 最终全量浏览器回归111/111通过（5.1分钟），包含13项新增Web保存用例及原98项回归。日志D:/codex/ex-w2c-e2e.log；最终lint日志D:/codex/ex-w2c-final-lint.log。证据汇总见[验收JSON](../acceptance/web-unified-save-2026-10-29.json)。EX-W2工程完成；系统选择器手动证据及EX-W0仍待补，EX-W3/EX-T未启动，不推送。
+
+后续完整审查见[审查记录](web-unified-save-code-review-2026-10-29.md)：Unicode建议名已补UTF-8字节预算；本记录的验证计数和源文件哈希对应4025491历史快照，PDF预检字节未变、改为稳定归档路径并保留原路径。EX-W0系统证据继续待补。

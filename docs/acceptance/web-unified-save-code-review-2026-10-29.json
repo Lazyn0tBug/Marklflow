@@ -1,0 +1,95 @@
+{
+  "stage": "EX-W2-code-review",
+  "date": "2026-10-29",
+  "baseline": "4025491",
+  "branch": "architecture-refactor",
+  "namingFixCommit": "ca71fb0",
+  "findings": [
+    {
+      "priority": "P2",
+      "issue": "Unicode filename cap ignored UTF-8 bytes",
+      "resolution": "fixed, tested and committed"
+    },
+    {
+      "priority": "P2",
+      "issue": "historical PDF paths were under disposable test-results",
+      "resolution": "original bytes verified and archived; original paths and hashes retained"
+    }
+  ],
+  "checks": {
+    "managedSourcesAndConfigs": 196,
+    "unitTestFiles": 57,
+    "unitTests": 377,
+    "typecheck": "passed",
+    "lint": "passed",
+    "boundaries": "passed",
+    "productionBuild": "passed",
+    "integrationTypesAfterNewTests": "passed",
+    "targetedBrowserTests": 25,
+    "newBrowserTests": 3,
+    "fullBrowserSuiteRerun": false,
+    "historicalFullBrowserTestsAt4025491": 111
+  },
+  "logs": [
+    "D:/codex/ex-w2-review-naming-check.log",
+    "D:/codex/ex-w2-review-integration-types.log",
+    "D:/codex/ex-w2-review-lint.log",
+    "D:/codex/ex-w2-review-e2e.log"
+  ],
+  "historicalEvidence": {
+    "sourceSnapshotCommit": "4025491",
+    "sourceHashesVerified": 9,
+    "pdfHashesVerified": 5,
+    "archiveManifest": "D:/codex/ex-w2-acceptance-archive/archive-manifest.json",
+    "newPdfGeneration": false,
+    "newPdfVisualReview": false,
+    "systemSavedFileEvidenceAdded": false
+  },
+  "EX-W0": {
+    "status": "in-validation",
+    "nativeSavedFiles": "pending",
+    "defaultFilenameRecords": "pending",
+    "cancelRecords": "pending"
+  },
+  "nativeBytePickerSystemEvidence": "pending",
+  "fileHashInput": "SHA-256 of Git-normalized UTF-8 LF content",
+  "files": [
+    {
+      "path": "src/application/exports/exportFile.ts",
+      "sha256": "a3fc3281c3d9c8bd9d639031668d7580b6c43f4ed03f1ba95a8ec1c675ed2568"
+    },
+    {
+      "path": "src/application/exports/exportService.ts",
+      "sha256": "47435dce634bd71c3eaf03e6c3bda3db2b0886af219d25a0646a1fd467c2bf5e"
+    },
+    {
+      "path": "src/core/platform/web/byteDelivery.ts",
+      "sha256": "7c3efbaf6e6da3abb4f295fd4cf748682e67564669738254b3a615d25693bcb1"
+    },
+    {
+      "path": "src/core/platform/web/exportService.ts",
+      "sha256": "71d120d2c4fd1db72b9a983a0aaf6179a97bcea6828654b540b1ce381269fbbe"
+    },
+    {
+      "path": "src/components/export/ExportModal.tsx",
+      "sha256": "4c6a5066ec850a9175b55163874590082784f0b427c03e7191cbb8d6e407854a"
+    },
+    {
+      "path": "tests/unit/export-file.test.ts",
+      "sha256": "55fd435ae3a848a8547ba6e69712b577f98726ed398b260ab93a664ef43701ba"
+    },
+    {
+      "path": "tests/e2e/web-unified-save.spec.ts",
+      "sha256": "67e9e52f12347e77b620a7b020d36b3116ffe7db805021ca8b63dedb6c8c4ae2"
+    }
+  ],
+  "constraints": {
+    "pushed": false,
+    "mathjax": "3.2.2 unchanged",
+    "pagedjs": "0.4.3 unchanged",
+    "dependenciesChanged": false,
+    "newChromiumOrPuppeteer": false,
+    "screenshotPdf": false,
+    "EX-W3Started": false
+  }
+}
