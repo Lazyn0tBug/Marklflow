@@ -1,0 +1,104 @@
+name: Build Tauri Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [architecture-refactor]
+    paths:
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/tauri-build.yml'
+      - 'src-tauri/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'docs/contracts/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'tsconfig*.json'
+      - '*.config.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+
+  build-desktop:
+    needs: quality
+    name: Build ${{ matrix.artifact_platform }}
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            artifact_platform: macos-universal
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles dmg --ci -- --locked
+          - platform: ubuntu-22.04
+            artifact_platform: linux-x64
+            rust_targets: ''
+            args: --bundles deb,appimage --ci -- --locked
+          - platform: windows-latest
+            artifact_platform: windows-x64
+            rust_targets: ''
+            args: --bundles msi,nsis --ci -- --locked
+    env:
+      CI: 'true'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+
+      - name: Install the validated Rust toolchain
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action, explicit toolchain
+        with:
+          toolchain: '1.98.1'
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Install Linux bundle dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf fonts-noto-cjk
+
+      - name: Install locked frontend dependencies
+        run: bun install --frozen-lockfile
+
+      # Omitting all release inputs makes this action build-only.
+      - name: Build platform bundles
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
+        with:
+          tauriScript: bun run tauri
+          includeDebug: false
+          includeRelease: true
+          includeUpdaterJson: false
+          args: ${{ matrix.args }}
+
+      - name: Collect and verify required artifacts
+        run: bun scripts/desktop-artifacts.ts ${{ matrix.artifact_platform }}
+
+      - name: Verify frozen inputs
+        run: git diff --exit-code -- package.json bun.lock src-tauri/Cargo.lock
+
+      - name: Upload verified desktop artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: markflow-${{ matrix.artifact_platform }}-${{ github.sha }}
+          path: desktop-artifacts/${{ matrix.artifact_platform }}/
+          if-no-files-found: error
+          retention-days: 14

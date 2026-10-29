@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "stage": "M2",
+  "date": "2026-10-30",
+  "branch": "architecture-refactor",
+  "baselineCommit": "91ce42456edbea8644422f8398ba04b124403482",
+  "sourceCommit": "c7c34b942d67fe92d8df242c052b5457c5d14765",
+  "status": "local-adaptation-reviewed-and-tested-remote-matrix-pending",
+  "reviewerAndTestExecutor": "GPT-6 Luna",
+  "independentReviewPerformed": true,
+  "unresolvedFindings": 0,
+  "implementationRecord": "../reviews/tauri-migration-m2-2026-10-30.md",
+  "checks": {
+    "targetedArtifactTests": 10,
+    "unitFiles": 60,
+    "unitTests": 436,
+    "managedSourcesAndConfigs": 202,
+    "fullCheckCommand": "bun run check",
+    "fullCheckExitCode": 0,
+    "typecheck": "passed",
+    "sourcePolicy": "passed",
+    "moduleBoundaries": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "workflowYaml": "Bun 1.4.2 YAML parsing and structural assertions passed",
+    "workflowCallAndNeeds": "existing CI reused; desktop needs quality",
+    "permissions": "contents: read only",
+    "releasePublishingConfigured": false,
+    "platformBundleArguments": "macOS universal DMG; Linux DEB/AppImage; Windows MSI/NSIS",
+    "lockedInputs": "Bun --frozen-lockfile; Cargo --locked; post-build diff guard",
+    "pushCoverage": "architecture-refactor relevant paths including index.html and docs/contracts/**",
+    "whitespace": "passed",
+    "protectedWorktreeSha256": "2 pre-existing indexes match M0 baseline"
+  },
+  "artifactTests": {
+    "inputKind": "temporary fixtures, not real executables/installers",
+    "windowsZip": "one markflow.exe with byte-identical payload",
+    "requiredFormatsAndNonempty": "checked",
+    "debugFallback": "rejected",
+    "macHostOnlyFallback": "rejected",
+    "manifestSha256": "verified against staged bytes",
+    "existingOutputDirectory": "rejected without deletion"
+  },
+  "toolchain": {
+    "bun": "1.4.2",
+    "rust": "1.98.1",
+    "tauriAction": "84b9d35b5fc46c1e45415bdb6144030364f7ebc5",
+    "rustAction": "b725eda525362e7cf34af9a7243cac1e3f01a7ec"
+  },
+  "logs": [
+    "D:/codex/m2-review-2026-10-30/bun-run-check.stdout.log",
+    "D:/codex/m2-review-2026-10-30/bun-run-check.exit-code.txt",
+    "D:/codex/m2-review-2026-10-30/review-notes.md"
+  ],
+  "testedInputSha256": [
+    {
+      "sha256": "e8eb054d8a15425acf2882368423503205b2e0e0dbb81389a1a144040261d569",
+      "path": ".github/workflows/ci.yml"
+    },
+    {
+      "sha256": "70286f1d759c058bf174f63a9666f7a6bdc487dab137ab4eaa9d5e67095e70cb",
+      "path": ".github/workflows/tauri-build.yml"
+    },
+    {
+      "sha256": "26ba8e53f23c7c2e8af085a4e44a927b381630c0d7a2aebf047df1aae863e560",
+      "path": ".gitignore"
+    },
+    {
+      "sha256": "03a0212a38e59af4b89b03c8b88daadeccdfbea5b0353cd0baa5bed1cc84c986",
+      "path": "scripts/desktop-artifacts.ts"
+    },
+    {
+      "sha256": "156c894d1ab5f808b23fa45095eec95b5f0f1c476318c087676630fbddb37712",
+      "path": "tests/unit/desktop-artifacts.test.ts"
+    }
+  ],
+  "preservedWorktree": [
+    {
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58",
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "state": "pre-existing uncommitted documentation index; excluded from M0 commit"
+    },
+    {
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569",
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "state": "pre-existing uncommitted documentation index; excluded from M0 commit"
+    }
+  ],
+  "scope": {
+    "localM2Complete": true,
+    "remoteMatrixRun": false,
+    "realPlatformBundlesGenerated": false,
+    "nativeAcceptanceRun": false,
+    "packageOrCargoLockChanged": false,
+    "businessSourceChanged": false,
+    "M3Started": false,
+    "pdfGenerated": false,
+    "systemSaveRun": false,
+    "releaseCreated": false,
+    "tagCreatedOrMoved": false,
+    "pushed": false
+  },
+  "limitations": [
+    "Workflow syntax/structure review and fixture tests do not establish that GitHub runners produce real bundles.",
+    "Three OS builds and actual artifacts remain pending future authorized push/run; existing source-branch CI evidence is not target-commit evidence.",
+    "Portable-named ZIP contains only the release executable and still requires system WebView2; clean-install/runtime behavior remains pending.",
+    "M7 complete EX-W3 prerequisite and all existing manual/native/Word-WPS/release gates remain unchanged."
+  ],
+  "fullAcceptancePassed": false
+}

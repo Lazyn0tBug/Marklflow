@@ -15,3 +15,6 @@ test-results/
 # Tauri generated build output; Cargo.lock remains tracked.
 src-tauri/target/
 src-tauri/gen/
+
+# Staged desktop CI bundles and artifact manifests.
+desktop-artifacts/
