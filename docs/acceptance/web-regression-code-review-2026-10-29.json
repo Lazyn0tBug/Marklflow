@@ -1,0 +1,86 @@
+{
+  "stage": "EX-W3-code-and-evidence-review",
+  "date": "2026-10-29",
+  "baseline": "b33978f",
+  "branch": "architecture-refactor",
+  "roles": {
+    "review": "GPT-6 Luna / exw3_review",
+    "tests": "GPT-6 Luna / exw3_tests",
+    "mainAgent": "coordination, document edits and authorized local commit"
+  },
+  "findings": [
+    {
+      "severity": "low",
+      "issue": "aggregate PDF summary could imply identical assertions across all five files",
+      "resolution": "clarified per-fixture assertions without changing artifacts or claiming new coverage"
+    }
+  ],
+  "productCodeChanged": false,
+  "testSourceChanged": false,
+  "dependencyManifestOrLockChanged": false,
+  "validation": {
+    "completeCheck": "passed",
+    "managedSourcesAndConfigs": 197,
+    "unitTestFiles": 57,
+    "unitTests": 377,
+    "strictTypes": "passed",
+    "lintAndBoundaries": "passed",
+    "build": "passed",
+    "offlineFrozenLockConsistency": "passed, no changes",
+    "targetedBrowserTests": 20,
+    "targetedSpecs": [
+      "web-packaged-runtime.spec.ts",
+      "web-unified-save.spec.ts",
+      "web-pdf-delivery.spec.ts"
+    ],
+    "fullBrowserSuiteRerun": false,
+    "historicalFullBrowserTests": 115,
+    "historicalFullBrowserEvidence": "D:/codex/ex-w3a-e2e.log",
+    "historicalArchiveFilesVerified": 66,
+    "workerProbeDistFilesRestored": 132
+  },
+  "logs": [
+    "D:/codex/ex-w3-review-check.log",
+    "D:/codex/ex-w3-review-e2e.log"
+  ],
+  "browserResults": "D:/codex/ex-w3-review-browser-results",
+  "htmlReporter": "gitignored playwright-report refreshed for this 20-test run, not the historical 115-test report",
+  "environment": {
+    "bun": "1.4.2",
+    "mathjax": "3.2.2",
+    "pagedjs": "0.4.3",
+    "playwright": "1.64.1",
+    "existingChromium": "156.0.8078.4"
+  },
+  "historicalDocumentHashSnapshot": "b33978f, original documentHashesLF retained",
+  "newPdfGenerated": false,
+  "newSystemSaveEvidence": false,
+  "manualGates": {
+    "EX-W0SystemPdfFilesDefaultNameCancel": "pending",
+    "nativeByteSaveDiskPermissionsOverwrite": "pending",
+    "WordWpsVisual": "pending",
+    "cleanEmptyDirectoryInstall": "not tested",
+    "remoteCI": "not run"
+  },
+  "fullAcceptancePassed": false,
+  "releaseGatePassed": false,
+  "EX-TStarted": false,
+  "pushed": false,
+  "newChromiumOrPuppeteer": false,
+  "screenshotPdf": false,
+  "hashInput": "Git-normalized UTF-8 LF",
+  "changedDocumentFiles": [
+    {
+      "path": "docs/reviews/web-regression-code-review-2026-10-29.md",
+      "sha256": "70a63217ecd528158b190475a3f3f6646bf2bd5e1a69a0415e7c03d70987cf29"
+    },
+    {
+      "path": "docs/reviews/web-regression-closeout-2026-10-29.md",
+      "sha256": "2a6a39571ed173baa7600a9350cd7cdc64def5f1707e3a7e7807d5e4e32ee80b"
+    },
+    {
+      "path": "docs/acceptance/web-regression-closeout-2026-10-29.json",
+      "sha256": "b357bfd2c14a81132e06fe93be8eb6779eacabaa39be51fb4eda201e0fc2f1a4"
+    }
+  ]
+}

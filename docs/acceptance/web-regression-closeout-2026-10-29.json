@@ -71,5 +71,7 @@
       "path": "docs/reviews/web-regression-closeout-2026-10-29.md",
       "sha256": "6f05c2e0a490a0bcdeefd84d4c9a9ba14e225c8d236972cd88d0290e1074f5e6"
     }
-  ]
+  ],
+  "documentSnapshotCommit": "b33978f",
+  "reviewNote": "documentHashesLF preserves the EX-W3c b33978f snapshot; later review wording and new validation are recorded separately, not substituted into historical checks"
 }
