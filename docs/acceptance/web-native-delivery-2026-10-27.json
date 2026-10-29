@@ -67,5 +67,6 @@
     "puppeteer": false,
     "screenshotGeneration": false,
     "pushed": false
-  }
+  },
+  "fileHashInput": "SHA-256 of UTF-8 CRLF working-tree bytes; file content at cb8824e"
 }

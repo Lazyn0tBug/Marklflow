@@ -23,3 +23,5 @@ ExportPorts.print收口为deliverPdf(html):Promise<void>，平台细节留在Web
 EX-W1工程接入完成。EX-W0系统保存证据仍待补；不能将本轮自动化交接/测试PDF视为实际系统保存，也不能宣称Windows设备默认名已修复。具体问题、保存矩阵、取消步骤与记录格式已单独保存到[手动清单](../acceptance/ex-w0-native-manual-checklist-2026-10-27.md)。本次按用户授权分离工程启动与系统验收/发布门槛，不改写历史未验结果。
 
 Web组合根是当前实现；未来Tauri须在EX-T绑定自身原生交付，审查保存/取消回执及反馈文案，不照搬浏览器打印或当前Web交接文案。本轮不实施原生桥接，也不构造通用平台保存协议。EX-W2命名/保存选择器、EX-W3发布验收及EX-T均未启动；MathJax3.2.2/Paged.js0.4.3不变，不推送、不引入Chromium/Puppeteer/PDF字节库或截图方案。
+
+完整代码审查（2026-10-29）：边界门禁及交付异常回归已补齐，历史哈希口径已注明；见[审查记录](web-native-delivery-code-review-2026-10-29.md)。EX-W0 系统证据继续待补。

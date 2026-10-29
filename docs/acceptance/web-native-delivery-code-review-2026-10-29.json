@@ -1,0 +1,44 @@
+{
+  "stage": "EX-W1-review",
+  "date": "2026-10-29",
+  "baseline": "cb8824e",
+  "branch": "architecture-refactor",
+  "checks": {
+    "managedSourcesAndConfigs": 191,
+    "unitTestFiles": 55,
+    "unitTests": 361,
+    "targetedBrowserTests": 3,
+    "fullBrowserSuiteRerun": false,
+    "typecheck": "passed",
+    "lint": "passed",
+    "boundaries": "passed",
+    "build": "passed"
+  },
+  "logs": [
+    "D:/codex/ex-w1-review-check.log",
+    "D:/codex/ex-w1-review-e2e.log"
+  ],
+  "EX-W0": {
+    "status": "in-validation",
+    "nativeSavedFiles": "pending",
+    "defaultFilenameRecords": "pending",
+    "cancelRecords": "pending"
+  },
+  "runtimeChanged": false,
+  "pushed": false,
+  "fileHashInput": "SHA-256 of Git-normalized UTF-8 LF content",
+  "files": [
+    {
+      "path": "scripts/check-module-boundaries.ts",
+      "sha256": "318c12a75dbd3d262a01f54887e8b5e32ed38774100c1971382cd3fe1fc8176e"
+    },
+    {
+      "path": "tests/unit/export-module-boundaries.test.ts",
+      "sha256": "e7c21b95cf9edb83e903bb8b0b28d31272a3b3eba5e62d8d6a142e6aa5522e5a"
+    },
+    {
+      "path": "tests/e2e/web-pdf-delivery.spec.ts",
+      "sha256": "cad48c870619dfa05ea7d674ef46db584d50a93a0b1303b93227aae2d5e32528"
+    }
+  ]
+}

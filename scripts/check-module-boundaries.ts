@@ -20,8 +20,8 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
  const tree=parse(source,{sourceType:'module',plugins:['typescript',...(file.endsWith('tsx')?['jsx' as const]:[])],createImportExpressions:true});
  const htmlFormat=htmlFormats.has(path);
  function dependency(name:string,typeOnly=false){
-  if((path.startsWith('src/core/export/')||path==='src/core/render/htmlpaginator.ts')&&/(?:^|\/)pdfDelivery(?:\.ts)?$/i.test(name))failures.push('HTML generation cannot depend on platform PDF delivery: '+name);
-  if(htmlFormat&&(/(?:^|\/)(?:remark-[^/]*|rehype-[^/]*|unified|mathjax|mermaid)(?:\/|$)/.test(name)||/(?:parse\/|documentRenderer|documentPaginator|mathRender|mathJaxAdapter|exportContent|markdownBundle|sourceAttachment|storage|model\/document$)/i.test(name)))failures.push('HTML format adapter cannot depend on source parsing/preparation: '+name);
+  if((path.startsWith('src/core/export/')||path==='src/core/render/htmlpaginator.ts')&&/(?:^|\/)pdfDelivery(?:\.[cm]?[jt]s)?$/i.test(name))failures.push('HTML generation cannot depend on platform PDF delivery: '+name);
+  if(htmlFormat&&(/(?:^|\/)(?:remark-[^/]*|rehype-[^/]*|unified|mathjax|mermaid)(?:\/|$)/.test(name)||/(?:parse\/|documentRenderer|documentPaginator|mathRender|mathJaxAdapter|exportContent|markdownBundle|sourceAttachment|storage|model\/document(?:\.[cm]?[jt]s)?$)/i.test(name)))failures.push('HTML format adapter cannot depend on source parsing/preparation: '+name);
   if(name.startsWith('node:')||builtins.has(name)||name==='bun'||name.startsWith('bun:'))failures.push('browser/core cannot import '+name);
   if(name.startsWith('@tauri-apps/')&&!['src/core/platform/tauri/','src/platform/tauri/'].some(p=>path.startsWith(p)))failures.push('native SDK must stay inside a platform adapter: '+name);
   if(!pure)return;
