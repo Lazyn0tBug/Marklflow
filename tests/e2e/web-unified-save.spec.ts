@@ -1,5 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import JSZip from 'jszip';
+import {readFile} from 'node:fs/promises';
 import invalidMath from '../fixtures/docx-math/o0-cases.json' with {type:'json'};
 interface SaveProbe {calls:number;active:boolean;name:string;creates:number;writes:number;closes:number;aborts:number;text:string;base64:string;release?:()=>void}
 declare global {interface Window {saveProbe:SaveProbe}}
@@ -65,4 +66,31 @@ test('generation failure never opens the selected file and permits an explicit s
  await install(page);let downloads=0;page.on('download',()=>downloads++);await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(invalidMath.cases[2]!.markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();
  const event=page.waitForEvent('dialog'),click=action(page).click(),dialog=await event;expect(dialog.message()).toContain('公式');await dialog.accept();await click;await expect(action(page)).toBeEnabled();expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:1,creates:0,writes:0,closes:0,aborts:0});expect(downloads).toBe(0);
  await page.getByRole('button',{name:'原始 Markdown (.md)',exact:true}).click();await action(page).click();await expect(page.getByText(/已保存文件/)).toBeVisible();expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:2,creates:1,writes:1,closes:1,text:invalidMath.cases[2]!.markdown});expect(downloads).toBe(0);
+});
+
+const f2Cluster='👨‍👩‍👧‍👦';
+const f2Name=(extension:string)=>'a'+f2Cluster.repeat(Math.floor((255-Buffer.byteLength(extension,'utf8')-1)/Buffer.byteLength(f2Cluster,'utf8')))+extension;
+const f2Source='# F2_FILENAME_BODY\n\n中文正文与源内容保持不变。\n';
+for(const [format,extension]of [['可编辑单文件 HTML','.markflow.html'],['纯净静态阅读 HTML','.html'],['Word 原生文档 (.docx)','.docx'],['原始 Markdown (.md)','.md'],['Markdown 资源包 (.zip)','.zip']] as const)test('F2 carries grapheme-budgeted '+extension+' from the hint to byte saving',async({page})=>{
+ await install(page);await open(page,format,f2Source);const expected=f2Name(extension);
+ await page.getByLabel('导出文件主名称').fill('a'+f2Cluster.repeat(20)+extension.toUpperCase()+extension);
+ await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：'+expected);
+ await action(page).click();await expect(page.getByText(/已保存文件/)).toBeVisible();
+ const state=await page.evaluate(()=>window.saveProbe);expect(state).toMatchObject({calls:1,active:true,name:expected,creates:1,writes:1,closes:1,aborts:0});expect(Buffer.byteLength(state.name,'utf8')).toBeLessThanOrEqual(255);
+ if(extension==='.docx'){const zip=await JSZip.loadAsync(state.base64,{base64:true});expect(await zip.file('word/document.xml')!.async('string')).toContain('F2_FILENAME_BODY')}
+ else if(extension==='.zip'){const zip=await JSZip.loadAsync(state.base64,{base64:true});expect(await zip.file('document.md')!.async('string')).toBe(f2Source)}
+ else if(extension==='.md')expect(state.text).toBe(f2Source);
+ else expect(state.text).toContain('F2_FILENAME_BODY');
+ await page.getByRole('button',{name:'关闭',exact:true}).click();await expect(page.locator('textarea')).toHaveValue(f2Source);
+});
+test('F2 uses the same grapheme-budgeted PDF title while keeping native handoff separate',async({page})=>{
+ await install(page);await page.addInitScript(()=>document.addEventListener('load',event=>{if(event.target instanceof HTMLIFrameElement&&event.target.title==='PDF导出文档'){const frame=event.target;frame.contentWindow!.print=()=>{frame.setAttribute('data-delivered','true')}}},true));
+ await open(page,'PDF 文档（A4）',f2Source);const expected=f2Name('.pdf');await page.getByLabel('导出文件主名称').fill('a'+f2Cluster.repeat(20)+'.PDF.pdf');await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：'+expected);await action(page).click();
+ const frame=page.locator('iframe[title="PDF导出文档"]');await expect(frame).toHaveAttribute('data-delivered','true');expect(await frame.evaluate(node=>(node as HTMLIFrameElement).contentDocument!.title)).toBe(expected.slice(0,-4));await expect(page.frameLocator('iframe[title="PDF导出文档"]').locator('body')).toContainText('F2_FILENAME_BODY');expect(await page.evaluate(()=>window.saveProbe.calls)).toBe(0);await expect(page.getByText(/PDF导出已交由浏览器处理/)).toBeVisible();
+ await frame.evaluate(node=>(node as HTMLIFrameElement).contentWindow!.dispatchEvent(new Event('afterprint')));await expect(frame).toHaveCount(0);await page.getByRole('button',{name:'关闭',exact:true}).click();await expect(page.locator('textarea')).toHaveValue(f2Source);
+});
+test('F2 downloads the full UTF-8-budgeted ASCII name on ordinary HTTP without changing source',async({page},info)=>{
+ await install(page);await page.route('http://markflow-f2.test/**',async route=>{const url=new URL(route.request().url()),response=await route.fetch({url:'http://127.0.0.1:4173'+url.pathname+url.search});await route.fulfill({response})});await open(page,'原始 Markdown (.md)',f2Source,'http://markflow-f2.test/');expect(await page.evaluate(()=>isSecureContext)).toBe(false);
+ await page.getByLabel('导出文件主名称').fill('a'.repeat(300)+'.MD.md');const expected='a'.repeat(252)+'.md';await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：'+expected);const event=page.waitForEvent('download');await action(page).click();const download=await event;expect(download.suggestedFilename()).toBe(expected);
+ const path=info.outputPath('f2-original.md');await download.saveAs(path);expect(await readFile(path,'utf8')).toBe(f2Source);await expect(page.getByText(/已生成并发起下载/)).toBeVisible();expect(await page.evaluate(()=>window.saveProbe.calls)).toBe(0);
 });
