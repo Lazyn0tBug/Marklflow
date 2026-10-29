@@ -53,3 +53,9 @@ HTML/CSS具体支持继续按第16章[基线](html-compatibility-baseline.md)和
 [实施记录](../reviews/web-regression-closeout-2026-10-29.md)、[自动回归JSON](../acceptance/web-regression-auto-2026-10-29.json)、[实际产物JSON](../acceptance/web-regression-artifacts-2026-10-29.json)。稳定归档D:/codex/ex-w3-evidence-2026-10-29；每份产物有来源测试目录、原路径及SHA-256，不由旧临时工作区路径代替当前证据。
 
 文件名迁移进度：F0/F1已完成，F2工作台/六格式及旧导入流程回归由Luna测试通过；本步独立审查按用户决定留待X，不据此改写EX-W0或系统保存手动门槛。见[命名契约](export-filename-contract-2026-10-29.md)及[F2测试记录](../reviews/filename-replacement-f2-2026-10-29.md)。
+
+## P1 图片签名边界补充
+
+本轮新增固定依赖file-type22.2.0，统一在资产已读取字节上核对声明MIME与签名，不增加下载。仅允许PNG/JPEG/GIF/WebP/AVIF；检测APNG可与image/png声明兼容，保存原MIME、原字节和SHA-256。未知、解析失败或不匹配拒绝，错误保留文档源；旧资产不自动迁移/清空。SVG图片资产仍不允许，行内SVG沿用原净化链。
+
+签名仅为best-effort类型一致性，不证明完整可解码或安全，原解码/布局检查保留。历史EX-W3的“package.json未变”仅指该阶段；P1修改依赖与锁文件。独立审查按用户要求留X，系统和手动验收门槛不因此解除。

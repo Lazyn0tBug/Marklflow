@@ -19,3 +19,19 @@ test('keeps accepted DOCX source when the document changes during generation',as
 
 // Exercise the existing download path; picker capability is covered separately.
 test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});
+
+test('rejects a falsely declared asset without delivery and releases busy for source save',async({page})=>{
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGN8puHGwMDAxAAGABC6AVivKVqnAAAAAElFTkSuQmCC';
+ const source='# SIGNATURE_REJECT\n\n![image](data:image/jpeg;base64,'+png+')';
+ await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
+ await page.locator('textarea').fill(source);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
+ let downloads=0;page.on('download',()=>{downloads++});
+ await page.getByRole('button',{name:'导出',exact:true}).click();
+ const action=page.getByRole('button',{name:'立即导出并保存',exact:true});
+ const dialogPromise=page.waitForEvent('dialog');const click=action.click();const dialog=await dialogPromise;
+ expect(dialog.message()).toContain('声明类型与签名不一致');await dialog.accept();await click;
+ expect(downloads).toBe(0);await expect(page.locator('textarea')).toHaveValue(source);await expect(action).toBeEnabled();
+ await expect(page.locator('a[download]')).toHaveCount(0);
+ await page.getByRole('button',{name:'原始 Markdown (.md)',exact:true}).click();const downloaded=page.waitForEvent('download');await action.click();
+ expect((await downloaded).suggestedFilename()).toMatch(/\.md$/);expect(downloads).toBe(1);
+});

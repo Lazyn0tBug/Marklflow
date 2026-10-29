@@ -1,0 +1,45 @@
+{
+  "stage": "P1-image-signature-integration",
+  "date": "2026-10-29",
+  "baseline": "3d588c3",
+  "branch": "architecture-refactor",
+  "status": "tests-passed-independent-review-deferred-to-X",
+  "testExecutor": "GPT-6 Luna",
+  "independentReviewPerformed": false,
+  "dependency": "file-type@22.2.0",
+  "boundary": "src/core/export/documentAssets.ts; existing asynchronous collection and verification only",
+  "checks": {
+    "managedSourcesAndConfigs": 198,
+    "unitFiles": 58,
+    "unitTests": 418,
+    "typecheckLintBoundariesBuild": "passed",
+    "selectedNonPdfBrowserTests": 34,
+    "browser": "existing Chromium 156.0.8078.4",
+    "productionModuleBrowserProbe": "passed; 7 formats/subtypes, unknown/mismatch, HTTP, inert parsing, decode distinction",
+    "newPdfGenerated": false,
+    "systemSaveOpened": false
+  },
+  "compatibility": {
+    "allowedMimeUnchanged": ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"],
+    "onlyAdditionalComparison": "detected image/apng matches declared image/png; retain original MIME",
+    "schemaAndSyncDecodeApiUnchanged": true,
+    "unknownOrMismatch": "reject without source mutation",
+    "signatureIsFullDecodeOrSafetyProof": false,
+    "originalBytesAndSha256Retained": true,
+    "noSecondNetworkRead": "inert template prevents previous implicit image load; one fetch per distinct authorized source",
+    "readLimits": "10MB each / 25MB total / 128 assets; existing read timeout and URL rules",
+    "htmlCanonicalSourceUnchanged": true
+  },
+  "fixesDuringTesting": [
+    "module guard insertion corrected",
+    "existing SVG rejection text assertion corrected",
+    "Response fixture uses explicit ArrayBuffer",
+    "detached div replaced by inert template to avoid implicit image request"
+  ],
+  "logs": ["D:/codex/p1-image-signature-check.log", "D:/codex/p1-image-signature-browser-results/selected-e2e.log"],
+  "browserEvidence": "image-signature-p1-browser-2026-10-29.json",
+  "supersededProbeEvidence": "D:/codex/p1-image-signature-browser-results/production-collect-assets-first-failure-replaced.json",
+  "pending": ["X independent review", "EX-W0 system PDF evidence", "native save manual", "Word/WPS visual", "cross OS", "clean install", "remote CI"],
+  "fullAcceptancePassed": false,
+  "pushed": false
+}

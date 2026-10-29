@@ -18,3 +18,9 @@ it('approves only the filename adapter exact browser entry',()=>{
  expect(checkModuleSource('src/application/exports/exportService.ts','import clean from "filenamify/browser"')).not.toEqual([]);
  expect(checkModuleSource('src/core/platform/web/exportService.ts','import clean from "filenamify"')).not.toEqual([]);
 });
+
+it('restricts file-type to its exact asset byte boundary entry',()=>{
+ expect(checkModuleSource('src/core/export/documentAssets.ts','import {fileTypeFromBuffer} from "file-type"')).toEqual([]);
+ for(const file of ['src/core/export/htmlExporter.ts','src/application/exports/exportService.ts'])expect(checkModuleSource(file,'import {fileTypeFromBuffer} from "file-type"')).not.toEqual([]);
+ expect(checkModuleSource('src/core/export/documentAssets.ts','import probe from "file-type/core"')).not.toEqual([]);
+});

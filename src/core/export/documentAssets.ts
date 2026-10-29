@@ -1,3 +1,4 @@
+import {fileTypeFromBuffer} from 'file-type';
 import {sha256Hex} from '../platform/crypto';
 import type {DocumentAsset} from '../model/document';
 import {assetSchema} from '../model/documentSchema';
@@ -11,6 +12,15 @@ export function decodeImage(data:string):{mime:string;bytes:Uint8Array} {
  const bytes=Uint8Array.from(atob(match[2]),c=>c.charCodeAt(0));
  if(bytes.length>MAX)throw new Error('图片超过10MB');return {mime:match[1].toLowerCase(),bytes};
 }
+// Signature consistency only: browser image decoding remains responsible for layout readiness.
+async function assertImageSignature(bytes:Uint8Array,mime:string,source:string):Promise<void>{
+ const location=source.startsWith('data:')?'内嵌图片':source.slice(0,160);
+ let detected:Awaited<ReturnType<typeof fileTypeFromBuffer>>;
+ try{detected=await fileTypeFromBuffer(bytes)}catch(cause){throw new Error('图片签名无法识别：'+location,{cause})}
+ const detectedMime=detected?.mime==='image/apng'?'image/png':detected?.mime;
+ if(!detectedMime)throw new Error('图片签名无法识别：'+location);
+ if(detectedMime!==mime)throw new Error('图片声明类型与签名不一致：'+location);
+}
 export async function hashBytes(bytes:Uint8Array):Promise<string>{
  return sha256Hex(bytes);
 }
@@ -21,6 +31,7 @@ export async function verifyAssets(assets:DocumentAsset[]=[]):Promise<void>{
   const a=assetSchema.parse(input);if(!a.source||!safeUrl(a.source,true))throw new Error('资产来源不允许');
   const decoded=decodeImage(a.data);total+=decoded.bytes.length;
   if(sources.has(a.source)||total>TOTAL||decoded.mime!==a.mime||decoded.bytes.length!==a.bytes||await hashBytes(decoded.bytes)!==a.sha256)throw new Error('资产清单损坏或超过限制');
+  await assertImageSignature(decoded.bytes,decoded.mime,a.source);
   sources.add(a.source);
  }
 }
@@ -30,8 +41,8 @@ function encode(bytes:Uint8Array,mime:string):string{
 }
 export async function collectAssets(html:string,existing:DocumentAsset[]=[],allowRemote=false):Promise<{html:string;assets:DocumentAsset[]}>{
  await verifyAssets(existing);
- const root=document.createElement('div');root.innerHTML=html;const found=new Map<string,DocumentAsset>();let total=0;
- for(const el of root.querySelectorAll('img,svg image')){
+ const root=document.createElement('template');root.innerHTML=html;const found=new Map<string,DocumentAsset>();let total=0;
+ for(const el of root.content.querySelectorAll('img,svg image')){
   const attribute=el.hasAttribute('src')?'src':el.hasAttribute('href')?'href':'xlink:href';
   const source=el.getAttribute(attribute);if(!source||source.startsWith('#'))throw new Error('图片来源缺失或不支持');
   if(found.has(source)){el.setAttribute(attribute,found.get(source)!.data);continue}
@@ -44,7 +55,7 @@ export async function collectAssets(html:string,existing:DocumentAsset[]=[],allo
    if(!allowRemote&&url.origin!==location.origin)throw new Error('外部图片需允许联网收集：'+source);
    const response=await fetch(url,{credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000)});
    if(!response.ok)throw new Error('图片读取失败：'+source);
-   const mime=(response.headers.get('content-type')||'').split(';',1).join('').toLowerCase();
+   const mime=(response.headers.get('content-type')||'').split(';',1).join('').trim().toLowerCase();
    if(!mimePattern.test(mime))throw new Error('图片类型不允许：'+source);
    if(Number(response.headers.get('content-length')||0)>MAX)throw new Error('图片超过10MB');
    const chunks:Uint8Array[]=[];let size=0;
@@ -54,6 +65,7 @@ export async function collectAssets(html:string,existing:DocumentAsset[]=[],allo
    const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}data=encode(bytes,mime);
   }
   const decoded=decodeImage(data);total+=decoded.bytes.length;if(total>TOTAL)throw new Error('文档图片总计超过25MB');
+  await assertImageSignature(decoded.bytes,decoded.mime,source);
   const asset:DocumentAsset={source,mime:decoded.mime,bytes:decoded.bytes.length,sha256:await hashBytes(decoded.bytes),data,...(previous?.license?{license:previous.license}:{})};
   found.set(source,asset);el.setAttribute(attribute,data);
  }

@@ -20,6 +20,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
  const tree=parse(source,{sourceType:'module',plugins:['typescript',...(file.endsWith('tsx')?['jsx' as const]:[])],createImportExpressions:true});
  const htmlFormat=htmlFormats.has(path);
  function dependency(name:string,typeOnly=false){
+  if((name==='file-type'||name.startsWith('file-type/'))&&!(path==='src/core/export/documentassets.ts'&&name==='file-type'))failures.push('image signature library must stay inside the asset byte boundary: '+name);
   if((name==='filenamify'||name.startsWith('filenamify/'))&&!(path==='src/application/exports/exportfile.ts'&&name==='filenamify/browser'))failures.push('filename library must use the approved adapter browser entry: '+name);
   if((path.startsWith('src/core/export/')||path==='src/core/render/htmlpaginator.ts')&&/(?:^|\/)pdfDelivery(?:\.[cm]?[jt]s)?$/i.test(name))failures.push('HTML generation cannot depend on platform PDF delivery: '+name);
   if(htmlFormat&&(/(?:^|\/)(?:remark-[^/]*|rehype-[^/]*|unified|mathjax|mermaid)(?:\/|$)/.test(name)||/(?:parse\/|documentRenderer|documentPaginator|mathRender|mathJaxAdapter|exportContent|markdownBundle|sourceAttachment|storage|model\/document(?:\.[cm]?[jt]s)?$)/i.test(name)))failures.push('HTML format adapter cannot depend on source parsing/preparation: '+name);

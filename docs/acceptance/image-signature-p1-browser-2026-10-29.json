@@ -1,0 +1,171 @@
+{
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+  "formats": [
+    {
+      "case": "png",
+      "ok": true,
+      "declaredMime": "image/png",
+      "assetMime": "image/png",
+      "sourceDataPreserved": true,
+      "bytes": 75,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    },
+    {
+      "case": "jpeg",
+      "ok": true,
+      "declaredMime": "image/jpeg",
+      "assetMime": "image/jpeg",
+      "sourceDataPreserved": true,
+      "bytes": 633,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    },
+    {
+      "case": "gif",
+      "ok": true,
+      "declaredMime": "image/gif",
+      "assetMime": "image/gif",
+      "sourceDataPreserved": true,
+      "bytes": 45,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    },
+    {
+      "case": "webp",
+      "ok": true,
+      "declaredMime": "image/webp",
+      "assetMime": "image/webp",
+      "sourceDataPreserved": true,
+      "bytes": 64,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    },
+    {
+      "case": "avif",
+      "ok": true,
+      "declaredMime": "image/avif",
+      "assetMime": "image/avif",
+      "sourceDataPreserved": true,
+      "bytes": 315,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    },
+    {
+      "case": "apng",
+      "ok": true,
+      "declaredMime": "image/png",
+      "assetMime": "image/png",
+      "sourceDataPreserved": true,
+      "bytes": 211,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    },
+    {
+      "case": "animatedWebp",
+      "ok": true,
+      "declaredMime": "image/webp",
+      "assetMime": "image/webp",
+      "sourceDataPreserved": true,
+      "bytes": 206,
+      "assetCount": 1,
+      "inputHtmlUnchanged": true
+    }
+  ],
+  "unknownData": {
+    "rejected": true,
+    "error": "图片签名无法识别：内嵌图片"
+  },
+  "mismatchData": {
+    "rejected": true,
+    "error": "图片声明类型与签名不一致：内嵌图片"
+  },
+  "truncated": {
+    "signatureCollect": {
+      "accepted": true,
+      "bytes": 33,
+      "mime": "image/png"
+    },
+    "imageDecode": {
+      "ok": false
+    }
+  },
+  "httpHeaderNormalization": {
+    "mime": "image/png",
+    "bytes": 75,
+    "assets": 1,
+    "source": "/http.png"
+  },
+  "duplicateDedup": {
+    "assets": 1,
+    "imageTags": 2,
+    "replacedWithData": true
+  },
+  "blockedExternal": {
+    "rejected": true,
+    "error": "外部图片需允许联网收集：https://external.test/blocked.png"
+  },
+  "badHeader": {
+    "rejected": true,
+    "error": "图片声明类型与签名不一致：/bad-header.png"
+  },
+  "unknownHttp": {
+    "rejected": true,
+    "error": "图片签名无法识别：/unknown.png"
+  },
+  "errors": [],
+  "browserVersion": "156.0.8078.4",
+  "playwright": "1.64.1",
+  "requestEvidence": {
+    "/http.png": {
+      "count": 1,
+      "types": [
+        "fetch"
+      ]
+    },
+    "/duplicate.png": {
+      "count": 1,
+      "types": [
+        "fetch"
+      ]
+    },
+    "/bad-header.png": {
+      "count": 1,
+      "types": [
+        "fetch"
+      ]
+    },
+    "/unknown.png": {
+      "count": 1,
+      "types": [
+        "fetch"
+      ]
+    },
+    "/blocked.png": {
+      "count": 0,
+      "types": []
+    }
+  },
+  "allRequests": [
+    {
+      "pathname": "/http.png",
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "pathname": "/duplicate.png",
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "pathname": "/bad-header.png",
+      "type": "fetch",
+      "method": "GET"
+    },
+    {
+      "pathname": "/unknown.png",
+      "type": "fetch",
+      "method": "GET"
+    }
+  ]
+}
