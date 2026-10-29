@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "stage": "M0",
+  "date": "2026-10-29",
+  "branch": "architecture-refactor",
+  "baselineCommit": "6c4c4d9ea462049f9e0928a15b9d25d1e661908c",
+  "sourceCommit": "c7c34b942d67fe92d8df242c052b5457c5d14765",
+  "status": "review-and-verification-passed",
+  "reviewerAndTestExecutor": "GPT-6 Luna",
+  "independentReviewPerformed": true,
+  "unresolvedFindings": 0,
+  "baselineManifest": "../contracts/tauri-migration-m0-baseline-2026-10-29.json",
+  "contractDocument": "../design/tauri-migration-m0-contract-2026-10-29.md",
+  "verification": {
+    "timestamp": "2026-10-29T21:48:12.6682936+08:00",
+    "branch": "architecture-refactor",
+    "head": "6c4c4d9ea462049f9e0928a15b9d25d1e661908c",
+    "targetTree": "a61f9340d04ca05397567dbeae37a31ddeb1b7da",
+    "sourceTree": "59756637072df82dd38442fdca794eb305557082",
+    "mergeBase": "75261ae1e532630a5a5859c397110f31698964af",
+    "targetFileCount": 35,
+    "sourceCommitCount": 17,
+    "checks": [
+      {
+        "name": "head_and_branch",
+        "passed": true,
+        "detail": "head=6c4c4d9ea462049f9e0928a15b9d25d1e661908c branch=architecture-refactor"
+      },
+      {
+        "name": "frozen_commits_trees_mergebase",
+        "passed": true,
+        "detail": "targetTree=a61f9340d04ca05397567dbeae37a31ddeb1b7da sourceTree=59756637072df82dd38442fdca794eb305557082 mergeBase=75261ae1e532630a5a5859c397110f31698964af"
+      },
+      {
+        "name": "business_baseline_ancestor",
+        "passed": true,
+        "detail": "4fa50bede4761151d8447331d422b94f00d79aa7"
+      },
+      {
+        "name": "17_source_commits_ancestors",
+        "passed": true,
+        "detail": "count=17 missing="
+      },
+      {
+        "name": "35_target_blobs",
+        "passed": true,
+        "detail": "count=35 mismatches="
+      },
+      {
+        "name": "preexisting_indexes_sha256",
+        "passed": true,
+        "detail": "count=2 mismatches="
+      },
+      {
+        "name": "production_source_package_lock_config_unmodified",
+        "passed": true,
+        "detail": "changed="
+      },
+      {
+        "name": "local_markdown_links",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "whitespace_check",
+        "passed": true,
+        "detail": "hint: core.useBuiltinFSMonitor=true is deprecated;please set core.fsmonitor=true instead\r\nhint: Disable this message with \"git config set advice.useCoreFSMonitorConfig false\"\r\nwarning: in the working copy of 'docs/design/tauri-migration-plan-2026-10-29.md', LF will be replaced by CRLF the next time Git touches it"
+      },
+      {
+        "name": "json_structure",
+        "passed": true,
+        "detail": "schemaVersion=1; targetFiles=35; uniquePaths=35; sourceCommits=17; preExisting=2"
+      },
+      {
+        "name": "preexisting_indexes_sha256_after_check",
+        "passed": true,
+        "detail": "count=2; mismatches="
+      },
+      {
+        "name": "nothing_staged",
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "name": "bun_run_check",
+        "passed": true,
+        "detail": "exitCode=0; command=bun run check; 58 unit files; 421 unit tests; typecheck, lint, unit, build completed"
+      }
+    ],
+    "passed": true,
+    "verifiedAt": "2026-10-29T21:49:03.5020406+08:00"
+  },
+  "fullCheck": {
+    "command": "bun run check",
+    "exitCode": 0,
+    "managedSourcesAndConfigs": 198,
+    "unitFiles": 58,
+    "unitTests": 421,
+    "typecheck": "passed",
+    "typeCoverage": "passed",
+    "sourcePolicy": "passed",
+    "moduleBoundaries": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "log": "D:/codex/m0-migration-check.log"
+  },
+  "scope": {
+    "productionCodeChanged": false,
+    "dependenciesChanged": false,
+    "browserTestsRun": false,
+    "desktopBuilt": false,
+    "desktopCiRun": false,
+    "systemSaveTested": false,
+    "M1Started": false,
+    "preExistingIndexesIncludedInCommit": false,
+    "pushed": false
+  },
+  "preservedWorktree": [
+    {
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58",
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "state": "pre-existing uncommitted documentation index; excluded from M0 commit"
+    },
+    {
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569",
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "state": "pre-existing uncommitted documentation index; excluded from M0 commit"
+    }
+  ],
+  "pending": {
+    "EXW0SystemEvidence": "pending",
+    "nativeSaveManual": "pending",
+    "WordWpsVisual": "pending",
+    "crossOs": "not verified for migration",
+    "cleanInstall": "not performed",
+    "targetDesktopCi": "not run",
+    "EXW3Complete": "not passed",
+    "M7EXT0Gate": "unchanged: complete EX-W3 required",
+    "fullAcceptancePassed": false
+  },
+  "notes": [
+    "X counts in the frozen baseline are historical; fullCheck and verification here are the current M0 execution.",
+    "Temporary verifier issues were corrected before successful checks; no application code finding or runtime behavior change."
+  ]
+}

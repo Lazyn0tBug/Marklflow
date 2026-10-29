@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 1,
+  "stage": "M0 baseline and contract freeze",
+  "date": "2026-10-29",
+  "branch": "architecture-refactor",
+  "target": {
+    "commit": "6c4c4d9ea462049f9e0928a15b9d25d1e661908c",
+    "tree": "a61f9340d04ca05397567dbeae37a31ddeb1b7da",
+    "businessBaseline": "4fa50bede4761151d8447331d422b94f00d79aa7"
+  },
+  "source": {
+    "branch": "tauri",
+    "commit": "c7c34b942d67fe92d8df242c052b5457c5d14765",
+    "tree": "59756637072df82dd38442fdca794eb305557082",
+    "commonAncestor": "75261ae1e532630a5a5859c397110f31698964af"
+  },
+  "gitBlobAlgorithm": "git object id from immutable target commit; not a worktree byte SHA-256",
+  "targetFiles": [
+    {
+      "gitBlob": "5a8beffbd292afe603ea04c47a9358e626574ead",
+      "path": "package.json"
+    },
+    {
+      "gitBlob": "a45cb0c09299bf7ddd8a01094466aa98ce250386",
+      "path": "bun.lock"
+    },
+    {
+      "gitBlob": "6ce30bbaca9e669b58d98a6e5ffef7dfe793e72a",
+      "path": ".github/workflows/ci.yml"
+    },
+    {
+      "gitBlob": "0587cb164e6d1e9b62610a8d05c97a70807ae1ab",
+      "path": "tsconfig.base.json"
+    },
+    {
+      "gitBlob": "11ba6cf44c6d65a8b5fe62389b49eab7838403ed",
+      "path": "tsconfig.json"
+    },
+    {
+      "gitBlob": "050b9e2048f8535de92939522998e35fdfaafbb8",
+      "path": "tsconfig.worker.json"
+    },
+    {
+      "gitBlob": "da48609096b2d1b8fe0cbbce68f24e30d77be646",
+      "path": "tsconfig.tools.json"
+    },
+    {
+      "gitBlob": "f3274421bc5ac7b8883cfcf0c4a2ddc9890da7f6",
+      "path": "tsconfig.integration.json"
+    },
+    {
+      "gitBlob": "0e710d694488ba610936876bf943f139d8f8afea",
+      "path": "scripts/check-module-boundaries.ts"
+    },
+    {
+      "gitBlob": "5ff01b1912aac7567f6109e71722fa8dab6e39aa",
+      "path": "scripts/check-source-policy.ts"
+    },
+    {
+      "gitBlob": "f8e39638a0570d4f82a92c5c1df52cf39b7830ca",
+      "path": "scripts/check-type-coverage.ts"
+    },
+    {
+      "gitBlob": "c49ed6a4f361bc95a37bc93a35025f70e3a3c474",
+      "path": "src/App.tsx"
+    },
+    {
+      "gitBlob": "ad678d1c5e87e16d9bdf847c7c55a1b7015bca6d",
+      "path": "src/components/editor/Editor.tsx"
+    },
+    {
+      "gitBlob": "44adc62e61823c4231886aedcf683c1a72a0f624",
+      "path": "src/components/workspace/sourceScroll.ts"
+    },
+    {
+      "gitBlob": "fc17ed144f0910a1d4b8a24ecdcf7da2716ab0a7",
+      "path": "src/core/model/documentSchema.ts"
+    },
+    {
+      "gitBlob": "a4a2084df5ab34cce8c141d69f8d28c9a6f6c053",
+      "path": "src/application/sessions/documentSessions.ts"
+    },
+    {
+      "gitBlob": "729654fe99c6bb401db1bb0a54297e6a0b440e7f",
+      "path": "src/application/workspace/sourceImport.ts"
+    },
+    {
+      "gitBlob": "b3562a818e33eabb2234ebafe9430272d2363d68",
+      "path": "src/application/workspace/sourceSave.ts"
+    },
+    {
+      "gitBlob": "21e3f771e23ccd3d7fd3fe8c15a16b08cbd9e66d",
+      "path": "src/application/exports/exportFile.ts"
+    },
+    {
+      "gitBlob": "1119ac20e9f677ad5b3f3cf6a0b115cac20e85b1",
+      "path": "src/application/exports/exportService.ts"
+    },
+    {
+      "gitBlob": "d2693e5b351cb635e3af01b91ea76a4a50bb3ee1",
+      "path": "src/application/tasks/roleQueue.ts"
+    },
+    {
+      "gitBlob": "4f6188e035aa7b0eabd96cd0f76746986bb53762",
+      "path": "src/application/tasks/roleScheduler.ts"
+    },
+    {
+      "gitBlob": "d5c8b85c78f038281df5db66b84fd171f2d8ff1e",
+      "path": "src/application/previewCache/memoryPreviewCache.ts"
+    },
+    {
+      "gitBlob": "9ba96a7094c3eb91cb6d7c6868d90f0a5312add1",
+      "path": "src/core/platform/web/workbenchPreviewRuntime.ts"
+    },
+    {
+      "gitBlob": "c0fb90ea7791cff7e3c843626bf2289061eb01e6",
+      "path": "src/core/platform/web/documentRepository.ts"
+    },
+    {
+      "gitBlob": "e12bea8f3daca873e10b84c4e28cd36fba9cd984",
+      "path": "src/core/platform/web/byteDelivery.ts"
+    },
+    {
+      "gitBlob": "802e2aae45342f7c38f35c1cbc80f14376d7b3d7",
+      "path": "src/core/platform/web/pdfDelivery.ts"
+    },
+    {
+      "gitBlob": "b892716e81959f18144e4fd3421619831a48754a",
+      "path": "src/core/platform/web/exportService.ts"
+    },
+    {
+      "gitBlob": "382159971351e9aeb96ae98afa64a4a9cab2d1e5",
+      "path": "src/core/export/documentAssets.ts"
+    },
+    {
+      "gitBlob": "20db514a2196ac4e2998d47b30a68739b5c161f7",
+      "path": "src/core/export/exportContent.ts"
+    },
+    {
+      "gitBlob": "ad9b3df93675605b81157ab12cb811a3b55d0979",
+      "path": "src/core/export/sourceAttachment.ts"
+    },
+    {
+      "gitBlob": "f6a71440cb7d6fffd7010377986c948fc8409fbe",
+      "path": "src/core/export/pdfExporter.ts"
+    },
+    {
+      "gitBlob": "92a43bae905f88b3c2b113f0cd31cf7c37cbb61c",
+      "path": "docs/design/html-export-source-plan-2026-10-26.md"
+    },
+    {
+      "gitBlob": "28e3e6fa107faa8aeff4984072a834ebde5f170b",
+      "path": "docs/design/web-export-support-2026-10-29.md"
+    },
+    {
+      "gitBlob": "6200f745193d40569a2f321cb915cef146851b38",
+      "path": "docs/acceptance/third-party-boundary-x-2026-10-29.json"
+    }
+  ],
+  "sourceCommits": [
+    {
+      "commit": "38e00db50247928f08ab7801c63256b90445a0cf",
+      "short": "38e00db"
+    },
+    {
+      "commit": "d288f3e1fc21432eabc3ac9009cc72b542e76ded",
+      "short": "d288f3e"
+    },
+    {
+      "commit": "366c4f312da75399a4719b078369d93afbce7bcd",
+      "short": "366c4f3"
+    },
+    {
+      "commit": "394245b48f56eea365269a19ae269e177485f3af",
+      "short": "394245b"
+    },
+    {
+      "commit": "16859bf5f6017300f05dd59fcd213f8860e0e277",
+      "short": "16859bf"
+    },
+    {
+      "commit": "5db829838626bd32803822dfaf6779330dc8921a",
+      "short": "5db8298"
+    },
+    {
+      "commit": "bb678be8e745ed706e268e515a698c81c4e1e113",
+      "short": "bb678be"
+    },
+    {
+      "commit": "7d30e1585c07b169534f0381043c3804e8168fca",
+      "short": "7d30e15"
+    },
+    {
+      "commit": "1fcf40ce01d36bab3d0056130095a620cbb654aa",
+      "short": "1fcf40c"
+    },
+    {
+      "commit": "3686eed6017baa88c5d03287b34fa2f5ba7df175",
+      "short": "3686eed"
+    },
+    {
+      "commit": "74d7a3cadc61e4d108205a1484750f553b23628b",
+      "short": "74d7a3c"
+    },
+    {
+      "commit": "35ebcc4117fe940efe518cf0d52ab9d90ad84d27",
+      "short": "35ebcc4"
+    },
+    {
+      "commit": "7adbd89026ce4f55ddd0e3c550bd37a1d15369cf",
+      "short": "7adbd89"
+    },
+    {
+      "commit": "cde20ac2f76ea12dadb98eb2d237cb9a8125c84c",
+      "short": "cde20ac"
+    },
+    {
+      "commit": "139c39a2de7ed0aa3a702d57a44557f5a9a3324e",
+      "short": "139c39a"
+    },
+    {
+      "commit": "6a448c77809efe7ed949fa31f014f9f28d393091",
+      "short": "6a448c7"
+    },
+    {
+      "commit": "c7c34b942d67fe92d8df242c052b5457c5d14765",
+      "short": "c7c34b9"
+    }
+  ],
+  "preExistingWorktreeChanges": [
+    {
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58",
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "state": "pre-existing uncommitted documentation index; excluded from M0 commit"
+    },
+    {
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569",
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "state": "pre-existing uncommitted documentation index; excluded from M0 commit"
+    }
+  ],
+  "scope": {
+    "productionCodeChanged": false,
+    "dependenciesChanged": false,
+    "platformPortsImplemented": false,
+    "M1Started": false,
+    "desktopCiExecuted": false,
+    "releaseCreated": false,
+    "pushed": false
+  },
+  "baselineEvidence": {
+    "source": "docs/acceptance/third-party-boundary-x-2026-10-29.json",
+    "unitTests": 421,
+    "unitFiles": 58,
+    "managedSources": 198,
+    "nonPdfBrowserTests": 34,
+    "currentM0Checks": "pending separate Luna acceptance record; X counts are historical"
+  },
+  "gates": {
+    "EXW0SystemEvidence": "pending",
+    "nativeByteSaveManual": "pending",
+    "WordWpsVisual": "pending",
+    "crossOs": "not verified for migration",
+    "cleanInstall": "not performed",
+    "targetDesktopCi": "not run",
+    "EXW3FullAcceptance": "not passed",
+    "EXT0M7": "blocked by existing EX-W3 complete gate",
+    "fullAcceptancePassed": false
+  }
+}
