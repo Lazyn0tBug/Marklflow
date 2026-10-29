@@ -18,6 +18,7 @@ import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: vi.fn(),
   save: vi.fn(),
+  message: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/plugin-fs', () => ({

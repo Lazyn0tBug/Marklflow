@@ -314,3 +314,24 @@ export async function listenNativeFileDrop(
     return undefined;
   }
 }
+
+/** 跨平台导出成功弹窗与提醒支持（Tauri 原生环境下调用系统级消息弹窗，Web 环境下提供通知降级） */
+export async function showExportSuccessNotification(title: string, messageText: string): Promise<void> {
+  if (isTauri()) {
+    try {
+      const { message } = await import('@tauri-apps/plugin-dialog');
+      await message(messageText, { title, kind: 'info' });
+      return;
+    } catch (err) {
+      console.warn('Tauri 消息提醒失败:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title, { body: messageText });
+    } catch {
+      // 忽略部分浏览器跨源或安全上下文限制
+    }
+  }
+}

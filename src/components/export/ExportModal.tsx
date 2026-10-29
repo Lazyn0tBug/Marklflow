@@ -1,6 +1,6 @@
 import { printFrozenHtml } from '../../core/export/documentPrint';
 import { inspectDocx } from '../../core/export/outputCapabilities';
-import { isTauri, saveExportBinaryOrText, exportPdfDirect } from '../../core/platform/desktop';
+import { isTauri, saveExportBinaryOrText, exportPdfDirect, showExportSuccessNotification } from '../../core/platform/desktop';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
@@ -32,6 +32,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [exportError, setExportError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
+  const notifySuccess = async (msg: string) => {
+    setExportSuccess(msg);
+    await showExportSuccessNotification('导出成功', msg);
+  };
+
   const downloadStaticFile = async (name: string) => {
     try {
       setIsExporting(true);
@@ -46,7 +51,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setExportSuccess(`已成功下载 ${name}`);
+      await notifySuccess(`已成功下载 ${name}`);
     } catch (err) {
       setExportError(`下载失败: ${String(err)}`);
     } finally {
@@ -62,7 +67,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       await navigator.clipboard.writeText(text);
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2000);
-      setExportSuccess('已将 markflow-update.patch 补丁复制到剪贴板！');
+      await notifySuccess('已将 markflow-update.patch 补丁复制到剪贴板！');
     } catch (err) {
       setExportError(`复制失败: ${String(err)}`);
     }
@@ -71,6 +76,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const docxIssues = useMemo(() => inspectDocx(doc.markdown), [doc.markdown]);
   const unsupportedIssues = useMemo(() => docxIssues.filter((i) => i.adaptation === 'unsupported'), [docxIssues]);
   const noticeIssues = useMemo(() => docxIssues.filter((i) => i.adaptation !== 'unsupported'), [docxIssues]);
+
+  const groupedNoticeIssues = useMemo(() => {
+    const map = new Map<string, { message: string; count: number }>();
+    for (const issue of noticeIssues) {
+      const item = map.get(issue.message);
+      if (item) {
+        item.count += 1;
+      } else {
+        map.set(issue.message, { message: issue.message, count: 1 });
+      }
+    }
+    return Array.from(map.values());
+  }, [noticeIssues]);
+
+  const groupedUnsupportedIssues = useMemo(() => {
+    const map = new Map<string, { message: string; count: number; nodeIds: string[] }>();
+    for (const issue of unsupportedIssues) {
+      const item = map.get(issue.message);
+      if (item) {
+        item.count += 1;
+        if (item.nodeIds.length < 3) item.nodeIds.push(issue.nodeId);
+      } else {
+        map.set(issue.message, { message: issue.message, count: 1, nodeIds: [issue.nodeId] });
+      }
+    }
+    return Array.from(map.values());
+  }, [unsupportedIssues]);
 
   useEffect(() => {
     if (isOpen) {
@@ -100,7 +132,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       if (selectedFormat === 'print-pdf') {
         const frozen = await generateExportHtml(doc, { mathMode, allowRemoteAssets });
         await printFrozenHtml(frozen);
-        setExportSuccess('已成功调起高精度分页打印，请在打印窗口中选择「另存为 PDF」保存');
+        await notifySuccess('已成功调起高精度分页打印，请在打印窗口中选择「另存为 PDF」保存');
         return;
       }
 
@@ -108,24 +140,24 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
         const html = await generateExportHtml(doc, { includeEditablePayload: true, mathMode, allowRemoteAssets });
         const res = await saveExportBinaryOrText(safeName, 'markflow.html', html);
         if (res.saved) {
-          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功下载可编辑 HTML，含全量 Markdown 载荷`);
+          await notifySuccess(res.path ? `已导出至：${res.path}` : `已成功下载可编辑 HTML，含全量 Markdown 载荷`);
         }
       } else if (selectedFormat === 'reading-html') {
         const html = await generateExportHtml(doc, { includeEditablePayload: false, mathMode, allowRemoteAssets });
         const res = await saveExportBinaryOrText(safeName, 'html', html);
         if (res.saved) {
-          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功生成静态阅读 HTML`);
+          await notifySuccess(res.path ? `已导出至：${res.path}` : `已成功生成静态阅读 HTML`);
         }
       } else if (selectedFormat === 'docx') {
         const blob = await exportDocumentToDocx(doc, { allowSourceFallback, allowRemoteAssets });
         const res = await saveExportBinaryOrText(safeName, 'docx', blob);
         if (res.saved) {
-          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功导出原生 DOCX 文档 (OpenXML)`);
+          await notifySuccess(res.path ? `已导出至：${res.path}` : `已成功生成并导出原生 DOCX 文档 (OpenXML)`);
         }
       } else if (selectedFormat === 'markdown') {
         const res = await saveExportBinaryOrText(safeName, 'md', doc.markdown);
         if (res.saved) {
-          setExportSuccess(res.path ? `已导出至：${res.path}` : `已成功下载原始 Markdown 文件`);
+          await notifySuccess(res.path ? `已导出至：${res.path}` : `已成功下载原始 Markdown 文件`);
         }
       }
     } catch (err) {
@@ -316,15 +348,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
           {/* DOCX 兼容性与自适应选项 */}
           {selectedFormat === 'docx' && (
             <div className="space-y-2.5">
-              {unsupportedIssues.length > 0 && (
+              {groupedUnsupportedIssues.length > 0 && (
                 <div className="p-3 rounded-lg bg-red-950/60 border border-red-800/80 text-xs text-red-200">
                   <div className="font-semibold flex items-center gap-1.5 mb-1 text-red-300">
                     <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
                     <span>文档包含暂不支持导出为 DOCX 的特殊结构：</span>
                   </div>
                   <ul className="list-disc list-inside space-y-0.5 text-[11px] text-red-300/90 pl-1">
-                    {unsupportedIssues.map((issue, idx) => (
-                      <li key={idx}>{issue.nodeId}：{issue.message}</li>
+                    {groupedUnsupportedIssues.map((item, idx) => (
+                      <li key={idx}>
+                        {item.nodeIds.join(', ')}{item.count > item.nodeIds.length ? ` 等 ${item.count} 处` : ''}：{item.message}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -335,15 +369,32 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 aria-label="DOCX 兼容性提示"
                 className="p-3 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-300 space-y-2"
               >
-                <div className="font-medium text-neutral-200 flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                  <span>Word 排版自适应就绪</span>
+                <div className="font-medium text-neutral-200 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>Word 排版自适应就绪</span>
+                  </div>
+                  {noticeIssues.length > 1 && (
+                    <span className="text-[10px] text-neutral-500 font-mono">
+                      （已聚合 {noticeIssues.length} 项排版说明）
+                    </span>
+                  )}
                 </div>
-                <div className="text-[11px] text-neutral-400 space-y-0.5">
-                  {noticeIssues.map((issue, idx) => (
-                    <div key={idx}>• {issue.message}</div>
+                <div className="text-[11px] text-neutral-400 space-y-1">
+                  {groupedNoticeIssues.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-1.5">
+                      <span className="shrink-0">•</span>
+                      <span>
+                        {item.message}
+                        {item.count > 1 && (
+                          <span className="text-[10px] ml-1.5 px-1.5 py-0.2 rounded bg-neutral-900 border border-neutral-800 text-teal-300 font-mono">
+                            共 {item.count} 处
+                          </span>
+                        )}
+                      </span>
+                    </div>
                   ))}
-                  {noticeIssues.length === 0 && (
+                  {groupedNoticeIssues.length === 0 && (
                     <div>• 纯文本与标准段落，排版规范完全适配 Word 原生格式。</div>
                   )}
                 </div>
@@ -468,9 +519,33 @@ git push origin tauri`}
           )}
 
           {exportSuccess && (
-            <div className="p-2.5 rounded-lg bg-teal-950/50 border border-teal-800/80 text-xs text-teal-300 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-teal-400 shrink-0" />
-              <span>{exportSuccess}</span>
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-3 rounded-xl bg-teal-950/90 border border-teal-500/80 text-xs text-teal-200 flex items-start justify-between gap-3 shadow-xl shadow-teal-950/50 animate-in fade-in slide-in-from-top-1 duration-200"
+            >
+              <div className="flex items-start gap-2.5">
+                <CheckCircle className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-teal-100 flex items-center gap-1.5">
+                    <span>文件生成成功</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-900/80 text-teal-300 font-mono">
+                      {isTauri() ? '桌面已落盘' : '网页已就绪'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-teal-200/90 mt-0.5 leading-relaxed">
+                    {exportSuccess}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExportSuccess(null)}
+                className="text-teal-400 hover:text-white p-1 rounded hover:bg-teal-900/60 transition-colors cursor-pointer"
+                aria-label="关闭提醒"
+              >
+                ✕
+              </button>
             </div>
           )}
 
