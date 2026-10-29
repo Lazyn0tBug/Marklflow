@@ -133,3 +133,5 @@ F2授权与进度补充：用户明确本步不做独立代码/文档审查，�
 P0/P1授权补充：用户授权依次实施P0、P1，测试由Luna执行，独立审查集中到X。P0隔离实测结论GO-P1，固定file-type22.2.0及APNG比较契约，见[执行记录](../reviews/image-signature-p0-2026-10-29.md)。此记录不宣称P1已完成；历史F阶段的范围描述仍按当时基线理解。
 
 P1实施补充：已在资产异步边界固定file-type22.2.0，保留原白名单/字节/哈希及APNG比较契约；浏览器测试发现并修复原解析隐式image请求，改用惰性template。Luna最终check418项单元与34项非PDF工作台回归通过，生产模块浏览器矩阵通过；[执行记录](../reviews/image-signature-p1-2026-10-29.md)。本轮P0/P1测试完成，独立审查集中到X；C/X/Tauri未自动启动，手动门槛不变，不推送。
+
+C0去重清单补充：GPT-6 Luna只读核实后仅选择roleQueue同一前台快照重复UTF-8限额测量为C1；sourceImport适配输出、Worker未知消息、Zod结构/语义、资产真实内容、URL授权、同步哈希等均因边界不同保留。潜在existing asset重复验延期，不跳过总量预算。证据见[清单](../reviews/check-dedup-c0-2026-10-29.md)。
