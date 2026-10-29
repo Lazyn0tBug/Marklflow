@@ -58,7 +58,7 @@ export class RoleTaskQueue{
      work={kind:'preview',submission:createPreviewSubmission({taskId:entry.id,role,previewKind:entry.previewKind,document:source.document,renderConfigVersion:source.renderConfigVersion})};
     }else work=entry.work;
     const request=requestOf(work);
-    if(new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
+    if(entry.kind==='background-preview'&&new TextEncoder().encode(request.document.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown UTF-8 budget exceeded');
     const bytes=estimatedBytes(work);if(!this.canAllocate(bytes))throw new Error('Task dispatch budget exceeded');
     this.active.set(role,{id:entry.id,role,bytes});return {id:entry.id,role,work};
    }catch(error){return {id:entry.id,role,error:String(error)}}

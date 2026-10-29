@@ -23,3 +23,23 @@ it('removes closed-document pending work without disturbing unrelated active wor
 it('reports missing or broken document reads and can claim the next FIFO item',()=>{const s=setup();const bad=s.enqueue(preview());s.enqueue(preview('C'));s.sources.delete('B');expect(s.queue.claim('background')).toMatchObject({id:bad.status==='accepted'?bad.taskId:'',error:expect.stringContaining('source unavailable')});expect(requestOf(claim(s.queue,'background').work).document.id).toBe('C')});
 it('reports dispatch capacity failures without taking an active slot or losing later intents',()=>{const s=setup();let allow=true;const queue=new RoleTaskQueue(s.gate,doc=>s.sources.get(doc),()=>allow);s.sources.set('B',{document:preview().document,renderConfigVersion:1});expect(queue.enqueuePreview(preview()).status).toBe('accepted');allow=false;expect(queue.claim('background')).toHaveProperty('error');expect(queue.snapshot().active).toEqual([]);allow=true;expect(queue.enqueuePreview(preview()).status).toBe('accepted');expect(claim(queue,'background').work.kind).toBe('preview')});
 it('owns foreground input without rehashing it during admission, claim or inspection',()=>{const input=preview('A'),s=setup();const digest=vi.spyOn(hash,'sha256');try{s.enqueue(input);input.document.markdown='external mutation';s.queue.snapshot();expect(requestOf(claim(s.queue,'foreground').work).document.markdown).toBe('# Test');expect(digest).not.toHaveBeenCalled()}finally{digest.mockRestore()}});
+
+it('measures foreground Markdown UTF-8 budget once before owning its private queue snapshot',()=>{
+ const input=preview('A'),s=setup(),encode=vi.spyOn(TextEncoder.prototype,'encode');
+ try{
+  s.enqueue(input);const measured=encode.mock.calls.filter(([value])=>value===input.document.markdown);
+  expect(measured).toHaveLength(1);expect(requestOf(claim(s.queue,'foreground').work).document.markdown).toBe('# Test');
+  expect(encode.mock.calls.filter(([value])=>value===input.document.markdown)).toHaveLength(1);
+ }finally{encode.mockRestore()}
+});
+it('keeps the claim-time UTF-8 budget for the document read lazily by a background entry',()=>{
+ const s=setup(),input=preview('B');input.document.markdown='🙂'.repeat(Math.floor(10*1024*1024/4)+1);
+ expect(s.enqueue(input).status).toBe('accepted');
+ expect(s.queue.claim('background')).toMatchObject({error:expect.stringContaining('UTF-8 budget exceeded')});
+ expect(s.queue.snapshot().active).toEqual([]);
+});
+
+it('rejects an over-budget foreground Markdown before queuing or cloning it',()=>{
+ const s=setup(),input=preview('A');input.document.markdown='🙂'.repeat(Math.floor(10*1024*1024/4)+1);
+ expect(()=>s.enqueue(input)).toThrow('Markdown UTF-8 budget exceeded');expect(s.queue.snapshot().pending.foreground).toEqual([]);
+});
