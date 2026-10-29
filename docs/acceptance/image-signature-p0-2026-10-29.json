@@ -1,0 +1,89 @@
+{
+  "decision": "GO-P1",
+  "candidate": {
+    "name": "file-type",
+    "version": "22.2.0",
+    "registry": "https://registry.npmjs.org/file-type",
+    "tarball": "https://registry.npmjs.org/file-type/-/file-type-22.2.0.tgz",
+    "integrity": "sha512-XmEVJsRpQMVYC+sWFW+FKAVo2P7/lPctDdWH4UQ1r6oxhdrTobnowdM3z+ZJ93a4J8D3yDpxX0bEvRuFev0vUQ==",
+    "license": "MIT",
+    "licenseFile": "node_modules/file-type/license",
+    "engine": "node >=22 (not used to infer browser compatibility)",
+    "browserEntry": "package exports default -> ./source/index.js",
+    "api": "await fileTypeFromBuffer(bytes: Uint8Array) -> FileTypeResult | undefined",
+    "browserCoreImport": "No separate ./core export in 22.2.0; use package default export."
+  },
+  "environment": {
+    "head": "a011312",
+    "vite": "8.3.5",
+    "esbuild": "0.25.12",
+    "playwright": "1.64.1",
+    "chromium": "156.0.8078.4",
+    "python": "3.13.3",
+    "pillow": "12.3.0"
+  },
+  "build": {
+    "viteBrowserBuild": "pass",
+    "transformedModules": 43,
+    "candidateBundleBytes": 73816,
+    "candidateGzipKiBApprox": 21.94,
+    "emptyBaselineBytes": 779,
+    "netIncreaseBytes": 73037,
+    "netGzipKiBApprox": 21.5,
+    "bundleFetchDurationMs": 5.2,
+    "bundleHasNodeBuiltinOrShimMarkers": false,
+    "isolatedNpmPackageCountIncludingCandidate": 10
+  },
+  "runtime": {
+    "sampleCount": 18,
+    "pageErrors": [],
+    "normalizationCasesPass": true,
+    "allFiveFormatsPass": true,
+    "apng": {
+      "declared": "image/png",
+      "detected": "image/apng",
+      "recommendedComparisonMapping": "image/apng -> image/png only for compatibility comparison; preserve original/source MIME and schema."
+    },
+    "recognizedButUndecodablePng": [
+      "pngIhdrOnly",
+      "pngPartialIdat"
+    ],
+    "unknownOrUnrecognized": [
+      "htmlTextPretendingPng",
+      "unknownShortHead",
+      "pngSignatureOnly",
+      "svg"
+    ],
+    "noProbeExceptions": true,
+    "probeSource": "already decoded Uint8Array; no fetch"
+  },
+  "dependencyTree": [
+    "file-type@22.2.0",
+    "  @tokenizer/inflate@0.5.2",
+    "    debug@4.4.3",
+    "      ms@2.1.3",
+    "    strtok3@10.6.3",
+    "      @tokenizer/token@0.3.0",
+    "    token-types@6.1.2",
+    "      @borewit/text-codec@0.2.3",
+    "      ieee754@1.2.1",
+    "  uint8array-extras@1.6.0"
+  ],
+  "typeEvidence": {
+    "strictNoNodeTypesCheck": "TS2591 on node:stream/web and node:stream declarations when @types/node excluded and skipLibCheck=false; file-type API itself uses Uint8Array. Project has @types/node@22.20.5 and skipLibCheck=true; explicit node types check passes."
+  },
+  "sampleFiles": [
+    "samples.json",
+    "browser-results.json",
+    "node_modules/file-type/source/index.js",
+    "node_modules/file-type/license"
+  ],
+  "provenance": "PNG/JPEG/GIF/WebP/AVIF/APNG/animated WebP samples generated locally with Pillow 12.3.0 codecs. No public fixture copied; AVIF came from Pillow AVIF encoder, not canvas.",
+  "limitations": [
+    "Magic signature recognition is best effort, not full decode, integrity validation, or safety proof.",
+    "Browser Image.decode is separately recorded; valid signature+IHDR PNG samples were recognized by file-type but rejected by Chromium decode.",
+    "MIME normalization test used trim/lowercase and removed semicolon parameters. image/pjpeg stays a distinct MIME and needs an explicit product decision; it is not silently aliased.",
+    "Bundle delta is candidate test entry relative to minimal Vite entry, not a guaranteed exact diff for Marklflow production chunk.",
+    "No production package.json/bun.lock/source changed by this experiment."
+  ]
+}

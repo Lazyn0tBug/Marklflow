@@ -1,0 +1,386 @@
+{
+  "browserVersion": "156.0.8078.4",
+  "playwright": "1.64.1",
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+  "normalizationCases": [
+    {
+      "raw": " IMAGE/PNG ; charset=binary ",
+      "normalized": "image/png",
+      "expected": "image/png",
+      "pass": true
+    },
+    {
+      "raw": "Image/JPEG; quality=1",
+      "normalized": "image/jpeg",
+      "expected": "image/jpeg",
+      "pass": true
+    },
+    {
+      "raw": "image/pjpeg",
+      "normalized": "image/pjpeg",
+      "expected": "image/pjpeg",
+      "pass": true
+    }
+  ],
+  "bundleResources": [
+    {
+      "name": "/assets/index-DpqNEkse.js",
+      "transferSize": 74116,
+      "decodedBodySize": 73816,
+      "duration": 5.2
+    }
+  ],
+  "results": [
+    {
+      "name": "png",
+      "bytes": 75,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": "image/png",
+      "detectedExt": "png",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 1.1,
+        "mean": 0.11
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "jpeg",
+      "bytes": 633,
+      "declaredMime": "image/jpeg",
+      "normalizedDeclaredMime": "image/jpeg",
+      "detectedMime": "image/jpeg",
+      "detectedExt": "jpg",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.1,
+        "mean": 0.01
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "gif",
+      "bytes": 45,
+      "declaredMime": "image/gif",
+      "normalizedDeclaredMime": "image/gif",
+      "detectedMime": "image/gif",
+      "detectedExt": "gif",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.1,
+        "mean": 0.01
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "webp",
+      "bytes": 64,
+      "declaredMime": "image/webp",
+      "normalizedDeclaredMime": "image/webp",
+      "detectedMime": "image/webp",
+      "detectedExt": "webp",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.5,
+        "mean": 0.05
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "avif",
+      "bytes": 315,
+      "declaredMime": "image/avif",
+      "normalizedDeclaredMime": "image/avif",
+      "detectedMime": "image/avif",
+      "detectedExt": "avif",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.2,
+        "mean": 0.02
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "apng",
+      "bytes": 211,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": "image/apng",
+      "detectedExt": "apng",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.2,
+        "mean": 0.02
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "animatedWebp",
+      "bytes": 206,
+      "declaredMime": "image/webp",
+      "normalizedDeclaredMime": "image/webp",
+      "detectedMime": "image/webp",
+      "detectedExt": "webp",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.5,
+        "mean": 0.05
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "htmlTextPretendingPng",
+      "bytes": 35,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": null,
+      "detectedExt": null,
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.4,
+        "mean": 0.04
+      },
+      "imageDecode": {
+        "ok": false
+      }
+    },
+    {
+      "name": "validPngDeclaredJpeg",
+      "bytes": 75,
+      "declaredMime": "image/jpeg",
+      "normalizedDeclaredMime": "image/jpeg",
+      "detectedMime": "image/png",
+      "detectedExt": "png",
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.7,
+        "mean": 0.07
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "validJpegDeclaredPng",
+      "bytes": 633,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": "image/jpeg",
+      "detectedExt": "jpg",
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.1,
+        "mean": 0.01
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "unknownShortHead",
+      "bytes": 3,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": null,
+      "detectedExt": null,
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.2,
+        "mean": 0.02
+      },
+      "imageDecode": {
+        "ok": false
+      }
+    },
+    {
+      "name": "pngSignatureOnly",
+      "bytes": 8,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": null,
+      "detectedExt": null,
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.2,
+        "mean": 0.02
+      },
+      "imageDecode": {
+        "ok": false
+      }
+    },
+    {
+      "name": "svg",
+      "bytes": 95,
+      "declaredMime": "image/svg+xml",
+      "normalizedDeclaredMime": "image/svg+xml",
+      "detectedMime": null,
+      "detectedExt": null,
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.3,
+        "mean": 0.03
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 1,
+        "height": 1
+      }
+    },
+    {
+      "name": "pngMimeCaseParameter",
+      "bytes": 75,
+      "declaredMime": " IMAGE/PNG ; charset=binary ",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": "image/png",
+      "detectedExt": "png",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.2,
+        "mean": 0.02
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "jpegMimeCaseParameter",
+      "bytes": 633,
+      "declaredMime": "Image/JPEG; quality=1",
+      "normalizedDeclaredMime": "image/jpeg",
+      "detectedMime": "image/jpeg",
+      "detectedExt": "jpg",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.2,
+        "mean": 0.02
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "jpegProgressiveAliasPjpeg",
+      "bytes": 633,
+      "declaredMime": "image/pjpeg",
+      "normalizedDeclaredMime": "image/pjpeg",
+      "detectedMime": "image/jpeg",
+      "detectedExt": "jpg",
+      "mimeFamilyCompatible": false,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0,
+        "mean": 0
+      },
+      "imageDecode": {
+        "ok": true,
+        "width": 2,
+        "height": 2
+      }
+    },
+    {
+      "name": "pngIhdrOnly",
+      "bytes": 33,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": "image/png",
+      "detectedExt": "png",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0,
+        "mean": 0
+      },
+      "imageDecode": {
+        "ok": false
+      }
+    },
+    {
+      "name": "pngPartialIdat",
+      "bytes": 38,
+      "declaredMime": "image/png",
+      "normalizedDeclaredMime": "image/png",
+      "detectedMime": "image/png",
+      "detectedExt": "png",
+      "mimeFamilyCompatible": true,
+      "error": null,
+      "probeMs": {
+        "repeat": 10,
+        "total": 0.1,
+        "mean": 0.01
+      },
+      "imageDecode": {
+        "ok": false
+      }
+    }
+  ],
+  "errors": []
+}
