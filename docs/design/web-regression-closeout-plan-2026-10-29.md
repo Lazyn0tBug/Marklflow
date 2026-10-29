@@ -22,3 +22,5 @@ MathJax3.2.2/Paged.js0.4.3不变；不引入随包Chromium/Puppeteer/服务端�
 ## 证据与提交
 
 实际代码目录D:/code/Marklflow，原审查工作区已移除。每步审查、验证通过后一次本地提交；结构/逻辑、浏览器、实际产物、视觉和系统手动保存分别记录。支持表给出已测浏览器版本与OS，不由Chromium结果推断Edge/Safari/Firefox或其他OS。
+
+实施结果：W3a提交4825614（含用户授权bun.lock）；W3b提交2460070；W3c支持表/门槛收口见[支持表](web-export-support-2026-10-29.md)。自动部分完成，完整验收待补，EX-T未启动。

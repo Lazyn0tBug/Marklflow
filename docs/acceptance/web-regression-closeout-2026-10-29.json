@@ -1,0 +1,75 @@
+{
+  "stage": "EX-W3",
+  "date": "2026-10-29",
+  "branch": "architecture-refactor",
+  "baseline": "e690242",
+  "planCommit": "b312868",
+  "steps": {
+    "W3a": {
+      "commit": "4825614",
+      "status": "automatic regression passed, user lockfile included"
+    },
+    "W3b": {
+      "commit": "2460070",
+      "status": "artifact structure and contact-sheet review passed"
+    },
+    "W3c": {
+      "status": "support matrix and gates synchronized"
+    }
+  },
+  "status": "automatic-part-completed-full-acceptance-pending",
+  "automaticChecks": {
+    "unitTests": 377,
+    "browserTests": 115,
+    "managedSourcesAndConfigs": 197,
+    "strictTypes": "passed",
+    "lintAndBoundaries": "passed",
+    "build": "passed",
+    "frozenOfflineLockConsistency": "passed",
+    "pdfFiles": 5,
+    "pdfPages": 26,
+    "docxFiles": 4,
+    "bundleFiles": 3,
+    "htmlFiles": 11,
+    "archivedArtifactFiles": 66,
+    "hashesAndLocalLinks": "passed"
+  },
+  "records": {
+    "auto": "web-regression-auto-2026-10-29.json",
+    "artifacts": "web-regression-artifacts-2026-10-29.json",
+    "support": "../design/web-export-support-2026-10-29.md",
+    "review": "../reviews/web-regression-closeout-2026-10-29.md"
+  },
+  "pending": {
+    "EX-W0SystemPdfFilesAndDefaultFilenameCancel": "pending",
+    "nativeByteSavePickerRealDiskOverwritePermission": "pending",
+    "WordWpsVisual": "pending",
+    "cleanEmptyDirectoryInstall": "not tested",
+    "remoteCI": "not run"
+  },
+  "fullAcceptancePassed": false,
+  "releaseGatePassed": false,
+  "EX-TStarted": false,
+  "dependencyManifestChanged": false,
+  "userAddedLockCommitted": true,
+  "mathjax": "3.2.2 unchanged",
+  "pagedjs": "0.4.3 unchanged",
+  "newProductionBrowserOrPuppeteer": false,
+  "screenshotPdf": false,
+  "pushed": false,
+  "tagsMoved": false,
+  "untouchedUserFile": {
+    "path": "tag-release.patch",
+    "sha256": "9284099edcd54ce0d9580c42c370bc3163e4de5df0652e163bf9411f31683d48"
+  },
+  "documentHashesLF": [
+    {
+      "path": "docs/design/web-export-support-2026-10-29.md",
+      "sha256": "269646b4f764a14e7482403c75948684e5acac766fa899dee983874151e3cf06"
+    },
+    {
+      "path": "docs/reviews/web-regression-closeout-2026-10-29.md",
+      "sha256": "6f05c2e0a490a0bcdeefd84d4c9a9ba14e225c8d236972cd88d0290e1074f5e6"
+    }
+  ]
+}

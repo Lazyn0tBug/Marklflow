@@ -1,6 +1,6 @@
 # MarkFlow 架构重构方案：文档任务管理与平台适配
 
-EX实施进度（2026-10-29）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W0已建立基线并修复MathML布局，自动化与用户原生显示确认通过，原生文件/默认名证据待补，见[EX-W0记录](../reviews/web-native-pdf-baseline-2026-10-27.md)；EX-W1工程接入已完成，见[接入记录](../reviews/web-native-delivery-2026-10-27.md)；EX-W0系统证据继续待补；EX-W2工程接入已完成，见[EX-W2记录](../reviews/web-unified-save-2026-10-29.md)；EX-W3及后续EX-W/EX-T未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
+EX实施进度（2026-10-29）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W0已建立基线并修复MathML布局，自动化与用户原生显示确认通过，原生文件/默认名证据待补，见[EX-W0记录](../reviews/web-native-pdf-baseline-2026-10-27.md)；EX-W1工程接入已完成，见[接入记录](../reviews/web-native-delivery-2026-10-27.md)；EX-W0系统证据继续待补；EX-W2工程接入已完成，见[EX-W2记录](../reviews/web-unified-save-2026-10-29.md)；EX-W3可自动验证部分已完成、完整验收待补，见[支持与待验表](web-export-support-2026-10-29.md)；EX-T未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
 
 轻量PDF路线（当前有效）：不封装Chromium、不采用Puppeteer，保留Paged.js；Web使用浏览器原生输出，Tauri优先验证系统WebView。历史隔离研究中的随包浏览器候选不进入当前实施范围；不要求Web直接生成PDF字节，系统默认文件名限制单列。
 
@@ -373,3 +373,5 @@ A6候选研究独立后续，不阻塞本路线；Tauri和持久化缓存仅保�
 Markdown解析树仅服务HTML构建、大纲及源映射，不允许直接成为DOCX/PDF/EPUB的第二内容源。冻结HTML契约携带语义结构、文档样式、数学MathML、净化SVG、源节点标识及冻结资源引用；目标适配可建立临时目标结构，但内容来自HTML，不能重解析Markdown或LaTeX决定内容。详情及原样源保存边界见专项规划第1—3节。当前生产端口仍接DocumentRecord，须经后续EX-H阶段改造，不能把本条写入视为代码已符合。
 
 本轮审查：内容规范化HTML与最终布局宿主分离，同一宿主只分页一次；Web系统结果不可观测，不能共用“已保存”反馈。分页、busy与交付宿主的资源寿命按[专项第2节](html-export-source-plan-2026-10-26.md#2-最小共同契约及所有权)执行。后续导出唯一执行清单是专项第5节，原第13节为草案6历史路线；不将既有HTML H0—H4和平台T1—T3与EX步骤混用。
+
+EX-W3收口补充（2026-10-29）：可自动验证部分完成；完整验收/发布仍待系统证据和人工验收，支持范围见[本轮支持表](web-export-support-2026-10-29.md)。EX-T依赖完整EX-W3通过，本轮不推进。
