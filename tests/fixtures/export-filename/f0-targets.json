@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "stage": "F0-target-contract",
+  "productionValidated": false,
+  "maxFinalUtf8Bytes": 255,
+  "codePointCap": null,
+  "replacement": "_",
+  "emptyBase": "MarkFlow-Document",
+  "cases": [
+    {
+      "id": "empty",
+      "format": "markdown",
+      "input": "",
+      "expectedName": "MarkFlow-Document.md"
+    },
+    {
+      "id": "dots-only",
+      "format": "markdown",
+      "input": " ... ",
+      "expectedName": "MarkFlow-Document.md"
+    },
+    {
+      "id": "nfd-accent",
+      "format": "markdown",
+      "input": "café",
+      "expectedName": "café.md"
+    },
+    {
+      "id": "slash",
+      "format": "print-pdf",
+      "input": "a/b",
+      "expectedName": "a_b.pdf"
+    },
+    {
+      "id": "backslash-collision",
+      "format": "print-pdf",
+      "input": "a\\b",
+      "expectedName": "a_b.pdf"
+    },
+    {
+      "id": "device",
+      "format": "markdown",
+      "input": "CON",
+      "expectedName": "CON_.md"
+    },
+    {
+      "id": "device-before-dot",
+      "format": "docx",
+      "input": "nul.notes",
+      "expectedName": "nul_.notes.docx"
+    },
+    {
+      "id": "superscript-com",
+      "format": "reading-html",
+      "input": "COM¹",
+      "expectedName": "COM¹_.html"
+    },
+    {
+      "id": "superscript-lpt",
+      "format": "markdown-bundle",
+      "input": "LPT³",
+      "expectedName": "LPT³_.zip"
+    },
+    {
+      "id": "console-input",
+      "format": "markdown",
+      "input": "CONIN$",
+      "expectedName": "CONIN$_.md"
+    },
+    {
+      "id": "console-output",
+      "format": "markdown",
+      "input": "CONOUT$",
+      "expectedName": "CONOUT$_.md"
+    },
+    {
+      "id": "cross-format-suffix",
+      "format": "reading-html",
+      "input": " report.PDF.pdf ",
+      "expectedName": "report.html"
+    },
+    {
+      "id": "compound-suffix",
+      "format": "editable-html",
+      "input": "report.markflow.html.HTML",
+      "expectedName": "report.markflow.html"
+    },
+    {
+      "id": "hidden-name",
+      "format": "markdown",
+      "input": ".report",
+      "expectedName": ".report.md"
+    },
+    {
+      "id": "relative-looking-name",
+      "format": "markdown",
+      "input": "../name",
+      "expectedName": "_name.md"
+    },
+    {
+      "id": "trailing-dots-spaces",
+      "format": "markdown",
+      "input": "report...   ",
+      "expectedName": "report.md"
+    },
+    {
+      "id": "long-ascii-no-point-cap",
+      "format": "markdown",
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedName": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md"
+    },
+    {
+      "id": "long-chinese-compound",
+      "format": "editable-html",
+      "input": "中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中",
+      "expectedName": "中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中.markflow.html"
+    },
+    {
+      "id": "long-emoji-compound",
+      "format": "editable-html",
+      "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "expectedName": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀.markflow.html"
+    },
+    {
+      "id": "flags",
+      "format": "markdown",
+      "input": "🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳",
+      "expectedName": "🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳🇨🇳.md"
+    },
+    {
+      "id": "family-utf8-boundary",
+      "format": "editable-html",
+      "input": "a👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦",
+      "expectedName": "a👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦.markflow.html"
+    },
+    {
+      "id": "skin-tone-boundary",
+      "format": "markdown",
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa👍🏽",
+      "expectedName": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md"
+    },
+    {
+      "id": "combining-boundary",
+      "format": "markdown",
+      "input": "aẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍ",
+      "expectedName": "aẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍ.md"
+    },
+    {
+      "id": "single-oversized-grapheme",
+      "format": "markdown",
+      "input": "ẍ̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈̈",
+      "expectedName": "MarkFlow-Document.md"
+    },
+    {
+      "id": "illegal-not-empty",
+      "format": "markdown",
+      "input": "///",
+      "expectedName": "_.md"
+    }
+  ]
+}
