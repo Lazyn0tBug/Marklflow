@@ -32,8 +32,10 @@
 
 ## 目标fixture与分步证据
 
-[目标样例](../../tests/fixtures/export-filename/f0-targets.json)涵盖六格式、NFC、设备名、复合/重复后缀、相对式输入、长ASCII/中文/emoji、旗帜/家庭/肤色/音标和超大单grapheme。fixture是F1的目标，不是F0生产行为已通过的声明。F0由Luna审查样例并运行现有文件名/导出单元基线；F1才将样例接到真实exportFile断言，禁止todo或跳过测试伪造新行为绿灯。
+[目标样例](../../tests/fixtures/export-filename/f0-targets.json)涵盖六格式、NFC、设备名、复合/重复后缀、相对式输入、长ASCII/中文/emoji、旗帜/家庭/肤色/音标和超大单grapheme。fixture是F0冻结、F1落实的目标；F0未改变生产函数，F1验证结果单独记录。F0由Luna审查样例并运行现有文件名/导出单元基线；F1才将样例接到真实exportFile断言，禁止todo或跳过测试伪造新行为绿灯。
 
 已有[隔离对比报告](D:/codex/.codex/tmp/marklflow-filename-comparison-2026-10-29/文件名库对比报告.md)只作为参考；不复制其码点截断或共享大适配。F1依赖及纯模块门禁只放行精确filenamify/browser入口，不放行Node主入口或包级通配。
 
-F0契约由GPT-6 Luna审查及基线验证，记录见[执行记录](../reviews/filename-replacement-f0-f1-2026-10-29.md)；通过后本地提交，其后才实施F1。EX-W0及原生保存手动门槛仍待补，不推进F2/图片签名支线或Tauri，不推送。
+F0契约由GPT-6 Luna审查及基线验证，记录见[执行记录](../reviews/filename-replacement-f0-f1-2026-10-29.md)；通过后已本地提交39d042f，随后实施F1。EX-W0及原生保存手动门槛仍待补，不推进F2/图片签名支线或Tauri，不推送。
+
+F1实施结果：已替换为filenamify7.0.3/browser及单一UTF-8/grapheme产品适配，移除120码点上限；Luna目标化53项、完整check405项单元及实际Chromium25个目标均通过。F0的combining-boundary期望在F1真实验证时修正为NFC的ẍ，不回写为F0曾验证生产通过。最新证据见[验收JSON](../acceptance/filename-replacement-f1-2026-10-29.json)。

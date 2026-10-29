@@ -1,6 +1,6 @@
 # 第三方边界替代方案与分步实施计划
 
-日期：2026-10-29。状态：**F0/F1已获实施授权，其余分支未启动**。
+日期：2026-10-29。状态：**F0/F1已实施并验证，其余分支未启动**。
 
 基线：D:/code/Marklflow，architecture-refactor，6603e77。原规划轮仅写方案；当前用户明确授权F0/F1，采纳255 UTF-8字节与完整grapheme、移除120码点上限。实施和对应审查/测试按下文记录分步进行，不推送。用户tag-release.patch保持原样。F0/F1之外的实施单位仍须另获授权；本轮不推进图片签名支线。
 
@@ -21,7 +21,7 @@
 
 文件名试验：[中文报告](D:/codex/.codex/tmp/marklflow-filename-comparison-2026-10-29/文件名库对比报告.md)、[逐例JSON](D:/codex/.codex/tmp/marklflow-filename-comparison-2026-10-29/文件名库对比报告.json)。固定filenamify7.0.3、sanitise-path1.1.0；46例包含File/file大小写对照。已有Chromium156.0.8078.4与Bun结果一致；NTFS试验138项中82次创建读回、50次同名EEXIST、6个潜在设备名跳过。碰撞计数不能用于库可靠性排名，未打开设备名。试验core.mjs不是可直接复制的生产架构，紧凑物理行数和整体试验bundle也不是生产净增代码量/包体。
 
-本轮仅复用已有证据及只读源码/官方资料，不重跑试验。file-type官方仓库main的元数据或版本不等同拟采用的已发布包；后续PoC必须核对并固定实际发布版本、tarball、类型、许可和exports。Node engines声明、ESM或没有browser条件，均不能单独证明浏览器兼容或不兼容。
+原规划轮仅复用已有证据及只读源码/官方资料，不重跑试验；当前F0/F1实施证据另见执行记录。file-type官方仓库main的元数据或版本不等同拟采用的已发布包；后续PoC必须核对并固定实际发布版本、tarball、类型、许可和exports。Node engines声明、ESM或没有browser条件，均不能单独证明浏览器兼容或不兼容。
 
 ## 3. 模块替代映射
 
@@ -121,6 +121,8 @@ EX-W0系统PDF文件/默认名/取消、原生字节保存的真实磁盘/覆盖
 - [Microsoft文件命名规则](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file)
 - [POSIX路径/组件限制查询](https://pubs.opengroup.org/onlinepubs/9799919799/functions/pathconf.html)
 
-原计划由GPT-6 Luna分析并独立审查通过；当前F0/F1获准，其他实施单位仍为待授权/未开始。本文件不构成任何新生产能力或新测试通过记录。
+本方案记录规划与授权依据；F0已提交39d042f，F1已完成并通过Luna验证，证据见执行记录和验收JSON；其他实施分支未启动。本方案本身不替代实施与测试证据。
 
 实施授权补充：用户明确采用最终文件名组件<=255 UTF-8字节、完整grapheme、移除120码点上限；该决策已满足第4.1节兼容性批准条件，无需重复确认。详见[命名契约](export-filename-contract-2026-10-29.md)。
+
+F0/F1进度：F0已提交39d042f；F1已完成单点实现及Luna审查验证，见[执行记录](../reviews/filename-replacement-f0-f1-2026-10-29.md)。F2、P/C/X和EX-T未因此启动；EX-W0及原生保存手动门槛不变。

@@ -1,0 +1,93 @@
+{
+  "stage": "F1-filename-replacement",
+  "date": "2026-10-29",
+  "branch": "architecture-refactor",
+  "baseline": "6603e77",
+  "F0Commit": "39d042f",
+  "status": "implemented-and-Luna-verified",
+  "reviewAndTests": "GPT-6 Luna",
+  "contract": {
+    "finalUtf8BytesMax": 255,
+    "graphemeBoundary": true,
+    "codePointCap": null,
+    "libraryDefaultUtf16CapDisabled": true,
+    "replacement": "_",
+    "singleProductionAdapter": true
+  },
+  "dependencies": {
+    "filenamify": "7.0.3",
+    "filename-reserved-regex": "4.1.0",
+    "mathjax": "3.2.2 unchanged",
+    "pagedjs": "0.4.3 unchanged",
+    "otherDependenciesChanged": false
+  },
+  "checks": {
+    "targetedFiles": 3,
+    "targetedTests": 53,
+    "managedSourcesAndConfigs": 197,
+    "unitTestFiles": 57,
+    "unitTests": 405,
+    "typecheck": "passed",
+    "lintAndBoundaries": "passed",
+    "productionBuild": "passed",
+    "browser": "existing Chromium 156.0.8078.4",
+    "realBrowserGoldenCases": 25,
+    "browserNodeBufferShims": false,
+    "testBundleBytes": 7220,
+    "F2WorkbenchRegressionStarted": false,
+    "crossOsAndNativeSave": "not performed",
+    "frozenOfflineLockConsistency": "passed, package.json and bun.lock byte hashes unchanged"
+  },
+  "firstTargetedRun": {
+    "passed": 51,
+    "failed": 2,
+    "cause": "F0 fixture and repeated-cluster expectations were not NFC; corrected expectations and added non-precomposable cluster coverage",
+    "productionWorkaround": false
+  },
+  "logs": [
+    "D:/codex/f1-filename-targeted-initial.log",
+    "D:/codex/f1-filename-targeted.log",
+    "D:/codex/f1-filename-check.log",
+    "D:/codex/.codex/tmp/marklflow-f1-browser-2026-10-29/result.log",
+    "D:/codex/f1-filename-lock-check.log"
+  ],
+  "gates": {
+    "EX-W0SystemPdf": "pending",
+    "nativeSaveManual": "pending",
+    "fullAcceptancePassed": false,
+    "imageSignatureBranchStarted": false,
+    "TauriStarted": false,
+    "pushed": false
+  },
+  "hashInput": "Git-normalized UTF-8 LF",
+  "files": [
+    {
+      "path": "src/application/exports/exportFile.ts",
+      "sha256": "aca9df14594acdfda20a0a345fd4308cc9bbfcd705abe7a101721166d9da7093"
+    },
+    {
+      "path": "scripts/check-module-boundaries.ts",
+      "sha256": "9e8f3a4c6d627f937126b0d8d4edcb097d2e78db530e840d874387e0d0c67115"
+    },
+    {
+      "path": "tests/unit/export-file.test.ts",
+      "sha256": "88915bd5ec53a7236217f374920a27ac4688efd76ffd80618fa45d0dab2b36dd"
+    },
+    {
+      "path": "tests/unit/export-module-boundaries.test.ts",
+      "sha256": "ffcab1322b907dbf3dba144cc13caf64fa89de5b085c31df1d741b0d5431ad4e"
+    },
+    {
+      "path": "tests/fixtures/export-filename/f0-targets.json",
+      "sha256": "ce63e28843bb3f191b193cb46067261781e46b24b87ae1efcc300d08c54567ca"
+    },
+    {
+      "path": "package.json",
+      "sha256": "5675f96dfd0cfe779048518c053ada0e285a1bc9f1db79f21a801964fd307800"
+    },
+    {
+      "path": "bun.lock",
+      "sha256": "3028d1368fdf9356e7ba976deb4e33bcb274da660d78c123881cbed4350271cf"
+    }
+  ]
+}

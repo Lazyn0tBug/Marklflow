@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "stage": "F0-target-contract",
-  "productionValidated": false,
+  "productionValidated": true,
   "maxFinalUtf8Bytes": 255,
   "codePointCap": null,
   "replacement": "_",
@@ -143,7 +143,7 @@
       "id": "combining-boundary",
       "format": "markdown",
       "input": "aẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍ",
-      "expectedName": "aẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍ.md"
+      "expectedName": "aẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍẍ.md"
     },
     {
       "id": "single-oversized-grapheme",
@@ -157,5 +157,6 @@
       "input": "///",
       "expectedName": "_.md"
     }
-  ]
+  ],
+  "validatedIn": "F1"
 }

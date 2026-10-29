@@ -28,6 +28,7 @@
     "dompurify": "3.4.17",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "filenamify": "7.0.3",
     "hash.js": "1.1.7",
     "jszip": "3.10.2",
     "lucide-react": "^0.546.0",

@@ -11,3 +11,10 @@ it('keeps PDF delivery in the platform composition instead of HTML generation',(
  for(const file of ['src/core/export/pdfExporter.ts','src/core/export/htmlExporter.ts','src/core/export/docxExporter.ts','src/core/export/exportContent.ts','src/core/export/documentPrint.ts','src/core/render/htmlPaginator.ts'])for(const module of ['../platform/web/pdfDelivery','../platform/web/pdfDelivery.ts','../platform/web/pdfDelivery.js'])expect(checkModuleSource(file,'export {deliverPdfHtml} from '+JSON.stringify(module))).not.toEqual([]);
  expect(checkModuleSource('src/core/platform/web/exportService.ts','import {deliverPdfHtml} from "./pdfDelivery"')).toEqual([]);
 });
+
+it('approves only the filename adapter exact browser entry',()=>{
+ expect(checkModuleSource('src/application/exports/exportFile.ts','import clean from "filenamify/browser"')).toEqual([]);
+ for(const module of ['filenamify','filenamify/browser.js','filename-reserved-regex'])expect(checkModuleSource('src/application/exports/exportFile.ts','import clean from '+JSON.stringify(module))).not.toEqual([]);
+ expect(checkModuleSource('src/application/exports/exportService.ts','import clean from "filenamify/browser"')).not.toEqual([]);
+ expect(checkModuleSource('src/core/platform/web/exportService.ts','import clean from "filenamify"')).not.toEqual([]);
+});

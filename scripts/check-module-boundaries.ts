@@ -20,6 +20,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
  const tree=parse(source,{sourceType:'module',plugins:['typescript',...(file.endsWith('tsx')?['jsx' as const]:[])],createImportExpressions:true});
  const htmlFormat=htmlFormats.has(path);
  function dependency(name:string,typeOnly=false){
+  if((name==='filenamify'||name.startsWith('filenamify/'))&&!(path==='src/application/exports/exportfile.ts'&&name==='filenamify/browser'))failures.push('filename library must use the approved adapter browser entry: '+name);
   if((path.startsWith('src/core/export/')||path==='src/core/render/htmlpaginator.ts')&&/(?:^|\/)pdfDelivery(?:\.[cm]?[jt]s)?$/i.test(name))failures.push('HTML generation cannot depend on platform PDF delivery: '+name);
   if(htmlFormat&&(/(?:^|\/)(?:remark-[^/]*|rehype-[^/]*|unified|mathjax|mermaid)(?:\/|$)/.test(name)||/(?:parse\/|documentRenderer|documentPaginator|mathRender|mathJaxAdapter|exportContent|markdownBundle|sourceAttachment|storage|model\/document(?:\.[cm]?[jt]s)?$)/i.test(name)))failures.push('HTML format adapter cannot depend on source parsing/preparation: '+name);
   if(name.startsWith('node:')||builtins.has(name)||name==='bun'||name.startsWith('bun:'))failures.push('browser/core cannot import '+name);
@@ -28,7 +29,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
   if(name.startsWith('.')){
    const target=portable(relative(root,resolve(root,dirname(file),name))).toLowerCase();
    if(!pureRoots.some(p=>target.startsWith(p))&&!(workspacePure&&[workspaceRoot,sessionRoot,taskRoot,cacheRoot].some(p=>target.startsWith(p)))&&!(sessionPure&&(target.startsWith(sessionRoot)||target===cacheRoot+'contracts'))&&!(cachePure&&(target.startsWith(cacheRoot)||['src/application/tasks/contracts','src/application/tasks/previewidentity','src/application/tasks/budget'].includes(target)))&&!(exportPure&&target.startsWith(exportRoot))&&!(taskPure&&(target.startsWith(taskRoot)||['docs/contracts/architecture-runtime-budget.json','docs/contracts/architecture-dual-worker-budget.json'].includes(target))))failures.push('pure module cannot import '+name);
-  }else if(!allowed.has(name)&&!(path==='src/application/tasks/previewidentity.ts'&&name==='hash.js')&&!(typeOnly&&['mdast','hast','unist'].includes(name)))failures.push('pure dependency not approved: '+name);
+  }else if(!allowed.has(name)&&!(path==='src/application/exports/exportfile.ts'&&name==='filenamify/browser')&&!(path==='src/application/tasks/previewidentity.ts'&&name==='hash.js')&&!(typeOnly&&['mdast','hast','unist'].includes(name)))failures.push('pure dependency not approved: '+name);
  }
  function literal(value:unknown):string|undefined{
   return value&&typeof value==='object'&&'type'in value&&value.type==='StringLiteral'&&'value'in value&&typeof value.value==='string'?value.value:undefined;
