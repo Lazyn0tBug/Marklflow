@@ -27,4 +27,4 @@ showSaveFilePicker只在安全环境、API可调用且有瞬时用户激活时�
 
 ## 进度
 
-计划已保存；W2a—W2c待实施。
+W2-plan已提交a155658；W2a已提交33dd9c3；W2b已提交f0557e0。W2c工作台接入、审查及全量回归已完成，结果见[实施记录](../reviews/web-unified-save-2026-10-29.md)。EX-W0系统证据继续待补，EX-W3/EX-T不在本轮。

@@ -12,3 +12,6 @@ test('keeps raw HTML wrapper boundaries and source formatting in the resource ZI
  // Import, rather than textarea.fill, to retain the original CRLF source bytes.
  await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('input[type=file]').setInputFiles({name:'wrapper.md',mimeType:'text/markdown',buffer:Buffer.from(source)});await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Markdown 资源包/}).click();const wait=page.waitForEvent('download');await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();const path=info.outputPath('wrapper.zip');await(await wait).saveAs(path);const zip=await JSZip.loadAsync(await readFile(path)),hash=createHash('sha256').update(Buffer.from(data.split(',')[1]!,'base64')).digest('hex');expect(await zip.file('document.md')!.async('string')).toBe(source.replace(data,'assets/'+hash+'.png'));
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});

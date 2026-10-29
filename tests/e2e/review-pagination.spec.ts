@@ -16,3 +16,6 @@ test('keeps long table/code text and container layout in A4 pages',async({page,c
  const file=info.outputPath('long-document.html');await (await event).saveAs(file);const recipient=await context.newPage();await context.setOffline(true);await recipient.goto(pathToFileURL(file).href);await expect(recipient.locator('article')).toContainText('FINAL_REVIEW_END');
  await recipient.pdf({path:info.outputPath('long-document.pdf'),format:'A4',printBackground:true});
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});

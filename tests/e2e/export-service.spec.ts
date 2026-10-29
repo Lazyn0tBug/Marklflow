@@ -16,3 +16,6 @@ test('cleans a failed download and permits a manual retry with accurate Web feed
 test('keeps accepted DOCX source when the document changes during generation',async({page},info)=>{
  await open(page,'# ACCEPTED_DOCX_SOURCE\n\nFrozen paragraph.');await page.getByRole('button',{name:/Word 原生文档/}).click();const download=page.waitForEvent('download');await page.evaluate(()=>{const button=Array.from(document.querySelectorAll('button')).find(node=>node.textContent?.trim()==='立即导出并保存');button!.click();const editor=document.querySelector('textarea')!;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(editor,'# LATE_DOCX_SOURCE');editor.dispatchEvent(new Event('input',{bubbles:true}))});const path=info.outputPath('frozen.docx');await(await download).saveAs(path);const zip=await JSZip.loadAsync(await readFile(path));const xml=await zip.file('word/document.xml')!.async('string');expect(xml).toContain('ACCEPTED_DOCX_SOURCE');expect(xml).not.toContain('LATE_DOCX_SOURCE');expect(xml).toContain('Frozen paragraph.');
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});

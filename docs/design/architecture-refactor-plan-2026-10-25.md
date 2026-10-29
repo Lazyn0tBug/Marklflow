@@ -1,6 +1,6 @@
 # MarkFlow 架构重构方案：文档任务管理与平台适配
 
-EX实施进度（2026-10-27）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W0已建立基线并修复MathML布局，自动化与用户原生显示确认通过，原生文件/默认名证据待补，见[EX-W0记录](../reviews/web-native-pdf-baseline-2026-10-27.md)；EX-W1工程接入已完成，见[接入记录](../reviews/web-native-delivery-2026-10-27.md)；EX-W0系统证据继续待补；EX-W2及后续EX-W/EX-T未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
+EX实施进度（2026-10-29）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W0已建立基线并修复MathML布局，自动化与用户原生显示确认通过，原生文件/默认名证据待补，见[EX-W0记录](../reviews/web-native-pdf-baseline-2026-10-27.md)；EX-W1工程接入已完成，见[接入记录](../reviews/web-native-delivery-2026-10-27.md)；EX-W0系统证据继续待补；EX-W2工程接入已完成，见[EX-W2记录](../reviews/web-unified-save-2026-10-29.md)；EX-W3及后续EX-W/EX-T未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
 
 轻量PDF路线（当前有效）：不封装Chromium、不采用Puppeteer，保留Paged.js；Web使用浏览器原生输出，Tauri优先验证系统WebView。历史隔离研究中的随包浏览器候选不进入当前实施范围；不要求Web直接生成PDF字节，系统默认文件名限制单列。
 

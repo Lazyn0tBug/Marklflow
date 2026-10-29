@@ -9,3 +9,6 @@ test('DOCX blockers stay visible and cannot be bypassed by confirmation',async({
 test('invalid LaTeX fails before compatibility confirmation or delivery',async({page})=>{
  await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(fixture.cases[2]!.markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();const failure=page.waitForEvent('dialog'),action=page.getByRole('button',{name:/^(立即导出并保存|确认并导出)$/}).click();const dialog=await failure;expect(dialog.message()).toContain('公式');await dialog.accept();await action;await expect(page.getByText(/已生成并发起下载/)).toHaveCount(0);await expect(page.getByRole('button',{name:'立即导出并保存',exact:true})).toBeEnabled();
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});

@@ -1,6 +1,6 @@
 # 架构重构分步实施与验收计划
 
-EX实施进度（2026-10-27）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W0已建立基线并修复MathML布局，自动化与用户原生显示确认通过，原生文件/默认名证据待补，见[EX-W0记录](../reviews/web-native-pdf-baseline-2026-10-27.md)；EX-W1工程接入已完成，见[接入记录](../reviews/web-native-delivery-2026-10-27.md)；EX-W0系统证据继续待补；EX-W2及后续EX-W/EX-T未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
+EX实施进度（2026-10-29）：EX-H0已验证并本地提交55fcf1c；EX-H1已完成统一只读HTML产物、同次编译MathML/SVG与资源冻结，审查及验证范围见[EX-H1记录](../reviews/export-source-h1-2026-10-26.md)。EX-H2a—c2已完成HTML格式端口、源保存例外、单次准备及冻结确认，见[EX-H2c2记录](../reviews/export-source-h2c2-2026-10-26.md)；EX-W0已建立基线并修复MathML布局，自动化与用户原生显示确认通过，原生文件/默认名证据待补，见[EX-W0记录](../reviews/web-native-pdf-baseline-2026-10-27.md)；EX-W1工程接入已完成，见[接入记录](../reviews/web-native-delivery-2026-10-27.md)；EX-W0系统证据继续待补；EX-W2工程接入已完成，见[EX-W2记录](../reviews/web-unified-save-2026-10-29.md)；EX-W3及后续EX-W/EX-T未实施；历史“仅文档”描述只代表当时编制范围。本轮不推送，不升级MathJax，不替换Paged.js，不引入Chromium/Puppeteer。
 
 轻量PDF路线（当前有效）：不封装Chromium、不采用Puppeteer，保留Paged.js；Web使用浏览器原生输出，Tauri优先验证系统WebView。历史隔离研究中的随包浏览器候选不进入当前实施范围；不要求Web直接生成PDF字节，系统默认文件名限制单列。
 
@@ -290,9 +290,9 @@ U2独立队列/受控执行协调已实现并本地验证，见[执行记录](..
 草案6规划时记录（历史状态，当前实施进度以上方补充为准）：本轮将R0—R5与U3—U6、A5/A7一并规划；所有未实施步骤待独立授权。代码未修改、不提交、不推送、不升级MathJax、不替换Paged.js。后续每步证据都应区分组件替身、真实Worker、DOM集成、生产UI、视觉和打印，不让R5或V2名称代替实际通过记录。
 
 
-## 12. 导出约束修正后的路线（EX-H/EX-W1工程已实施，EX-W0系统证据待补，后续待实施）
+## 12. 导出约束修正后的路线（EX-H/EX-W1—W2工程已实施，EX-W0系统证据待补，后续待实施）
 
-历史R/U/P/V提交及证据保留，不重新实施或改写为新的验收成功。新专项唯一小步清单在[导出专项规划第5节](html-export-source-plan-2026-10-26.md#5-分步实施与验收)，顺序为EX-H0→EX-H1→EX-H2→EX-W0→EX-W1→EX-W2→EX-W3→EX-T0→EX-T1→EX-T2a→EX-T2b。EX-H为共同架构；EX-W为Web；EX-T为Tauri。EX-H0—EX-H2已按授权分步实施、验证及本地提交，完整审查见[记录](../reviews/export-source-h0-h2-review-2026-10-26.md)；EX-W1已按用户条件授权完成工程接入，EX-W0系统证据仍待补；EX-W2及后续EX-W/EX-T仍仅规划，后续获准时独立审查验证及本地提交。不推送。
+历史R/U/P/V提交及证据保留，不重新实施或改写为新的验收成功。新专项唯一小步清单在[导出专项规划第5节](html-export-source-plan-2026-10-26.md#5-分步实施与验收)，顺序为EX-H0→EX-H1→EX-H2→EX-W0→EX-W1→EX-W2→EX-W3→EX-T0→EX-T1→EX-T2a→EX-T2b。EX-H为共同架构；EX-W为Web；EX-T为Tauri。EX-H0—EX-H2已按授权分步实施、验证及本地提交，完整审查见[记录](../reviews/export-source-h0-h2-review-2026-10-26.md)；EX-W1已按用户条件授权完成工程接入，EX-W0系统证据仍待补；EX-W2已按2026-10-29授权完成统一命名与Web保存，见[EX-W2记录](../reviews/web-unified-save-2026-10-29.md)；EX-W3及后续EX-W/EX-T仍仅规划，后续获准时独立审查验证及本地提交。不推送。
 
 新增E13：所有内容转换器仅接统一HTML产物（源文件保存分支除外）；构造输入HTML与原Markdown不一致的隔离夹具，证明输出跟随HTML；静态依赖门禁拒绝格式适配器导入Markdown/LaTeX解释器。MD原样保存及可编辑HTML源附件只能由源保存分支读取，不参与内容重建。
 

@@ -94,3 +94,6 @@ test('does not report successful export for a corrupt embedded image',async({pag
  const dialog=await alert;expect(dialog.message()).toContain('导出过程出错');await dialog.accept();await action;
  await expect(page.getByText(/已成功生成|已成功下载/)).toHaveCount(0);
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});

@@ -12,3 +12,6 @@ test('preserves mixed text, list starts, bookmarks, page breaks and A4 in DOCX',
  expect(xml).toContain('w:type="page"');expect(xml).toContain('w:w="11906"');expect(xml).toContain('w:h="16838"');expect(numbering).toContain('<w:start w:val="3"');expect(numbering).toContain('<w:start w:val="0"');expect(numbering).toContain('<w:start w:val="-2"');
  const names=[...xml.matchAll(/<w:bookmarkStart[^>]*w:name="([^"]+)"/g)].map(match=>match[1]);for(const link of xml.matchAll(/<w:hyperlink[^>]*w:anchor="([^"]+)"/g))expect(names).toContain(link[1]);
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});

@@ -1,5 +1,6 @@
 import { webExportService } from '../../core/platform/web/exportService';
 import type {ExportFormat} from '../../application/exports/exportService';
+import {exportFile} from '../../application/exports/exportFile';
 import { groupDocxIssues,type OutputIssue } from '../../core/export/outputCapabilities';
 /**
  * MarkFlow (墨流) 导出控制中心
@@ -115,6 +116,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             <label htmlFor="export-file-name" className="block text-xs font-medium text-neutral-300 mb-1.5">导出文件主名称</label>
             <input
               id="export-file-name"
+              aria-describedby="export-suggested-name"
               disabled={isExporting}
               type="text"
               value={fileName}
@@ -122,6 +124,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
               className="w-full px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700/80 text-sm text-neutral-100 focus:outline-none focus:border-teal-500 transition-colors"
               placeholder="输入文件名..."
             />
+            <p id="export-suggested-name" className="mt-1.5 text-xs text-neutral-400 wrap-anywhere">建议文件名：{exportFile(fileName,selectedFormat).name}</p>
           </div>
 
           {/* Format Selection Grid */}
@@ -172,7 +175,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>
                   <div className="font-medium text-xs text-neutral-100">PDF 文档（A4）</div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    使用 A4 排版，保留可选取、可检索的正文。
+                    使用 A4 排版，保留可选取、可检索的正文。文件名由系统保存窗口最终确定。
                   </p>
                 </div>
               </button>

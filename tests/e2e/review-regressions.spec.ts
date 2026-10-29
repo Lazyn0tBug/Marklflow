@@ -31,3 +31,6 @@ test('keeps diagnostic-like literal formula text in MathML and SVG modes',async(
  await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
  await expect(page.locator('.mf-doc svg')).toHaveCount(1);
 });
+
+// Exercise the existing download path; picker capability is covered separately.
+test.beforeEach(async({page})=>{await page.addInitScript(()=>Object.defineProperty(window,'showSaveFilePicker',{value:undefined,configurable:true}))});
