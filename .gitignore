@@ -11,3 +11,7 @@ coverage/
 playwright-report/
 test-results/
 .aistudio/
+
+# Tauri generated build output; Cargo.lock remains tracked.
+src-tauri/target/
+src-tauri/gen/

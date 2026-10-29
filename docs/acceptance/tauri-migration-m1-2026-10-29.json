@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "stage": "M1",
+  "date": "2026-10-29",
+  "branch": "architecture-refactor",
+  "baselineCommit": "baf76ccbd9355d297793d5ea8d5974effac4b124",
+  "sourceCommit": "c7c34b942d67fe92d8df242c052b5457c5d14765",
+  "status": "independent-review-and-windows-shell-validation-passed",
+  "reviewerAndTestExecutor": "GPT-6 Luna",
+  "independentReviewPerformed": true,
+  "unresolvedFindings": 0,
+  "contract": "../design/tauri-migration-m0-contract-2026-10-29.md",
+  "implementationRecord": "../reviews/tauri-migration-m1-2026-10-29.md",
+  "lunaEvidence": {
+    "schemaVersion": 1,
+    "task": "Marklflow M1 independent review and Windows validation",
+    "baseCommit": "baf76ccbd9355d297793d5ea8d5974effac4b124",
+    "reviewStatus": "passed_with_scope_limits",
+    "findings": [
+      {
+        "id": "m1-dependency-minor-mismatch",
+        "resolution": "tauri 2.12.4 and tauri-build 2.7.4 pinned; only required Cargo.lock entries updated",
+        "status": "resolved",
+        "verification": "cargo check --locked and Tauri embedded debug build passed",
+        "firstAttempt": "tauri 2.11.5 with @tauri-apps/api 2.12.4 rejected by Tauri CLI 2.12.4"
+      },
+      {
+        "id": "source-icon-icns-extension",
+        "resolution": "standard ICNS container with ic09 PNG item; source icon.png payload preserved byte-for-byte",
+        "status": "resolved",
+        "verification": "Pillow 12.3 decoded as ICNS 512x512 RGBA; container and payload lengths validated",
+        "firstAttempt": "source icon.icns bytes were PNG"
+      }
+    ],
+    "bun": {
+      "unitFiles": 59,
+      "build": "passed",
+      "command": "bun run check",
+      "unitTests": 426,
+      "status": "passed",
+      "version": "1.4.2",
+      "typeCoverage": "200 managed sources/configs",
+      "warnings": [
+        "existing Vite config __dirname warning",
+        "existing hash.js ineffective dynamic import warning",
+        "existing large chunk warning"
+      ]
+    },
+    "rust": {
+      "toolchain": "rustc/cargo 1.98.1",
+      "tauriBuild": "2.7.4",
+      "embeddedBuild": "bun run tauri build --debug --no-bundle -- --locked",
+      "windowsLinkerNotice": "linker stdout created import library/object files; no build failure",
+      "fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+      "fmtStatus": "passed",
+      "tauri": "2.12.4",
+      "embeddedBuildStatus": "passed",
+      "check": "cargo check --locked --manifest-path src-tauri/Cargo.toml",
+      "checkStatus": "passed"
+    },
+    "nativeBuild": {
+      "webView": "WebView2 Edge 156.0.4314.50",
+      "production": {
+        "loaded": "passed",
+        "platformInfo": {
+          "version": "0.9.1",
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "worker": "loaded; preview updated after editor input",
+        "failedRequests": 0,
+        "mermaid": "rendered",
+        "pageErrors": 0,
+        "mathJax": "rendered",
+        "consoleErrors": 0,
+        "url": "http://tauri.localhost/",
+        "title": "MarkFlow 墨流 - Markdown 排版与发布工作台",
+        "cspViolations": 0
+      },
+      "platform": "Windows",
+      "dev": {
+        "cspViolations": 0,
+        "worker": "loaded; preview updated after editor input",
+        "url": "http://127.0.0.1:3000/",
+        "command": "tauri dev",
+        "failedRequests": 0,
+        "actualFont": "Microsoft YaHei UI and MicrosoftYaHeiUI-Bold via system font fallback",
+        "pageErrors": 0,
+        "mermaid": "rendered",
+        "loaded": "passed",
+        "listener": "127.0.0.1:3000",
+        "viteCommand": "vite --host 127.0.0.1 --port 3000 --strictPort",
+        "consoleErrors": 0,
+        "platformInfo": {
+          "version": "0.9.1",
+          "os": "windows",
+          "arch": "x86_64"
+        },
+        "mathJax": "rendered",
+        "beforeDevCommand": "bun run dev:desktop"
+      }
+    },
+    "icons": {
+      "sourceReference": "c7c34b942d67fe92d8df242c052b5457c5d14765",
+      "icns": {
+        "pillowMode": "RGBA",
+        "magic": "icns",
+        "pillowFormat": "ICNS",
+        "pngPayloadMatchesIconPng": true,
+        "chunk": "ic09",
+        "totalLength": 9124,
+        "chunkLength": 9116,
+        "pillowSize": "512x512"
+      },
+      "sourceByteMatches": [
+        "32x32.png",
+        "128x128.png",
+        "128x128@2x.png",
+        "icon.ico",
+        "icon.png"
+      ],
+      "ico": "valid ICO header, one 32x32 PNG frame",
+      "pngDimensions": {
+        "icon.png": "512x512",
+        "32x32.png": "32x32",
+        "128x128.png": "128x128",
+        "128x128@2x.png": "256x256"
+      }
+    },
+    "protectedFiles": [
+      {
+        "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+        "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58"
+      },
+      {
+        "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+        "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569"
+      }
+    ],
+    "scope": {
+      "testProfilesRemoved": true,
+      "pdfGenerated": false,
+      "windowsDebugNoBundleTested": true,
+      "protectedFilesUnchanged": true,
+      "windowsBundleTested": false,
+      "processesStopped": true,
+      "fileIoExportCiSoftwrap": "not implemented",
+      "windowsBundleRebuildAfterIcnsOnlyChange": "not needed: macOS ICNS container is unused by Windows no-bundle runtime; Windows ICO was unchanged",
+      "environmentVariables": "process-scoped only; no global env changes",
+      "nonWindowsBundleTested": false,
+      "appServiceWiring": "none",
+      "fsDialogPermissions": "none",
+      "portsReleased": [
+        3000,
+        9333,
+        9334
+      ],
+      "systemSaveTested": false
+    },
+    "logs": [
+      "D:\\codex\\m1-review-2026-10-29\\bun-check.log",
+      "D:\\codex\\m1-review-2026-10-29\\cargo-fmt.log",
+      "D:\\codex\\m1-review-2026-10-29\\cargo-check-retry.log",
+      "D:\\codex\\m1-review-2026-10-29\\tauri-build-retry.log",
+      "D:\\codex\\m1-review-2026-10-29\\native-smoke.log",
+      "D:\\codex\\m1-review-2026-10-29\\dev-smoke.log",
+      "D:\\codex\\m1-review-2026-10-29\\dev-fonts.log",
+      "D:\\codex\\m1-review-2026-10-29\\icon-container-verify.log",
+      "D:\\codex\\m1-review-2026-10-29\\bun-lock-audit.json"
+    ],
+    "artifacts": {
+      "dev": {
+        "mode": "tauri dev / cargo run --no-default-features",
+        "path": "D:\\codex\\m1-review-2026-10-29\\artifacts\\markflow-dev.exe",
+        "size": 12606464,
+        "sha256": "6c34b2be0d131c83031d3ab9c233240e1c4e60a4c9c8b77f48204aa9937b106d",
+        "matchesCurrentTarget": true
+      },
+      "embedded": {
+        "mode": "tauri build --debug --no-bundle -- --locked (custom protocol embedded assets)",
+        "smokePassedBeforeDevOverwrite": true,
+        "retained": false,
+        "sha256": null,
+        "overwrittenBy": "tauri dev used the same target/debug/markflow.exe path",
+        "evidence": [
+          "tauri-build-retry.log",
+          "native-smoke.log"
+        ]
+      }
+    },
+    "bunLockAudit": {
+      "baseCommit": "baf76ccbd9355d297793d5ea8d5974effac4b124",
+      "baselinePackageRecords": 663,
+      "currentPackageRecords": 676,
+      "baselinePackageRecordsChanged": 0,
+      "baselineWorkspaceDependenciesChanged": 0,
+      "newDirectDependencies": [
+        "@tauri-apps/api"
+      ],
+      "newDirectDevDependencies": [
+        "@tauri-apps/cli"
+      ],
+      "newPackageRecords": [
+        "@tauri-apps/api",
+        "@tauri-apps/cli",
+        "@tauri-apps/cli-darwin-arm64",
+        "@tauri-apps/cli-darwin-x64",
+        "@tauri-apps/cli-linux-arm-gnueabihf",
+        "@tauri-apps/cli-linux-arm64-gnu",
+        "@tauri-apps/cli-linux-arm64-musl",
+        "@tauri-apps/cli-linux-riscv64-gnu",
+        "@tauri-apps/cli-linux-x64-gnu",
+        "@tauri-apps/cli-linux-x64-musl",
+        "@tauri-apps/cli-win32-arm64-msvc",
+        "@tauri-apps/cli-win32-ia32-msvc",
+        "@tauri-apps/cli-win32-x64-msvc"
+      ],
+      "gitDiffNumstat": "28\t0\tbun.lock",
+      "result": "all baseline package/workspace dependency records unchanged; only Tauri dependencies and optional CLI platform packages added"
+    }
+  },
+  "bunLockAudit": {
+    "baseCommit": "baf76ccbd9355d297793d5ea8d5974effac4b124",
+    "baselinePackageRecords": 663,
+    "currentPackageRecords": 676,
+    "baselinePackageRecordsChanged": 0,
+    "baselineWorkspaceDependenciesChanged": 0,
+    "newDirectDependencies": [
+      "@tauri-apps/api"
+    ],
+    "newDirectDevDependencies": [
+      "@tauri-apps/cli"
+    ],
+    "newPackageRecords": [
+      "@tauri-apps/api",
+      "@tauri-apps/cli",
+      "@tauri-apps/cli-darwin-arm64",
+      "@tauri-apps/cli-darwin-x64",
+      "@tauri-apps/cli-linux-arm-gnueabihf",
+      "@tauri-apps/cli-linux-arm64-gnu",
+      "@tauri-apps/cli-linux-arm64-musl",
+      "@tauri-apps/cli-linux-riscv64-gnu",
+      "@tauri-apps/cli-linux-x64-gnu",
+      "@tauri-apps/cli-linux-x64-musl",
+      "@tauri-apps/cli-win32-arm64-msvc",
+      "@tauri-apps/cli-win32-ia32-msvc",
+      "@tauri-apps/cli-win32-x64-msvc"
+    ],
+    "gitDiffNumstat": "28\t0\tbun.lock",
+    "result": "all baseline package/workspace dependency records unchanged; only Tauri dependencies and optional CLI platform packages added"
+  },
+  "testedInputSha256": [
+    {
+      "sha256": "48faca5f09237e24bbfa8401feaa38968d6e7c3c7bcbc91f070e060734d1efef",
+      "path": "package.json"
+    },
+    {
+      "sha256": "b92a7a49eff27738c9dbf228d7b66570e4ea0aff0de43699a4e5807cb9fd6eac",
+      "path": "bun.lock"
+    },
+    {
+      "sha256": "4b3b9f2294e843bc90bc5cc8c83cabc29d0349b3801881adbb2756a8ca210800",
+      "path": "vite.config.ts"
+    },
+    {
+      "sha256": "3d1d8dde57ef344881eb18f6170b040713c26810c327dc3de05e7fb32668882d",
+      "path": "src-tauri/Cargo.toml"
+    },
+    {
+      "sha256": "160cd781ae0da3d065d0da013e8d4f1b54ace674438153718a61f6be59af564c",
+      "path": "src-tauri/Cargo.lock"
+    },
+    {
+      "sha256": "49b189d5049f7d6575642c1b8761085af7317caf134d569042b8790a4e12e1b5",
+      "path": "src-tauri/tauri.conf.json"
+    },
+    {
+      "sha256": "ff554b9e049f8ea062afe14c7a77ecc73a1b3708d7699aba751cfb9bac71d02b",
+      "path": "src-tauri/capabilities/default.json"
+    },
+    {
+      "sha256": "38eab79a8f4e30c072c9888a3538a0b734327be34afba0d5b0c3ab2eb2194ed8",
+      "path": "src-tauri/src/lib.rs"
+    },
+    {
+      "sha256": "d6d30e033285c72c52c8d73f599afdf8228fe78fb906c1eae6cf5f257c4807c5",
+      "path": "src-tauri/src/main.rs"
+    },
+    {
+      "sha256": "26d688a2f9a7bc5436ef541c6afe17e1098f01610c5f5a7b7c24b723b45d90b8",
+      "path": "src-tauri/build.rs"
+    },
+    {
+      "sha256": "8c2506b5970cf3b8306c45a3a374f047bd484829fb51fd9b01e8bb7eda3e44d3",
+      "path": "src-tauri/icons/icon.icns"
+    },
+    {
+      "sha256": "b88f9b052020ebcaa5b15ec1e6c2d36556ad21d24913e7a048ab3db632f426cc",
+      "path": "src/core/platform/tauri/runtime.ts"
+    },
+    {
+      "sha256": "44e7017d09771fcc6dc66092eaae6b03bb6575c75176319a3322d13c333a90bc",
+      "path": "tests/unit/tauri-runtime.test.ts"
+    }
+  ],
+  "scope": {
+    "desktopShellOnly": true,
+    "applicationServiceWiringChanged": false,
+    "sourceDocumentSchemaChanged": false,
+    "nativeFileIoImplemented": false,
+    "nativeExportImplemented": false,
+    "ciMigrated": false,
+    "softWrapOrSplitImplemented": false,
+    "M2Started": false,
+    "mathjax": "3.2.2 unchanged",
+    "pagedjs": "0.4.3 unchanged",
+    "pdfGenerated": false,
+    "systemSaveTested": false,
+    "testProfileIsolated": true,
+    "preExistingIndexesExcluded": true,
+    "pushed": false
+  },
+  "limitations": [
+    "Windows system WebView2 dev and embedded production-frontend debug/no-bundle were tested; release installers and cross-OS bundles were not.",
+    "Archived markflow-dev.exe requires the development server; it is evidence, not a distributable product.",
+    "Embedded debug executable passed its original smoke, then tauri dev overwrote the target path; no embedded executable SHA is claimed.",
+    "ICNS container decoding passed; this is not macOS bundle/runtime verification.",
+    "Existing EX-W0/manual native save/Word-WPS/cross-OS/clean-install/remote-CI gates are not released by M1."
+  ],
+  "fullAcceptancePassed": false
+}
