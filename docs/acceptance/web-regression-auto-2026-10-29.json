@@ -1,0 +1,73 @@
+{
+  "stage": "EX-W3a",
+  "date": "2026-10-29",
+  "baseline": "e690242",
+  "planCommit": "b312868",
+  "branch": "architecture-refactor",
+  "status": "automatic-regression-passed-not-full-acceptance",
+  "environment": {
+    "platform": "win32",
+    "os": "10.0.26300",
+    "bun": "1.4.2",
+    "browser": "156.0.8078.4",
+    "packages": {
+      "mathjax": "3.2.2",
+      "pagedjs": "0.4.3",
+      "react": "19.3.1",
+      "vite": "8.3.5",
+      "typescript": "7.0.2",
+      "@playwright/test": "1.64.1",
+      "docx": "9.15.0",
+      "mermaid": "12.2.0"
+    }
+  },
+  "checks": {
+    "managedSourcesAndConfigs": 197,
+    "unitTestFiles": 57,
+    "unitTests": 377,
+    "browserTests": 115,
+    "typecheck": "passed",
+    "integrationTypesAfterNetworkTestRefinement": "passed",
+    "lint": "passed",
+    "boundaries": "passed",
+    "productionBuild": "passed",
+    "frozenOfflineLockConsistency": "passed without lockfile changes",
+    "cleanEmptyDirectoryInstall": "not tested",
+    "remoteCI": "not run"
+  },
+  "logs": [
+    "D:/codex/ex-w3a-check.log",
+    "D:/codex/ex-w3a-lock-check.log",
+    "D:/codex/ex-w3a-integration-types.log",
+    "D:/codex/ex-w3a-e2e.log"
+  ],
+  "scope": {
+    "runtimeNetwork": "tested document parsing, math, Mermaid, DOT, A4 and reading HTML with external HTTP requests blocked",
+    "outputHtmlOffline": "existing browser regression passed",
+    "applicationOfflineColdStart": "not tested, not claimed"
+  },
+  "manualGates": {
+    "EX-W0SystemPdfFiles": "pending",
+    "EX-W0DefaultFilenameAndCancel": "pending",
+    "nativeByteSavePickerAndDisk": "pending",
+    "WordWpsVisual": "pending"
+  },
+  "fullAcceptancePassed": false,
+  "EX-TStarted": false,
+  "pushed": false,
+  "hashInput": "Git-normalized UTF-8 LF",
+  "files": [
+    {
+      "path": "package.json",
+      "sha256": "f50274ca0a857ec2fa66a2282093e50c17898e3085d113aab2c88a37a6fc80ce"
+    },
+    {
+      "path": "bun.lock",
+      "sha256": "c3e378964692fc94d921068b95bea2053309d0b963bc92de12c825fd2c135b3b"
+    },
+    {
+      "path": "tests/e2e/web-packaged-runtime.spec.ts",
+      "sha256": "ddb120aa1cfff911e4d5071efcdfeb7d79d6ac26c7e3a3daca5737ae3146fed3"
+    }
+  ]
+}
