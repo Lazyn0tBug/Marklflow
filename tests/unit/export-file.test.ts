@@ -13,5 +13,12 @@ it('uses the target extension exactly once for every format',()=>{
  }
 });
 it('bounds suggestions without splitting Unicode code points or losing extensions',()=>{
- const file=exportFile('😀'.repeat(300),'editable-html');expect(file.baseName).toBe('😀'.repeat(120));expect(file.name.length).toBeLessThan(256);expect(file.name.endsWith('.markflow.html')).toBe(true);
+ const file=exportFile('😀'.repeat(300),'editable-html');expect(file.baseName).toBe('😀'.repeat(60));expect(file.name.length).toBeLessThan(256);expect(file.name.endsWith('.markflow.html')).toBe(true);
+});
+
+it('keeps every Unicode filename within both UTF-8 and UTF-16 component budgets',()=>{
+ const formats:ExportFormat[]=['editable-html','reading-html','docx','print-pdf','markdown','markdown-bundle'];
+ for(const format of formats)for(const text of ['中文'.repeat(120),'😀'.repeat(120),'a'.repeat(300),'CON.'+'中文😀'.repeat(100)]){
+  const file=exportFile(text,format);expect(new TextEncoder().encode(file.name).length).toBeLessThanOrEqual(255);expect(file.name.length).toBeLessThanOrEqual(255);expect(file.name.endsWith(file.extension)).toBe(true);expect(file.baseName).not.toContain('�');
+ }
 });

@@ -11,7 +11,12 @@ export function exportFile(input:string,format:ExportFormat):ExportFile{
  // Remove recognized output suffixes repeatedly, including after changing formats.
  const suffix=/\.(?:markflow\.html|html|pdf|docx|md|zip)$/i;
  while(suffix.test(base))base=base.replace(suffix,'').trim().replace(/[. ]+$/g,'');
- base=Array.from(base).slice(0,120).join('').replace(/[. ]+$/g,'')||'MarkFlow-Document';
+ const {extension,mime}=formats[format],encoder=new TextEncoder();
+ // Keep a conservative UTF-8 component budget as well as the existing code-point cap.
+ // Reserve one byte for a possible Windows device-name prefix.
+ const budget=255-encoder.encode(extension).length-1;let bounded='',bytes=0,points=0;
+ for(const point of base){const size=encoder.encode(point).length;if(points===120||bytes+size>budget)break;bounded+=point;bytes+=size;points++}
+ base=bounded.replace(/[. ]+$/g,'')||'MarkFlow-Document';
  if(/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(base))base='_'+base;
- const {extension,mime}=formats[format];return {baseName:base,name:base+extension,extension,mime};
+ return {baseName:base,name:base+extension,extension,mime};
 }
