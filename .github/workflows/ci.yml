@@ -32,6 +32,11 @@ jobs:
         with:
           bun-version: "1.4.2"
 
+      - name: Set up test server runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.21.0"
+
       - name: Install locked dependencies
         id: install
         run: bun install --frozen-lockfile

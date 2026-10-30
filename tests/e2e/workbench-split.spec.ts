@@ -5,6 +5,7 @@ async function ready(page:Page){await expect(page.locator('[data-render-state]')
 async function boot(page:Page){await page.goto('/');await ready(page);await page.locator('textarea').fill('# Split check\n\n'+Array.from({length:70},(_,i)=>'Paragraph '+i+' with source text and selection preservation.').join('\n\n'));await ready(page)}
 async function twoFrames(page:Page){await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))))}
 async function watchCapture(page:Page){await page.evaluate(()=>{const target=document.querySelector('[role=separator]')!;target.addEventListener('gotpointercapture',(event)=>{(window as Window&{__splitPointer?:number;__splitHandle?:Element}).__splitPointer=(event as PointerEvent).pointerId;(window as Window&{__splitHandle?:Element}).__splitHandle=target},{once:true})})}
+async function watchLostCapture(page:Page,pointerId:number){await page.evaluate(id=>{const target=document.querySelector('[role=separator]')!;target.addEventListener('lostpointercapture',event=>{if((event as PointerEvent).pointerId===id)(window as Window&{__splitLostPointer?:number}).__splitLostPointer=id},{once:true})},pointerId)}
 const separator=(page:Page)=>page.getByRole('separator',{name:'调整编辑器与 HTML 视图宽度'});
 
 test('resizes with pointer and keyboard, cancels safely, and preserves editing state',async({page},info)=>{
@@ -34,7 +35,12 @@ test('resizes with pointer and keyboard, cancels safely, and preserves editing s
  const blurPointer=await page.evaluate(()=> (window as Window&{__splitPointer?:number}).__splitPointer);expect(blurPointer).toBeDefined();expect(await handle.evaluate((el,id)=>el.hasPointerCapture(id!),blurPointer)).toBe(false);expect(await page.evaluate(()=>localStorage.getItem('markflow_split_preferences_v1'))).toBe(saved);await page.mouse.up();
  const lostStart=await handle.boundingBox();await watchCapture(page);await page.mouse.move(lostStart!.x+4,lostStart!.y+lostStart!.height/2);await page.mouse.down();await page.mouse.move(lostStart!.x+85,lostStart!.y+lostStart!.height/2,{steps:3});
  await expect(handle).not.toHaveAttribute('aria-valuenow','50');const lostPointer=await page.evaluate(()=> (window as Window&{__splitPointer?:number}).__splitPointer);expect(lostPointer).toBeDefined();
- await handle.evaluate((el,id)=>el.releasePointerCapture(id!),lostPointer);await expect(handle).toHaveAttribute('aria-valuenow','50');await twoFrames(page);await expect(handle).toHaveAttribute('aria-valuenow','50');
+ await watchLostCapture(page,lostPointer!);await handle.evaluate((el,id)=>el.releasePointerCapture(id!),lostPointer);
+ // Capture release is pending until the next pointer event; moving while held
+ // delivers lostpointercapture before pointermove, so the resize cancels without committing.
+ await page.mouse.move(lostStart!.x+86,lostStart!.y+lostStart!.height/2);
+ await expect.poll(()=>page.evaluate(()=> (window as Window&{__splitLostPointer?:number}).__splitLostPointer)).toBe(lostPointer);
+ await expect(handle).toHaveAttribute('aria-valuenow','50');await twoFrames(page);await expect(handle).toHaveAttribute('aria-valuenow','50');
  expect(await handle.evaluate((el,id)=>el.hasPointerCapture(id!),lostPointer)).toBe(false);expect(await page.evaluate(()=>localStorage.getItem('markflow_split_preferences_v1'))).toBe(saved);await page.mouse.up();
  const hiddenStart=await handle.boundingBox();await watchCapture(page);await page.mouse.move(hiddenStart!.x+4,hiddenStart!.y+hiddenStart!.height/2);await page.mouse.down();await page.mouse.move(hiddenStart!.x+70,hiddenStart!.y+hiddenStart!.height/2,{steps:3});
  await expect(handle).not.toHaveAttribute('aria-valuenow','50');const hiddenPointer=await page.evaluate(()=> (window as Window&{__splitPointer?:number}).__splitPointer);expect(hiddenPointer).toBeDefined();

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-30",
+  "baseline": "67da7e17fe62aba8b62c7e08e8de5af7d9e9cd70",
+  "branch": "architecture-refactor",
+  "status": "local-fix-reviewed-and-validated-remote-linux-pending",
+  "reviewer": "gpt-6-luna",
+  "independentReviewPassed": true,
+  "unresolvedLocalBlockingFindings": 0,
+  "originalFailure": {
+    "runId": 40995815886,
+    "url": "https://github.com/Lazyn0tBug/Marklflow/actions/runs/40995815886",
+    "os": "Linux",
+    "runtime": "Bun 1.4.2",
+    "serverError": "ERR_STREAM_WRITE_AFTER_END",
+    "viteExitCode": 1,
+    "specificHttpTriggerProven": false,
+    "secondarySymptoms": [
+      "PDF fixture idle timeout",
+      "4176 connection refused"
+    ],
+    "separateTestIssue": "pending capture release not processed before assertion"
+  },
+  "changes": {
+    "viteHttpRuntime": "Node 24.21.0",
+    "ciSetupNodeSha": "49933ea5288caeca8642d1e84afbd3f7d6820020",
+    "bunInstallAndBuildPreserved": true,
+    "applicationSourceChanged": false,
+    "dependencyLocksChanged": false,
+    "timeoutsIncreased": false,
+    "automaticRetriesAdded": false,
+    "testsSkipped": false,
+    "productionResizerChanged": false
+  },
+  "checks": {
+    "localOs": "Windows",
+    "bunRunCheck": {
+      "passed": true,
+      "managedSources": 212,
+      "unitFiles": 63,
+      "unitTests": 453,
+      "evidence": "Luna observed execution summary; full original check stdout not independently archived"
+    },
+    "finalE2e": {
+      "ciEnvironment": true,
+      "reusedServers": false,
+      "exitCode": 0,
+      "passed": 134,
+      "reportedDuration": "5.3m",
+      "completeStdoutAndStderrArchived": true,
+      "lastRunStatus": "passed",
+      "failedTests": [],
+      "reportZipArchived": true
+    },
+    "testServersNodeProcessesVerified": true,
+    "workflowYamlParsed": true,
+    "localOriginalBunFailureReproduced": false
+  },
+  "testedInputs": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "7b075c1b8c2297f69221f4a2ef9623fed498cd133498595a0d5cca068d8cb056"
+    },
+    {
+      "path": "playwright.config.ts",
+      "sha256": "3ab84739bcd55bac587c3c7495060f92be71f5d80545f661a6dd0ff6895a2584"
+    },
+    {
+      "path": "tests/e2e/workbench-split.spec.ts",
+      "sha256": "ca123f75245832e3cb925fc0dedfd3d66fed0f272a29decd2b2a11acd775ccfb"
+    }
+  ],
+  "evidence": [
+    "D:/codex/ci-e2e-fix-2026-10-30/github-ci-failed.log",
+    "D:/codex/ci-e2e-fix-2026-10-30/local-validation-summary.md",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-runtime-full-e2e.stdout.log",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-runtime-full-e2e.stderr.log",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-runtime-full-e2e.exit-code.txt",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-runtime-full-e2e.result.json",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-runtime-last-run.json",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-runtime-playwright-report.zip",
+    "D:/codex/ci-e2e-fix-2026-10-30/node-server-processes.log"
+  ],
+  "reference": "https://www.w3.org/TR/pointerevents3/#process-pending-pointer-capture",
+  "preservedWorkspace": [
+    {
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58"
+    },
+    {
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569"
+    }
+  ],
+  "remoteFixedRunPerformed": false,
+  "pushPerformed": false,
+  "tagChanged": false,
+  "fullReleaseAcceptancePassed": false
+}
