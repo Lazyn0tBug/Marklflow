@@ -5,13 +5,33 @@ export {sourceAnchorAt,sourceAnchorTop} from '../../core/model/sourceLayout';
 export interface SourcePoint {line:number;top:number}
 export type EditorGeometry=SourceGeometry;
 const layouts=new WeakMap<HTMLTextAreaElement,{value:string;key:string;geometry:EditorGeometry}>();
-/** Editor-owned measured geometry; E0 uses one visual row per logical line (wrap off). */
+export function invalidateEditorGeometry(editor:HTMLTextAreaElement):void {const cached=layouts.get(editor);if(cached)cached.key=''}
+let layoutVersion=0;
+const composingEditors=new WeakSet<HTMLTextAreaElement>();
+export function setEditorComposing(editor:HTMLTextAreaElement,active:boolean):void {if(active)composingEditors.add(editor);else composingEditors.delete(editor)}
+const mirroredProperties=['font-family','font-size','font-weight','font-style','font-stretch','font-variant','font-feature-settings','font-variation-settings','letter-spacing','word-spacing','tab-size','text-indent','text-transform','direction','text-rendering'] as const;
+/** Read all row rectangles after constructing the mirror; never put document text into HTML. */
+function wrappedHeights(editor:HTMLTextAreaElement,style:CSSStyleDeclaration,lines:readonly string[],lineHeight:number):number[]{
+ const width=editor.clientWidth-(parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0);
+ if(width<=0)return lines.map(()=>lineHeight);
+ const mirror=document.createElement('div');
+ mirror.setAttribute('aria-hidden','true');
+ mirror.style.cssText='position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;box-sizing:content-box;padding:0;border:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;';
+ mirror.style.width=width+'px';mirror.style.font=style.font;mirror.style.lineHeight=lineHeight+'px';
+ for(const property of mirroredProperties)if(typeof style.getPropertyValue==='function')mirror.style.setProperty(property,style.getPropertyValue(property));
+ const rows=lines.map(line=>{const row=document.createElement('div');row.textContent=line||'\u200b';mirror.append(row);return row});
+ try{document.body.append(mirror);return rows.map(row=>row.getBoundingClientRect().height||lineHeight)}finally{mirror.remove()}
+}
+/** Shared editor-owned layout: cache hits never rebuild or reread mirror rows. */
 export function editorGeometry(editor:HTMLTextAreaElement):EditorGeometry {
+ const prior=layouts.get(editor);if(composingEditors.has(editor)&&prior)return prior.geometry;
  const style=getComputedStyle(editor),lineHeight=parseFloat(style.lineHeight)||24,paddingTop=parseFloat(style.paddingTop)||0;
  const cached=layouts.get(editor),count=cached?.value===editor.value?cached.geometry.lineTops!.length-1:editor.value.split('\n').length;
- const key=JSON.stringify([editor.clientWidth,style.font,style.letterSpacing,style.tabSize,lineHeight,paddingTop,count]);
+ const key=JSON.stringify([editor.clientWidth,style.font,...mirroredProperties.map(property=>typeof style.getPropertyValue==='function'?style.getPropertyValue(property):''),style.letterSpacing,style.tabSize,lineHeight,paddingTop,style.paddingLeft,style.paddingRight,editor.wrap,count]);
  if(cached?.value===editor.value&&cached.key===key)return cached.geometry;
- const geometry=sourceLayout(Array.from({length:count},()=>lineHeight),paddingTop,key);
+ const heights=editor.wrap==='off'?Array.from({length:count},()=>lineHeight):wrappedHeights(editor,style,editor.value.split('\n'),lineHeight);
+ // A new generation may restore an equivalent layout by its lossless logical anchor.
+ const geometry={...sourceLayout(heights,paddingTop,key+'#'+(++layoutVersion)),lineHeight};
  layouts.set(editor,{value:editor.value,key,geometry});return geometry;
 }
 export function editorLineAt(top:number,geometry:EditorGeometry):number {return sourceLineAt(top,geometry)}

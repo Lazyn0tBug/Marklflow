@@ -40,6 +40,8 @@ export interface TopBarProps {
   onPreviewModeChange: (mode: 'flow' | 'a4') => void;
 
   // 最大宽度配置 (默认 1024)
+  softWrap: boolean;
+  onSoftWrapChange: (enabled:boolean)=>void;
   maxWidth: number | 'full';
   onMaxWidthChange: (width: number | 'full') => void;
 
@@ -71,6 +73,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onTogglePreview,
   previewMode,
   onPreviewModeChange,
+  softWrap,
+  onSoftWrapChange,
   maxWidth,
   onMaxWidthChange,
   mathMode,
@@ -204,6 +208,11 @@ export const TopBar: React.FC<TopBarProps> = ({
             {WIDTH_OPTIONS.map(opt=><option key={opt.label} value={opt.value}>{opt.label}</option>)}
           </select>
           <p className="text-xs text-neutral-400 mt-2">默认 1024px。仅影响工作台，不改变导出纸张。</p>
+          <label className="mt-4 flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={softWrap} onChange={e=>onSoftWrapChange(e.target.checked)} aria-describedby="soft-wrap-description" className="accent-teal-500"/>
+            自动换行
+          </label>
+          <p id="soft-wrap-description" className="mt-2 text-xs text-neutral-400">仅调整编辑器显示，不改变正文换行。关闭后可水平滚动。</p>
           <button type="button" onClick={()=>setWidthMenuOpen(false)} className="mt-5 rounded bg-neutral-700 px-3 py-2 text-sm">完成</button>
         </dialog>
 

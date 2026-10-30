@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "stage": "E1",
+  "date": "2026-10-30",
+  "baseline": "b97c145",
+  "branch": "architecture-refactor",
+  "status": "independently-reviewed-final-fresh-build-validated",
+  "reviewer": "gpt-6-luna",
+  "independentReviewPassed": true,
+  "unresolvedBlockingFindings": 0,
+  "scope": {
+    "defaultSoftWrap": true,
+    "settingsDialog": true,
+    "preferenceKey": "markflow_editor_preferences_v1",
+    "maxPreferenceCharacters": 256,
+    "nativeTextareaOracle": true,
+    "variableHeightGeometryInProduction": true,
+    "documentSchemaChanged": false,
+    "dependenciesChanged": false,
+    "workerProtocolChanged": false,
+    "E2Started": false,
+    "M4Started": false
+  },
+  "checks": {
+    "bunRunCheck": {
+      "exitCode": 0,
+      "managedSources": 207,
+      "unitFiles": 62,
+      "unitTests": 450
+    },
+    "playwright": {
+      "exitCode": 0,
+      "browser": "Chromium",
+      "sameFreshProductionBuild": true,
+      "sourceScrollPassed": 10,
+      "tabsPassed": 8,
+      "totalPassed": 18,
+      "durationSeconds": 54.3
+    },
+    "impeccableDetectorFindings": 0,
+    "settingsVisual": {
+      "desktopReviewed": true,
+      "narrowWidth": 390,
+      "narrowReviewed": true,
+      "escapeAndFocusReturnPassed": true
+    },
+    "largeMirrorObservation": {
+      "file": "large.md",
+      "bytes": 17584,
+      "logicalRowsIncludingTrailingEmpty": 800,
+      "rectangles": 800,
+      "firstToLastRectReadMs": 6.9,
+      "includesEntireDocumentProcessing": false,
+      "performanceGuarantee": false
+    }
+  },
+  "reviewFixes": [
+    "explicit user scroll wins over pending old anchor restoration",
+    "font ready invalidates geometry even when CSS font strings remain equal"
+  ],
+  "testedInputs": [
+    {
+      "path": "src/App.tsx",
+      "sha256": "f10e50896c69593bddb02ff97d343dd65db3039580eb9d4f41613a03759e16d6"
+    },
+    {
+      "path": "src/components/editor/Editor.tsx",
+      "sha256": "dc71fc9ce0d268976450b43dcebc9d5be0c5bba75a72a71aa5fdf6560fb5fb4a"
+    },
+    {
+      "path": "src/components/header/TopBar.tsx",
+      "sha256": "b3fb2dfaea1cd364afaf9cb26a38f7d5e07f6524c1330395c5adab6b268af396"
+    },
+    {
+      "path": "src/components/workspace/sourceScroll.ts",
+      "sha256": "000eecf4e55819b04b1c7f1e3ac04d4d1f2fe59bd532df7ce762ec5e24f519a6"
+    },
+    {
+      "path": "src/core/platform/web/editorPreferences.ts",
+      "sha256": "18a6765c5ac54c0198bfb7234e7c0000bb365c8187166e1cb58b9fe347a1021f"
+    },
+    {
+      "path": "tests/unit/source-scroll.test.ts",
+      "sha256": "cfc8a21dbb06ebb9da2c057b65a614e4f6af298f94dd63ccef4ed75362f84d53"
+    },
+    {
+      "path": "tests/unit/editor-preferences.test.ts",
+      "sha256": "9b463dc0a660c8364fec1b6fd9e8275dc8b9640771353ae914f2f508f5231c6f"
+    },
+    {
+      "path": "tests/e2e/workbench-source-scroll.spec.ts",
+      "sha256": "03e17b3728a4e182729f20c120b6c7d8e04ac75858274a8e6a60442c87194c2f"
+    },
+    {
+      "path": "tests/e2e/workbench-tabs.spec.ts",
+      "sha256": "8620afd27979eec77cd43e3ecf2ec72c25ea788863e7ce5258b0436332076e8c"
+    }
+  ],
+  "logs": [
+    "D:/codex/e1-review-2026-10-30/bun-check-final.log",
+    "D:/codex/e1-review-2026-10-30/playwright-final.log",
+    "D:/codex/e1-review-2026-10-30/settings-visual.log",
+    "D:/codex/e1-review-2026-10-30/review-summary.txt"
+  ],
+  "artifacts": [
+    "D:/codex/e1-review-2026-10-30/large-mirror-measurement.json",
+    "D:/codex/e1-review-2026-10-30/settings-desktop.png",
+    "D:/codex/e1-review-2026-10-30/settings-narrow.png"
+  ],
+  "preservedWorkspace": [
+    {
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58"
+    },
+    {
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569"
+    }
+  ],
+  "limitations": [
+    "IME coverage uses synthetic composition events; actual operating-system IME unverified",
+    "cross-browser and Tauri visual checks unverified",
+    "initial or controlled commits and synchronous cache misses may measure synchronously; geometry event refreshes coalesce with rAF",
+    "single large-fixture rectangle-read observation is not overall rendering latency",
+    "EX-W0 system PDF/default-name, native save/dialog, Word/WPS and cross-OS bundles remain pending"
+  ],
+  "pushPerformed": false,
+  "tagChanged": false,
+  "fullReleaseAcceptancePassed": false
+}

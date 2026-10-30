@@ -26,6 +26,7 @@ import {
   getStorageRecoveries,
   recoveryJson,
 } from './core/storage/storage';
+import {readSoftWrapPreference,writeSoftWrapPreference} from './core/platform/web/editorPreferences';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {saveSource} from './application/workspace/sourceSave';
@@ -56,6 +57,7 @@ export default function App() {
   const [showEditor, setShowEditor] = useState<boolean>(true);
   const [showPreview, setShowPreview] = useState<boolean>(true);
   const [previewMode, setPreviewMode] = useState<'flow' | 'a4'>('flow');
+  const [softWrap,setSoftWrap]=useState(readSoftWrapPreference);
   const [contentMaxWidth, setContentMaxWidth] = useState<number | 'full'>(1024);
 
   const [mathMode, setMathMode] = useState<'mathml' | 'svg'>('mathml');
@@ -78,6 +80,7 @@ export default function App() {
   const pendingPreviewLine=useRef<{documentId:string;line:number}|undefined>(undefined);
   const previewLine=useRef(1);
   const lastEditorGeometry=useRef<EditorGeometry>({lineHeight:24,paddingTop:12});
+  const tabEditorGeometry=useRef(new Map<string,EditorGeometry>());
   const expectedScroll=useRef<{editor:number|null;preview:number|null}>({editor:null,preview:null});
   const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number)=>{const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));expectedScroll.current[pane]=clamped;el.scrollTop=clamped};
   const isProgrammatic=(pane:'editor'|'preview',top:number)=>{const expected=expectedScroll.current[pane];expectedScroll.current[pane]=null;return expected!==null&&Math.abs(expected-top)<2};
@@ -141,7 +144,7 @@ export default function App() {
   const capturePosition=()=>{
     if(!currentDoc||!sessions.documentIds.includes(currentDoc.id))return;
     tabHeadings.current.set(currentDoc.id,activeHeadingId);
-    if(editorTextareaRef.current)lastEditorGeometry.current=editorGeometry(editorTextareaRef.current);
+    if(editorTextareaRef.current){lastEditorGeometry.current=editorGeometry(editorTextareaRef.current);tabEditorGeometry.current.set(currentDoc.id,lastEditorGeometry.current)}
     const old=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current,view=previewContainerRef.current;
     sessions.setPosition(currentDoc.id,{...old,...(editor?{sourceAnchor:sourceAnchorAt(editor.scrollTop,editorGeometry(editor)),editorLayoutKey:editorGeometry(editor).layoutKey??''}:{}),selectionStart:editor?.selectionStart??old.selectionStart,selectionEnd:editor?.selectionEnd??old.selectionEnd,scrollTop:editor?.scrollTop??old.scrollTop,scrollLeft:editor?.scrollLeft??old.scrollLeft,previewScrollTop:view?.scrollTop??old.previewScrollTop});
   };
@@ -151,7 +154,7 @@ export default function App() {
   };
   const removeSession=(id:string)=>{
     const active=sessions.activeDocumentId===id;if(sessions.documentIds.includes(id))sessions.close(id,true);
-    runtime.current?.forget(id);tabModes.current.delete(id);tabHeadings.current.delete(id);setTabs(sessions.documentIds);
+    runtime.current?.forget(id);tabModes.current.delete(id);tabHeadings.current.delete(id);tabEditorGeometry.current.delete(id);setTabs(sessions.documentIds);
     if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;expectedScroll.current={editor:null,preview:null};pendingPreviewLine.current=undefined}
     if(!sessions.documentIds.length)runtime.current?.clear();
   };
@@ -167,8 +170,8 @@ export default function App() {
   },[currentDocId,currentDoc?.revision,kind,tabs.join('|')]);
   useLayoutEffect(()=>{
     if(!currentDoc)return;const position=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current;
-    if(editor){const geometry=editorGeometry(editor),top=position.sourceAnchor&&position.editorLayoutKey!==geometry.layoutKey?sourceAnchorTop(position.sourceAnchor,geometry):position.scrollTop;editor.setSelectionRange(position.selectionStart,position.selectionEnd);syncPosition(editor,'editor',top);editor.scrollLeft=position.scrollLeft;lastEditorGeometry.current=geometry}
-  },[currentDocId,showEditor]);
+    if(editor){const geometry=editorGeometry(editor),top=position.sourceAnchor&&position.editorLayoutKey!==geometry.layoutKey?sourceAnchorTop(position.sourceAnchor,geometry):position.scrollTop;editor.setSelectionRange(position.selectionStart,position.selectionEnd);syncPosition(editor,'editor',top);editor.scrollLeft=position.scrollLeft;lastEditorGeometry.current=geometry;tabEditorGeometry.current.set(currentDoc.id,geometry)}
+  },[currentDocId,showEditor,softWrap,contentMaxWidth,sidebarOpen,showPreview]);
   const previewPoints=()=>{const view=previewContainerRef.current;return view&&currentDoc?previewSourcePoints(view,currentDoc.markdown.split('\n').length):[]};
   const positionPreview=(line:number)=>{const view=previewContainerRef.current;if(view){previewLine.current=line;syncPosition(view,'preview',interpolate(previewPoints(),line,'line'))}};
   useLayoutEffect(()=>{
@@ -179,13 +182,14 @@ export default function App() {
     else if(restorePreview.current===currentDoc.id){syncPosition(view,'preview',sessions.read(currentDoc.id).position.previewScrollTop);previewLine.current=interpolate(previewPoints(),view.scrollTop,'top');restorePreview.current=undefined}
     else if(syncScroll&&editorTextareaRef.current){positionPreview(editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current)))}
     else positionPreview(previewLine.current);
-  },[currentDocId,previewView.state,previewView.referenceId,showPreview,showEditor,previewMode,contentMaxWidth,sidebarOpen]);
+  },[currentDocId,previewView.state,previewView.referenceId,showPreview,showEditor,previewMode,contentMaxWidth,sidebarOpen,softWrap]);
   useEffect(()=>{
     const view=previewContainerRef.current,editor=editorTextareaRef.current;
     if(!view||previewView.state!=='ready')return;
-    const observer=new ResizeObserver(()=>{if(syncScroll&&editor)positionPreview(editorLineAt(editor.scrollTop,editorGeometry(editor)));else positionPreview(previewLine.current)});
+    let frame:number|undefined;
+    const observer=new ResizeObserver(()=>{if(frame===undefined)frame=requestAnimationFrame(()=>{frame=undefined;if(syncScroll&&editor)positionPreview(editorLineAt(editor.scrollTop,editorGeometry(editor)));else positionPreview(previewLine.current)})});
     observer.observe(view);if(editor)observer.observe(editor);
-    return()=>observer.disconnect();
+    return()=>{observer.disconnect();if(frame!==undefined)cancelAnimationFrame(frame)};
   },[currentDocId,previewView.state,previewView.referenceId,showPreview,showEditor,syncScroll]);
 
   // 文档切换或加载时，确保大纲高亮同步指向当前有效章节
@@ -283,8 +287,8 @@ export default function App() {
     if(!currentDoc)return;
     const target=line??extractOutline(currentDoc.markdown).find(value=>value.id===headingId)?.line;if(!target)return;
     setActiveHeadingId(headingId);
-    const editor=editorTextareaRef.current;if(editor)lastEditorGeometry.current=editorGeometry(editor);
-    const geometry=editor?editorGeometry(editor):{lineHeight:lastEditorGeometry.current.lineHeight,paddingTop:lastEditorGeometry.current.paddingTop};
+    const editor=editorTextareaRef.current;if(editor){lastEditorGeometry.current=editorGeometry(editor);tabEditorGeometry.current.set(currentDoc.id,lastEditorGeometry.current)}
+    const geometry=editor?editorGeometry(editor):tabEditorGeometry.current.get(currentDoc.id)??{lineHeight:24,paddingTop:12};
     const top=editorTopAt(target,geometry);
     if(editor)syncPosition(editor,'editor',top);
     const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:{line:target,offset:0},editorLayoutKey:geometry.layoutKey??''});
@@ -293,7 +297,7 @@ export default function App() {
   };
   const handleEditorScroll=(_ratio:number,top:number)=>{
     const editor=editorTextareaRef.current;if(!editor||!currentDoc||isProgrammatic('editor',top))return;
-    const geometry=editorGeometry(editor);lastEditorGeometry.current=geometry;
+    const geometry=editorGeometry(editor);lastEditorGeometry.current=geometry;tabEditorGeometry.current.set(currentDoc.id,geometry);
     highlightLine(editorLineAt(top+editor.clientHeight/2,geometry));
     if(!syncScroll||previewView.state!=='ready')return;
     const view=previewContainerRef.current;if(!view)return;
@@ -307,7 +311,7 @@ export default function App() {
     const points=previewPoints();previewLine.current=interpolate(points,top,'top');
     highlightLine(interpolate(points,top+view.clientHeight/2,'top'));
     const editor=editorTextareaRef.current;if(!syncScroll)return;
-    if(!editor){const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:editorTopAt(previewLine.current,{lineHeight:lastEditorGeometry.current.lineHeight,paddingTop:lastEditorGeometry.current.paddingTop}),sourceAnchor:{line:Math.floor(previewLine.current),offset:(previewLine.current%1)*lastEditorGeometry.current.lineHeight},editorLayoutKey:''});return}
+    if(!editor){const saved=sessions.read(currentDoc.id).position,geometry=tabEditorGeometry.current.get(currentDoc.id)??{lineHeight:24,paddingTop:12},top=editorTopAt(previewLine.current,geometry);sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:sourceAnchorAt(top,geometry),editorLayoutKey:''});return}
     const max=view.scrollHeight-view.clientHeight;
     if(top<=2)syncPosition(editor,'editor',0);
     else if(max>0&&top>=max-3)syncPosition(editor,'editor',editor.scrollHeight-editor.clientHeight);
@@ -337,7 +341,7 @@ export default function App() {
 
   // All three panes are independent; the final visible pane cannot be hidden.
   const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
-  const handleToggleSidebar=()=>{if(!sidebarOpen||visibleCount>1)setSidebarOpen(v=>!v)};
+  const handleToggleSidebar=()=>{capturePosition();if(!sidebarOpen||visibleCount>1)setSidebarOpen(v=>!v)};
   const handleToggleEditor=()=>{capturePosition();if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
   const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview&&syncScroll&&editorTextareaRef.current){pendingPreviewLine.current={documentId:currentDocId,line:editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current))};restorePreview.current=undefined}if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
@@ -364,8 +368,10 @@ export default function App() {
         onTogglePreview={handleTogglePreview}
         previewMode={previewMode}
         onPreviewModeChange={changePreviewMode}
+        softWrap={softWrap}
+        onSoftWrapChange={value=>{capturePosition();setSoftWrap(value);writeSoftWrapPreference(value)}}
         maxWidth={contentMaxWidth}
-        onMaxWidthChange={setContentMaxWidth}
+        onMaxWidthChange={value=>{capturePosition();setContentMaxWidth(value)}}
         mathMode={mathMode}
         onMathModeToggle={handleMathModeToggle}
         isDark={isDark}
@@ -436,6 +442,7 @@ export default function App() {
               <div data-view="editor" onWheelCapture={()=>handleDirectScroll('editor')} onPointerDownCapture={()=>handleDirectScroll('editor')} onKeyDownCapture={()=>handleDirectScroll('editor')} className="h-full flex-1 min-w-0 flex flex-col">
                 <Editor
                   sessionId={currentDoc.id}
+                  softWrap={softWrap}
                   value={currentDoc.markdown}
                   onChange={handleMarkdownChange}
                   onUndo={handleUndo}

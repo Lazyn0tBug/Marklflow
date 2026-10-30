@@ -1,12 +1,14 @@
 import {test,expect,type Page} from '@playwright/test';
+import {readFile,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
 test.use({viewport:{width:1440,height:960}});
 const source=Array.from({length:8},(_,section)=>['## Section '+section,'',...Array.from({length:14},(_,paragraph)=>'Paragraph '+section+'_'+paragraph+' '+('中文与 semantic source mapping content. '.repeat(paragraph%3+2))+'\n'),...(section===3?['```ts',...Array.from({length:65},(_,line)=>'const value'+line+' = '+line+';'),'```','']:[])].join('\n')).join('\n');
 const lineOf=(text:string)=>source.split('\n').findIndex(line=>line.startsWith(text))+1;
 async function ready(page:Page){await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready',{timeout:30000})}
 async function boot(page:Page){await page.goto('/');await ready(page);await page.locator('textarea').fill(source);await ready(page);await page.getByRole('button',{name:/^大纲 \(/}).click()}
-async function editorAt(page:Page,line:number){const editor=page.locator('textarea');await editor.dispatchEvent('pointerdown');await editor.evaluate((el:HTMLTextAreaElement,line)=>{const css=getComputedStyle(el);el.scrollTop=(line-1)*parseFloat(css.lineHeight)+parseFloat(css.paddingTop)},line)}
+async function editorAt(page:Page,line:number){const editor=page.locator('textarea'),row=page.locator('[data-view=editor] .w-12 > div').nth(line-1);await editor.dispatchEvent('pointerdown');await editor.evaluate((el:HTMLTextAreaElement,rowTop)=>{el.scrollTop=Math.max(0,el.scrollTop+rowTop-el.getBoundingClientRect().top)},await row.evaluate(el=>el.getBoundingClientRect().top))}
 async function previewAt(page:Page,line:number){const view=page.locator('[data-view=html] > div');await view.dispatchEvent('pointerdown');await view.evaluate((el:HTMLElement,line)=>{const target=el.querySelector<HTMLElement>('[data-line="'+line+'"]');if(!target)throw new Error('Missing source node '+line);el.scrollTop+=target.getBoundingClientRect().top-el.getBoundingClientRect().top},line)}
-async function editorLine(page:Page){return page.locator('textarea').evaluate((el:HTMLTextAreaElement)=>(el.scrollTop-parseFloat(getComputedStyle(el).paddingTop))/parseFloat(getComputedStyle(el).lineHeight)+1)}
+async function editorLine(page:Page){return page.locator('textarea').evaluate((el:HTMLTextAreaElement)=>{const gutter=el.parentElement!.querySelector<HTMLElement>('.w-12')!,top=Math.max(0,el.scrollTop-parseFloat(getComputedStyle(el).paddingTop)),rows=[...gutter.children] as HTMLElement[];let previous=0;for(let i=0;i<rows.length;i++){const height=rows[i]!.getBoundingClientRect().height;if(top<=previous+height)return i+1+(top-previous)/height;previous+=height}return rows.length})}
 
 test('synchronizes mapped paragraphs and long code, and highlights the editor center chapter',async({page})=>{
  await boot(page);const line=lineOf('Paragraph 4_5');await editorAt(page,line);
@@ -15,6 +17,74 @@ test('synchronizes mapped paragraphs and long code, and highlights the editor ce
  const codeLine=lineOf('```ts');await editorAt(page,codeLine+25);await expect.poll(()=>page.locator('.mf-code').evaluate(el=>el.getBoundingClientRect().top-el.closest('[data-view]')!.firstElementChild!.getBoundingClientRect().top)).toBeLessThan(-100);
  const reverse=lineOf('Paragraph 2_6');await previewAt(page,reverse);await expect.poll(async()=>Math.abs(await editorLine(page)-reverse)).toBeLessThan(1.1);
  await page.getByRole('button',{name:'双向同步滚动：已开启',exact:true}).click();const before=await page.locator('textarea').evaluate(el=>el.scrollTop);await previewAt(page,lineOf('Paragraph 5_3'));await expect.poll(()=>page.locator('textarea').evaluate(el=>el.scrollTop)).toBe(before);
+});
+
+test('keeps an explicit wheel scroll made before a wrapped geometry refresh',async({page})=>{
+ await boot(page);const value=Array.from({length:100},(_,i)=>'line '+i+' '+('中文🙂 unbroken'.repeat(32))).join('\n');await page.locator('textarea').fill(value);await ready(page);
+ const editor=page.locator('textarea'),target=await editor.evaluate((el:HTMLTextAreaElement)=>{
+  el.scrollTop=0;el.dispatchEvent(new Event('scroll'));const frame=el.parentElement!;frame.style.width='520px';frame.style.flex='none';void el.clientWidth;
+  const next=Math.min(640,el.scrollHeight-el.clientHeight);el.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:120}));el.scrollTop=next;el.dispatchEvent(new Event('scroll'));return next;
+ });
+ expect(target).toBeGreaterThan(100);await expect.poll(()=>editor.evaluate((el:HTMLTextAreaElement,expected:number)=>Math.abs(el.scrollTop-expected),target)).toBeLessThan(1);
+});
+
+test('measures soft-wrapped logical rows against native textarea layout without changing source',async({page})=>{
+ await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'});
+ const value=['中文🙂'.repeat(35)+' https://'+('segment'.repeat(30)),"const tabbed = '\t\t"+('x'.repeat(150))+"'",'',('尾行🙂'.repeat(35)),''].join('\n');
+ await editor.fill(value);await expect(editor).toHaveAttribute('wrap','soft');expect(await editor.inputValue()).toBe(value);
+ await expect.poll(async()=>editor.evaluate(el=>el.parentElement!.querySelector<HTMLElement>('.w-12')!.children.length)).toBe(5);
+ const heights=await editor.evaluate((el:HTMLTextAreaElement)=>{
+  const gutter=el.parentElement!.querySelector<HTMLElement>('.w-12')!,rows=[...gutter.children] as HTMLElement[],style=getComputedStyle(el),oracle=document.createElement('textarea');
+  for(let i=0;i<style.length;i++){const key=style.item(i);oracle.style.setProperty(key,style.getPropertyValue(key),style.getPropertyPriority(key))}
+  oracle.wrap='soft';oracle.style.position='fixed';oracle.style.left='-100000px';oracle.style.top='0';oracle.style.visibility='hidden';oracle.style.display='block';oracle.style.flex='none';oracle.style.boxSizing='border-box';oracle.style.width=el.getBoundingClientRect().width+'px';oracle.style.height='1px';oracle.style.minHeight='0';oracle.style.maxHeight='none';oracle.style.overflowY='scroll';oracle.style.resize='none';document.body.append(oracle);
+  const pads=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom),measured=el.value.split('\n').map(line=>{oracle.value=line||'\u200b';return oracle.scrollHeight-pads});oracle.remove();
+  return {measured,actual:rows.map(row=>row.getBoundingClientRect().height),total:gutter.scrollHeight-el.scrollHeight};
+ });
+ expect(heights.measured).toHaveLength(5);expect(heights.actual).toHaveLength(5);
+ for(let i=0;i<5;i++)expect(Math.abs(heights.actual[i]!-heights.measured[i]!)).toBeLessThanOrEqual(1);
+ expect(heights.actual[0]!).toBeGreaterThan(24);expect(heights.actual[1]!).toBeGreaterThan(24);expect(heights.actual[2]).toBeCloseTo(24,0);expect(heights.actual[4]).toBeCloseTo(24,0);
+ expect(Math.abs(heights.total)).toBeLessThanOrEqual(1);expect(await editor.inputValue()).toBe(value);
+});
+
+test('records one large-document mirror measurement without imposing a timing threshold',async({page},info)=>{
+ await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'}),large=await readFile(resolve(process.cwd(),'tests/fixtures/architecture/large.md'),'utf8'),logicalLines=large.split('\n').length;
+ await editor.evaluate((el:HTMLTextAreaElement)=>{
+  const original=HTMLElement.prototype.getBoundingClientRect,state={rows:0,start:0,end:0};Object.defineProperty(window,'__e1MirrorMeasure',{configurable:true,value:state});
+  HTMLElement.prototype.getBoundingClientRect=function(this:HTMLElement){if(this.parentElement?.getAttribute('aria-hidden')==='true'){if(state.rows===0)state.start=performance.now();state.rows++;state.end=performance.now()}return original.call(this)};
+ });
+ await editor.fill(large);await ready(page);expect(await editor.inputValue()).toBe(large);
+ const metrics=await page.evaluate(()=>({...((window as unknown as {__e1MirrorMeasure:{rows:number;start:number;end:number}}).__e1MirrorMeasure),elapsedMs:(window as unknown as {__e1MirrorMeasure:{rows:number;start:number;end:number}}).__e1MirrorMeasure.end-(window as unknown as {__e1MirrorMeasure:{rows:number;start:number;end:number}}).__e1MirrorMeasure.start}));
+ expect(metrics.rows).toBe(logicalLines);expect(metrics.elapsedMs).toBeGreaterThanOrEqual(0);
+ await writeFile(info.outputPath('e1-large-mirror-measurement.json'),JSON.stringify({fixture:'tests/fixtures/architecture/large.md',bytes:Buffer.byteLength(large),logicalLines,...metrics},null,2));
+});
+
+test('persists the wrap preference and preserves source selection and undo across mode changes',async({page})=>{
+ await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'});expect(await editor.getAttribute('wrap')).toBe('soft');
+ await editor.evaluate((el:HTMLTextAreaElement)=>el.setSelectionRange(12,27));const selected=await editor.evaluate((el:HTMLTextAreaElement)=>[el.selectionStart,el.selectionEnd]);
+ await page.getByRole('button',{name:'设置',exact:true}).click();const toggle=page.getByRole('checkbox',{name:'自动换行'});await expect(toggle).toBeChecked();await toggle.uncheck();await expect(editor).toHaveAttribute('wrap','off');expect(await editor.inputValue()).toBe(source);expect(await editor.evaluate((el:HTMLTextAreaElement)=>[el.selectionStart,el.selectionEnd])).toEqual(selected);
+ await page.reload();await ready(page);await expect(page.getByRole('textbox',{name:'Markdown 编辑器'})).toHaveAttribute('wrap','off');
+ const restored=page.getByRole('textbox',{name:'Markdown 编辑器'}),unbroken='unbroken'.repeat(120);await restored.fill(unbroken);expect(await restored.inputValue()).toBe(unbroken);const horizontal=await restored.evaluate((el:HTMLTextAreaElement)=>{el.scrollLeft=el.scrollWidth;return {left:el.scrollLeft,width:el.scrollWidth,client:el.clientWidth}});expect(horizontal.width).toBeGreaterThan(horizontal.client);expect(horizontal.left).toBeGreaterThan(0);
+ await page.getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('checkbox',{name:'自动换行'}).check();await expect(restored).toHaveAttribute('wrap','soft');await page.keyboard.press('Escape');
+ await restored.fill(source);await restored.evaluate((el:HTMLTextAreaElement)=>{el.focus();el.setSelectionRange(el.value.length,el.value.length)});await restored.press('X');await expect(restored).toHaveValue(source+'X');await restored.press('Control+z');await expect(restored).toHaveValue(source);
+});
+
+test('defers wrapped row measurement during IME composition and measures the committed value afterward',async({page})=>{
+ await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'});const result=await editor.evaluate((el:HTMLTextAreaElement)=>{
+  const gutter=el.parentElement!.querySelector<HTMLElement>('.w-12')!,first=gutter.children[0] as HTMLElement,initial=first.getBoundingClientRect().height,next='🙂中文'.repeat(300)+'\n'+el.value;
+  el.focus();el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:''}));const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!;setter.call(el,next);el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertCompositionText',data:'🙂'}));el.setSelectionRange(5,5);
+  return {initial,selection:[el.selectionStart,el.selectionEnd],value:el.value};
+ });
+ const composing=editor.locator('..').locator('.w-12 > div').first();await expect(editor).toHaveValue(result.value);await expect(composing).toHaveCSS('height',result.initial+'px');
+ const selection=await editor.evaluate((el:HTMLTextAreaElement)=>[el.selectionStart,el.selectionEnd]);expect(selection).toEqual(result.selection);
+ await editor.dispatchEvent('compositionend',{data:'🙂'});await expect.poll(()=>composing.evaluate(el=>parseFloat(getComputedStyle(el).height))).toBeGreaterThan(result.initial);
+ expect(await editor.inputValue()).toBe(result.value);expect(await editor.evaluate((el:HTMLTextAreaElement)=>[el.selectionStart,el.selectionEnd])).toEqual(result.selection);
+});
+
+test('keeps the wrap setting clear and operable in desktop and narrow settings dialogs',async({page},info)=>{
+ await boot(page);const button=page.getByRole('button',{name:'设置',exact:true}),dialog=page.getByRole('dialog'),toggle=page.getByRole('checkbox',{name:'自动换行'});
+ await button.click();await expect(dialog).toBeVisible();await expect(toggle).toBeChecked();await expect(page.getByText('仅调整编辑器显示，不改变正文换行。关闭后可水平滚动。')).toBeVisible();
+ await page.screenshot({path:info.outputPath('e1-settings-desktop.png')});await page.setViewportSize({width:390,height:844});const box=await dialog.boundingBox();expect(box).not.toBeNull();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(390);await expect(toggle).toBeVisible();await page.screenshot({path:info.outputPath('e1-settings-narrow.png')});
+ await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();await expect(button).toBeFocused();
 });
 
 test('restores semantic locations through A4 mode and cached Tab switches',async({page},info)=>{

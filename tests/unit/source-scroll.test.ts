@@ -1,5 +1,5 @@
 import {it,expect,vi} from 'vitest';
-import {editorGeometry,editorLineAt,editorTopAt,interpolate,previewSourcePoints} from '../../src/components/workspace/sourceScroll';
+import {editorGeometry,editorLineAt,editorTopAt,interpolate,previewSourcePoints,invalidateEditorGeometry,setEditorComposing} from '../../src/components/workspace/sourceScroll';
 import {sourceAnchorAt,sourceAnchorTop,sourceLayout,sourceLineAt,sourceTopAt} from '../../src/core/model/sourceLayout';
 it('interpolates within source blocks in either direction instead of using document ratios',()=>{
  const points=[{line:1,top:0},{line:30,top:900},{line:90,top:1200}];
@@ -21,6 +21,30 @@ it('reuses editor geometry and invalidates it for source, width and font metrics
  width=500;const resized=editorGeometry(editor);expect(resized).not.toBe(initial);expect(editorGeometry(editor)).toBe(resized);
  font='italic 16px monospace';const restyled=editorGeometry(editor);expect(restyled).not.toBe(resized);
  editor.value+='\n';const changed=editorGeometry(editor);expect(changed).not.toBe(restyled);expect(changed.lineTops).toHaveLength(4);
+ vi.restoreAllMocks();
+});
+it('measures wrapped logical rows from safe text and reuses the result until layout metrics change',()=>{
+ const editor=document.createElement('textarea');editor.value='中文🙂long-url-123\n\n<img>';editor.wrap='soft';
+ const styleValues:Record<string,string>={'font-family':'monospace','font-size':'10px','font-weight':'400','font-style':'normal','font-stretch':'normal','font-variant':'normal','font-feature-settings':'normal','font-variation-settings':'normal','letter-spacing':'normal','word-spacing':'normal','tab-size':'4','text-indent':'0px','text-transform':'none','direction':'ltr','text-rendering':'auto'};
+ const style={font:'10px monospace',lineHeight:'20px',paddingTop:'8px',paddingLeft:'8px',paddingRight:'8px',letterSpacing:'normal',tabSize:'4',getPropertyValue:(name:string)=>styleValues[name]??''} as unknown as CSSStyleDeclaration;
+ vi.spyOn(window,'getComputedStyle').mockReturnValue(style);
+ Object.defineProperty(editor,'clientWidth',{configurable:true,value:80});
+ const original=HTMLElement.prototype.getBoundingClientRect;let measured=0,glyphWidth=10;
+ vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){
+  if(this.parentElement?.getAttribute('aria-hidden')==='true'){
+   measured++;expect(this.parentElement.style.width).toBe('64px');
+   expect(this.parentElement.style.getPropertyValue('tab-size')).toBe('4');
+   const length=[...this.textContent!].length||1,height=Math.ceil(length*glyphWidth/64)*20;
+   return {top:0,bottom:height,left:0,right:64,width:64,height,toJSON:()=>({})} as DOMRect;
+  }
+  return original.call(this);
+ });
+ const geometry=editorGeometry(editor);
+ expect(geometry.lineTops).toEqual([8,68,88,108]);expect(measured).toBe(3);
+ expect(editorGeometry(editor)).toBe(geometry);expect(measured).toBe(3);
+ setEditorComposing(editor,true);glyphWidth=16;invalidateEditorGeometry(editor);expect(editorGeometry(editor)).toBe(geometry);expect(measured).toBe(3);
+ setEditorComposing(editor,false);const fontReady=editorGeometry(editor);expect(fontReady).not.toBe(geometry);expect(fontReady.lineTops![1]).toBeGreaterThan(geometry.lineTops![1]!);expect(measured).toBe(6);
+ expect([...document.body.querySelectorAll('[aria-hidden="true"]')]).toHaveLength(0);
  vi.restoreAllMocks();
 });
 it('maps variable logical line heights monotonically and preserves within-line anchors',()=>{

@@ -14,7 +14,7 @@ async function instrument(page:Page){await page.addInitScript(()=>{
 const source=(name:string)=>['# '+name,'',...Array.from({length:55},(_,i)=>'line '+i+' '+name),'','## End','END_'+name].join(String.fromCharCode(10));
 async function ready(page:Page,name:string){await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready',{timeout:30000});await expect(page.locator('.mf-doc')).toContainText('END_'+name)}
 async function boot(page:Page,name='Alpha'){await instrument(page);await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready',{timeout:30000});await page.getByRole('textbox',{name:'Markdown 编辑器'}).fill(source(name));await ready(page,name)}
-async function create(page:Page,name:string){await page.getByTitle('创建新空白 Markdown 文档').click();await page.getByRole('textbox',{name:'Markdown 编辑器'}).fill(source(name));await ready(page,name)}
+async function create(page:Page,name:string){const tabs=page.getByRole('tab'),count=await tabs.count();await page.getByTitle('创建新空白 Markdown 文档').click();await expect(tabs).toHaveCount(count+1);await expect(tabs.last()).toHaveAttribute('aria-selected','true');const editor=page.getByRole('textbox',{name:'Markdown 编辑器'});await expect(editor).toHaveValue('# 新建 Markdown 文档\n\n在此开始撰写您的 Markdown 内容...\n');await editor.fill(source(name));await ready(page,name)}
 const tab=(page:Page,name:string)=>page.getByRole('tab',{name:new RegExp('^'+name)});
 
 test('keeps bottom tabs, independent history/selection/scroll and restores cache without generation',async({page},info)=>{
@@ -57,4 +57,18 @@ test('restores the active source anchor after editor geometry changes across a T
  await tab(page,'Alpha').click();await ready(page,'Alpha');
  await expect.poll(async()=>Math.abs(await editor.evaluate((el:HTMLTextAreaElement)=>el.scrollTop)-before.top)).toBeLessThan(1);
  expect(await editor.inputValue()).toBe(before.value);expect(await page.evaluate(()=>window.__u6e.starts.length)).toBe(starts);
+});
+
+test('wrap changes preserve a deep logical line without regenerating or replacing the preview cache',async({page})=>{
+ await boot(page,'Wrap');const editor=page.getByRole('textbox',{name:'Markdown 编辑器'}),value=source('Wrap').replace('## End','unbroken🙂中文'.repeat(1800)+'\n## End')+'\n'+Array.from({length:120},(_,i)=>'tail '+i).join('\n'),target=value.split('\n').findIndex(line=>line==='## End')+1;
+ await editor.fill(value);await ready(page,'Wrap');await page.getByRole('button',{name:/^大纲 \(/}).click();await page.locator('button[title^="End (第"]').click();
+ const logicalLine=async()=>editor.evaluate((el:HTMLTextAreaElement)=>{const rows=[...el.parentElement!.querySelector<HTMLElement>('.w-12')!.children] as HTMLElement[],top=el.scrollTop;let previous=parseFloat(getComputedStyle(el).paddingTop);for(let i=0;i<rows.length;i++){const height=rows[i]!.getBoundingClientRect().height;if(top<=previous+height)return i+1+(top-previous)/height;previous+=height}return rows.length});
+ await expect.poll(async()=>Math.abs(await logicalLine()-target)).toBeLessThan(1.1);
+ const reference=await page.locator('[data-preview-reference]').getAttribute('data-preview-reference'),starts=await page.evaluate(()=>window.__u6e.starts.length);
+ await page.getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('checkbox',{name:'自动换行'}).uncheck();await expect(editor).toHaveAttribute('wrap','off');
+ await expect.poll(async()=>Math.abs(await logicalLine()-target)).toBeLessThan(1.1);expect(await editor.inputValue()).toBe(value);
+ expect(await page.locator('[data-preview-reference]').getAttribute('data-preview-reference')).toBe(reference);expect(await page.evaluate(()=>window.__u6e.starts.length)).toBe(starts);
+ await page.getByRole('checkbox',{name:'自动换行'}).check();await expect(editor).toHaveAttribute('wrap','soft');await expect.poll(async()=>Math.abs(await logicalLine()-target)).toBeLessThan(1.1);
+ await page.keyboard.press('Escape');await page.setViewportSize({width:700,height:900});await expect.poll(async()=>Math.abs(await logicalLine()-target)).toBeLessThan(1.1);
+ expect(await editor.inputValue()).toBe(value);expect(await page.locator('[data-preview-reference]').getAttribute('data-preview-reference')).toBe(reference);expect(await page.evaluate(()=>window.__u6e.starts.length)).toBe(starts);
 });
