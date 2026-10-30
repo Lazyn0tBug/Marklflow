@@ -1,5 +1,6 @@
-import {it,expect} from 'vitest';
-import {editorLineAt,editorTopAt,interpolate,previewSourcePoints} from '../../src/components/workspace/sourceScroll';
+import {it,expect,vi} from 'vitest';
+import {editorGeometry,editorLineAt,editorTopAt,interpolate,previewSourcePoints} from '../../src/components/workspace/sourceScroll';
+import {sourceAnchorAt,sourceAnchorTop,sourceLayout,sourceLineAt,sourceTopAt} from '../../src/core/model/sourceLayout';
 it('interpolates within source blocks in either direction instead of using document ratios',()=>{
  const points=[{line:1,top:0},{line:30,top:900},{line:90,top:1200}];
  expect(interpolate(points,60,'line')).toBe(1050);expect(interpolate(points,1050,'top')).toBe(60);
@@ -11,6 +12,33 @@ it('resolves flat source edges and empty maps safely',()=>{
 });
 it('uses measured editor line height and padding with fractional lines',()=>{
  const geometry={lineHeight:30,paddingTop:16};expect(editorTopAt(20,geometry)).toBe(586);expect(editorLineAt(586,geometry)).toBe(20);expect(editorLineAt(0,geometry)).toBe(1);
+});
+it('reuses editor geometry and invalidates it for source, width and font metrics',()=>{
+ const editor=document.createElement('textarea');editor.value='first\nsecond';editor.style.fontFamily='monospace';editor.style.fontSize='14px';editor.style.lineHeight='24px';editor.style.paddingTop='12px';
+ let font='14px monospace';vi.spyOn(window,'getComputedStyle').mockImplementation(()=>({font,lineHeight:'24px',paddingTop:'12px',letterSpacing:'normal',tabSize:'8'} as CSSStyleDeclaration));
+ let width=400;Object.defineProperty(editor,'clientWidth',{configurable:true,get:()=>width});
+ const initial=editorGeometry(editor);expect(editorGeometry(editor)).toBe(initial);expect(initial.lineTops).toHaveLength(3);
+ width=500;const resized=editorGeometry(editor);expect(resized).not.toBe(initial);expect(editorGeometry(editor)).toBe(resized);
+ font='italic 16px monospace';const restyled=editorGeometry(editor);expect(restyled).not.toBe(resized);
+ editor.value+='\n';const changed=editorGeometry(editor);expect(changed).not.toBe(restyled);expect(changed.lineTops).toHaveLength(4);
+ vi.restoreAllMocks();
+});
+it('maps variable logical line heights monotonically and preserves within-line anchors',()=>{
+ const geometry=sourceLayout([24,48,30,18],12,'variable');
+ expect([1,2,3,4,5].map(line=>sourceTopAt(line,geometry))).toEqual([12,36,84,114,132]);
+ for(const top of [12,18,35.5,36,61,83.9,84,113,131.5])expect(sourceTopAt(sourceLineAt(top,geometry),geometry)).toBeCloseTo(top,6);
+ const anchor=sourceAnchorAt(68,geometry);expect(anchor).toEqual({line:2,offset:32});
+ const resized=sourceLayout([24,60,30,18],12,'resized');expect(sourceAnchorTop(anchor,resized)).toBe(68);
+ expect(sourceAnchorTop({line:2,offset:1000},resized)).toBeLessThan(sourceTopAt(3,resized));
+});
+it('clamps source anchors at document boundaries and rejects invalid row geometry',()=>{
+ const geometry=sourceLayout([24,36],8,'two-lines');
+ expect(sourceLineAt(-50,geometry)).toBe(1);expect(sourceLineAt(1000,geometry)).toBe(3);
+ expect(sourceAnchorAt(1000,geometry).offset).toBeLessThan(36);
+ expect(sourceAnchorAt(1000,geometry).offset).toBeGreaterThanOrEqual(0);
+ expect(sourceAnchorTop(sourceAnchorAt(0,geometry),geometry)).toBe(0);
+ expect(sourceAnchorTop({line:99,offset:0},geometry)).toBe(32);
+ expect(()=>sourceLayout([],0,'empty')).toThrow();expect(()=>sourceLayout([24,0],0,'zero')).toThrow();
 });
 function fixture(html:string){const view=document.createElement('div');view.innerHTML=html;Object.defineProperty(view,'scrollHeight',{value:1000});view.getBoundingClientRect=()=>({top:0} as DOMRect);for(const el of view.querySelectorAll<HTMLElement>('[data-line]')){const top=Number(el.dataset.top),height=Number(el.dataset.height??100);el.getBoundingClientRect=()=>({top,bottom:top+height,height} as DOMRect)}return view}
 it('combines split A4 code fragments into their source range and ignores repeated table headers',()=>{

@@ -47,3 +47,14 @@ test('save failure while closing a dirty tab keeps its draft and tab available',
 test('production tabs and their compute pipeline run on ordinary HTTP',async({page})=>{
  await instrument(page);await page.route('http://markflow-tabs.test/**',async route=>{const url=new URL(route.request().url()),response=await route.fetch({url:'http://127.0.0.1:4173'+url.pathname+url.search});await route.fulfill({response})});await page.goto('http://markflow-tabs.test/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready',{timeout:30000});await page.locator('textarea').fill(source('HTTP_ALPHA'));await ready(page,'HTTP_ALPHA');await create(page,'HTTP_BETA');const count=await page.evaluate(()=>window.__u6e.starts.length);await tab(page,'HTTP_ALPHA').click();await ready(page,'HTTP_ALPHA');expect(await page.evaluate(()=>window.__u6e.starts.length)).toBe(count);expect(await page.evaluate(()=>isSecureContext)).toBe(false);
 });
+
+test('restores the active source anchor after editor geometry changes across a Tab switch',async({page})=>{
+ await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'}),line=37;
+ await editor.evaluate((el:HTMLTextAreaElement,line)=>{const style=getComputedStyle(el);el.scrollTop=(line-1)*parseFloat(style.lineHeight)+parseFloat(style.paddingTop)+8;el.dispatchEvent(new Event('scroll'))},line);
+ const before=await editor.evaluate((el:HTMLTextAreaElement)=>({top:el.scrollTop,value:el.value}));
+ await create(page,'Beta');const starts=await page.evaluate(()=>window.__u6e.starts.length);
+ await page.getByRole('button',{name:'设置',exact:true}).click();await page.getByLabel('编辑器与 HTML 内容最大宽度').selectOption('full');await page.keyboard.press('Escape');
+ await tab(page,'Alpha').click();await ready(page,'Alpha');
+ await expect.poll(async()=>Math.abs(await editor.evaluate((el:HTMLTextAreaElement)=>el.scrollTop)-before.top)).toBeLessThan(1);
+ expect(await editor.inputValue()).toBe(before.value);expect(await page.evaluate(()=>window.__u6e.starts.length)).toBe(starts);
+});

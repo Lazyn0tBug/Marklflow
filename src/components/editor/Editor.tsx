@@ -4,10 +4,12 @@
  * 支持与 HTML 渲染视窗双向精准同步滚动与联动锁保护
  */
 
-import React, { useRef } from 'react';
+import React, { useRef,useLayoutEffect } from 'react';
+import {editorGeometry,sourceAnchorAt,sourceAnchorTop,type EditorGeometry} from '../workspace/sourceScroll';
 import { generateMarkdownTable } from '../../core/parse/markdown';
 
 interface EditorProps {
+  sessionId?: string;
   value: string;
   onChange: (newValue: string) => void;
   onUndo?: () => void;
@@ -23,6 +25,7 @@ interface EditorProps {
 
 export const Editor: React.FC<EditorProps> = ({
   value,
+  sessionId,
   onChange,
   onUndo,
   onRedo,
@@ -33,6 +36,26 @@ export const Editor: React.FC<EditorProps> = ({
   const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const activeTextareaRef = externalTextareaRef || internalTextareaRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  const lastLayout=useRef<{value:string;geometry:EditorGeometry;sessionId:string|undefined}|undefined>(undefined);
+  useLayoutEffect(()=>{
+    const textarea=activeTextareaRef.current,gutter=lineNumbersRef.current;if(!textarea||!gutter)return;
+    let frame:number|undefined;
+    const update=()=>{
+      frame=undefined;const previous=lastLayout.current,geometry=editorGeometry(textarea);
+      if(previous?.sessionId===sessionId&&previous?.geometry===geometry)return;
+      if(previous?.sessionId===sessionId&&previous?.value===value)textarea.scrollTop=sourceAnchorTop(sourceAnchorAt(textarea.scrollTop,previous.geometry),geometry);
+      lastLayout.current={value,geometry,sessionId};
+      gutter.style.paddingTop=geometry.paddingTop+'px';
+      Array.from(gutter.children).forEach((row,index)=>{if(row instanceof HTMLElement)row.style.height=((geometry.lineTops?.[index+1]??0)-(geometry.lineTops?.[index]??0))+'px'});
+      gutter.scrollTop=textarea.scrollTop;
+    };
+    const schedule=()=>{if(frame===undefined)frame=requestAnimationFrame(update)};
+    update();const observer=new ResizeObserver(schedule);observer.observe(textarea);
+    const attributes=new MutationObserver(schedule);attributes.observe(textarea,{attributes:true,attributeFilter:['style','class']});
+    document.fonts?.addEventListener('loadingdone',schedule);
+    return()=>{observer.disconnect();attributes.disconnect();document.fonts?.removeEventListener('loadingdone',schedule);if(frame!==undefined)cancelAnimationFrame(frame)};
+  },[value,maxWidth,activeTextareaRef,sessionId]);
 
   const lines = value.split('\n');
   const lineCount = lines.length;

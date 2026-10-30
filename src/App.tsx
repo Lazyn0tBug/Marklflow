@@ -33,7 +33,7 @@ import {createWebSourceImport} from './core/platform/web/sourceImport';
 import type {ImportItemResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
-import {editorGeometry,editorLineAt,editorTopAt,previewSourcePoints,interpolate} from './components/workspace/sourceScroll';
+import {editorGeometry,editorLineAt,editorTopAt,sourceAnchorAt,sourceAnchorTop,previewSourcePoints,interpolate,type EditorGeometry} from './components/workspace/sourceScroll';
 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
@@ -77,7 +77,7 @@ export default function App() {
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingPreviewLine=useRef<{documentId:string;line:number}|undefined>(undefined);
   const previewLine=useRef(1);
-  const lastEditorGeometry=useRef({lineHeight:24,paddingTop:12});
+  const lastEditorGeometry=useRef<EditorGeometry>({lineHeight:24,paddingTop:12});
   const expectedScroll=useRef<{editor:number|null;preview:number|null}>({editor:null,preview:null});
   const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number)=>{const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));expectedScroll.current[pane]=clamped;el.scrollTop=clamped};
   const isProgrammatic=(pane:'editor'|'preview',top:number)=>{const expected=expectedScroll.current[pane];expectedScroll.current[pane]=null;return expected!==null&&Math.abs(expected-top)<2};
@@ -143,7 +143,7 @@ export default function App() {
     tabHeadings.current.set(currentDoc.id,activeHeadingId);
     if(editorTextareaRef.current)lastEditorGeometry.current=editorGeometry(editorTextareaRef.current);
     const old=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current,view=previewContainerRef.current;
-    sessions.setPosition(currentDoc.id,{selectionStart:editor?.selectionStart??old.selectionStart,selectionEnd:editor?.selectionEnd??old.selectionEnd,scrollTop:editor?.scrollTop??old.scrollTop,scrollLeft:editor?.scrollLeft??old.scrollLeft,previewScrollTop:view?.scrollTop??old.previewScrollTop});
+    sessions.setPosition(currentDoc.id,{...old,...(editor?{sourceAnchor:sourceAnchorAt(editor.scrollTop,editorGeometry(editor)),editorLayoutKey:editorGeometry(editor).layoutKey??''}:{}),selectionStart:editor?.selectionStart??old.selectionStart,selectionEnd:editor?.selectionEnd??old.selectionEnd,scrollTop:editor?.scrollTop??old.scrollTop,scrollLeft:editor?.scrollLeft??old.scrollLeft,previewScrollTop:view?.scrollTop??old.previewScrollTop});
   };
   const selectDocument=(id:string)=>{
     capturePosition();const doc=sessions.documentIds.includes(id)?sessions.read(id).document:documents.find(value=>value.id===id);if(!doc)return;
@@ -167,7 +167,7 @@ export default function App() {
   },[currentDocId,currentDoc?.revision,kind,tabs.join('|')]);
   useLayoutEffect(()=>{
     if(!currentDoc)return;const position=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current;
-    if(editor){editor.setSelectionRange(position.selectionStart,position.selectionEnd);expectedScroll.current.editor=position.scrollTop;editor.scrollTop=position.scrollTop;editor.scrollLeft=position.scrollLeft}
+    if(editor){const geometry=editorGeometry(editor),top=position.sourceAnchor&&position.editorLayoutKey!==geometry.layoutKey?sourceAnchorTop(position.sourceAnchor,geometry):position.scrollTop;editor.setSelectionRange(position.selectionStart,position.selectionEnd);syncPosition(editor,'editor',top);editor.scrollLeft=position.scrollLeft;lastEditorGeometry.current=geometry}
   },[currentDocId,showEditor]);
   const previewPoints=()=>{const view=previewContainerRef.current;return view&&currentDoc?previewSourcePoints(view,currentDoc.markdown.split('\n').length):[]};
   const positionPreview=(line:number)=>{const view=previewContainerRef.current;if(view){previewLine.current=line;syncPosition(view,'preview',interpolate(previewPoints(),line,'line'))}};
@@ -284,9 +284,10 @@ export default function App() {
     const target=line??extractOutline(currentDoc.markdown).find(value=>value.id===headingId)?.line;if(!target)return;
     setActiveHeadingId(headingId);
     const editor=editorTextareaRef.current;if(editor)lastEditorGeometry.current=editorGeometry(editor);
-    const top=editorTopAt(target,lastEditorGeometry.current);
+    const geometry=editor?editorGeometry(editor):{lineHeight:lastEditorGeometry.current.lineHeight,paddingTop:lastEditorGeometry.current.paddingTop};
+    const top=editorTopAt(target,geometry);
     if(editor)syncPosition(editor,'editor',top);
-    const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:top});
+    const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:{line:target,offset:0},editorLayoutKey:geometry.layoutKey??''});
     if(previewView.state==='ready'&&previewContainerRef.current)positionPreview(target);
     else pendingPreviewLine.current={documentId:currentDoc.id,line:target};
   };
@@ -306,7 +307,7 @@ export default function App() {
     const points=previewPoints();previewLine.current=interpolate(points,top,'top');
     highlightLine(interpolate(points,top+view.clientHeight/2,'top'));
     const editor=editorTextareaRef.current;if(!syncScroll)return;
-    if(!editor){const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:editorTopAt(previewLine.current,lastEditorGeometry.current)});return}
+    if(!editor){const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:editorTopAt(previewLine.current,{lineHeight:lastEditorGeometry.current.lineHeight,paddingTop:lastEditorGeometry.current.paddingTop}),sourceAnchor:{line:Math.floor(previewLine.current),offset:(previewLine.current%1)*lastEditorGeometry.current.lineHeight},editorLayoutKey:''});return}
     const max=view.scrollHeight-view.clientHeight;
     if(top<=2)syncPosition(editor,'editor',0);
     else if(max>0&&top>=max-3)syncPosition(editor,'editor',editor.scrollHeight-editor.clientHeight);
@@ -434,6 +435,7 @@ export default function App() {
             {showEditor && (
               <div data-view="editor" onWheelCapture={()=>handleDirectScroll('editor')} onPointerDownCapture={()=>handleDirectScroll('editor')} onKeyDownCapture={()=>handleDirectScroll('editor')} className="h-full flex-1 min-w-0 flex flex-col">
                 <Editor
+                  sessionId={currentDoc.id}
                   value={currentDoc.markdown}
                   onChange={handleMarkdownChange}
                   onUndo={handleUndo}

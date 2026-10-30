@@ -1,16 +1,21 @@
-/** Source-line coordinates shared by flow and paginated preview presentation. */
+import {sourceLayout,sourceLineAt,sourceTopAt} from '../../core/model/sourceLayout';
+import type {SourceGeometry} from '../../core/model/sourceLayout';
+export {sourceAnchorAt,sourceAnchorTop} from '../../core/model/sourceLayout';
+/** Source-line coordinates shared by editor, flow and paginated presentation. */
 export interface SourcePoint {line:number;top:number}
-export interface EditorGeometry {lineHeight:number;paddingTop:number}
+export type EditorGeometry=SourceGeometry;
+const layouts=new WeakMap<HTMLTextAreaElement,{value:string;key:string;geometry:EditorGeometry}>();
+/** Editor-owned measured geometry; E0 uses one visual row per logical line (wrap off). */
 export function editorGeometry(editor:HTMLTextAreaElement):EditorGeometry {
- const style=getComputedStyle(editor);
- return {lineHeight:parseFloat(style.lineHeight)||24,paddingTop:parseFloat(style.paddingTop)||0};
+ const style=getComputedStyle(editor),lineHeight=parseFloat(style.lineHeight)||24,paddingTop=parseFloat(style.paddingTop)||0;
+ const cached=layouts.get(editor),count=cached?.value===editor.value?cached.geometry.lineTops!.length-1:editor.value.split('\n').length;
+ const key=JSON.stringify([editor.clientWidth,style.font,style.letterSpacing,style.tabSize,lineHeight,paddingTop,count]);
+ if(cached?.value===editor.value&&cached.key===key)return cached.geometry;
+ const geometry=sourceLayout(Array.from({length:count},()=>lineHeight),paddingTop,key);
+ layouts.set(editor,{value:editor.value,key,geometry});return geometry;
 }
-export function editorLineAt(top:number,geometry:EditorGeometry):number {
- return Math.max(1,(top-geometry.paddingTop)/geometry.lineHeight+1);
-}
-export function editorTopAt(line:number,geometry:EditorGeometry):number {
- return Math.max(0,(line-1)*geometry.lineHeight+geometry.paddingTop);
-}
+export function editorLineAt(top:number,geometry:EditorGeometry):number {return sourceLineAt(top,geometry)}
+export function editorTopAt(line:number,geometry:EditorGeometry):number {return sourceTopAt(line,geometry)}
 /** Coordinates must be ordered on both axes; flat sections resolve to their first edge. */
 export function interpolate(points:readonly SourcePoint[],value:number,from:'line'|'top'):number {
  const to=from==='line'?'top':'line',first=points[0],last=points.at(-1);

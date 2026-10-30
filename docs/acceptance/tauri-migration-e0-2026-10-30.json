@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "stage": "E0",
+  "date": "2026-10-30",
+  "baseline": "c99695f",
+  "branch": "architecture-refactor",
+  "status": "independently-reviewed-and-automatically-validated",
+  "reviewer": "gpt-6-luna",
+  "independentReviewPassed": true,
+  "unresolvedBlockingFindings": 0,
+  "scope": {
+    "productionWrap": "off",
+    "variableHeightModelTested": true,
+    "softWrapMeasurementImplemented": false,
+    "sessionAnchorOptional": true,
+    "legacyPixelFallback": true,
+    "workerProtocolChanged": false,
+    "documentSchemaChanged": false,
+    "dependenciesChanged": false,
+    "E1Started": false,
+    "E2Started": false,
+    "M4Started": false
+  },
+  "checks": {
+    "bunRunCheck": {
+      "exitCode": 0,
+      "managedSources": 205,
+      "unitFiles": 61,
+      "unitTests": 447
+    },
+    "targetedUnitTests": 17,
+    "playwright": {
+      "exitCode": 0,
+      "browser": "Chromium",
+      "specs": [
+        "workbench-source-scroll.spec.ts",
+        "workbench-tabs.spec.ts"
+      ],
+      "passed": 11,
+      "coverage": "current built workbench functional regression only"
+    },
+    "largeFixtureObservation": {
+      "file": "large.md",
+      "bytes": 17584,
+      "logicalLines": 799,
+      "singleBuildMs": 0.811,
+      "terminalTopPx": 19188,
+      "performanceGuarantee": false
+    }
+  },
+  "reviewFixes": [
+    "bounded within-line anchors preserving top padding",
+    "layout callbacks scoped and cleaned by Tab session identity"
+  ],
+  "testedInputs": [
+    {
+      "path": "src/core/model/sourceLayout.ts",
+      "sha256": "f9e1443a09f1c0f12991f4e5c90c097eda4c55bd03597ba50f583bc3f9fa7781"
+    },
+    {
+      "path": "src/components/workspace/sourceScroll.ts",
+      "sha256": "86fd59ac1cecb22cfba193108b1679df7a242ac19a6058e06439940a3f811af7"
+    },
+    {
+      "path": "src/components/editor/Editor.tsx",
+      "sha256": "f73a4c628527912b478ef688665fe58da1d5d2b6c97360f771517e259bf9516e"
+    },
+    {
+      "path": "src/application/sessions/documentSessions.ts",
+      "sha256": "7b564fe9b5a6f5f990079726442f9728f8cb1e896195056169adc7dba29ad50e"
+    },
+    {
+      "path": "src/App.tsx",
+      "sha256": "b376c49c6f424407a4b5c674fd0db16963d04ac1d5f70175195ecef1b56f0bf5"
+    },
+    {
+      "path": "tests/unit/source-scroll.test.ts",
+      "sha256": "1280a2cbcd1755240cfc4e6445399a76d106d76cbbe58f837a1743cb25b9da64"
+    },
+    {
+      "path": "tests/unit/document-sessions.test.ts",
+      "sha256": "fa5bbc0d1ffabec3104f1a3203fe32d1f38194d10246644552aad217a1f6fe6d"
+    },
+    {
+      "path": "tests/e2e/workbench-tabs.spec.ts",
+      "sha256": "dda7ef670e01e47567d1631ab3a8288eed6f6329046d2d61e7c92c5adfbc23ff"
+    }
+  ],
+  "logs": [
+    "D:/codex/e0-review-2026-10-30/bun-check.log",
+    "D:/codex/e0-review-2026-10-30/playwright.log",
+    "D:/codex/e0-review-2026-10-30/review-summary.txt"
+  ],
+  "preservedWorkspace": [
+    {
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58"
+    },
+    {
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569"
+    }
+  ],
+  "limitations": [
+    "variable-height production soft wrap deferred to E1",
+    "cross-browser and Tauri visual checks not performed",
+    "large-fixture timing is one observation, no performance threshold",
+    "native system dialog, cross-OS file handling and bundle gates remain pending",
+    "EX-W0 system PDF and default filename evidence remains pending",
+    "native save manual acceptance and Word/WPS gates remain pending"
+  ],
+  "pushPerformed": false,
+  "tagChanged": false,
+  "fullReleaseAcceptancePassed": false
+}

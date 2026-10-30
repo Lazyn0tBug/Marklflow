@@ -1,9 +1,10 @@
 import type {DocumentRecord} from '../../core/model/document';
 import {documentSchema} from '../../core/model/documentSchema';
+import type {SourceAnchor} from '../../core/model/sourceLayout';
 import type {PreviewReference} from '../previewCache/contracts';
 type PreviewKind=PreviewReference['key']['previewKind'];
 type PreviewReferences=Partial<Record<PreviewKind,PreviewReference>>;
-export interface EditorPosition {selectionStart:number;selectionEnd:number;scrollTop:number;scrollLeft:number;previewScrollTop:number}
+export interface EditorPosition {selectionStart:number;selectionEnd:number;scrollTop:number;scrollLeft:number;previewScrollTop:number;sourceAnchor?:SourceAnchor;editorLayoutKey?:string}
 export interface DocumentSession {document:DocumentRecord;position:EditorPosition;dirty:boolean;canUndo:boolean;canRedo:boolean;previewReferences:PreviewReferences}
 interface Entry {document:DocumentRecord;position:EditorPosition;savedRevision:number;undo:DocumentRecord[];redo:DocumentRecord[];previewReferences:PreviewReferences}
 const origin=():EditorPosition=>({selectionStart:0,selectionEnd:0,scrollTop:0,scrollLeft:0,previewScrollTop:0});
@@ -30,8 +31,10 @@ export class DocumentSessions {
  activate(id:string):void{this.entry(id);this.active=id}
  setPosition(id:string,position:EditorPosition):void {
   const entry=this.entry(id);
-  if(Object.values(position).some(value=>!Number.isFinite(value)||value<0)||!Number.isInteger(position.selectionStart)||!Number.isInteger(position.selectionEnd)||position.selectionStart>position.selectionEnd)throw new Error('Invalid editor position');
-  entry.position={...position,selectionStart:Math.min(position.selectionStart,entry.document.markdown.length),selectionEnd:Math.min(position.selectionEnd,entry.document.markdown.length)};
+  if([position.selectionStart,position.selectionEnd,position.scrollTop,position.scrollLeft,position.previewScrollTop].some(value=>!Number.isFinite(value)||value<0)||!Number.isInteger(position.selectionStart)||!Number.isInteger(position.selectionEnd)||position.selectionStart>position.selectionEnd)throw new Error('Invalid editor position');
+  if(position.sourceAnchor&&(!Number.isInteger(position.sourceAnchor.line)||position.sourceAnchor.line<1||!Number.isFinite(position.sourceAnchor.offset)))throw new Error('Invalid source anchor');
+  if(position.editorLayoutKey!==undefined&&typeof position.editorLayoutKey!=='string')throw new Error('Invalid layout key');
+  entry.position={...structuredClone(position),selectionStart:Math.min(position.selectionStart,entry.document.markdown.length),selectionEnd:Math.min(position.selectionEnd,entry.document.markdown.length)};
  }
  /** Caller supplies a complete next revision, using the existing DocumentRecord contract. */
  update(input:DocumentRecord):void {
