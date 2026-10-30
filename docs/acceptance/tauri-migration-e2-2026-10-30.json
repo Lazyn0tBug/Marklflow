@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "stage": "E2",
+  "date": "2026-10-30",
+  "baseline": "6fc130d1a40f5c6f8bc23296e4b39dd84d715e24",
+  "branch": "architecture-refactor",
+  "status": "independently-reviewed-and-validated",
+  "reviewer": "gpt-6-luna",
+  "independentReviewPassed": true,
+  "unresolvedBlockingFindings": 0,
+  "scope": {
+    "defaultRatio": 0.5,
+    "preferredRange": [
+      0.15,
+      0.85
+    ],
+    "minimumPaneWidthPx": 360,
+    "handleWidthPx": 8,
+    "preferenceKey": "markflow_split_preferences_v1",
+    "legacyReadOnlyKey": "markflow_split_ratio",
+    "maxPreferenceCharacters": 256,
+    "dependenciesChanged": false,
+    "workerProtocolChanged": false,
+    "documentSchemaChanged": false,
+    "M4Started": false
+  },
+  "checks": {
+    "bunRunCheck": {
+      "exitCode": 0,
+      "managedSources": 212,
+      "unitFiles": 63,
+      "unitTests": 453
+    },
+    "chromium": {
+      "sameFreshProductionBuild": true,
+      "fullRunPassed": 21,
+      "splitCases": 3,
+      "sourceScrollCases": 10,
+      "tabCases": 8,
+      "durationSeconds": 55.8,
+      "cancelHardeningRerunPassed": 3,
+      "productionChangedAfterFullCheck": false,
+      "typecheckAfterTestHardeningExitCode": 0,
+      "lintAfterTestHardeningExitCode": 0
+    },
+    "cancelCoverage": [
+      "pointercancel after effective move",
+      "window blur after effective move",
+      "lostpointercapture after effective move",
+      "separator unmount on hiding HTML after effective move"
+    ],
+    "cancelChecks": [
+      "starting ratio restored",
+      "stable after two animation frames",
+      "pointer capture released",
+      "preference unchanged"
+    ],
+    "editorFocusSelectionPreserved": true,
+    "sevenVisibilityCombinations": true,
+    "narrowWorkbenchScroll": true,
+    "previewReferenceAndA4GeometryUnchanged": true,
+    "maximumContentWidthUnchanged": true,
+    "impeccableDetectorFindings": 0,
+    "screenshotsReviewed": true
+  },
+  "testedInputs": [
+    {
+      "path": "src/App.tsx",
+      "sha256": "49d6f7ed9dd0ca1595b013b8e7ee650fc09be4067dae2a0c49837d0c0fe4854c"
+    },
+    {
+      "path": "src/components/workspace/ResizablePanes.tsx",
+      "sha256": "5506ff135db585319120c6d11d97e579d9c2d8d4740bb92e90afb7295af3914c"
+    },
+    {
+      "path": "src/core/model/paneSplit.ts",
+      "sha256": "d16f5b7de16ed12200a8cb8940a9449ba2c3da5a102bea1f4980b1365f772181"
+    },
+    {
+      "path": "src/core/platform/web/splitPreferences.ts",
+      "sha256": "e4b0f9441a82eeb9c008d2c1b4f64c1ee930c03fdaa632a1fb889b0b5c4ba35b"
+    },
+    {
+      "path": "tests/unit/pane-split.test.ts",
+      "sha256": "c7985c57ec431b0484b79b029f20fdabfde9d17247c5851c8f24666b79fa68a5"
+    },
+    {
+      "path": "tests/e2e/workbench-split.spec.ts",
+      "sha256": "4432611604da6f74a4589249dc5090e3726accae80e9038900a12408b0d86f50"
+    }
+  ],
+  "logs": [
+    "D:/codex/e2-review-2026-10-30/e2-final-fullcheck.log",
+    "D:/codex/e2-review-2026-10-30/e2-final-browser.log",
+    "D:/codex/e2-review-2026-10-30/e2-cancel-hardening.log",
+    "D:/codex/e2-review-2026-10-30/e2-final-typecheck.log",
+    "D:/codex/e2-review-2026-10-30/e2-final-lint.log",
+    "D:/codex/e2-review-2026-10-30/impeccable-detect.log"
+  ],
+  "artifacts": [
+    "D:/codex/e2-review-2026-10-30/split-desktop.png",
+    "D:/codex/e2-review-2026-10-30/split-narrow.png",
+    "D:/codex/e2-review-2026-10-30/split-a4.png"
+  ],
+  "preservedWorkspace": [
+    {
+      "path": "docs/design/architecture-refactor-plan-2026-10-25.md",
+      "sha256": "ba58395f484e3690afc5f20e64e54ed05abef1457c14126cff1a780afcad1c58"
+    },
+    {
+      "path": "docs/design/architecture-implementation-acceptance-2026-10-25.md",
+      "sha256": "5a364357047195ef46f4f3b91f2a726f85adafd05e0623da22fac0d4b6d94569"
+    }
+  ],
+  "limitations": [
+    "Chromium only; cross-browser and Tauri visual checks pending",
+    "cancel/blur injected in browser; real OS/device coverage not complete",
+    "whole component unmount cleanup reviewed; separator removal tested",
+    "EX-W0 system PDF/default name and native save/dialog evidence pending",
+    "real OS IME, Word/WPS and cross-OS bundles remain pending"
+  ],
+  "pushPerformed": false,
+  "tagChanged": false,
+  "fullReleaseAcceptancePassed": false
+}

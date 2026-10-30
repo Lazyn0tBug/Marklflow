@@ -27,6 +27,7 @@ import {
   recoveryJson,
 } from './core/storage/storage';
 import {readSoftWrapPreference,writeSoftWrapPreference} from './core/platform/web/editorPreferences';
+import {ResizablePanes} from './components/workspace/ResizablePanes';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {saveSource} from './application/workspace/sourceSave';
@@ -408,7 +409,7 @@ export default function App() {
         {/* 侧边点击展开手柄：当大纲/侧栏隐藏时，在左侧边缘提供悬浮/常驻触发展开 */}
         {!sidebarOpen && (
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={handleToggleSidebar}
             className="w-5 hover:w-7 h-full bg-neutral-900 border-r border-neutral-800 flex flex-col items-center justify-center gap-2 text-neutral-500 hover:text-teal-300 hover:bg-neutral-800 transition-all z-20 shrink-0 select-none cursor-pointer group"
             title="侧边点击：展开大纲与文档工作区"
           >
@@ -420,7 +421,7 @@ export default function App() {
         )}
 
         {/* Center / Right Content Viewports based on showEditor & showPreview */}
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{display:showEditor||showPreview?undefined:'none',minWidth:(Number(showEditor)+Number(showPreview))*360}}>
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{display:showEditor||showPreview?undefined:'none',minWidth:(Number(showEditor)+Number(showPreview))*360+(showEditor&&showPreview?8:0)}}>
           {/* Unified Workbench Toolbar across Editor & Preview */}
           {showEditor && (
             <WorkbenchToolbar
@@ -435,11 +436,9 @@ export default function App() {
             />
           )}
 
-          {/* Viewports Split Panels */}
-          <div id="workbench-document" role="tabpanel" aria-labelledby={'tab-'+encodeURIComponent(currentDocId)} className="flex-1 flex overflow-hidden">
-            {/* Editor Column */}
-            {showEditor && (
-              <div data-view="editor" onWheelCapture={()=>handleDirectScroll('editor')} onPointerDownCapture={()=>handleDirectScroll('editor')} onKeyDownCapture={()=>handleDirectScroll('editor')} className="h-full flex-1 min-w-0 flex flex-col">
+          {/* Resizing changes workbench geometry only; content max-width remains independent. */}
+          <ResizablePanes labelledBy={'tab-'+encodeURIComponent(currentDocId)} onBeforeResize={capturePosition} onDirectScroll={handleDirectScroll}
+            editor={showEditor?<>
                 <Editor
                   sessionId={currentDoc.id}
                   softWrap={softWrap}
@@ -456,23 +455,11 @@ export default function App() {
                   maxWidth={contentMaxWidth}
                 />
                 {tabBar}
-              </div>
-            )}
-
-            {/* Preview Column: Reading View */}
-            {showPreview && previewMode === 'flow' && (
-              <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
-                <ReadingPreview view={previewView} theme={currentDoc.theme} maxWidth={contentMaxWidth} containerRef={previewContainerRef} onScroll={handlePreviewScroll}/>
-              </div>
-            )}
-
-            {/* Preview Column: A4 Paginated View */}
-            {showPreview && previewMode === 'a4' && (
-              <div data-view="html" onWheelCapture={()=>handleDirectScroll('preview')} onPointerDownCapture={()=>handleDirectScroll('preview')} onKeyDownCapture={()=>handleDirectScroll('preview')} className="h-full flex-1 min-w-0 flex flex-col">
-                <A4PagePreview view={previewView} containerRef={previewContainerRef} onScroll={handlePreviewScroll}/>
-              </div>
-            )}
-          </div>
+            </>:null}
+            preview={showPreview?(previewMode==='flow'?
+              <ReadingPreview view={previewView} theme={currentDoc.theme} maxWidth={contentMaxWidth} containerRef={previewContainerRef} onScroll={handlePreviewScroll}/>:
+              <A4PagePreview view={previewView} containerRef={previewContainerRef} onScroll={handlePreviewScroll}/>):null}
+          />
           {!showEditor&&tabBar}
         </div>
       </div>
