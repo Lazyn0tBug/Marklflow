@@ -9,6 +9,8 @@ import {apiObject,apiPromise} from '../../../src/core/platform/externalApi';
 import {sharedDom} from '../../../src/core/platform/web/sharedDom';
 import corpus from '../export-source/corpus.json';
 const output=document.querySelector('[data-state]');
+/** The semantic layer carries the formula source beside its structure; only the structure is document text. */
+const mathText=(node:Element|null):string=>{if(!node)return'';const clone=node.cloneNode(true) as Element;for(const annotation of Array.from(clone.querySelectorAll('annotation')))annotation.remove();return clone.textContent||''};
 void(async()=>{try{
  const engine=apiObject(window.MathJax,'MathJax'),startup=apiObject(engine.startup,'startup');await apiPromise(startup.promise,'startup');
  const baseline=startup.document,baselineInput=startup.input;
@@ -16,7 +18,7 @@ void(async()=>{try{
  for(const mathMode of ['mathml','svg'] as const){
   const doc=createNewDocument('HTML canonical');doc.markdown=corpus.render.markdown.replace(/\$\$(.*?)\$\$/g,(_match,value:string)=>'$$\n'+value+'\n$$');
   const first=await prepareExportContent(doc,{mathMode});const artifact=first,root=document.createElement('article');root.className='mf-doc';root.innerHTML=artifact.html;
-  const math=[...root.querySelectorAll('[data-mf-math-id]')].map(node=>({id:node.getAttribute('data-mf-math-id'),line:node.getAttribute('data-line'),end:node.getAttribute('data-source-end'),text:node.querySelector('math')?.textContent||'',display:node.classList.contains('mf-math'),hasSvg:!!node.querySelector('svg'),hasHidden:!!node.querySelector('.mf-math-semantics[hidden]')}));
+  const math=[...root.querySelectorAll('[data-mf-math-id]')].map(node=>({id:node.getAttribute('data-mf-math-id'),line:node.getAttribute('data-line'),end:node.getAttribute('data-source-end'),text:mathText(node.querySelector('math')),display:node.classList.contains('mf-math'),hasSvg:!!node.querySelector('svg'),hasHidden:!!node.querySelector('.mf-math-semantics[hidden]')}));
   const stage=document.createElement('section');stage.className='mf-document-shell';const style=document.createElement('style');style.textContent=artifact.presentation.css;stage.append(style,root);document.body.append(stage);
   const hiddenInvisible=[...root.querySelectorAll<HTMLElement>('.mf-math-semantics')].every(node=>getComputedStyle(node).display==='none'&&node.getBoundingClientRect().height===0);
   stage.remove();
@@ -25,7 +27,7 @@ void(async()=>{try{
   const repeated=await prepareExportContent(doc,{mathMode});const again=document.createElement('article');again.innerHTML=repeated.html;
   let unknown='';const bad=createNewDocument('Bad');bad.markdown='$\\notDefinedHere$';try{await prepareExportContent(bad,{mathMode})}catch(error){unknown=String(error)}
   const recovery=await prepareExportContent(other,{mathMode});
-  reports.push({mathMode,math,hiddenInvisible,html:artifact.html,other:otherRoot.querySelector('math')?.textContent||'',repeat:[...again.querySelectorAll('[data-mf-math-id] math')].map(node=>node.textContent),unknown,recovered:!!recovery.html,config:artifact.source.renderConfigVersion,serialized:JSON.parse(JSON.stringify(artifact)).schemaVersion,frozen:Object.isFrozen(artifact)&&Object.isFrozen(artifact.presentation.page.margins),sourceAttached:'markdown' in artifact||'document' in artifact});
+  reports.push({mathMode,math,hiddenInvisible,html:artifact.html,other:mathText(otherRoot.querySelector('math')),repeat:[...again.querySelectorAll('[data-mf-math-id] math')].map(node=>mathText(node)),unknown,recovered:!!recovery.html,config:artifact.source.renderConfigVersion,serialized:JSON.parse(JSON.stringify(artifact)).schemaVersion,frozen:Object.isFrozen(artifact)&&Object.isFrozen(artifact.presentation.page.margins),sourceAttached:'markdown' in artifact||'document' in artifact});
  }
  // Duplicate source URLs are fetched once and remain frozen after caller mutations.
  const originalFetch=window.fetch;let reads=0;

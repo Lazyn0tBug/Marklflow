@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "provenance": "Repository-authored native-formula fixtures. The document holds three formulas: a summation and a limit have no equivalent native form and become images, while the integral keeps a script form and converts natively. formulaCount counts the downgraded formulas, matching the O0 convention.",
+  "cases": [
+    {
+      "id": "fallback-formulas",
+      "markdown": "# 降级公式\n\n求和 $\\sum_{i=1}^{n} x_i$\n\n积分 $\\int_0^1 f(x)dx$\n\n极限 $\\lim_{x\\to 0} f(x)$\n",
+      "formulaCount": 2,
+      "firstNodeId": "line-3",
+      "lastNodeId": "line-7"
+    }
+  ]
+}

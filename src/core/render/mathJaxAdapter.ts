@@ -1,5 +1,6 @@
 /** Runtime contract for bundled MathJax 3.2.2. SharedDom owns engine access; each adapter holds one isolated TeX document. */
 import {apiObject,apiMethod,apiPromise,apiSyncResult} from '../platform/externalApi';
+import {MATHML_NAMESPACE} from '../policy/htmlRules';
 
 declare global {interface Window {MathJax?:unknown}}
 export interface MathJaxAdapter {
@@ -15,6 +16,10 @@ function extraText(root:ParentNode):boolean{
 function assertNoMathError(root:Element,value:string):void{
  const selector='[data-mjx-error],merror,.mjx-merror';
  if(root.matches(selector)||root.querySelector(selector))throw new Error('公式解析失败：'+value);
+}
+/** The published semantic layer carries structure only; a source annotation would survive sanitization as stray text inside the formula. */
+function stripSemanticAnnotations(math:Element):void{
+ for(const annotation of Array.from(math.querySelectorAll('annotation,annotation-xml')))annotation.remove();
 }
 export async function loadMathJaxAdapter(raw:unknown):Promise<MathJaxAdapter>{
  const engine=apiObject(raw,'MathJax'),startup=apiObject(engine.startup,'MathJax startup');
@@ -88,8 +93,9 @@ export async function loadMathJaxAdapter(raw:unknown):Promise<MathJaxAdapter>{
      if(typeof mml!=='string')throw new Error('MathJax MathML 输出类型无效');
      const template=document.createElement('template');template.innerHTML=mml;
      const math=template.content.firstElementChild;
-     if(template.content.children.length!==1||math?.localName!=='math'||math.namespaceURI!=='http://www.w3.org/1998/Math/MathML'||extraText(template.content))throw new Error('MathJax MathML 输出结构无效');
+     if(template.content.children.length!==1||math?.localName!=='math'||math.namespaceURI!==MATHML_NAMESPACE||extraText(template.content))throw new Error('MathJax MathML 输出结构无效');
      assertNoMathError(math,value);
+     stripSemanticAnnotations(math);
      const semantics=document.createElement('span');semantics.className='mf-math-semantics';semantics.hidden=true;semantics.setAttribute('aria-hidden','true');semantics.append(math);result.append(semantics);
     }
     return result.outerHTML;

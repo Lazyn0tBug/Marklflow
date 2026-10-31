@@ -1,6 +1,9 @@
 import {parse,walk,generate,lexer} from 'css-tree';
 // Cover presentation MathML, including orphan nodes removed by HTML sanitization.
 export const AUTHOR_MATHML_SELECTOR='math,menclose,merror,mfenced,mfrac,mglyph,mi,mlabeledtr,mmultiscripts,mn,mo,mover,mpadded,mphantom,mroot,mrow,ms,mspace,msqrt,mstyle,msub,msup,msubsup,mtable,mtd,mtext,mtr,munder,munderover,mprescripts,maction,maligngroup,malignmark,mlongdiv,mscarries,mscarry,msgroup,mstack,msline,msrow,semantics,annotation,annotation-xml,none';
+// The generated semantic layer carries the formula source beside its structure; outputs read it, never reparse the source.
+export const MATHML_SOURCE_ENCODING='application/x-tex';
+export const MATHML_NAMESPACE='http://www.w3.org/1998/Math/MathML';
 export function escapeHtml(v:string):string {
  return v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 }

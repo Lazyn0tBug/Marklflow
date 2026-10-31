@@ -65,7 +65,13 @@ it('serializes the same compilation root for SVG semantics and restores the inpu
  const source=runtime();source.startup.getInputJax=()=>[input];
  const adapter=await loadMathJaxAdapter({...source,startup:{...source.startup,toMML},tex2svgPromise:async()=>{input.compile();const node=document.createElement('mjx-container');node.innerHTML='<svg xmlns="http://www.w3.org/2000/svg"/>';return node}});adapter.resetDocument();
  const html=await adapter.convert('same',false,'svg',true),root=document.createElement('div');root.innerHTML=html;
- expect(compile).toHaveBeenCalledOnce();expect(source.tex2mmlPromise).not.toHaveBeenCalled();expect(toMML).toHaveBeenCalledOnce();expect(root.querySelector('.mf-math-semantics[hidden] math')?.textContent).toBe('same');expect(input.compile).toBe(compile);
+ expect(compile).toHaveBeenCalledOnce();expect(source.tex2mmlPromise).not.toHaveBeenCalled();expect(toMML).toHaveBeenCalledOnce();
+ // The published semantic layer carries structure only; a source annotation would survive sanitization as stray equation text.
+ const math=root.querySelector('.mf-math-semantics[hidden] math');
+ expect(math?.querySelector('mi')?.textContent).toBe('same');
+ expect(math?.querySelector('annotation')).toBeNull();
+ expect(math?.textContent).toBe('same');
+ expect(input.compile).toBe(compile);
  adapter.releaseDocument();
 });
 it('fails closed if SVG semantics cannot be captured and leaves future documents usable',async()=>{

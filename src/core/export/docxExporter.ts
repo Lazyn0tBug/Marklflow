@@ -2,33 +2,92 @@ import {sharedDom} from '../platform/web/sharedDom';
 import {Document as WordDocument,Packer,Paragraph,TextRun,ImageRun,ExternalHyperlink,HeadingLevel,Table,TableRow,TableCell,WidthType,AlignmentType,LevelFormat,Bookmark,InternalHyperlink,type ParagraphChild,type IParagraphOptions,type INumberingOptions,PageBreak} from 'docx';
 import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {inspectDocx,groupDocxIssues} from './outputCapabilities';
+import {docxFormulaSource,planDocxFormula} from './mathmlToOoml';
 import {waitForLayout,withDeadline} from './documentPrint';
 type Run=ParagraphChild;
 interface InlineContext {bookmarks:Map<string,string>;width:number;height:number}
 interface InlineStyle {bold?:boolean;italics?:boolean;strike?:boolean;font?:string;superScript?:boolean;subScript?:boolean}
 async function rasterImage(source:string,width:number,height:number):Promise<Uint8Array>{
- const image=new Image();image.src=source;await withDeadline(image.decode(),'DOCX 图片转换超时');
- const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*2));canvas.height=Math.max(1,Math.ceil(height*2));
- const ctx=canvas.getContext('2d');if(!ctx)throw new Error('DOCX 图片转换不可用');ctx.drawImage(image,0,0,canvas.width,canvas.height);
- const base64=canvas.toDataURL('image/png').split(',')[1];if(!base64)throw new Error('DOCX 图片编码失败');return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+ // An SVG can decode before its referenced glyphs are painted, which yields an empty raster. Draw, verify and
+ // retry before giving up: a blank fallback image is worse than a failed export. Each attempt loads the image
+ // again, because a decoded image does not repaint its references on a second draw.
+ let blank=true,encoded='';
+ for(let attempt=0;attempt<3&&blank;attempt++){
+  if(attempt>0)await new Promise<void>(resolve=>setTimeout(resolve,60));
+  const image=new Image();image.src=source;await withDeadline(image.decode(),'DOCX 图片转换超时');
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.ceil(width*2));canvas.height=Math.max(1,Math.ceil(height*2));
+  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('DOCX 图片转换不可用');
+  ctx.drawImage(image,0,0,canvas.width,canvas.height);
+  blank=!hasInk(ctx,canvas.width,canvas.height);
+  if(blank)continue;
+  const base64=canvas.toDataURL('image/png').split(',')[1];if(!base64)throw new Error('DOCX 图片编码失败');encoded=base64;
+ }
+ if(blank||!encoded)throw new Error('DOCX 图片栅格化为空，已中止导出');
+ return Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
 }
-async function picture(el:Element,context:InlineContext):Promise<ImageRun>{
+/** A raster that drew nothing is fully transparent; an opaque picture of any colour is a real picture. */
+function hasInk(ctx:CanvasRenderingContext2D,width:number,height:number):boolean{
+ const data=ctx.getImageData(0,0,width,height).data;
+ for(let index=3;index<data.length;index+=4)if((data[index]??0)>0)return true;
+ return false;
+}
+/**
+ * Replaces every <use> with the shape it points at, so the vector copy carries its glyphs inline instead of
+ * relying on reference resolution that a reader may not perform.
+ */
+function inlineGlyphReferences(root:Element):void{
+ const definitions=new Map<string,Element>();
+ for(const shape of root.querySelectorAll('defs > *')){const id=shape.getAttribute('id');if(id)definitions.set(id,shape)}
+ const inlined=new Set<Element>();
+ for(const use of Array.from(root.querySelectorAll('use'))){
+  const href=use.getAttribute('href')??use.getAttribute('xlink:href');
+  const target=href?.startsWith('#')?definitions.get(href.slice(1)):undefined;
+  if(!target)continue;
+  const group=document.createElementNS(root.namespaceURI,'g');
+  const x=Number(use.getAttribute('x')??0),y=Number(use.getAttribute('y')??0),transform=use.getAttribute('transform');
+  if(x||y||transform)group.setAttribute('transform',(x||y?'translate('+x+' '+y+')':'')+(transform?' '+transform:''));
+  const shape=target.cloneNode(true) as Element;shape.removeAttribute('id');group.append(shape);
+  use.replaceWith(group);inlined.add(target);
+ }
+ for(const definition of inlined)definition.remove();
+ for(const container of Array.from(root.querySelectorAll('defs'))){if(!container.children.length)container.remove()}
+}
+async function picture(el:Element,context:InlineContext,options:{altText?:string}={}):Promise<ImageRun>{
  const box=el.getBoundingClientRect(),scale=Math.min(1,context.width/Math.max(1,box.width),context.height/Math.max(1,box.height));
  const width=Math.max(1,box.width*scale),height=Math.max(1,box.height*scale);
+ // The source of a downgraded formula travels with the image so it stays verifiable without editing the source.
+ const altText=options.altText?{name:'公式',description:options.altText}:null;
  if(el.tagName.toLowerCase()==='svg'){
   const clone=el.cloneNode(true) as SVGElement;clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.setAttribute('width',String(Math.max(1,box.width)));clone.setAttribute('height',String(Math.max(1,box.height)));
+  // The vector copy is drawn by the reader, not by us. Inline the referenced glyphs and drop the web-only
+  // constructs, so the copy does not depend on how a reader treats glyph reuse or inherited colours.
+  clone.removeAttribute('style');clone.removeAttribute('role');
+  for(const node of [clone,...Array.from(clone.querySelectorAll('[fill],[stroke]'))]){
+   for(const name of ['fill','stroke'])if(node.getAttribute(name)==='currentColor')node.setAttribute(name,'#000000');
+  }
+  inlineGlyphReferences(clone);
   const xml=new XMLSerializer().serializeToString(clone),data=new TextEncoder().encode(xml);
   const source='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
   const fallback=await rasterImage(source,width,height);
-  return new ImageRun({type:'svg',data,transformation:{width,height},fallback:{type:'png',data:fallback}});
+  const image={type:'svg' as const,data,transformation:{width,height},fallback:{type:'png' as const,data:fallback}};
+  return new ImageRun(altText?{...image,altText}:image);
  }
  const png=await rasterImage((el as HTMLImageElement).src,width,height);
- return new ImageRun({type:'png',data:png,transformation:{width,height}});
+ const image={type:'png' as const,data:png,transformation:{width,height}};
+ return new ImageRun(altText?{...image,altText}:image);
 }
 async function inline(node:Node,context:InlineContext,style:InlineStyle={}):Promise<Run[]>{
  if(node.nodeType===Node.TEXT_NODE){const text=node.textContent||'';return node.parentElement?.closest('pre')?text.split('\n').flatMap((part,i)=>i?[new TextRun({break:1}),new TextRun({...style,text:part})]:[new TextRun({...style,text:part})]):[new TextRun({...style,text})]}
  if(!(node instanceof Element))return [];
  const tag=node.tagName.toLowerCase();
+ // A formula becomes native Word math when its structure has an equivalent form; otherwise the visual layer stays the copy.
+ if(node.hasAttribute('data-mf-math-id')){
+  const plan=planDocxFormula(node);
+  if(plan.kind==='native')return [plan.math];
+  const visual=node.querySelector('svg');
+  if(!visual)throw new Error('公式没有可用的图像后备：'+plan.reason);
+  return [await picture(visual,context,{altText:docxFormulaSource(node)})];
+ }
  // Semantic MathML accompanies SVG in canonical HTML; only the selected presentation is drawn here.
  if(node.classList.contains('mf-math-semantics')&&node.hasAttribute('hidden'))return [];
  if(tag==='svg'||tag==='img')return [await picture(node,context)];
@@ -94,7 +153,7 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
      const ordered=tag==='ol',reference='mf_list_'+numbering.length,start=ordered?(node as HTMLOListElement).start:1;
      numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:ordered?LevelFormat.DECIMAL:LevelFormat.BULLET,text:ordered?'%'+(i+1)+'.':'•',start,alignment:AlignmentType.LEFT}))});
      for(const li of Array.from(node.children).filter(n=>n.localName==='li'))out.push(...await blocks([...li.childNodes],level+1,{numbering:{reference,level:Math.min(8,level)}}));
-    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph([...node.childNodes],node.classList.contains('mf-math')?{alignment:AlignmentType.CENTER}:{},node.id);
+    }else if(['p','pre','summary','figcaption'].includes(tag)||node.classList.contains('mf-math'))await paragraph(node.classList.contains('mf-math')?[node]:[...node.childNodes],node.classList.contains('mf-math')?{alignment:AlignmentType.CENTER}:{},node.id);
     else if(tag==='hr')await paragraph([document.createTextNode('—')]);
     else {const nested=await blocks([...node.childNodes],level,first?firstOptions:{});out.push(...nested);if(nested.length)first=false}
     if(node.id&&context.bookmarks.has(node.id)&&!paragraphBlock){

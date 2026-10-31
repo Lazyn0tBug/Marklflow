@@ -108,7 +108,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
           {selectedFormat==='docx'&&docxIssues.length>0&&<section className="text-xs text-amber-200 space-y-3" aria-label="DOCX 兼容性提示" aria-live="polite">
             <ul className="space-y-1">{docxGroups.map((group,index)=><li key={index}>{group.adaptation==='unsupported'?'不支持：':''}{group.summary}</li>)}</ul>
             {docxBlocked&&<p role="alert">存在不支持的内容，请修改后再导出；勾选降级确认不会绕过此限制。</p>}
-            <details><summary className="cursor-pointer underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-teal-400">查看兼容性详情（{docxIssues.length}项）</summary><ul className="mt-3 space-y-1 wrap-anywhere">{docxIssues.map((issue,index)=><li key={index}>{issue.nodeId}：{issue.message}</li>)}</ul></details>
+            <details><summary className="cursor-pointer underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-teal-400">查看兼容性详情（{docxIssues.length}项）</summary><ul className="mt-3 space-y-1 wrap-anywhere">{docxIssues.map((issue,index)=><li key={index}>{issue.nodeId}：{issue.message}{issue.detail&&<span className="ml-1 opacity-70">（{issue.detail}）</span>}</li>)}</ul></details>
             {reviewing&&!docxBlocked&&<label className="flex items-start gap-2"><input id="export-docx-consent" type="checkbox" className="mt-0.5 shrink-0" checked={allowSourceFallback} onChange={event=>setAllowSourceFallback(event.target.checked)}/>接受图片静态化及语义重排</label>}
           </section>}
           {/* File Name */}
@@ -198,7 +198,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>
                   <div className="font-medium text-xs text-neutral-100">Word 原生文档 (.docx)</div>
                   <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
-                    利用 docx 引擎生成真正 OpenXML 格式，原生标题、段落、列表与表格映射为原生对象；Word/WPS 的显示效果需另行验证。
+                    利用 docx 引擎生成真正 OpenXML 格式，原生标题、段落、列表与表格映射为原生对象；公式在结构可表达时输出为 Word 原生公式；Word/WPS 的显示效果需另行验证。
                   </p>
                 </div>
               </button>
@@ -248,7 +248,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
                 <div>• 按文档页面配置导出，工作台预览可保持关闭。</div>
               )}
               {selectedFormat === 'docx' && (
-                <div>• 段落与表格映射为 Word 原生对象；公式和图表以图片输出，原始HTML按语义重排；导出前统一检查并确认；不能原生编辑公式或保留交互。</div>
+                <div>• 段落与表格映射为 Word 原生对象；公式在结构有原生等价形式时输出为可编辑公式，否则转为图片并附源式；图表以图片输出，原始HTML按语义重排；导出前统一检查并确认。</div>
               )}
               {selectedFormat === 'reading-html' && (
                 <div>• 页面内嵌自包含 CSS 与公式渲染，接收方无需安装任何插件或字体库即可阅读。</div>

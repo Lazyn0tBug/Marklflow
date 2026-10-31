@@ -1,0 +1,300 @@
+{
+  "version": "3.2.2",
+  "records": [
+    {
+      "id": "run",
+      "latex": "x + 1",
+      "display": false,
+      "hostId": "math-0",
+      "line": "1",
+      "hostTag": "span",
+      "tex": "x + 1",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <mi>x</mi>\n  <mo>+</mo>\n  <mn>1</mn>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "identifier",
+      "latex": "\\mathbb{R}",
+      "display": false,
+      "hostId": "math-9",
+      "line": "3",
+      "hostTag": "span",
+      "tex": "\\mathbb{R}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <mrow>\n    <mi mathvariant=\"double-struck\">R</mi>\n  </mrow>\n</math>",
+      "tags": [
+        "mi",
+        "mrow"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "fraction",
+      "latex": "\\frac{a_1}{\\sqrt{1+x^2}}",
+      "display": false,
+      "hostId": "math-23",
+      "line": "5",
+      "hostTag": "span",
+      "tex": "\\frac{a_1}{\\sqrt{1+x^2}}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <mfrac>\n    <msub>\n      <mi>a</mi>\n      <mn>1</mn>\n    </msub>\n    <msqrt>\n      <mn>1</mn>\n      <mo>+</mo>\n      <msup>\n        <mi>x</mi>\n        <mn>2</mn>\n      </msup>\n    </msqrt>\n  </mfrac>\n</math>",
+      "tags": [
+        "mfrac",
+        "mi",
+        "mn",
+        "mo",
+        "msqrt",
+        "msub",
+        "msup"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "nested-fraction",
+      "latex": "\\frac{\\frac{1}{2}}{3}",
+      "display": true,
+      "hostId": "math-51",
+      "line": "7",
+      "hostTag": "div",
+      "tex": "\\frac{\\frac{1}{2}}{3}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <mfrac>\n    <mfrac>\n      <mn>1</mn>\n      <mn>2</mn>\n    </mfrac>\n    <mn>3</mn>\n  </mfrac>\n</math>",
+      "tags": [
+        "mfrac",
+        "mn"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "scripts",
+      "latex": "x^{2}_{i}",
+      "display": false,
+      "hostId": "math-80",
+      "line": "11",
+      "hostTag": "span",
+      "tex": "x^{2}_{i}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <msubsup>\n    <mi>x</mi>\n    <mrow>\n      <mi>i</mi>\n    </mrow>\n    <mrow>\n      <mn>2</mn>\n    </mrow>\n  </msubsup>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mrow",
+        "msubsup"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "radical",
+      "latex": "\\sqrt[3]{x}",
+      "display": true,
+      "hostId": "math-93",
+      "line": "13",
+      "hostTag": "div",
+      "tex": "\\sqrt[3]{x}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <mroot>\n    <mi>x</mi>\n    <mn>3</mn>\n  </mroot>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mroot"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "delimiter",
+      "latex": "\\left(\\frac{a}{b}\\right)",
+      "display": false,
+      "hostId": "math-112",
+      "line": "17",
+      "hostTag": "span",
+      "tex": "\\left(\\frac{a}{b}\\right)",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <mrow>\n    <mo>(</mo>\n    <mfrac>\n      <mi>a</mi>\n      <mi>b</mi>\n    </mfrac>\n    <mo>)</mo>\n  </mrow>\n</math>",
+      "tags": [
+        "mfrac",
+        "mi",
+        "mo",
+        "mrow"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "sum",
+      "latex": "\\sum_{k=0}^{n} x^k",
+      "display": true,
+      "hostId": "math-140",
+      "line": "19",
+      "hostTag": "div",
+      "tex": "\\sum_{k=0}^{n} x^k",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <munderover>\n    <mo>∑</mo>\n    <mrow>\n      <mi>k</mi>\n      <mo>=</mo>\n      <mn>0</mn>\n    </mrow>\n    <mrow>\n      <mi>n</mi>\n    </mrow>\n  </munderover>\n  <msup>\n    <mi>x</mi>\n    <mi>k</mi>\n  </msup>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo",
+        "mrow",
+        "msup",
+        "munderover"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "integral",
+      "latex": "\\int_0^1 f(x)\\,dx",
+      "display": true,
+      "hostId": "math-166",
+      "line": "23",
+      "hostTag": "div",
+      "tex": "\\int_0^1 f(x)\\,dx",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <msubsup>\n    <mo>∫</mo>\n    <mn>0</mn>\n    <mn>1</mn>\n  </msubsup>\n  <mi>f</mi>\n  <mo stretchy=\"false\">(</mo>\n  <mi>x</mi>\n  <mo stretchy=\"false\">)</mo>\n  <mstyle scriptlevel=\"0\">\n    <mspace width=\"0.167em\"></mspace>\n  </mstyle>\n  <mi>d</mi>\n  <mi>x</mi>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo",
+        "mspace",
+        "mstyle",
+        "msubsup"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "limit",
+      "latex": "\\lim_{x\\to 0} f(x)",
+      "display": true,
+      "hostId": "math-191",
+      "line": "27",
+      "hostTag": "div",
+      "tex": "\\lim_{x\\to 0} f(x)",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <munder>\n    <mo movablelimits=\"true\">lim</mo>\n    <mrow>\n      <mi>x</mi>\n      <mo accent=\"false\" stretchy=\"false\">→</mo>\n      <mn>0</mn>\n    </mrow>\n  </munder>\n  <mi>f</mi>\n  <mo stretchy=\"false\">(</mo>\n  <mi>x</mi>\n  <mo stretchy=\"false\">)</mo>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo",
+        "mrow",
+        "munder"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "accent",
+      "latex": "\\vec{v}",
+      "display": false,
+      "hostId": "math-217",
+      "line": "31",
+      "hostTag": "span",
+      "tex": "\\vec{v}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <mrow>\n    <mover>\n      <mi>v</mi>\n      <mo stretchy=\"false\">→</mo>\n    </mover>\n  </mrow>\n</math>",
+      "tags": [
+        "mi",
+        "mo",
+        "mover",
+        "mrow"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "matrix",
+      "latex": "\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}",
+      "display": true,
+      "hostId": "math-228",
+      "line": "33",
+      "hostTag": "div",
+      "tex": "\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <mrow>\n    <mo>(</mo>\n    <mtable columnspacing=\"1em\" rowspacing=\"4pt\">\n      <mtr>\n        <mtd>\n          <mn>1</mn>\n        </mtd>\n        <mtd>\n          <mn>2</mn>\n        </mtd>\n      </mtr>\n      <mtr>\n        <mtd>\n          <mn>3</mn>\n        </mtd>\n        <mtd>\n          <mn>4</mn>\n        </mtd>\n      </mtr>\n    </mtable>\n    <mo>)</mo>\n  </mrow>\n</math>",
+      "tags": [
+        "mn",
+        "mo",
+        "mrow",
+        "mtable",
+        "mtd",
+        "mtr"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "cases",
+      "latex": "\\begin{cases}1&x>0\\\\0&x\\le 0\\end{cases}",
+      "display": true,
+      "hostId": "math-272",
+      "line": "37",
+      "hostTag": "div",
+      "tex": "\\begin{cases}1&x>0\\\\0&x\\le 0\\end{cases}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <mrow>\n    <mo>{</mo>\n    <mtable columnalign=\"left left\" columnspacing=\"1em\" rowspacing=\".2em\">\n      <mtr>\n        <mtd>\n          <mn>1</mn>\n        </mtd>\n        <mtd>\n          <mi>x</mi>\n          <mo>&gt;</mo>\n          <mn>0</mn>\n        </mtd>\n      </mtr>\n      <mtr>\n        <mtd>\n          <mn>0</mn>\n        </mtd>\n        <mtd>\n          <mi>x</mi>\n          <mo>≤</mo>\n          <mn>0</mn>\n        </mtd>\n      </mtr>\n    </mtable>\n    <mo fence=\"true\" stretchy=\"true\" symmetric=\"true\"></mo>\n  </mrow>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo",
+        "mrow",
+        "mtable",
+        "mtd",
+        "mtr"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "aligned",
+      "latex": "\\begin{aligned}f(x)&=x\\\\g(x)&=x^2\\end{aligned}",
+      "display": true,
+      "hostId": "math-319",
+      "line": "41",
+      "hostTag": "div",
+      "tex": "\\begin{aligned}f(x)&=x\\\\g(x)&=x^2\\end{aligned}",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\">\n  <mtable displaystyle=\"true\" columnalign=\"right left\" columnspacing=\"0em\" rowspacing=\"3pt\">\n    <mtr>\n      <mtd>\n        <mi>f</mi>\n        <mo stretchy=\"false\">(</mo>\n        <mi>x</mi>\n        <mo stretchy=\"false\">)</mo>\n      </mtd>\n      <mtd>\n        <mi></mi>\n        <mo>=</mo>\n        <mi>x</mi>\n      </mtd>\n    </mtr>\n    <mtr>\n      <mtd>\n        <mi>g</mi>\n        <mo stretchy=\"false\">(</mo>\n        <mi>x</mi>\n        <mo stretchy=\"false\">)</mo>\n      </mtd>\n      <mtd>\n        <mi></mi>\n        <mo>=</mo>\n        <msup>\n          <mi>x</mi>\n          <mn>2</mn>\n        </msup>\n      </mtd>\n    </mtr>\n  </mtable>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo",
+        "msup",
+        "mtable",
+        "mtd",
+        "mtr"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    },
+    {
+      "id": "text-mixed",
+      "latex": "\\text{当 } x > 0",
+      "display": false,
+      "hostId": "math-373",
+      "line": "45",
+      "hostTag": "span",
+      "tex": "\\text{当 } x > 0",
+      "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\">\n  <mtext>当&nbsp;</mtext>\n  <mi>x</mi>\n  <mo>&gt;</mo>\n  <mn>0</mn>\n</math>",
+      "tags": [
+        "mi",
+        "mn",
+        "mo",
+        "mtext"
+      ],
+      "hasSemantics": false,
+      "hasAnnotation": false,
+      "strayText": false
+    }
+  ]
+}

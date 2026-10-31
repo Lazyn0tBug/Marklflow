@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import JSZip from 'jszip';
 import corpus from '../fixtures/export-source/corpus.json' with {type:'json'};
 async function review(page:Page){
- await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill('# ACCEPTED_REVIEW\n\nFormula $x$.');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
+ await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill('# ACCEPTED_REVIEW\n\nFormula $\\sum_{i=1}^{n} x_i$.');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
  await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();await expect(page.getByRole('checkbox',{name:'接受图片静态化及语义重排'})).toBeVisible();
 }
 test('keeps the accepted HTML through confirmation even when the source changes',async({page},info)=>{

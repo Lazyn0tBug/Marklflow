@@ -63,13 +63,13 @@ test('reports static DOCX mappings before explicit consent',async({page})=>{
 });
 
 
-test('exports native DOCX structure with embedded formula and diagram pictures',async({page},info)=>{
+test('exports native DOCX structure with a native formula and embedded diagram pictures',async({page},info)=>{
  await source(page,fixture);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
  await page.getByRole('checkbox',{name:'接受图片静态化及语义重排'}).check();
  const event=page.waitForEvent('download');await page.getByRole('button',{name:'确认并导出',exact:true}).click();const result=await event;
  const file=info.outputPath('document.docx');await result.saveAs(file);
  const zip=await JSZip.loadAsync(await readFile(file));const xml=await zip.file('word/document.xml')!.async('string');
- expect(xml).toContain('正文结束');expect(xml).toContain('w:tbl');expect((xml.match(/<w:drawing>/g)||[]).length).toBeGreaterThanOrEqual(3);
+ expect(xml).toContain('正文结束');expect(xml).toContain('w:tbl');expect(xml).toContain('<m:oMath>');expect((xml.match(/<w:drawing>/g)||[]).length).toBeGreaterThanOrEqual(2);
  expect(Object.keys(zip.files).filter(f=>f.startsWith('word/media/')).length).toBeGreaterThanOrEqual(3);
 });
 

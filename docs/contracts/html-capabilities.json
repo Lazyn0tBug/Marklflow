@@ -76,7 +76,7 @@
           "status": "unverified"
         },
         "docx": {
-          "adaptation": "static",
+          "adaptation": "mapped",
           "status": "unverified"
         }
       }
