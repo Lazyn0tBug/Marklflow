@@ -25,8 +25,9 @@ for(const environment of ['development','built','http'] as const)for(const mathM
   const proof=await page.context().newPage();await proof.setContent(inspected.html);await proof.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(image=>image.decode()))});
   await proof.pdf({path:info.outputPath('automated-preflight.pdf'),preferCSSPageSize:true,printBackground:true});await proof.close();
  }
+ // The host survives the closed dialog briefly so the system spooler can flush the captured document.
  await frame.evaluate(element=>(element as HTMLIFrameElement).contentWindow!.dispatchEvent(new Event('afterprint')));await expect(frame).toHaveCount(0);
- await expect.poll(async()=>{const report:unknown=JSON.parse(await output.textContent()||'{}');return report}).toMatchObject({remainingFrames:0,afterprintObserved:true,busy:false,saveObservedByApplication:false});
+ await expect.poll(async()=>{const report:unknown=JSON.parse(await output.textContent()||'{}');return report}).toMatchObject({remainingFrames:1,settledFrames:0,afterprintObserved:true,busy:false,saveObservedByApplication:false});
  if(environment==='http')expect(await page.evaluate(()=>isSecureContext)).toBe(false);
 });
 
