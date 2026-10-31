@@ -9,7 +9,7 @@ import { groupDocxIssues,type OutputIssue } from '../../core/export/outputCapabi
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Download, FileCode, FileText, CheckCircle, AlertTriangle, Layers } from 'lucide-react';
+import { X, Download, FileCode, FileText, AlertTriangle, Layers } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
 
 interface ExportModalProps {
@@ -17,15 +17,18 @@ interface ExportModalProps {
   onClose: () => void;
   document: DocumentRecord;
   mathMode: 'mathml' | 'svg';
+  onNotice?: (notice: ExportNotice) => void;
 }
+
+/** The outcome of one export, reported outside the dialog so a system window cannot hide it. */
+export interface ExportNotice {message: string; tone: 'success'|'info'|'warning'|'error'}
 
 export type {ExportFormat} from '../../application/exports/exportService';
 
-export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode }) => {
+export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, document: doc, mathMode, onNotice }) => {
   const dialogRef=useRef<HTMLDivElement>(null),closeRef=useRef(onClose);
   const reviewDismissed=useRef(false),openRef=useRef(isOpen),reviewResolver=useRef<((accepted:boolean)=>void)|null>(null);openRef.current=isOpen;
   const [reviewing,setReviewing]=useState(false),[docxIssues,setDocxIssues]=useState<readonly OutputIssue[]>([]);
-  const [exportStatus,setExportStatus]=useState<'completed'|'cancelled'|'blocked'|null>(null);
   const finishReview=(accepted:boolean)=>{const resolve=reviewResolver.current;reviewResolver.current=null;setReviewing(false);resolve?.(accepted)};
   closeRef.current=()=>{reviewDismissed.current=true;finishReview(false);onClose()};
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('editable-html');
@@ -33,12 +36,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [allowSourceFallback, setAllowSourceFallback] = useState(false);
   const [allowRemoteAssets, setAllowRemoteAssets] = useState(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
-  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
   const docxGroups=useMemo(()=>groupDocxIssues(docxIssues),[docxIssues]);
   const docxBlocked=docxIssues.some(issue=>issue.adaptation==='unsupported');
-  useEffect(()=>{if(!webExportService.busy){setAllowSourceFallback(false);setDocxIssues([]);setExportSuccess(null);setExportStatus(null)}},[doc.id,doc.markdown,selectedFormat]);
-  useEffect(()=>{if(isOpen&&!webExportService.busy){setFileName(doc.meta.title||'MarkFlow-Document');setExportSuccess(null);setAllowSourceFallback(false);setAllowRemoteAssets(false);setDocxIssues([]);setExportStatus(null)}},[isOpen,doc.id]);
+  useEffect(()=>{if(!webExportService.busy){setAllowSourceFallback(false);setDocxIssues([])}},[doc.id,doc.markdown,selectedFormat]);
+  useEffect(()=>{if(isOpen&&!webExportService.busy){setFileName(doc.meta.title||'MarkFlow-Document');setAllowSourceFallback(false);setAllowRemoteAssets(false);setDocxIssues([])}},[isOpen,doc.id]);
   useEffect(()=>{if(!isOpen){reviewDismissed.current=true;if(reviewResolver.current)finishReview(false)}},[isOpen]);
   useEffect(()=>{openRef.current=isOpen;return()=>{openRef.current=false;reviewDismissed.current=true;reviewResolver.current?.(false);reviewResolver.current=null}},[]);
   useEffect(()=>{if(reviewing)dialogRef.current?.querySelector<HTMLInputElement>('#export-docx-consent')?.focus()},[reviewing]);
@@ -62,17 +64,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
   const handleExport = async () => {
     if(reviewing){if(allowSourceFallback&&!docxBlocked)finishReview(true);return}
-    if(webExportService.busy){setExportSuccess('正在导出，请稍候');return}
-    reviewDismissed.current=false;setIsExporting(true);setExportSuccess(null);setExportStatus(null);setDocxIssues([]);
+    if(webExportService.busy){onNotice?.({message:'正在导出，请稍候',tone:'info'});return}
+    reviewDismissed.current=false;setIsExporting(true);setDocxIssues([]);
     try{
       const result=await webExportService.run({document:doc,format:selectedFormat,fileName,mathMode,allowRemoteAssets},{confirmDocx:(issues)=>{
         if(!openRef.current||reviewDismissed.current)return Promise.resolve(false);
         setDocxIssues(issues);setAllowSourceFallback(false);setReviewing(true);
         return new Promise<boolean>(resolve=>{reviewResolver.current=resolve});
       }});
-      setExportSuccess(result.status==='busy'?'正在导出，请稍候':result.message);
-      if(result.status!=='busy'){setExportStatus(result.status);if(result.issues)setDocxIssues(result.issues)}
-    }catch(err){console.error('Export error:',err);alert('导出过程出错: '+String(err))}
+      if(result.status!=='busy'&&result.issues)setDocxIssues(result.issues);
+      // The print dialog and the save picker are system windows: the outcome is reported outside this dialog.
+      if(result.status!=='busy')onNotice?.({message:result.message,tone:result.status==='completed'?'success':result.status==='blocked'?'warning':'info'});
+    }catch(err){console.error('Export error:',err);alert('导出过程出错: '+String(err));onNotice?.({message:'导出失败：'+String(err),tone:'error'})}
     finally{setIsExporting(false)}
   };
 
@@ -256,12 +259,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             </div>
           </div>
 
-          {exportSuccess && (
-            <div role="status" className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 ${exportStatus==='completed'?'bg-teal-950/50 border-teal-800/80 text-teal-300':'bg-neutral-950 border-neutral-700 text-neutral-300'}`}>
-              {exportStatus==='completed'?<CheckCircle className="w-4 h-4 text-teal-400 shrink-0" />:<AlertTriangle className="w-4 h-4 shrink-0" />}
-              <span>{exportSuccess}</span>
-            </div>
-          )}
         </div>
 
         {/* Footer Actions */}

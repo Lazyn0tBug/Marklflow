@@ -50,10 +50,14 @@ it('releases busy on asynchronous PDF handoff failure without a silent retry or 
  expect(service.busy).toBe(false);expect(ports.deliverPdf).toHaveBeenCalledOnce();expect(ports.download).not.toHaveBeenCalled();await service.run(input('markdown'));expect(ports.download).toHaveBeenCalledOnce();
 });
 
-it('chooses the byte destination synchronously and cancels without generation',async()=>{
+it('chooses the byte destination after the content exists and cancels without writing',async()=>{
  const {ports,service}=setup();vi.mocked(ports.selectSave).mockResolvedValue(undefined);const running=service.run(input());
- expect(ports.selectSave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({name:'original.markflow.html'}));expect(service.busy).toBe(true);
- expect(await running).toMatchObject({status:'cancelled'});expect(ports.prepare).not.toHaveBeenCalled();expect(ports.download).not.toHaveBeenCalled();expect(service.busy).toBe(false);
+ expect(service.busy).toBe(true);
+ expect(await running).toMatchObject({status:'cancelled'});
+ expect(ports.selectSave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({name:'original.markflow.html'}));
+ // The content is produced first, so the picker and the write share one gesture.
+ expect(vi.mocked(ports.prepare).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(ports.selectSave).mock.invocationCallOrder[0]!);
+ expect(ports.download).not.toHaveBeenCalled();expect(service.busy).toBe(false);
 });
 it('freezes the source while selecting and holds busy until a confirmed file commit',async()=>{
  const {ports,service}=setup(),source=input('markdown');let select=(value:Awaited<ReturnType<ExportPorts['selectSave']>>)=>{void value},commit=()=>{};
@@ -62,6 +66,12 @@ it('freezes the source while selecting and holds busy until a confirmed file com
  expect(service.busy).toBe(true);expect(save).toHaveBeenCalledOnce();commit();expect(await running).toMatchObject({status:'completed',revision:1,message:expect.stringContaining('已保存文件')});expect(service.busy).toBe(false);expect(ports.download).not.toHaveBeenCalled();
 });
 it('keeps PDF on its native HTML port without a byte destination',async()=>{const {ports,service}=setup();await service.run(input('print-pdf'));expect(ports.selectSave).not.toHaveBeenCalled();expect(ports.deliverPdf).toHaveBeenCalledOnce()});
+it('names the actual destination when the chosen path did not receive the bytes',async()=>{
+ const {ports,service}=setup();vi.mocked(ports.selectSave).mockResolvedValue({save:async()=>'recovered-download'});
+ const result=await service.run(input('markdown'));
+ expect(result.status).toBe('completed');
+ expect(result.status==='completed'&&result.message).toContain('所选位置未生成文件，已改为浏览器下载');
+});
 it('does not write a selected target when DOCX confirmation is declined',async()=>{const {ports,service}=setup(),save=vi.fn();vi.mocked(ports.selectSave).mockResolvedValue({save});vi.mocked(ports.inspectDocx).mockReturnValue(notices);expect(await service.run(input('docx'),{confirmDocx:async()=>false})).toMatchObject({status:'cancelled'});expect(save).not.toHaveBeenCalled()});
 it('releases busy on selection or file commit failure without a fallback download',async()=>{
  for(const phase of ['select','save']){const {ports,service}=setup();if(phase==='select')vi.mocked(ports.selectSave).mockRejectedValue(new Error('save denied'));else vi.mocked(ports.selectSave).mockResolvedValue({save:async()=>{throw new Error('save denied')}});

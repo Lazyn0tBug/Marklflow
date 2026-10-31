@@ -12,7 +12,7 @@ import { Editor } from './components/editor/Editor';
 import { ReadingPreview } from './components/preview/ReadingPreview';
 import { A4PagePreview } from './components/preview/A4PagePreview';
 import { StatusBar } from './components/footer/StatusBar';
-import { ExportModal } from './components/export/ExportModal';
+import { ExportModal, type ExportNotice } from './components/export/ExportModal';
 import { RoadmapModal } from './components/roadmap/RoadmapModal';
 import { WorkbenchToolbar } from './components/toolbar/WorkbenchToolbar';
 import {
@@ -71,6 +71,7 @@ export default function App() {
   const tabModes=useRef(new Map<string,'flow'|'a4'>());
   const tabHeadings=useRef(new Map<string,string|null>());
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
+  const [exportNotice, setExportNotice] = useState<ExportNotice | null>(null);
   const [roadmapModalOpen, setRoadmapModalOpen] = useState<boolean>(false);
 
   // 同步滚动与大纲高亮状态
@@ -119,6 +120,12 @@ export default function App() {
       setTimeout(()=>URL.revokeObjectURL(url),1000);
     }catch(error){setLoadError('恢复备份读取失败，原始数据未改写：'+String(error))}
   };
+  // The export outcome outlives the dialog and any system window that covered it.
+  useEffect(()=>{
+    if(!exportNotice)return;
+    const timer=setTimeout(()=>setExportNotice(null),10000);
+    return()=>clearTimeout(timer);
+  },[exportNotice]);
   const recoveryNotice=(loadError||actionError||storageWarnings.length>0||recoveryCount>0)?<aside role="alert" className="px-4 py-2 text-sm bg-amber-950 text-amber-100">
     {actionError||loadError||storageWarnings.join('；')||`发现 ${recoveryCount} 项损坏或不支持的存储记录，原始数据已保留。`}
     {(recoveryCount>0||loadError)&&<button className="ml-3 underline" onClick={()=>{void downloadRecovery()}}>下载恢复备份</button>}
@@ -480,7 +487,14 @@ export default function App() {
         onClose={() => setExportModalOpen(false)}
         document={currentDoc}
         mathMode={mathMode}
+        onNotice={setExportNotice}
       />
+
+      {/* Export outcome, reported above every dialog and never printed. */}
+      {exportNotice&&<div role="status" aria-label="导出结果通知" className={`fixed bottom-10 right-4 z-[60] flex max-w-sm items-start gap-3 rounded-lg border px-3 py-2 text-xs shadow-xl no-print ${exportNotice.tone==='success'?'bg-teal-950/95 border-teal-700 text-teal-100':exportNotice.tone==='warning'?'bg-amber-950/95 border-amber-700 text-amber-100':exportNotice.tone==='error'?'bg-red-950/95 border-red-700 text-red-100':'bg-neutral-900/95 border-neutral-700 text-neutral-100'}`}>
+        <span className="wrap-anywhere">{exportNotice.message}</span>
+        <button aria-label="关闭导出结果通知" className="ml-auto shrink-0 underline" onClick={()=>setExportNotice(null)}>关闭</button>
+      </div>}
 
       {/* Version Roadmap & 1.0 Audit Matrix Modal */}
       <RoadmapModal
