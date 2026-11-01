@@ -12,13 +12,15 @@
     "clean": "rm -rf dist server.js",
     "lint": "bun run check:source && bun run check:boundaries && oxlint --deny-warnings .",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test",
+    "test:unit:changed": "vitest run --changed",
+    "test:e2e": "bun run --bun build && playwright test",
     "check": "bun run typecheck && bun run lint && bun run test:unit && bun run build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.integration.json && bun run check:type-coverage",
     "check:source": "bun scripts/check-source-policy.ts",
     "check:boundaries": "bun scripts/check-module-boundaries.ts",
     "check:type-coverage": "bun scripts/check-type-coverage.ts",
-    "check:architecture-baseline": "bun scripts/check-architecture-baseline.ts"
+    "check:architecture-baseline": "bun scripts/check-architecture-baseline.ts",
+    "check:build-fresh": "bun scripts/check-fresh-build.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

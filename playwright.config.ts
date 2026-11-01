@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e', reporter: [['list'],['html',{open:'never'}]], timeout: 60000, workers: 1,
+  // The suite runs against dist/; a build older than the sources would test the previous code.
+  globalSetup: './scripts/check-fresh-build.ts',
   use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // Keep Bun for builds; use Node HTTP servers to avoid Bun stream failures in Linux CI.
