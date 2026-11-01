@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [architecture-refactor]
+    tags: ['*']
     paths:
       - '.github/workflows/ci.yml'
       - '.github/workflows/tauri-build.yml'
