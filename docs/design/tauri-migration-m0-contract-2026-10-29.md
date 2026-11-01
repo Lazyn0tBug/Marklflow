@@ -1,6 +1,6 @@
 # M0：桌面迁移基线与平台契约冻结（2026-10-29）
 
-状态：GPT-6 Luna独立审查与验证通过，无未解决问题。此步骤只形成文档和不可变来源清单，不实现SDK、桌面功能、换行或分栏。迁移路线见[总方案](tauri-migration-plan-2026-10-29.md)，对象清单见[基线JSON](../contracts/tauri-migration-m0-baseline-2026-10-29.json)。
+历史M0状态：GPT-6 Luna独立审查与验证通过，无未解决问题。此步骤只形成文档和不可变来源清单，不实现SDK、桌面功能、换行或分栏。迁移路线见[总方案](tauri-migration-plan-2026-10-29.md)，对象清单见[基线JSON](../contracts/tauri-migration-m0-baseline-2026-10-29.json)。
 
 ## 1. 冻结范围与工作区保护
 
@@ -24,16 +24,16 @@
 - 排除旧App/ExportModal整体替换、meta.filePath领域字段、宽泛文件权限、旧补丁中心、OMML/SVG图片白名单变更、旧PDF临时HTML占位命令。保留当前业务和HTML唯一正文输出源。
 - MathJax3.2.2/Paged.js0.4.3不变；预览任务、同步哈希、缓存和单次HTML准备不另建第二套实现。
 
-## 3. 当前端口与后续适配契约
+## 3. 当前端口与后续适配契约（2026-11-01修订）
 
-本节冻结的是后续实现必须遵循的行为，不宣称新增端口已存在。M0不把下面的拟议接口写入生产类型。
+第1/2/5—8节保留M0历史冻结与验收语境，不代表当前仍无桌面壳。第3/4节按00a8ce2更新当前事实和后续契约，替代旧顺序/回执约定；不可变基线JSON及历史验收不修改。拟议类型尚未写入代码；完整实现路线见[输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)。
 
 | 领域 | 当前接口/事实 | 后续匹配决定与实施归属 |
 | --- | --- | --- |
-| 导出应用服务 | ExportService持有一次busy；ExportPorts组合统一生成函数和平台交付。Web singleton位于platform/web/exportService | 组合入口只选择Web/Tauri平台实现；不在组件分散环境判断。M1仅桥接，M9才接生产导出 |
-| 字节目标 | selectSave(ExportFile)→ByteSaveTarget或undefined；save(Blob)→saved/download-started | 保留该共同契约。undefined只表示用户取消；异常抛出；Tauri先选目标后生成，确认后才写，提交成功才saved。M3独立I/O验证，M9导出组合 |
+| 导出应用服务 | ExportService持有一次busy；ExportPorts组合统一生成函数和平台交付。Web singleton位于platform/web/exportService | 启动时选择同一个ExportService类的Web/Tauri组合根和唯一服务实例；共用生成器，不重复run，不在组件分散环境判断。D1收口契约，M9/D7接生产平台选择 |
+| 字节目标 | selectSave(ExportFile)→ByteSaveTarget或undefined；save(Blob)→SaveReceipt四态（saved/download-started/recovered-download/activation-expired） | 保留生成完整字节及一次确认后选择目标/写入的当前顺序；未选目标返回undefined，可辨识错误抛出，不假称原生Option能区分全部弹窗故障；提交成功才saved。拟增加可选release，Tauri必备；服务取得目标后finally释放，构造中途失败由平台清理。D1/M9落实 |
 | 名称 | ExportFile负责六格式、完整后缀及255 UTF-8字节、完整grapheme | Tauri沿用name/mime/extension，不重复补后缀。原生路径保持平台内部，不混入建议名 |
-| PDF交付 | 当前deliverPdf(html)→Promise<void>；服务文案固定浏览器处理；HTML已由generatePdfHtml生成 | M9最小调整为平台可观测回执：handed-off/saved/cancelled，并传ExportFile作为名称上下文。handed-off仅交接；Web不推断取消/保存，Tauri只在真实提交可证时saved。具体类型在M8能力验证后落实，不新增生成入口 |
+| PDF交付 | 当前deliverPdf(html)→Promise<void>；服务文案固定浏览器处理；HTML已由generatePdfHtml生成 | D1拟改deliverPdf(html, ExportFile)→Promise<PdfDeliveryReceipt>，独立于SaveReceipt，当前仅handed-off；不证明面板已显示或文件保存，可辨识失败抛错。统一提示系统对话框完成保存；afterprint不推断取消/保存。M8验证所接OS，M9组合；可观测能力增加后才扩展saved/cancelled，不新增生成入口 |
 | 导入 | SourceImport<F extends {name,size}>，ports.read返回文本；统一后续格式/NUL/schema/资产/会话校验 | 原生文件用不透明键关联平台路径，read内部限额读字节并严格UTF-8解码。打开/多文件拖放共用单批次；错误不吞成取消。M3/M4 |
 | 会话 | DocumentSessions按ID管理唯一激活、undo/redo、dirty及位置；重复open聚焦原草稿 | 规范文件身份→已有文档ID由本地绑定查询，查到后聚焦而非覆盖。源附件不授予路径访问权限，不能由旧filePath自行绑定。M4 |
 | 草稿保存 | App在700ms后调用saveSource→saveDocument→现有仓储；只对当前匹配修订markSaved | 保留现有草稿保存定义，不改为自动写原文件；原文件写回结果不得让较新修订变成已写回。M5另加绑定的已写回修订 |
@@ -56,7 +56,15 @@
 
 本地绑定最小内容：平台内部文件标识/规范路径、文档ID、显示名、源格式和已写回修订；应用仅持有不透明绑定键和可显示状态。绑定默认本次会话有效，不恢复旧路径为可写权限；跨重启原位保存/最近文件需后续明确授权与验证，不在M0扩展。
 
-## 5. 配置与存储兼容决策
+### 4.1 绑定失效与授权释放（2026-11-01）
+
+- M3实际授权为Rust进程内Map；重启后旧key无效。M4/M5恢复草稿时不恢复写权限，UI显示“草稿已恢复，未关联本地文件”，新建显示“未关联本地文件”；有来源证据才显示关联失效。
+- 草稿已持久化与本次会话内已写回修订分列；未关联时原文件状态为未知，不展示有效已写回标记。原位保存引导重新关联或另存为，不静默写旧目标。
+- 重新关联不覆盖当前草稿、选区、undo或修订，取消/失败保持状态。关联成功不是写回成功，覆盖确认后实际提交才确认接受修订；较新修订仍未写回。
+- ByteSaveTarget.release幂等且只释放本次导出授权；服务finally负责调用。释放错误保留诊断，不掩盖写入主错误，也不把已完成提交谎报成写入失败。源绑定授权由绑定生命周期在使用结束后释放，不能被导出清理误撤销。
+- 跨重启恢复延期，可由Rust持久locator/不透明ID并在明确授权后重建grant；不要求前端持有路径，不修改源附件/DocumentRecord来携带权限。
+
+## 5. 配置与存储兼容决策（M0历史冻结）
 
 | 既有内容 | M0决定 |
 | --- | --- |
@@ -71,7 +79,9 @@
 | 编辑位置 | 选区为字符offset，基线scrollTop/scrollLeft为像素。E0在会话位置追加可选逻辑锚点，旧无锚点数据保留兼容回退；不把工作台位置持久化进DocumentRecord |
 | 缓存 | 同步Map内存缓存、document/mode/MD hash/config版本契约保留；调整工作台布局只重算几何，不清空产物或重新分页；本地资源上下文改变按M6失效 |
 
-## 6. 质量与阶段门槛
+## 6. 质量与阶段门槛（M0历史记录）
+
+本节“本次/未启动/待授权/未取远端记录”均指2026-10-29的M0执行时点，不据此判断当前分支是否已推送、当前CI结果或后续授权。当前状态需查对应提交和运行证据；EX-T及完整发布门槛继续有效。
 
 现有X证据为历史基线：198受管源/配置、58单元文件、421项单元及34项非PDF浏览器回归通过；见[X验收](../acceptance/third-party-boundary-x-2026-10-29.json)。M0重新执行的检查另记，不能把这些旧计数冒充本轮结果。
 
@@ -81,12 +91,12 @@
 - 用户确认旧Tauri的OS/bundle CI已验证，作为来源事实保留；本轮未取远端run记录，也未在目标提交运行，不能标记目标矩阵通过。
 - M2先本地工作流适配/检查；远端矩阵要在后续授权推送/运行后取得。M10声明支持的OS须有对应真实包与文件操作证据，未验OS保持未验。
 
-## 7. M0验证与提交单位
+## 7. M0验证与提交单位（历史授权范围）
 
 GPT-6 Luna执行独立审查与验证：不可变SHA/tree/blob/17来源祖先校验、当前端口/存储语义对照、阶段依赖、Markdown本地链接/JSON结构/空白检查；建立本轮完整bun run check基线。M0不改生产代码，不需要重复浏览器PDF或系统保存验证，也不新建镜像实现测试。
 
 主代理修复发现的文档/契约不一致，再由Luna复核；最后保存独立验收记录，更新总方案M0状态，仅暂存M0文档、清单、验收与总方案。两份预存索引修改原样留在工作区，不进入此提交。停止在M0，不自行推进M1。
 
-## 8. 本轮完成证据
+## 8. M0完成证据（历史）
 
 Luna完成13项基线/工作区/JSON/链接及检查事实核验，均通过；35/35目标blob、17/17来源祖先及2份预存索引SHA-256一致。完整bun run check退出0：198受管源/配置、58文件、421项单元，以及类型/lint/边界/生产构建通过。当前结果见[本轮验收记录](../acceptance/tauri-migration-m0-2026-10-29.json)，日志D:/codex/m0-migration-check.log；清单内X计数仅为捕获时历史基线。未运行新浏览器/原生保存/桌面构建或远端CI，未修改生产代码、依赖或预存索引。M0收口后停步，后续阶段仍待授权。
