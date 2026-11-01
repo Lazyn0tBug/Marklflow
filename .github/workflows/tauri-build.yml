@@ -3,22 +3,7 @@ name: Build Tauri Desktop
 on:
   workflow_dispatch:
   push:
-    branches: [architecture-refactor]
     tags: ['*']
-    paths:
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/tauri-build.yml'
-      - 'src-tauri/**'
-      - 'src/**'
-      - 'public/**'
-      - 'index.html'
-      - 'docs/contracts/**'
-      - 'scripts/**'
-      - 'tests/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'tsconfig*.json'
-      - '*.config.ts'
 
 permissions:
   contents: read
@@ -33,6 +18,8 @@ jobs:
 
   build-desktop:
     needs: quality
+    # The desktop bundles are published artifacts; only a tag publishes them.
+    if: startsWith(github.ref, 'refs/tags/')
     name: Build ${{ matrix.artifact_platform }}
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60

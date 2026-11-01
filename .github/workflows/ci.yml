@@ -54,10 +54,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bun run test:unit
 
-      # Report build errors even when typechecking failed; the job still fails.
+      # Only a tag publishes a build; report build errors even when typechecking failed.
       - name: Build production assets
         id: build
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && startsWith(github.ref, 'refs/tags/') }}
         run: bun run --bun build
 
       - name: Verify build output
@@ -69,12 +69,13 @@ jobs:
           test -n "$(find dist/assets -type f -name '*.js' -print -quit)"
           git diff --exit-code -- package.json bun.lock
 
+      # The browser suite runs on every push and builds for itself; it publishes nothing.
       - name: Install test browser
-        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bun run --bun playwright install --with-deps chromium
 
       - name: Production HTML end-to-end tests
-        if: ${{ !cancelled() && steps.verify.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: bun run test:e2e
 
       - name: Upload browser evidence

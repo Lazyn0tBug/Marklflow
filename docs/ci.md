@@ -5,7 +5,8 @@ GitHub Actions 工作流：`.github/workflows/ci.yml`。
 ## 触发与检查
 
 - 推送 main、所有目标分支的 Pull Request、手动 workflow_dispatch。
-- 推送任意 tag 同样触发：**每个 tag 都会跑一次编译构建**（typecheck、lint、单元/契约测试、生产构建、端到端测试），并按提交 SHA 上传生产构建产物。tag 命名沿用仓库现状（`0.9.1`、`0.9.8-pre2`，无 `v` 前缀）。
+- **只有 tag 会发布构建产物**：typecheck、lint、单元/契约测试、端到端测试在任何推送上都跑；生产构建（`vite build`）与产物上传只由 tag 触发。端到端测试在非 tag 时自己构建以供测试（`bun run test:e2e` 内含构建），但不发布任何产物。tag 命名沿用仓库现状（`0.9.1`、`0.9.8-pre2`，无 `v` 前缀）。
+- 桌面构建（`.github/workflows/tauri-build.yml`）同样只由 tag 触发：先跑同一套门禁（复用 ci.yml），再产出 macOS/Windows/Linux 三个平台的桌面包，按提交 SHA 上传，保存14天。
 - Ubuntu 24.04，Bun 1.4.2，15 分钟超时；同分支/PR 的旧运行由新运行取消。
 - `bun install --frozen-lockfile`，不更新锁文件。
 - `bun run --bun lint`：目前实际为 `tsc --noEmit`，不是 ESLint。
