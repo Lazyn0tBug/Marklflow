@@ -1,6 +1,6 @@
 # MarkFlow (墨流) - 专业级技术 Markdown 编辑与排版工作台
 
-> **0.9.1 · html分支**：HTML兼容性改造与审查修复版本，暂未合并到main。完整设计基线、实施现状与验证边界见[文档导航](docs/README.md)，变更见[CHANGELOG](CHANGELOG.md)。设计中的规划项不自动等于已实现；Word/WPS、系统打印等仍需独立验收。
+> **当前开发分支：architecture-refactor**。package.json 版本字段仍为 0.9.1，不表示本分支已完成发布验收。当前方案、实现与验证边界见[文档导航](docs/README.md)，历史版本见[CHANGELOG](CHANGELOG.md)。系统 PDF 保存、Word/WPS 和桌面平台支持分别验收，不能由自动测试通过替代。
 
 <p align="center">
   <strong>开箱即用 · 深度数学公式与图表 · A4 分页与流式预览 · 三视图独立控制 · 双向同步滚动 · 多格式专业导出</strong>
@@ -36,16 +36,16 @@
 - **可配置最大内容宽度 (Configurable Max Width)**：
   - 编辑器与 HTML 预览默认采用黄金阅读宽度 **1024px**（通过顶部“设置”弹窗切换为 **800px / 1024px / 1280px / 1440px / 100% 全宽**），并自动水平居中呈现，告别超宽屏幕下文字拉伸导致的不适体验。
 
-### 2. 🔄 毫秒级双向同步滚动 (Synchronized Bi-directional Scroll)
+### 2. 🔄 双向同步滚动 (Synchronized Bi-directional Scroll)
 - **大纲 $\rightarrow$ 编辑器与 HTML**：点击大纲章节标题，编辑器与 HTML 预览同步平滑滚动，使目标标题精准居顶。
 - **编辑器 $\rightarrow$ HTML 与大纲**：编辑器滚动时，HTML 视图按源码行与对应 DOM 区块比例同步滚动；大纲树自动高亮视口中央所归属的当前章节（边框加粗高亮强调）。
 - **HTML $\rightarrow$ 编辑器**：预览区翻阅滚动时，编辑器无缝跟随。
 - **防抖与反馈死循环抑制**：内置毫秒级滚动锁机制，彻底消除两端相互触发导致的页面抖动或死循环。
 
-### 3. 📐 深度数学公式双引擎 (Dual Math Rendering Engines)
+### 3. 📐 MathJax 公式的 MathML / SVG 两种显示模式
 - 内置 MathJax 核心，支持当前 MathJax 已启用包中的 LaTeX 数学语法，未知命令明确报错（行内公式 `$E=mc^2$`，块级公式 `$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$`）。
-- **MathML 极速引擎**：利用现代浏览器原生 MathML 渲染能力，毫秒级流式呈现，内存占用低，字体与排版自然融入正文。
-- **SVG 矢量引擎**：生成像素级精准、缩放不失真、兼容性极佳的矢量图形，适用于学术论文或出版物打印。
+- **MathML 显示模式**：利用现代浏览器原生 MathML 渲染能力，毫秒级流式呈现，内存占用低，字体与排版自然融入正文。
+- **SVG 显示模式**：生成像素级精准、缩放不失真、兼容性极佳的矢量图形，适用于学术论文或出版物打印。
 
 ### 4. 📊 图表与可视化支持 (Mermaid Diagrams & Visuals)
 - 原生集成 Mermaid 流程图、时序图、甘特图、状态图及类图。
@@ -77,8 +77,8 @@
 > **Markdown 原文是权威来源；标准 HTML 是阅读、预览与视觉输出的共同投影，结构化模型保持语义。**
 
 - **统一渲染与输出管线**：Markdown 源码仅做一步解析，直接投影为携带块级锚点的标准语义 HTML DOM。后续的**屏幕实时预览**、**流式自适应**、**A4 物理分页排版**、**单文件独立 HTML 导出**、**Word (.docx) 导出**与**矢量 A4 PDF 打印**，全部收敛在这一套 HTML 标准切面上。
-- **免除重型外部依赖**：彻底摆脱了 Pandoc、Electron 后台守护进程与无头 Chromium 打印池的沉重负担，在浏览器端仅需数十毫秒即可完成高保真转换。
-- **所见即所印的绝对一致性**：由于编辑预览、A4 分页与最终导出均使用同一份 HTML 及其 CSS 媒体查询规则，彻底消除了传统工具中“屏幕预览与实际导出样式断裂”的痛点。
+- **免除重型外部依赖**：彻底摆脱了 Pandoc、Electron 后台守护进程与无头 Chromium 打印池的沉重负担，内容在客户端生成，耗时取决于文档、公式、图表和分页规模。
+- **共同内容源与独立输出适配**：预览与导出共用 HTML 内容映射；浏览器、系统 PDF 和 Word/WPS 的布局及字体结果仍分别验证，不承诺绝对一致。
 
 #### 📐 架构管线与设计哲学对比
 
@@ -196,7 +196,7 @@ npm run lint
 | `Alt + T` / `Ctrl + Shift + T` | 可视化/快捷插入 Markdown 数据表格 |
 | `Alt + M` | 快速插入行内数学公式 (`$...$`) |
 | `Alt + Shift + M` | 快速插入块级数学公式 (`$$...$$`) |
-| `Ctrl / Cmd + P` | 快速调起 A4 矢量打印预览 |
+| PDF 输出 | 从统一导出入口选择 PDF；系统对话框中的预览不等于应用新增专属打印预览 |
 
 ---
 
@@ -204,8 +204,12 @@ npm run lint
 
 经架构设计与代码综合审查，以下进阶排版与输出优化项已暂存至待办储备池（TODO Backlog）：
 
-1. **DOCX 公式进阶升级 (Word 原生 OMML 公式对象)**：
-   - 接入 MathML 到 OpenXML OMML 格式映射，使生成的 Word (`.docx`) 文档在微软 Office 与 WPS 中呈现为可原生二次双击编辑的矢量公式对象。
+1. **统一输出与桌面交付**：当前已有 OMML 公式转换及图片降级路径，剩余正确性、Web 交付、桌面组合与系统证据见[完整输出方案](docs/design/export-outputs-formula-and-print-plan-2026-10-30.md)。Word/WPS 可编辑性仍需各自实际验收。
+2. **CM6 + Vim**：仅有[独立可行性与代价讨论](docs/design/cm6-vim-feasibility-and-cost-2026-11-01.md)，尚未迁移，当前编辑器仍为 textarea。
+3. **Tauri**：桌面壳和独立文件适配已有实现，原生工作区/源文件绑定和生产导出接入仍按[迁移方案](docs/design/tauri-migration-plan-2026-10-29.md)推进，不把工程准备当成全部桌面功能已交付。
+
+开发审查与验证遵循[项目规范](docs/development/review-and-testing.md)：增量审查、按风险选测、复用有效证据；全量验证按触发条件执行。
+
 Mermaid静态SVG封装已在0.9.1实现，接收方无需运行Mermaid引擎；已验证范围和限制见[审查记录](docs/reviews/html-review-2026-10-24.md)。
 
 ---

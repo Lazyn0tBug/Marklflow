@@ -1,5 +1,8 @@
 # Markdown 编辑器总体设计方案 V0.2.10
 
+> 当前实现与设计历史分开阅读：原技术选型中的 CodeMirror/MathJax 4 等不表示已经迁入。当前分支仍用 textarea、MathJax 3.2.2 和 Paged.js 0.4.3；CM6 + Vim 仅见[可行性讨论](cm6-vim-feasibility-and-cost-2026-11-01.md)。当前输出事实与剩余实现以[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)为准，平台接入见[Tauri迁移方案](tauri-migration-plan-2026-10-29.md)，审查验证范围见[项目规范](../development/review-and-testing.md)。这些引用不表示实现或系统验收自动完成。
+
+
 日期：2026-10-23  
 状态：开发设计基线草案；尚未实现或完成技术验证。  
 定位：开箱即用、支持公式与图表、具备 HTML 预览与多格式导出的 Markdown 编辑器。
