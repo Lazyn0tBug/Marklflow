@@ -5,6 +5,7 @@ GitHub Actions 工作流：`.github/workflows/ci.yml`。
 ## 触发与检查
 
 - 推送 main、所有目标分支的 Pull Request、手动 workflow_dispatch。
+- 推送任意 tag 同样触发：**每个 tag 都会跑一次编译构建**（typecheck、lint、单元/契约测试、生产构建、端到端测试），并按提交 SHA 上传生产构建产物。tag 命名沿用仓库现状（`0.9.1`、`0.9.8-pre2`，无 `v` 前缀）。
 - Ubuntu 24.04，Bun 1.4.2，15 分钟超时；同分支/PR 的旧运行由新运行取消。
 - `bun install --frozen-lockfile`，不更新锁文件。
 - `bun run --bun lint`：目前实际为 `tsc --noEmit`，不是 ESLint。
