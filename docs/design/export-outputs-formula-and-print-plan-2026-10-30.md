@@ -1,6 +1,6 @@
 # 统一输出与桌面交付完整实施方案
 
-更新：2026-11-01。代码核对基线：`architecture-refactor / 00a8ce2fb778c192a780928f259063c71895c667`。本文替代原 A/B/C 草案及互相冲突的执行叙述，作为当前输出工作的完整方案；历史实测仍以原始记录为准。本次仅更新文档，未执行代码测试或系统验收。
+更新：2026-11-02。三平台原生静默PDF为目标，Windows先验证，macOS/Linux列Future最后实施；尚未修改代码。代码核对基线：`architecture-refactor / 00a8ce2fb778c192a780928f259063c71895c667`。本文替代原 A/B/C 草案及互相冲突的执行叙述，作为当前输出工作的完整方案；历史实测仍以原始记录为准。本次仅更新文档，未执行代码测试或系统验收。
 
 ## 1. 目标、范围与约束
 
@@ -46,9 +46,26 @@ Web/Tauri 使用同一个 `ExportService` 类与格式生成器，各自组合�
 | ByteSaveTarget.save(Blob) | 保留字节保存专用 SaveReceipt，准确区分真实提交与浏览器接管，不加入打印状态 |
 | ByteSaveTarget.release?(): Promise<void> | 可选、幂等；Web 无授权可省略，Tauri 必须实现。应用服务取得目标后在 finally 调用，包括成功/失败；选择途中已取得授权但构造失败，由适配器清理 |
 | deliverPdf(html, ExportFile) | Promise<PdfDeliveryReceipt>；输入仅为同一次冻结产物生成的完整 HTML，ExportFile 提供建议名称，不授予路径权限 |
-| PdfDeliveryReceipt | 当前目标仅 `{status:'handed-off'}`；请求已交付系统输出流程，不代表已观察到面板、更不代表保存完成。将来只有可证明时才增加 saved/cancelled |
+| PdfDeliveryReceipt | 拟议联合类型为 `{status:'handed-off'}` / `{status:'saved'}` / `{status:'cancelled'}`；Web仅返回handed-off；桌面仅在原生输出及目标提交成功后saved，用户选择目标取消时cancelled。运行中的不可取消计算不伪报cancelled，失败抛错 |
 
-PDF 不可用、准备失败或调用明确报错时抛出错误，不返回 handed-off。Web/Tauri 当前系统输出路径不能判断系统面板内取消，`afterprint` 只用于生命周期清理，不产生 saved/cancelled。统一文案：“已提交 PDF 输出请求，请在系统对话框中完成保存。”`ExportResult.completed` 表示应用步骤完成，不能被 UI 或日志解释为文件已保存；实现时应携带交付回执供结果展示。
+PDF 不可用、准备失败、原生调用/完成回调失败或目标提交失败时抛出错误，不能返回handed-off或saved。Web原生输出不能判断系统面板内保存/取消，afterprint仅用于清理，文案为“已提交 PDF 输出请求，请在系统对话框中完成保存。”桌面静默路径只有目标文件成功提交才提示“已保存文件”；取消选择目标则提示取消。ExportResult.completed表示应用步骤完成，必须携带交付回执区分交接与真实保存。
+
+### 4.1 三平台原生静默PDF目标
+
+| 平台 | 候选原生接口 | 实施顺序与状态 |
+| --- | --- | --- |
+| Windows | 隐藏专用WebView2加载冻结分页HTML，PrintToPdf输出受控临时PDF | D6/M8先做小范围能力验证，当前待验证；通过后才D7/M9生产接入 |
+| macOS | 隐藏WKWebView；评估createPDF与printOperation/系统PDF输出的分页适配 | Future F-PDF-Mac，排在当前Windows/Web路线收口之后；待验证，不承诺createPDF天然产生正确多页A4 |
+| Linux | 隐藏WebKitGTK；评估WebKitPrintOperation配置PDF文件输出 | Future F-PDF-Linux，与macOS同属路线最后；待验证，核对发行版/GTK打印后端/打包环境 |
+
+目标都是统一导出入口、可选择保存位置、无应用专属PDF预览且不显示打印面板。静默不等于跳过用户授权或保存选择器；只有已明确授权的目标才可省略选择。三平台共用生成器与冻结HTML，原生交付按OS适配，不要求底层相同。未实现或未验证的平台标“待验证”，不得自动回退Web打印、截图或新浏览器。
+
+Windows宿主必须把冻结分页HTML作为顶层文档；PrintToPdf不能直接指定现有预览iframe。复用现有完整分页HTML生成路径和冻结资源，不抓取可见DOM、不重新解析Markdown/LaTeX，不要求先显示A4，不重复prepare或分页。新WebView只加载现成产物并等待字体/图片/布局；保持资源有效至完成。隐藏宿主的加载、就绪、输出可靠性都须实测，不依赖可能暂停的动画帧或固定睡眠充当就绪证据。
+
+Rust持有路径/授权，专用宿主不授予一般业务IPC或任意本地文件访问。受控一次性内容装载与就绪通知应限任务范围；保持静态HTML/CSP及资源策略，不执行作者脚本，不为就绪检测开放广泛权限。用户建议名仍由ExportFile产生；先选择/授权目标，再由原生端输出临时PDF，完成成功回调后检查输出并通过受控提交替换目标，最后返回saved。原生回调仅证明临时输出完成，不等于目标已提交；失败保留原文件。选择目标在完整PDF交付HTML生成后进行，与字节格式“完整字节生成后选择”的路径分开描述，不改字节端口。
+
+输出宿主一次只执行一个打印任务，沿用导出busy，不新增任务平台。纸张、缩放、页边距、背景、页眉页脚与既有分页HTML匹配，避免二次缩放/空白页。成功、失败、超时、关闭均释放宿主及临时资源；超时后须先使原生任务不能再提交/写入目标再清理临时文件，迟到回调不得报成功。原生调用返回或销毁宿主能否可靠终止写入也属于PoC验证项，不伪称系统提供可中断取消。授权release失败不掩盖输出主错误。
+
 
 授权释放失败应单独保留诊断，不掩盖主要写入失败；若文件已提交，不因 release 失败引导用户重复保存或谎称写入失败。释放只针对本次导出目标，不能撤销仍供原文件绑定使用的授权。源绑定与导出目标是不同资源；关闭文档/重新关联/应用退出分别按归属释放，先等本次使用完成再释放，不建通用资源平台。
 
@@ -61,9 +78,9 @@ PDF 不可用、准备失败或调用明确报错时抛出错误，不返回 han
 | 阅读 HTML | ExportHtmlArtifact→generateExportHtml | 同上 | 同上 |
 | 可编辑 HTML | 同一产物正文 + encodeEditableSource 附件 | 同上 | 同上 |
 | DOCX | 同一产物→共用公式判定→exportDocumentToDocx | 同上 | 同上 |
-| PDF | 同一产物→generatePdfHtml/Paged.js→完整分页 HTML | 浏览器原生输出请求 | 所声明 OS 已验证的系统 WebView 交付端口 |
+| PDF | 同一产物→generatePdfHtml/Paged.js→完整分页 HTML | 浏览器原生输出请求 | 所声明 OS 已验证的静默原生 PDF 端口（Windows先行） |
 
-两平台沿用 ExportFile 的 MIME、完整扩展名、255 UTF-8 字节及完整 grapheme 规则。PDF 的 HTML title/建议名只是提示，系统驱动可能忽略，默认名不能跨 OS 保证。桌面当前尚无已接生产的 PDF 端口，M8 先验证能力，不能把“系统 WebView 必然支持”写成事实。
+两平台沿用 ExportFile 的 MIME、完整扩展名、255 UTF-8 字节及完整 grapheme 规则。Web PDF 的 HTML title/建议名只是提示，系统驱动可能忽略；桌面静默保存由ExportFile提供默认名并由用户选择目标，不依赖打印机驱动命名。桌面当前尚无已接生产的 PDF 端口，M8 先验证能力，不能把“系统 WebView 必然支持”写成事实。
 
 Web 现有降级分支 download-started/recovered-download/activation-expired 必须在 UI 如实区分，硬写入失败不静默改投。生成耗时导致激活过期时，优先沿用明确下载反馈；若实际需求要求始终选择位置，后续再设计一次用户确认动作，不重新生成或重复确认 DOCX。保存选择器取消与异常分开测试。
 
@@ -107,14 +124,25 @@ Web 现有降级分支 download-started/recovered-download/activation-expired �
 | D3 源绑定 UI | M4→M5；D1 释放语义 | 迁移路线的 M4/M5 内实现会话绑定、恢复未关联状态、重新关联/另存及按修订写回 | 重启恢复草稿不恢复授权；关联不覆盖草稿；重复打开聚焦；取消/失败与较新修订保护。此行是验收补充，不另做 M4/M5 |
 | D4 DOCX 正确性收口 | D0；与平台准备可并行 | 对第7节语义缺口做定向审查/语料/必要修复，同步能力表 | 不丢嵌套结构、不误称视觉等价；OOXML/PNG 检查；Word/WPS 实测仍分列 |
 | D5 Web 系统证据 | D2/D4；沿用 EX-W0/EX-W3 | 原生 PDF 实际保存、默认名、文字/CJK/字体/链接/矢量/分页、Web 字节文件及 Word/WPS 清单 | 留存实际文件/hash/OS/版本，无法补齐者保持待补；不据自动结果宣称完整 EX-W3 |
-| D6 桌面 PDF 能力 | M6、完整 EX-W3→M7→M8；D1/D5 | M8 在目标 OS 夹具验证相同分页 HTML 的系统 WebView 交付 | 实际 PDF 与命名/取消/异常/清理证据；支持/不支持/未验分列，不引入新浏览器 |
-| D7 双组合根生产接入 | M9；M8 在所接 OS 通过，D1/D2 | 统一服务选择入口 + tauri/exportService，连接 M3 原生保存端口、名称、释放及已验证 PDF 交付 | 六格式同业务流程；不散布环境判断；原生失败不回退 Web，不泄露路径；导出不修改源绑定 |
-| D8 最终收口 | M10/M11 对应阶段；D7 | Luna 全面审查、自动回归、真实系统/包证据、支持表 | 历史记录不被覆盖，缺项不标通过，未授权不推送/发布 |
+| D6 Windows静默PDF小范围PoC | M6、完整EX-W3→M7→M8；D1/D5 | 独立夹具：隐藏WebView2载入完整冻结分页HTML，PrintToPdf到临时文件并提交目标；不接生产UI | 无窗口闪现/打印面板；完整多页、可选文本/CJK/字体/链接/矢量及分页；命名、取消选择、覆盖失败保护、资源/超时/迟到回调清理；保存文件/hash与版本证据。失败先修本路径，不转截图 |
+| D7 Windows双组合根生产接入 | M9；Windows M8通过，D1/D2 | 统一服务选择入口 + tauri/exportService，连接 M3 原生保存端口、名称、释放及已验证 PDF 交付 | 六格式同业务流程；不散布环境判断；原生失败不回退 Web，不泄露路径；导出不修改源绑定 |
+| D8 当前Web/Windows范围收口 | M10/M11对应阶段；D7 | Luna 全面审查、自动回归、真实系统/包证据、支持表 | 历史记录不被覆盖，缺项不标通过，未授权不推送/发布 |
 
-D1/D2 是现有 Web 输出边界收口，可在 M7 前进行；D6/D7 仍严格遵循既有 EX-T 前置。每个较大单位可再拆提交，但不拆出第二个服务或重复生成流程。Rust locator 持久恢复、更多原生公式能力、额外格式均延期。
+| Future F-PDF-Mac | D8完成后，已有门槛不豁免 | 先独立小范围WKWebView多页PDF PoC，比较createPDF与原生打印PDF，再决定接生产端口 | 隐藏宿主、A4多页、正文/字体/链接/矢量与静默、写入/清理证据；未通过保持待验证或据事实记录限制 |
+| Future F-PDF-Linux | D8完成后，与Mac独立评估，位于当前路线最后 | WebKitGTK文件输出PoC，明确输出PDF而非默认实体打印机，再按已验环境接端口 | 目标发行版/后端/安装包内静默与输出证据，失败/清理及原文件保护；不由Windows/Mac结果推断 |
+
+D1/D2 是现有 Web 输出边界收口，可在 M7 前进行；D6/D7仍严格遵循既有EX-T前置；本次先安排Windows小范围PoC，不因新路线解除完整EX-W3门槛。Mac/Linux的Future位于D8之后，不阻塞当前Web/Windows限定范围收口，但禁止宣称其PDF已支持；各自通过后再补M9—M11对应平台验收。每个较大单位可再拆提交，但不拆出第二个服务或重复生成流程。Rust locator 持久恢复、更多原生公式能力、额外格式均延期。
 
 ## 9. 验收记录与支持声明
 
 审查、测试由 GPT-6 Luna 执行，主代理实现修复。记录具体 SHA、实际命令、退出码、日志、产物 SHA-256、OS/浏览器/WebView 版本；本次文档审查只验证文本一致性、代码事实与本地链接，不声称运行回归或系统保存。
 
 自动测试通过、浏览器输出请求交接、实际 PDF 保存、Word/WPS 编辑、跨 OS 安装运行五类证据分别列出。系统默认文件名/文件路径未取得时仍待补；afterprint、端口 resolve、PNG 非空与同大小回读都不能替代完整保存/内容正确性验收。支持表仅宣称有对应证据的环境，不将一个平台结果推广到其他系统。
+
+## 10. 原生能力依据（非本项目实测）
+
+- [WebView2 PrintToPdf](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2_7)：顶层文档、异步完成与文件写入；必须检查调用及完成结果，不以发起即成功。
+- [Apple WKWebView printOperation](https://developer.apple.com/documentation/webkit/wkwebview/printoperation(with:))与[createPDF](https://developer.apple.com/documentation/webkit/wkwebview/createpdf(configuration:completionhandler:))：存在原生接口不等于隐藏宿主、多页及打印CSS已验。
+- [WebKitGTK PrintOperation](https://webkitgtk.org/reference/webkit2gtk/2.37.1/class.PrintOperation.html)：可无面板启动打印，但需显式文件输出配置，不可误发默认打印机。具体系统版本和PDF后端仍待Future验证。
+
+本次更新只改设计；三平台静默PDF均未在本项目验证，不新增代码或发布支持声明。
