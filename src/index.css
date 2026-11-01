@@ -1,10 +1,7 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark,.dark *));
 
-/* Workbench chrome tokens. The document layer keeps its own tokens in styles/document.css. */
-@theme {
-  --spacing-gutter: 48px;
-}
+/* Workbench chrome. The document layer keeps its own tokens in styles/document.css. */
 
 @layer base {
   :root {
@@ -57,3 +54,33 @@
 }
 
 .mf-pagination .pagedjs_sheet{background:#fff;color:#1f2937}
+
+/*
+ * Workbench spacing contract (docs/design/workbench-spacing-contract-2026-11-01.md).
+ * The view clearance steps with the pane width; the code margin is one character wide.
+ */
+.mf-pane {
+  container-type: inline-size;
+  container-name: mf-pane;
+}
+
+.mf-view {
+  --mf-view-padding: 0.75rem;
+  padding: var(--mf-view-padding);
+}
+
+.mf-source-inset {
+  padding: 1ch;
+}
+
+@container mf-pane (min-width: 43.75rem) {
+  .mf-view {
+    --mf-view-padding: 1.125rem;
+  }
+}
+
+@container mf-pane (min-width: 68.75rem) {
+  .mf-view {
+    --mf-view-padding: 1.5rem;
+  }
+}

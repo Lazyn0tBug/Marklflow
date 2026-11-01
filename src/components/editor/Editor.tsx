@@ -50,11 +50,13 @@ export const Editor: React.FC<EditorProps> = ({
     let frame:number|undefined;
     const update=()=>{
       frame=undefined;if(composing.current)return;directScroll.current=false;const previous=lastLayout.current,geometry=editorGeometry(textarea);
+      const style=getComputedStyle(textarea);
       gutter.style.height=textarea.clientHeight+'px';
+      gutter.style.paddingTop=geometry.paddingTop+'px';
+      gutter.style.paddingBottom=(parseFloat(style.paddingBottom)||0)+'px';
       if(previous?.sessionId===sessionId&&previous?.geometry===geometry)return;
       if(previous?.sessionId===sessionId&&previous?.value===value)textarea.scrollTop=sourceAnchorTop(previous.anchor,geometry);
       lastLayout.current={value,geometry,sessionId,anchor:sourceAnchorAt(textarea.scrollTop,geometry)};
-      gutter.style.paddingTop=geometry.paddingTop+'px';
       Array.from(gutter.children).forEach((row,index)=>{if(row instanceof HTMLElement){row.style.height=((geometry.lineTops?.[index+1]??0)-(geometry.lineTops?.[index]??0))+'px';row.style.lineHeight=geometry.lineHeight+'px'}});
       gutter.scrollTop=textarea.scrollTop;
     };
@@ -148,18 +150,20 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <div className="flex-1 h-full flex flex-col bg-neutral-950 border-r border-neutral-800 text-neutral-100 overflow-hidden no-print">
-      {/* Editor Centered Container respecting maxWidth; the line number column is the view gutter. */}
-      <div className="flex-1 flex justify-center overflow-hidden bg-neutral-950">
+      {/* Editor Centered Container respecting maxWidth; the view clearance comes from mf-view. */}
+      <div className="mf-view flex-1 flex justify-center overflow-hidden bg-neutral-950">
         <div
           className="w-full h-full flex overflow-hidden relative font-mono text-sm border-x border-neutral-900/50 bg-neutral-950"
           style={{
             maxWidth: maxWidth === 'full' ? '100%' : `${maxWidth}px`,
           }}
         >
-          {/* Line Numbers Bar */}
+          {/* Line Numbers Bar: the width follows the digit count, not the window. */}
           <div
             ref={lineNumbersRef}
-            className="w-12 py-3 px-1 text-right select-none bg-neutral-950 text-neutral-600 font-mono text-xs border-r border-neutral-900 overflow-hidden leading-6 shrink-0"
+            data-line-numbers
+            className="text-right select-none bg-neutral-950 text-neutral-600 font-mono text-xs border-r border-neutral-900 overflow-hidden leading-6 shrink-0"
+            style={{width:`calc(${String(lineCount).length}ch + 0.5rem)`}}
           >
             {Array.from({ length: lineCount }).map((_, i) => (
               <div key={i}>{i + 1}</div>
@@ -186,7 +190,7 @@ export const Editor: React.FC<EditorProps> = ({
             autoComplete="off"
             autoCorrect="off"
             placeholder="在此键入 Markdown 正文..."
-            className="flex-1 h-full p-3 resize-none bg-transparent text-neutral-200 outline-none leading-6 font-mono overflow-y-auto selection:bg-teal-900/60 selection:text-teal-100"
+            className="mf-source-inset flex-1 h-full resize-none bg-transparent text-neutral-200 outline-none leading-6 font-mono overflow-y-auto selection:bg-teal-900/60 selection:text-teal-100"
           />
         </div>
       </div>

@@ -6,9 +6,9 @@ const source=Array.from({length:8},(_,section)=>['## Section '+section,'',...Arr
 const lineOf=(text:string)=>source.split('\n').findIndex(line=>line.startsWith(text))+1;
 async function ready(page:Page){await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready',{timeout:30000})}
 async function boot(page:Page){await page.goto('/');await ready(page);await page.locator('textarea').fill(source);await ready(page);await page.getByRole('button',{name:/^大纲 \(/}).click()}
-async function editorAt(page:Page,line:number){const editor=page.locator('textarea'),row=page.locator('[data-view=editor] .w-12 > div').nth(line-1);await editor.dispatchEvent('pointerdown');await editor.evaluate((el:HTMLTextAreaElement,rowTop)=>{el.scrollTop=Math.max(0,el.scrollTop+rowTop-el.getBoundingClientRect().top)},await row.evaluate(el=>el.getBoundingClientRect().top))}
+async function editorAt(page:Page,line:number){const editor=page.locator('textarea'),row=page.locator('[data-view=editor] [data-line-numbers] > div').nth(line-1);await editor.dispatchEvent('pointerdown');await editor.evaluate((el:HTMLTextAreaElement,rowTop)=>{el.scrollTop=Math.max(0,el.scrollTop+rowTop-el.getBoundingClientRect().top)},await row.evaluate(el=>el.getBoundingClientRect().top))}
 async function previewAt(page:Page,line:number){const view=page.locator('[data-view=html] > div');await view.dispatchEvent('pointerdown');await view.evaluate((el:HTMLElement,line)=>{const target=el.querySelector<HTMLElement>('[data-line="'+line+'"]');if(!target)throw new Error('Missing source node '+line);el.scrollTop+=target.getBoundingClientRect().top-el.getBoundingClientRect().top},line)}
-async function editorLine(page:Page){return page.locator('textarea').evaluate((el:HTMLTextAreaElement)=>{const gutter=el.parentElement!.querySelector<HTMLElement>('.w-12')!,top=Math.max(0,el.scrollTop-parseFloat(getComputedStyle(el).paddingTop)),rows=[...gutter.children] as HTMLElement[];let previous=0;for(let i=0;i<rows.length;i++){const height=rows[i]!.getBoundingClientRect().height;if(top<=previous+height)return i+1+(top-previous)/height;previous+=height}return rows.length})}
+async function editorLine(page:Page){return page.locator('textarea').evaluate((el:HTMLTextAreaElement)=>{const gutter=el.parentElement!.querySelector<HTMLElement>('[data-line-numbers]')!,rows=[...gutter.children] as HTMLElement[],style=getComputedStyle(el);const viewTop=el.getBoundingClientRect().top+parseFloat(style.borderTopWidth||'0');for(let i=0;i<rows.length;i++){const rect=rows[i]!.getBoundingClientRect();if(viewTop<rect.bottom||i===rows.length-1)return i+1+Math.max(0,Math.min(1,(viewTop-rect.top)/(rect.height||1)))}return 1})}
 
 test('synchronizes mapped paragraphs and long code, and highlights the editor center chapter',async({page})=>{
  await boot(page);const line=lineOf('Paragraph 4_5');await editorAt(page,line);
@@ -32,9 +32,9 @@ test('measures soft-wrapped logical rows against native textarea layout without 
  await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'});
  const value=['中文🙂'.repeat(35)+' https://'+('segment'.repeat(30)),"const tabbed = '\t\t"+('x'.repeat(150))+"'",'',('尾行🙂'.repeat(35)),''].join('\n');
  await editor.fill(value);await expect(editor).toHaveAttribute('wrap','soft');expect(await editor.inputValue()).toBe(value);
- await expect.poll(async()=>editor.evaluate(el=>el.parentElement!.querySelector<HTMLElement>('.w-12')!.children.length)).toBe(5);
+ await expect.poll(async()=>editor.evaluate(el=>el.parentElement!.querySelector<HTMLElement>('[data-line-numbers]')!.children.length)).toBe(5);
  const heights=await editor.evaluate((el:HTMLTextAreaElement)=>{
-  const gutter=el.parentElement!.querySelector<HTMLElement>('.w-12')!,rows=[...gutter.children] as HTMLElement[],style=getComputedStyle(el),oracle=document.createElement('textarea');
+  const gutter=el.parentElement!.querySelector<HTMLElement>('[data-line-numbers]')!,rows=[...gutter.children] as HTMLElement[],style=getComputedStyle(el),oracle=document.createElement('textarea');
   for(let i=0;i<style.length;i++){const key=style.item(i);oracle.style.setProperty(key,style.getPropertyValue(key),style.getPropertyPriority(key))}
   oracle.wrap='soft';oracle.style.position='fixed';oracle.style.left='-100000px';oracle.style.top='0';oracle.style.visibility='hidden';oracle.style.display='block';oracle.style.flex='none';oracle.style.boxSizing='border-box';oracle.style.width=el.getBoundingClientRect().width+'px';oracle.style.height='1px';oracle.style.minHeight='0';oracle.style.maxHeight='none';oracle.style.overflowY='scroll';oracle.style.resize='none';document.body.append(oracle);
   const pads=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom),measured=el.value.split('\n').map(line=>{oracle.value=line||'\u200b';return oracle.scrollHeight-pads});oracle.remove();
@@ -70,11 +70,11 @@ test('persists the wrap preference and preserves source selection and undo acros
 
 test('defers wrapped row measurement during IME composition and measures the committed value afterward',async({page})=>{
  await boot(page);const editor=page.getByRole('textbox',{name:'Markdown 编辑器'});const result=await editor.evaluate((el:HTMLTextAreaElement)=>{
-  const gutter=el.parentElement!.querySelector<HTMLElement>('.w-12')!,first=gutter.children[0] as HTMLElement,initial=first.getBoundingClientRect().height,next='🙂中文'.repeat(300)+'\n'+el.value;
+  const gutter=el.parentElement!.querySelector<HTMLElement>('[data-line-numbers]')!,first=gutter.children[0] as HTMLElement,initial=first.getBoundingClientRect().height,next='🙂中文'.repeat(300)+'\n'+el.value;
   el.focus();el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:''}));const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!;setter.call(el,next);el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertCompositionText',data:'🙂'}));el.setSelectionRange(5,5);
   return {initial,selection:[el.selectionStart,el.selectionEnd],value:el.value};
  });
- const composing=editor.locator('..').locator('.w-12 > div').first();await expect(editor).toHaveValue(result.value);await expect(composing).toHaveCSS('height',result.initial+'px');
+ const composing=editor.locator('..').locator('[data-line-numbers] > div').first();await expect(editor).toHaveValue(result.value);await expect(composing).toHaveCSS('height',result.initial+'px');
  const selection=await editor.evaluate((el:HTMLTextAreaElement)=>[el.selectionStart,el.selectionEnd]);expect(selection).toEqual(result.selection);
  await editor.dispatchEvent('compositionend',{data:'🙂'});await expect.poll(()=>composing.evaluate(el=>parseFloat(getComputedStyle(el).height))).toBeGreaterThan(result.initial);
  expect(await editor.inputValue()).toBe(result.value);expect(await editor.evaluate((el:HTMLTextAreaElement)=>[el.selectionStart,el.selectionEnd])).toEqual(result.selection);
