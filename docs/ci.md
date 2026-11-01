@@ -57,6 +57,8 @@ bun run test:unit:changed                      # vitest --changed：受改动影
 
 实测说明：`vitest run --changed` 在本仓库模块图较密，选中面偏大（接近全量），要精确到文件时用显式路径；`--related`（Jest 的按依赖筛选）在本仓库的 Vitest 5.0.5 中不存在。
 
+已知存在缺陷、暂不阻塞信号的用例用 `test.fixme()` 标注，并登记在 [已知失败](contracts/known-failures.md)；报告里它们显示为 fixme 而非失败。
+
 
 R0–R4审查后，本地样例为37项单元/契约及19项Chromium测试，覆盖SVG资源/公式隔离、DOCX文本/编号/锚点、分页外壳隔离与容器、七种显隐组合、设置对话框、草稿恢复及双向同步。数量为本次快照，以实际测试收集为准。运行环境JSON与长表格/代码的独立HTML/PDF也进入test-results证据目录；CI既有上传覆盖这些文件。远端尚未执行本分支。
 

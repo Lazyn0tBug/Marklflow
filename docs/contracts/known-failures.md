@@ -1,0 +1,13 @@
+# 已知失败
+
+端到端套件里**已知存在缺陷、暂时不阻塞信号**的用例。它们在规格里用 `test.fixme()` 标注，报告里显示为 fixme 而不是失败；缺陷修好后把标注去掉，用例重新参与门禁。
+
+| 用例 | 现象 | 首次记录 | 状态 |
+| --- | --- | --- | --- |
+| `tests/e2e/workbench-tabs.spec.ts` → 「keeps flow/A4 cache entries independent and invalidates a changed math configuration」 | 切换公式输出模式后，流式预览的 `data-preview-reference` 没有失效，断言 `not.toBe(flow)` 失败 | 2026-11-01（早于间距改动，干净基线同样失败） | 待修 |
+
+## 约定
+
+- 新增条目时写清**现象**（断言挂在哪、实际是什么）和**首次记录**（哪个基线开始失败），避免把既有缺陷记成新引入。
+- 修复后：删掉规格里的 `test.fixme()` 标注、从本表移除该行、在提交说明里写清根因。
+- 不把"不稳定"（flaky）长期留在这里：flaky 用例要单独隔离并限期消除，不能当作已知失败长期豁免。
