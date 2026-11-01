@@ -1,6 +1,6 @@
 # Tauri 桌面与编辑交互迁移方案（2026-10-29）
 
-更新：2026-11-01。当前代码核对基线 architecture-refactor / 00a8ce2；M0—M3、E0—E2已有实现与历史验收，M4及后续生产迁移未完成。原始业务/来源基线及各阶段证据保留在下文与M0清单，不用当前HEAD改写历史。当前输出层已包含后续OMML及交付调整，完整现状和剩余路线统一见[输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)。本次只更新文档，不修改代码、不提交、不推送，不宣称系统或远端验收通过。
+更新：2026-11-02。当前代码核对基线 architecture-refactor / 00a8ce2；M0—M3、E0—E2已有实现与历史验收，M4及后续生产迁移未完成。原始业务/来源基线及各阶段证据保留在下文与M0清单，不用当前HEAD改写历史。当前输出层已包含后续OMML及交付调整，完整现状和剩余路线统一见[输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)。本次只更新文档，不修改代码、不提交、不推送，不宣称系统或远端验收通过。
 
 ## 1. 范围与不变量
 
@@ -40,7 +40,9 @@
 - ByteSaveTarget.save在实际提交写入后回报saved；Web下载仍为download-started。原文件写入失败保护使用原生可验证的提交方式，临时文件同目录、失败清理；不把直接writeFile视为天然原子写入，行为以各OS验证为准。
 - 当前顺序是接受冻结快照、检查/一次确认、生成完整字节后选择目标并写入；不恢复旧的先选位置再生成。异步生成不保证Web用户激活仍有效，沿用明确下载回执而非假称选择器已弹出。导出不调用markSaved，不改变源文件绑定。
 - 公共ByteSaveTarget拟增加可选幂等release；Tauri必须实现。应用服务取得目标后finally释放，包括失败；选择中途授权构造失败由平台清理。释放失败保留诊断，不掩盖原写入错误、不把已提交文件误报失败；不释放源文件绑定的其他授权。
-- PDF仍用同一冻结HTML经现有Paged.js生成交付HTML。deliverPdf(html, ExportFile)拟返回独立PdfDeliveryReceipt，当前仅handed-off，不加入字节SaveReceipt。去除固定“浏览器处理”文案，统一提示“已提交 PDF 输出请求，请在系统对话框中完成保存。”这不证明面板已显示；可辨识调用失败抛错，afterprint不证明保存/取消。只有将来可观察到对应事实才扩展saved/cancelled。
+- PDF共用冻结HTML及既有Paged.js完整分页产物；Web保留浏览器输出，handed-off不证明保存。桌面目标为三平台原生静默导出，Windows先验证隐藏WebView2顶层加载分页HTML→PrintToPdf→临时文件→受控提交目标，成功才saved；macOS WKWebView和Linux WebKitGTK列Future最后评估，均标待验证。
+- deliverPdf(html, ExportFile)拟返回独立PdfDeliveryReceipt：handed-off/saved/cancelled，不混入字节SaveReceipt。saved只在目标成功提交后返回；cancelled仅用于可观察到的取消选择，原生运行阶段不伪称可取消。Web提示系统对话框完成，桌面成功提示已保存，失败抛错；afterprint不证明保存。
+- 专用宿主输出冻结文档，而非直接指定现有iframe；不读取可见DOM，不重复映射/分页，不要求用户切A4。保存选择仍可显示，打印面板和输出宿主不显示。Rust保留路径；完成/失败/超时处理须防迟到提交，清理WebView、资源和临时文件，不扩大用户内容权限。详见完整输出方案第4.1节。
 - tauri旧Rust export_pdf_direct只写临时HTML并返回就绪；旧前端走旧iframe打印。这两条不作为原生PDF写出成果迁入。优先做系统WebView能力PoC；无法确认的平台保留未验/不支持，不增加重型或截图后备。
 
 ### 3.3 文件来源、导入、保存
@@ -122,8 +124,8 @@ M0已完成冻结、Luna独立审查与验证；M1已完成独立审查/本机Wi
 | E1 自动换行 | E0 | 适配3686eed的wrap/行号测量，默认开启及弹窗开关，IME和水平滚动 | 已通过：[记录](../reviews/tauri-migration-e1-2026-10-30.md)、[验收](../acceptance/tauri-migration-e1-2026-10-30.json)，450单元/check及最终fresh-dist 18项Chromium回归。默认soft与设置偏好、原生行高对照、逻辑定位/缓存/源码不变通过；OS真实IME及跨浏览器/Tauri视觉未验，E2未实施 |
 | E2 拖动分栏 | E1 | 适配74d7a3c分隔条/比例偏好/键盘/取消清理，接逻辑锚点重排 | 已通过：[记录](../reviews/tauri-migration-e2-2026-10-30.md)、[验收](../acceptance/tauri-migration-e2-2026-10-30.json)，453单元/check、21项Chromium及3项取消加强复验。显隐/窄屏/取消/焦点/缓存/A4通过，不改1024配置/分页/缓存身份；跨浏览器/Tauri视觉未验 |
 | M7 EX-T0差异冻结 | M6、完整EX-W3及原EX-T0启动条件 | 映射当前端口与已完成准备工作，列出各OS导出能力和占位清理范围 | 复用准备成果不重复提交；禁止把临时HTML命令当PDF成功 |
-| M8 EX-T1 PDF PoC | M7 | 独立系统WebView冻结HTML/Paged.js交付夹具，按目标OS验证 | 实际PDF的正文/字体/链接/矢量/分页；默认名/取消/失败/宿主清理分列，无截图/新引擎 |
-| M9 EX-T2a统一导出接入 | M8在所接OS通过 | 启动选择Web/Tauri双组合根，共用ExportService；Tauri selectSave/deliverPdf、独立PDF回执及目标finally释放，沿用同一生成/确认 | 六格式同命名/源快照/单次prepare/busy；真实保存/取消/覆盖/失败，错误不降级不覆盖源 |
+| M8 EX-T1 Windows静默PDF PoC | M7 | 小范围独立隐藏WebView2夹具加载冻结分页HTML，PrintToPdf临时输出/受控提交，不接生产UI | 实际多页PDF正文/字体/链接/矢量及分页；无宿主闪现/打印面板；选择取消/命名/覆盖失败保护/超时与迟到回调清理；当前待验证 |
+| M9 EX-T2a Windows统一导出接入 | Windows M8通过 | 启动选择Web/Tauri双组合根，共用ExportService；Tauri selectSave/deliverPdf、独立PDF回执及目标finally释放，沿用同一生成/确认 | 六格式同命名/源快照/单次prepare/busy；真实保存/取消/覆盖/失败，错误不降级不覆盖源 |
 | M10 EX-T2b多平台包与发布配置 | M2、M9、E2及所声明OS验收 | 核对bundle、离线资源/系统WebView条件，完成tag发布控制，保持默认不发布 | 对每个实际支持OS验证安装包/ZIP启动与文件操作；Web回归通过，未验OS明确标记 |
 | M11 最终审查与收口 | 已授权阶段完成 | Luna独立代码/文档审查、自动回归、系统/产物证据核对及支持表；修复按小步提交 | 自动通过与完整发布分开；EX-W0/原生保存/WordWPS/跨OS缺项不标通过；不自动推送/创建release |
 
@@ -141,4 +143,8 @@ M0已完成冻结、Luna独立审查与验证；M1已完成独立审查/本机Wi
 
 ## 9. 输出方案衔接（2026-11-01）
 
-[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)是当前输出层的现状和剩余实现清单：D0/D1/D2/D4为Web与共享输出收口，D3在M4/M5实施而不重复；D5补Web系统证据；D6映射M7/M8，D7映射M9，D8映射M10/M11。M7仍需完整EX-W3；文档更新不自动放行EX-T。现有原生公式不再列为全部待实现，历史473/136-of-138计数也不代表当前完整验收。
+[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)是当前输出层的现状和剩余实现清单：D0/D1/D2/D4为Web与共享输出收口，D3在M4/M5实施而不重复；D5补Web系统证据；D6映射Windows M7/M8，D7映射Windows M9，D8映射当前Web/Windows范围M10/M11；Future F-PDF-Mac/F-PDF-Linux排在D8/M11限定范围收口之后，不作为当前Windows路径前置。未来各OS仍需自己的M8—M11对应证据，不由包构建推断静默PDF支持。M7仍需完整EX-W3；文档更新不自动放行EX-T。现有原生公式不再列为全部待实现，历史473/136-of-138计数也不代表当前完整验收。
+
+## 10. Future：其他系统静默PDF（当前路线最后）
+
+Windows先完成M8小范围能力验证，成功后M9接入，再按M10/M11限定声明范围收口。最后才安排macOS与Linux原生PDF评估，均为待验证：Mac比较WKWebView createPDF及printOperation多页输出；Linux验证WebKitPrintOperation明确PDF文件输出与发行版/打印后端差异。两者均复用冻结HTML与统一应用服务，成功提交才saved；隐藏宿主、字体/图片/分页及失败清理必须各自验证。未验不自动回退、不标不支持、不宣称已支持；新平台接入后补对应系统及包验收。此排序不取消完整EX-W3、EX-T或发布门槛，本次仅文档更新。

@@ -24,7 +24,7 @@
 - 排除旧App/ExportModal整体替换、meta.filePath领域字段、宽泛文件权限、旧补丁中心、OMML/SVG图片白名单变更、旧PDF临时HTML占位命令。保留当前业务和HTML唯一正文输出源。
 - MathJax3.2.2/Paged.js0.4.3不变；预览任务、同步哈希、缓存和单次HTML准备不另建第二套实现。
 
-## 3. 当前端口与后续适配契约（2026-11-01修订）
+## 3. 当前端口与后续适配契约（2026-11-02修订）
 
 第1/2/5—8节保留M0历史冻结与验收语境，不代表当前仍无桌面壳。第3/4节按00a8ce2更新当前事实和后续契约，替代旧顺序/回执约定；不可变基线JSON及历史验收不修改。拟议类型尚未写入代码；完整实现路线见[输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)。
 
@@ -33,7 +33,7 @@
 | 导出应用服务 | ExportService持有一次busy；ExportPorts组合统一生成函数和平台交付。Web singleton位于platform/web/exportService | 启动时选择同一个ExportService类的Web/Tauri组合根和唯一服务实例；共用生成器，不重复run，不在组件分散环境判断。D1收口契约，M9/D7接生产平台选择 |
 | 字节目标 | selectSave(ExportFile)→ByteSaveTarget或undefined；save(Blob)→SaveReceipt四态（saved/download-started/recovered-download/activation-expired） | 保留生成完整字节及一次确认后选择目标/写入的当前顺序；未选目标返回undefined，可辨识错误抛出，不假称原生Option能区分全部弹窗故障；提交成功才saved。拟增加可选release，Tauri必备；服务取得目标后finally释放，构造中途失败由平台清理。D1/M9落实 |
 | 名称 | ExportFile负责六格式、完整后缀及255 UTF-8字节、完整grapheme | Tauri沿用name/mime/extension，不重复补后缀。原生路径保持平台内部，不混入建议名 |
-| PDF交付 | 当前deliverPdf(html)→Promise<void>；服务文案固定浏览器处理；HTML已由generatePdfHtml生成 | D1拟改deliverPdf(html, ExportFile)→Promise<PdfDeliveryReceipt>，独立于SaveReceipt，当前仅handed-off；不证明面板已显示或文件保存，可辨识失败抛错。统一提示系统对话框完成保存；afterprint不推断取消/保存。M8验证所接OS，M9组合；可观测能力增加后才扩展saved/cancelled，不新增生成入口 |
+| PDF交付 | 当前deliverPdf(html)→Promise<void>；固定浏览器文案；已有generatePdfHtml分页生成；尚无生产静默PDF实现 | D1拟改deliverPdf(html, ExportFile)→Promise<PdfDeliveryReceipt>，独立于SaveReceipt。Web为handed-off；原生目标提交成功才saved，可观察取消选择才cancelled；失败抛错，afterprint不推断保存。Windows M8先小范围隐藏WebView2/PrintToPdf验证，M9再组合；macOS/Linux列Future最后，均待验证，不新增内容生成入口 |
 | 导入 | SourceImport<F extends {name,size}>，ports.read返回文本；统一后续格式/NUL/schema/资产/会话校验 | 原生文件用不透明键关联平台路径，read内部限额读字节并严格UTF-8解码。打开/多文件拖放共用单批次；错误不吞成取消。M3/M4 |
 | 会话 | DocumentSessions按ID管理唯一激活、undo/redo、dirty及位置；重复open聚焦原草稿 | 规范文件身份→已有文档ID由本地绑定查询，查到后聚焦而非覆盖。源附件不授予路径访问权限，不能由旧filePath自行绑定。M4 |
 | 草稿保存 | App在700ms后调用saveSource→saveDocument→现有仓储；只对当前匹配修订markSaved | 保留现有草稿保存定义，不改为自动写原文件；原文件写回结果不得让较新修订变成已写回。M5另加绑定的已写回修订 |
@@ -41,6 +41,15 @@
 | 标题/关闭/拖放 | 当前UI会话与Web生命周期 | 原生事件只调用应用操作；原生窗口关闭须考虑草稿及原文件未写回状态。监听异步完成后若已卸载立即解除，避免重复订阅。M4/M5 |
 
 所有SDK import只在现有门禁允许的src/core/platform/tauri或src/platform/tauri内。纯应用模块、任务消息、缓存键和输出附件不持有原生路径/句柄。无需通用平台注册器、第二套任务队列或通用权限服务。
+
+### 3.1 静默PDF平台适配约定（2026-11-02）
+
+- 同一冻结分页HTML与资源加载为专用WebView顶层文档，不以工作台/预览iframe可见DOM为源，不重复prepare、MathJax或Paged.js，不新增应用PDF预览。新宿主只布局现成产物，隐藏状态就绪与打印可靠性必须验证。
+- Windows候选：隐藏WebView2 + PrintToPdf；原生端持有目标路径授权，ExportFile提供默认名。选择目标可显示，打印面板/输出宿主不显示；PrintToPdf完成成功只证明临时PDF输出，受控提交目标后才能saved。失败保护已有目标，清理临时文件。
+- deliverPdf端口内部负责目标选择/取消、原生宿主、回调、临时文件与授权释放；不走ByteSaveTarget.save(Blob)伪装已有PDF字节，不改变字节格式端口。授权finally释放不掩盖主错误；源绑定授权不被误释放。
+- 运行串行，沿用导出busy。超时/关闭不能让迟到回调提交目标或改变回执；终止/排空原生任务再安全清理的可行方式须PoC核实，不宣称原生计算可协作取消。等待字体、图片、布局而非固定睡眠；输出宿主不向用户内容开放一般IPC或本地路径权限。
+- M8/D6先独立小范围Windows验证，不接生产UI；依赖完整EX-W3/M7不变。验证隐藏无闪现、多页A4/页边距/缩放、正文/CJK/字体/链接/矢量、命名/取消选择、失败原文件保护、资源与迟到回调清理；通过后M9/D7接生产。
+- macOS WKWebView createPDF/printOperation、Linux WebKitPrintOperation文件输出属于最后Future（D8/M11当前范围收口之后）；分别验证多页/打印CSS和系统后端，未验统一标待验证。将来各平台仍需自己的生产接入和发布验收，不以Windows通过替代。
 
 ## 4. 源文件操作与状态冻结
 
