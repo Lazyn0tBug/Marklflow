@@ -26,7 +26,8 @@ export function paginatePreparedContent(input:HtmlLayoutInput,signal?:AbortSigna
    const printTree=parse(input.presentation.css+pageCss(input.presentation.page.margins));
    walk(printTree,{visit:'Atrule',enter(node,item,list){if(node.name.toLowerCase()==='container'&&item&&list)list.remove(item)}});
    walk(printTree,{visit:'Rule',enter(node,item,list){if(node.prelude.type==='SelectorList'&&item&&list){let hidesUI=false;walk(node.prelude,n=>{if(n.type==='ClassSelector'&&n.name==='no-print')hidesUI=true});if(hidesUI)list.remove(item)}}});
-   const paginationCss=generate(printTree);
+   // The page margins replace the content padding: a paged page must not carry both.
+   const paginationCss=generate(printTree)+'\n.mf-doc{padding:0}';
    await waitForLayout(source);throwIfAborted(stepSignal);
    const paged=await loadPagedAdapter(undefined,resources);throwIfAborted(stepSignal);
    nativeStyle.textContent=input.presentation.css+'\n.mf-pagination .mf-doc pre{white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere}.mf-pagination .mf-doc .mf-table-scroll,.mf-pagination .mf-doc .mf-math,.mf-pagination .mf-doc .mf-diagram{overflow:visible}.mf-pagination .mf-doc{--mf-paper:#fff;--mf-ink:#1f2937}';

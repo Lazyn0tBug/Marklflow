@@ -19,7 +19,7 @@ test('opens hidden width settings as a real dialog and closes with Escape',async
  await page.getByRole('button',{name:'设置',exact:true}).click();const dialog=page.getByRole('dialog',{name:'工作台设置'});await expect(dialog).toBeVisible();
  await expect(page.getByLabel('编辑器与 HTML 内容最大宽度')).toHaveValue('1024');await page.getByLabel('编辑器与 HTML 内容最大宽度').selectOption('800');
  await page.screenshot({path:info.outputPath('settings.png')});await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();
- await expect(page.locator('.mf-doc')).toHaveCSS('max-width','800px');await expect(page.getByRole('button',{name:'设置',exact:true})).toBeFocused();
+ await expect(page.locator('.mf-document-shell')).toHaveCSS('max-width','800px');await expect(page.getByRole('button',{name:'设置',exact:true})).toBeFocused();
 });
 test('saves undo and redo revisions and restores the selected document math preference',async({page})=>{
  await page.goto('/');const editor=page.locator('textarea');await expect(editor).toBeVisible();

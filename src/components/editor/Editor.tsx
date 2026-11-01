@@ -148,7 +148,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <div className="flex-1 h-full flex flex-col bg-neutral-950 border-r border-neutral-800 text-neutral-100 overflow-hidden no-print">
-      {/* Editor Centered Container respecting maxWidth */}
+      {/* Editor Centered Container respecting maxWidth; the line number column is the view gutter. */}
       <div className="flex-1 flex justify-center overflow-hidden bg-neutral-950">
         <div
           className="w-full h-full flex overflow-hidden relative font-mono text-sm border-x border-neutral-900/50 bg-neutral-950"

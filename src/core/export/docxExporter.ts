@@ -111,7 +111,8 @@ export async function exportDocumentToDocx(input:ExportHtmlArtifact,options:{all
  for(const [name,value]of Object.entries(input.presentation.variables))root.style.setProperty(name,value);
  const m=input.presentation.page.margins,twips=(mm:number)=>Math.round(mm*1440/25.4);
  const context:InlineContext={bookmarks:new Map(),width:(210-m.left-m.right)*96/25.4,height:(297-m.top-m.bottom)*96/25.4-20};
- root.style.cssText+=';position:fixed;left:-20000px;top:0;width:'+context.width+'px;visibility:hidden';
+ // The section margins are the only margin here: the document padding belongs to the screen and HTML export.
+ root.style.cssText+=';position:fixed;left:-20000px;top:0;width:'+context.width+'px;padding:0;visibility:hidden';
  root.innerHTML=input.html;for(const detail of root.querySelectorAll('details'))detail.setAttribute('open','');const stage=document.createElement('div'),style=document.createElement('style');style.textContent=input.presentation.css;stage.className='mf-docx-export-stage';resources.register('docx-export-stage','host',0,()=>stage.remove());stage.append(style,root);document.body.append(stage);
   await waitForLayout(root);
   for(const el of root.querySelectorAll('[id]'))if(!context.bookmarks.has(el.id))context.bookmarks.set(el.id,'mf_bookmark_'+context.bookmarks.size);

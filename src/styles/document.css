@@ -1,5 +1,8 @@
+/* The content carries the margin; the page geometry (paged preview, PDF, DOCX) replaces it.
+   The measure is relative to the sheet, not the window, so a narrow pane keeps a readable column. */
+:root{--mf-content-padding:clamp(16px,4cqi,56px)}
 .mf-document-shell{box-sizing:border-box;background:#fff;color:#1f2937;min-width:0}
-.mf-doc{box-sizing:border-box;color:var(--mf-ink,#1f2937);background:var(--mf-paper,#fff);font-family:var(--mf-font,system-ui,"Microsoft YaHei","PingFang SC",sans-serif);font-size:var(--mf-size,15px);line-height:var(--mf-leading,1.75);overflow-wrap:anywhere;min-width:0;text-align:start}
+.mf-doc{box-sizing:border-box;color:var(--mf-ink,#1f2937);background:var(--mf-paper,#fff);font-family:var(--mf-font,system-ui,"Microsoft YaHei","PingFang SC",sans-serif);font-size:var(--mf-size,15px);line-height:var(--mf-leading,1.75);overflow-wrap:anywhere;min-width:0;text-align:start;padding:var(--mf-content-padding)}
 .mf-doc h1,.mf-doc h2,.mf-doc h3,.mf-doc h4,.mf-doc h5,.mf-doc h6{color:inherit;line-height:1.35;font-weight:650;break-after:avoid;margin:1.4em 0 .6em}
 .mf-doc h1{font-size:2em}.mf-doc h2{font-size:1.5em}.mf-doc h3{font-size:1.25em}.mf-doc h4,.mf-doc h5,.mf-doc h6{font-size:1.1em}
 .mf-doc p,.mf-doc figure,.mf-doc blockquote,.mf-doc pre,.mf-doc table{margin:.85em 0}.mf-doc ul,.mf-doc ol{padding-inline-start:1.6em;margin:.75em 0}.mf-doc ul{list-style:disc}.mf-doc ol{list-style:decimal}.mf-doc li{margin:.25em 0}
@@ -19,6 +22,6 @@
 .mf-document-shell{container-name:mf-document;container-type:inline-size}
 .mf-doc .mf-columns{gap:clamp(.75rem,2cqi,1.5rem)}
 @container mf-document (max-width:44rem){.mf-doc .mf-columns{grid-template-columns:minmax(0,1fr)}.mf-doc h1{font-size:1.7em}.mf-doc th,.mf-doc td{padding:.35em .45em}}
-@media(max-width:480px){body>.mf-document-shell{margin:0!important;padding:16px!important}}
+@media(max-width:480px){body>.mf-document-shell{margin:0!important}body>.mf-document-shell>.mf-doc{padding:16px!important}}
 .mf-doc .mf-table{display:table}.mf-doc .mf-table-scroll{max-width:100%;overflow-x:auto}.mf-doc .mf-math,.mf-doc .mf-diagram{overscroll-behavior-inline:contain}
 .mf-doc .mf-code,.mf-doc .mf-diagram,.mf-doc .mf-math{overflow-anchor:auto}
