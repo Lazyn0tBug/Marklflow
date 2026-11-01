@@ -9,7 +9,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
         // Its browser conditional entry uses document; pin the same package's DOM-free default.
         'decode-named-character-reference': createRequire(import.meta.url).resolve('decode-named-character-reference'),
       },
