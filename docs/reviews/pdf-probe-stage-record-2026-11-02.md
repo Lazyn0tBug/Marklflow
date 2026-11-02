@@ -167,7 +167,7 @@ bun scripts/pdf-probe-sample.ts
 
 | # | 发现 | 影响 | 拟修 |
 | --- | --- | --- | --- |
-| R1 | **自检比记录的交接期望弱**。阶段记录写死"HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次"，而脚本只断言"标记页码非 null"。若 Windows 的字体度量把标记挪位，脚本照旧写盘并报成功，产出的 meta 与本记录直接矛盾 | 归档与记录不一致，且由工具自证 | 自检改为断言期望值本身：`headMarkerPage===1`、`tailMarkerPage===pageElements`、两标记各出现 1 次、`platformFonts` 非空 |
+| R1 | **已修（2026-11-03）**。**自检比记录的交接期望弱**。阶段记录写死"HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次"，而脚本只断言"标记页码非 null"。若 Windows 的字体度量把标记挪位，脚本照旧写盘并报成功，产出的 meta 与本记录直接矛盾 | 归档与记录不一致，且由工具自证 | 自检改为断言期望值本身：声明页数与页面盒数一致、页面盒多于一页、HEAD 在第 1 页、TAIL 在末页、两标记各出现 1 次、平台字体证据非空；**自检通过才落盘**，失败的产物不替换归档。**已验**：把 HEAD 的期望页改成 2 后运行，自检报错并指名该项，归档未被触碰；正常运行通过 |
 | R2 | **已修（2026-11-03）**。**`/src/*` 路径映射放在 `tsconfig.base.json`，范围过宽**。四个 profile 全部继承，于是任何源文件都可写 `import x from '/src/foo.ts'` 并通过类型检查；但该写法只在 Vite dev server 下成立（dev server 按仓库根路径提供 `/src/...`），`vite build` 会当成 URL 路径，生产构建直接坏掉。即以构建期地雷换掉了类型期护栏 | 未来有人这样写 import 时不会被类型检查拦下 | 映射下沉到 `tsconfig.integration.json`（脚本所在 profile），base 保持干净。实测 TS 的 `paths` 从 `extends` 继承时是整体替换而非合并，下沉时把 `@/*` 一并重新声明。**护栏已验**：在 `src/` 下放一个 `import from '/src/core/storage/storage'` 的探针文件，`tsc -p tsconfig.json` 报 TS2307，即该写法在源文件里已被类型检查拦下；脚本所在 profile 仍可解析 |
 | R3 | **meta 记了宿主绝对路径**（`file`、`source`）。交付宿主取样后仓库里会留下 `C:\Users\<用户名>\...` | 归档带宿主信息，不该入库 | 改为记仓库相对路径 |
 

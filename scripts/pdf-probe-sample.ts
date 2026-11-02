@@ -144,8 +144,6 @@ try{
   await fontPage.close();
   await browser.close();
   const {html,fontVariables,fontFamily,mdHash,renderConfigVersion}=produced;
-  await mkdir(outDir,{recursive:true});
-  await writeFile(outFile,html,'utf8');
 
   const chunks=html.split(/<div class="pagedjs_page[ "]/);
   const locate=(marker:string)=>{for(let i=1;i<chunks.length;i++){if(chunks[i]!.includes(marker))return i;}return null;};
@@ -174,9 +172,22 @@ try{
     pageProblems:problems,
     note:'sha256 只锁定本文件；mdHash 与 renderConfigVersion 承担"同一输入"的稳定身份，沿用仓库既有产出身份模型。交付宿主字体环境须与本 environment 一致，否则固化分页的页面盒度量不匹配。platformFonts 与 fontWidths 记录宿主实际解析到的字体，用于核对字体环境。',
   };
+  // 自检断言的是交接物表写下的期望值本身，不是"某项非空"。
+  // 只断言非空时，字体度量把标记挪位、或平台字体证据退化为空，都会照样写盘并报成功。
+  const expectations:Array<[string,boolean]>=[
+    ['声明页数与页面盒数一致',meta.dataExportPages===meta.pageElements],
+    ['页面盒多于一页（首尾标记须落在不同页）',meta.pageElements>1],
+    ['HEAD 标记在第 1 页',meta.headMarkerPage===1],
+    ['TAIL 标记在末页',meta.tailMarkerPage===meta.pageElements],
+    ['HEAD 标记只出现一次',meta.headMarkerOccurrences===1],
+    ['TAIL 标记只出现一次',meta.tailMarkerOccurrences===1],
+    ['平台字体证据非空',Array.isArray(meta.platformFonts)&&meta.platformFonts.length>0],
+  ];
+  const failed=expectations.filter(([,ok])=>!ok).map(([name])=>name);
+  if(failed.length)throw new Error('固化样本自检失败：'+failed.join('；'));
+  // 自检通过才落盘：失败的产物不得替换归档。
+  await mkdir(outDir,{recursive:true});
+  await writeFile(outFile,html,'utf8');
   await writeFile(metaFile,JSON.stringify(meta,null,2)+'\n','utf8');
   console.log(JSON.stringify(meta,null,2));
-  if(meta.dataExportPages!==meta.pageElements||meta.headMarkerPage===null||meta.tailMarkerPage===null||!meta.fontWidths){
-    throw new Error('固化样本自检失败：页数、标记、页盒数或字体证据不一致');
-  }
 }finally{stopServer()}
