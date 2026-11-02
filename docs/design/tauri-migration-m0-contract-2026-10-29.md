@@ -30,10 +30,10 @@
 
 | 领域 | 当前接口/事实 | 后续匹配决定与实施归属 |
 | --- | --- | --- |
-| 导出应用服务 | ExportService持有一次busy；ExportPorts组合统一生成函数和平台交付。Web singleton位于platform/web/exportService | 启动时选择同一个ExportService类的Web/Tauri组合根和唯一服务实例；共用生成器，不重复run，不在组件分散环境判断。D1收口契约，M9/D7接生产平台选择 |
-| 字节目标 | selectSave(ExportFile)→ByteSaveTarget或undefined；save(Blob)→SaveReceipt四态（saved/download-started/recovered-download/activation-expired） | 保留生成完整字节及一次确认后选择目标/写入的当前顺序；未选目标返回undefined，可辨识错误抛出，不假称原生Option能区分全部弹窗故障；提交成功才saved。拟增加可选release，Tauri必备；服务取得目标后finally释放，构造中途失败由平台清理。D1/M9落实 |
+| 导出应用服务 | ExportService持有一次busy；ExportPorts组合统一生成函数和平台交付。Web singleton位于platform/web/exportService | 启动时选择同一个ExportService类的Web/Tauri组合根和唯一服务实例；共用生成器，不重复run，不在组件分散环境判断。D2收口契约，M9/D8接生产平台选择 |
+| 字节目标 | selectSave(ExportFile)→ByteSaveTarget或undefined；save(Blob)→SaveReceipt四态（saved/download-started/recovered-download/activation-expired） | 保留生成完整字节及一次确认后选择目标/写入的当前顺序；未选目标返回undefined，可辨识错误抛出，不假称原生Option能区分全部弹窗故障；提交成功才saved。拟增加可选release，Tauri必备；服务取得目标后finally释放，构造中途失败由平台清理。D2/M9落实 |
 | 名称 | ExportFile负责六格式、完整后缀及255 UTF-8字节、完整grapheme | Tauri沿用name/mime/extension，不重复补后缀。原生路径保持平台内部，不混入建议名 |
-| PDF交付 | 当前deliverPdf(html)→Promise<void>；固定浏览器文案；已有generatePdfHtml分页生成；尚无生产静默PDF实现 | D1拟改deliverPdf(html, ExportFile)→Promise<PdfDeliveryReceipt>，独立于SaveReceipt。Web为handed-off；原生目标提交成功才saved，可观察取消选择才cancelled；失败抛错，afterprint不推断保存。Windows M8先小范围隐藏WebView2/PrintToPdf验证，M9再组合；macOS/Linux列Future最后，均待验证，不新增内容生成入口 |
+| PDF交付 | 当前deliverPdf(html)→Promise<void>；固定浏览器文案；已有generatePdfHtml分页生成；尚无生产静默PDF实现 | D2拟改deliverPdf(html, ExportFile)→Promise<PdfDeliveryReceipt>，独立于SaveReceipt。Web为handed-off；原生目标提交成功才saved，可观察取消选择才cancelled；失败抛错，afterprint不推断保存。前置D1先独立技术验证，D7/M8产品化验收后D8/M9再组合；macOS/Linux列Future最后，均待验证，不新增内容生成入口 |
 | 导入 | SourceImport<F extends {name,size}>，ports.read返回文本；统一后续格式/NUL/schema/资产/会话校验 | 原生文件用不透明键关联平台路径，read内部限额读字节并严格UTF-8解码。打开/多文件拖放共用单批次；错误不吞成取消。M3/M4 |
 | 会话 | DocumentSessions按ID管理唯一激活、undo/redo、dirty及位置；重复open聚焦原草稿 | 规范文件身份→已有文档ID由本地绑定查询，查到后聚焦而非覆盖。源附件不授予路径访问权限，不能由旧filePath自行绑定。M4 |
 | 草稿保存 | App在700ms后调用saveSource→saveDocument→现有仓储；只对当前匹配修订markSaved | 保留现有草稿保存定义，不改为自动写原文件；原文件写回结果不得让较新修订变成已写回。M5另加绑定的已写回修订 |
@@ -48,8 +48,12 @@
 - Windows候选：隐藏WebView2 + PrintToPdf；原生端持有目标路径授权，ExportFile提供默认名。选择目标可显示，打印面板/输出宿主不显示；PrintToPdf完成成功只证明临时PDF输出，受控提交目标后才能saved。失败保护已有目标，清理临时文件。
 - deliverPdf端口内部负责目标选择/取消、原生宿主、回调、临时文件与授权释放；不走ByteSaveTarget.save(Blob)伪装已有PDF字节，不改变字节格式端口。授权finally释放不掩盖主错误；源绑定授权不被误释放。
 - 运行串行，沿用导出busy。超时/关闭不能让迟到回调提交目标或改变回执；终止/排空原生任务再安全清理的可行方式须PoC核实，不宣称原生计算可协作取消。等待字体、图片、布局而非固定睡眠；输出宿主不向用户内容开放一般IPC或本地路径权限。
-- M8/D6先独立小范围Windows验证，不接生产UI；依赖完整EX-W3/M7不变。验证隐藏无闪现、多页A4/页边距/缩放、正文/CJK/字体/链接/矢量、命名/取消选择、失败原文件保护、资源与迟到回调清理；通过后M9/D7接生产。
-- macOS WKWebView createPDF/printOperation、Linux WebKitPrintOperation文件输出属于最后Future（D8/M11当前范围收口之后）；分别验证多页/打印CSS和系统后端，未验统一标待验证。将来各平台仍需自己的生产接入和发布验收，不以Windows通过替代。
+- 前置D1在D0产物契约核对后做Windows小夹具，无需D2、完整EX-W3/M4—M7，不接生产UI，不要求全量历史回归先闭合。D7/M8在完整EX-W3/M7后验收命名/取消、同目录临时提交、覆盖失败保护、资源/超时/迟到回调与完整PDF；通过后D8/M9生产接入。此例外仅独立探索，不放行全部EX-T。
+- 当前pdfExporter输出固化分页HTML，无Paged.js运行脚本；htmlPaginator在paged.preview完成后取页面与样式。waitForLayout等待图片/字体及双rAF，隐藏宿主不能直接照用后者；D1验证就绪，不等待不存在的第二次分页。
+- PDF端口平台内部选择目标并交付，字节selectSave不参与，不拆两种签名；端口cancelled映射ExportResult.cancelled，handed-off/saved映射completed+成功回执，不返回completed+cancelled。保留端口显式取消信号，不承诺中断原生计算。
+- PDF默认目标同目录临时输出/同卷提交，失败保留旧文件；参考M3 new_in(parent)/sync/persist原则，但commit_bytes只接收bytes，不等于原生PDF文件已适配。默认不从系统临时卷rename，确需跨卷则另规划复制到目标目录临时文件再替换。D1可顺带核对临时输出，完整覆盖/权限/清理在D7。
+
+- macOS WKWebView createPDF/printOperation、Linux WebKitPrintOperation文件输出属于最后Future（D9/M11当前范围收口之后）；分别验证多页/打印CSS和系统后端，未验统一标待验证。将来各平台仍需自己的生产接入和发布验收，不以Windows通过替代。
 
 ## 4. 源文件操作与状态冻结
 
@@ -109,3 +113,5 @@ GPT-6 Luna执行独立审查与验证：不可变SHA/tree/blob/17来源祖先校
 ## 8. M0完成证据（历史）
 
 Luna完成13项基线/工作区/JSON/链接及检查事实核验，均通过；35/35目标blob、17/17来源祖先及2份预存索引SHA-256一致。完整bun run check退出0：198受管源/配置、58文件、421项单元，以及类型/lint/边界/生产构建通过。当前结果见[本轮验收记录](../acceptance/tauri-migration-m0-2026-10-29.json)，日志D:/codex/m0-migration-check.log；清单内X计数仅为捕获时历史基线。未运行新浏览器/原生保存/桌面构建或远端CI，未修改生产代码、依赖或预存索引。M0收口后停步，后续阶段仍待授权。
+
+当前编号与Q1—Q5决定见[决策记录](export-outputs-open-questions-2026-11-02.md)；旧编号仅作历史对照，不重写M0不可变清单和历史验收。
