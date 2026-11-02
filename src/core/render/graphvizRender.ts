@@ -3,6 +3,7 @@
  * 将 DOT 语言转换为自包含、高保真 SVG 矢量图
  * 无需安装系统级 graphviz dot 工具，纯前端离线解析
  */
+import {escapeHtml} from '../policy/htmlRules';
 
 export interface DotNode {
   id: string;
@@ -26,12 +27,26 @@ export interface DotGraph {
   edges: DotEdge[];
 }
 
+/** DOT 属性是 `key=value` 列表；值可带引号或裸写。键名整体匹配，`fillcolor` 不会被读成 `color`。 */
+function parseDotAttributes(attrs: string): Record<string, string> {
+  const parsed: Record<string, string> = {};
+  for (const match of attrs.matchAll(/([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*("([^"]*)"|'([^']*)'|[^\s,]+)/g)) {
+    parsed[match[1]!.toLowerCase()] = match[3] ?? match[4] ?? match[2]!;
+  }
+  return parsed;
+}
+
 export function parseDotToGraph(dotSource: string): DotGraph {
   const graph: DotGraph = {
     rankdir: 'TB',
     nodes: new Map(),
     edges: [],
   };
+
+  // `node [...]` 与 `edge [...]` 是默认属性声明，对声明之后出现的节点同样生效。
+  const defaultNode: Record<string, string> = {};
+  const defaultEdge: Record<string, string> = {};
+  const nodeAttributes = new Map<string, Record<string, string>>();
 
   const lines = dotSource.split('\n');
 
@@ -53,15 +68,13 @@ export function parseDotToGraph(dotSource: string): DotGraph {
     if (edgeMatch?.[1] && edgeMatch[2]) {
       const from = edgeMatch[1];
       const to = edgeMatch[2];
-      const attrsStr = edgeMatch[3] || '';
-      const labelMatch = attrsStr.match(/label\s*=\s*["'](.*?)["']/);
-      const colorMatch = attrsStr.match(/color\s*=\s*["'](.*?)["']/);
+      const attrs = parseDotAttributes(edgeMatch[3] ?? '');
 
       graph.edges.push({
         from,
         to,
-        ...(labelMatch?.[1]===undefined?{}:{label:labelMatch[1].replace(/\\n/g, ' ')}),
-        ...(colorMatch?.[1]===undefined?{}:{color:colorMatch[1]}),
+        ...(attrs.label===undefined?{}:{label:attrs.label.replace(/\\n/g, ' ')}),
+        ...(attrs.color===undefined?{}:{color:attrs.color}),
       });
 
       if (!graph.nodes.has(from)) {
@@ -77,20 +90,29 @@ export function parseDotToGraph(dotSource: string): DotGraph {
     const nodeMatch = line.match(/^([a-zA-Z0-9_]+)\s*\[(.*?)\]/);
     if (nodeMatch?.[1] && nodeMatch[2]!==undefined) {
       const id = nodeMatch[1];
-      const attrsStr = nodeMatch[2];
-      const labelMatch = attrsStr.match(/label\s*=\s*["'](.*?)["']/);
-      const fillMatch = attrsStr.match(/fillcolor\s*=\s*["'](.*?)["']/);
-      const colorMatch = attrsStr.match(/color\s*=\s*["'](.*?)["']/);
-      const shapeMatch = attrsStr.match(/shape\s*=\s*([a-zA-Z]+)/);
-
+      const attrs = parseDotAttributes(nodeMatch[2]);
+      const keyword = id.toLowerCase();
+      // `node [...]` 与 `edge [...]` 是默认属性声明，不是图节点。
+      if(keyword==='node'){Object.assign(defaultNode,attrs);continue}
+      if(keyword==='edge'){Object.assign(defaultEdge,attrs);continue}
+      if(keyword==='graph'||keyword==='strict')continue;
+      nodeAttributes.set(id,attrs);
       graph.nodes.set(id, {
         id,
-        label: labelMatch?.[1]?.replace(/\\n/g, '\n') ?? id,
-        fillcolor: fillMatch?.[1] ?? '#f8fafc',
-        color: colorMatch?.[1] ?? '#64748b',
-        shape: shapeMatch?.[1] ?? 'box',
+        label: attrs.label?.replace(/\\n/g, '\n') ?? id,
       });
     }
+  }
+
+  // 显式属性优先，其次是默认属性，最后是渲染兜底值。
+  for (const node of graph.nodes.values()) {
+    const attrs = nodeAttributes.get(node.id) ?? {};
+    node.fillcolor = attrs.fillcolor ?? defaultNode.fillcolor ?? '#f8fafc';
+    node.color = attrs.color ?? defaultNode.color ?? '#64748b';
+    node.shape = attrs.shape ?? defaultNode.shape ?? 'box';
+  }
+  for (const edge of graph.edges) {
+    if(edge.color===undefined&&defaultEdge.color!==undefined)edge.color=defaultEdge.color;
   }
 
   return graph;
@@ -212,7 +234,7 @@ export function renderDotToSVG(dotSource: string): string {
       const ctrlY2 = isLR ? endY : (startY + endY) / 2;
 
       const pathData = `M ${startX} ${startY} C ${ctrlX1} ${ctrlY1}, ${ctrlX2} ${ctrlY2}, ${endX} ${endY}`;
-      const edgeColor = escapeAttribute(e.color || '#0d9488');
+      const edgeColor = escapeHtml(e.color || '#0d9488');
 
       edgesSvg += `
         <path d="${pathData}" fill="none" stroke="${edgeColor}" stroke-width="2" marker-end="url(#arrowhead)" />
@@ -232,8 +254,8 @@ export function renderDotToSVG(dotSource: string): string {
     for (const node of nodeList) {
       const pos = nodePositions.get(node.id);
       if(!pos)throw new Error('DOT 节点布局缺失');
-      const strokeColor = escapeAttribute(node.color || '#0d9488');
-      const bgColor = escapeAttribute(node.fillcolor || '#f0fdfa');
+      const strokeColor = escapeHtml(node.color || '#0d9488');
+      const bgColor = escapeHtml(node.fillcolor || '#f0fdfa');
       const lines = node.label.split('\n');
 
       nodesSvg += `
@@ -265,9 +287,3 @@ export function renderDotToSVG(dotSource: string): string {
     return `<div class="mf-diagnostic markflow-dot-error">Graphviz 解析失败: ${escapeHtml(String(err))}</div>`;
   }
 }
-
-function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function escapeAttribute(value:string):string {return escapeHtml(value).replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
