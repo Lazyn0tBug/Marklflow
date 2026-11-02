@@ -17,6 +17,7 @@ import { RoadmapModal } from './components/roadmap/RoadmapModal';
 import { WorkbenchToolbar } from './components/toolbar/WorkbenchToolbar';
 import {
   DocumentRecord,
+  deriveDocumentTitle,
 } from './core/model/document';
 import {
   loadDocuments,
@@ -35,6 +36,7 @@ import {createWebSourceImport} from './core/platform/web/sourceImport';
 import type {ImportItemResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
+import {DOCUMENT_MARKDOWN_MAX} from './core/model/documentSchema';
 import {editorGeometry,editorLineAt,editorTopAt,sourceAnchorAt,sourceAnchorTop,previewSourcePoints,interpolate,type EditorGeometry} from './components/workspace/sourceScroll';
 
 export default function App() {
@@ -221,7 +223,8 @@ export default function App() {
   const applyDocument=(doc:DocumentRecord)=>{sessions.update(doc);setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);queueSave(doc)};
   const handleMarkdownChange=useCallback((markdown:string)=>{
     if(!currentDoc)return;
-    const doc={...currentDoc,revision:currentDoc.revision+1,markdown};const title=markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();if(title)doc.meta={...doc.meta,title};applyDocument(doc);
+    if(markdown.length>DOCUMENT_MARKDOWN_MAX){setActionError('文档超过源文大小上限，本次输入未应用');return}
+    const doc={...currentDoc,revision:currentDoc.revision+1,markdown};const title=deriveDocumentTitle(markdown);if(title)doc.meta={...doc.meta,title};applyDocument(doc);
   },[currentDoc]);
   const history=(direction:'undo'|'redo')=>{if(!currentDoc)return;if(sessions[direction](currentDoc.id)){const doc=sessions.read(currentDoc.id).document;setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);setMathMode(doc.options.mathMode);queueSave(doc)}};
   const handleUndo=()=>history('undo');const handleRedo=()=>history('redo');

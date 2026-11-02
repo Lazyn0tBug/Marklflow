@@ -2,6 +2,7 @@
  * MarkFlow (墨流) 核心文档数据规范
  * 依据《Markdown 编辑器总体设计方案 V0.2.8》第 5.1 节实现
  */
+import {DOCUMENT_TITLE_MAX} from './documentSchema';
 
 export interface DocumentMeta {
   title: string;
@@ -40,6 +41,13 @@ export interface DocumentRecord {
     syntaxProfile: 'commonmark-gfm-v1';
     mathMode: 'mathml' | 'svg';
   };
+}
+
+/** 文档标题取首个一级标题；超出存储上限时截断，避免写入被 schema 拒绝。 */
+export function deriveDocumentTitle(markdown:string):string|null{
+  const title=markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if(!title)return null;
+  return title.length>DOCUMENT_TITLE_MAX?title.slice(0,DOCUMENT_TITLE_MAX):title;
 }
 
 export const DEFAULT_THEME: ThemeSpec = {
