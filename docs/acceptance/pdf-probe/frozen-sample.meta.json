@@ -2,7 +2,7 @@
   "file": "/Users/gpdi/code/ai/Marklflow/docs/acceptance/pdf-probe/frozen-sample.html",
   "source": "/Users/gpdi/code/ai/Marklflow/tests/fixtures/export-source/pdf-probe-sample.md",
   "bytes": 136213,
-  "sha256": "d98bfead9de52efb9f490bcfa460d2145d4fb9ed5aa1499482b7f7b2b516e163",
+  "sha256": "67a7fbf4985a7fe5280ce6cca96239f418e2557666a12d4f4979779f2d5f4f58",
   "mdHash": "d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b",
   "renderConfigVersion": "00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e",
   "dataExportPages": 3,
@@ -14,15 +14,50 @@
   "randomUuidAttributes": 635,
   "hasImage": true,
   "hasFormulaSvg": true,
+  "fontStacks": [
+    "var(--mf-font,system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif)",
+    "Consolas,\"Cascadia Code\",\"Microsoft YaHei\",monospace",
+    "\"STIX Two Math\",\"Cambria Math\",\"Latin Modern Math\",serif",
+    "unset"
+  ],
+  "platformFonts": [
+    {
+      "familyName": "PingFang SC",
+      "glyphCount": 810,
+      "nodes": 47
+    },
+    {
+      "familyName": ".SF NS",
+      "glyphCount": 138,
+      "nodes": 18
+    },
+    {
+      "familyName": "Courier",
+      "glyphCount": 51,
+      "nodes": 1
+    }
+  ],
+  "platformFontsError": null,
+  "fontWidths": {
+    "baseline": 1122.1875,
+    "widths": {
+      "\"Microsoft YaHei\"": 1122.1875,
+      "\"Microsoft YaHei UI\"": 1122.1875,
+      "\"PingFang SC\"": 1179.864013671875,
+      "system-ui": 1067.3818359375,
+      "sans-serif": 1160.015625
+    }
+  },
   "environment": {
     "platform": "darwin",
     "arch": "arm64",
     "osRelease": "25.6.0",
+    "viteRuntime": "node",
     "fontVariables": {
       "--mf-font": "system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif"
     },
     "fontFamily": "font-family:var(--mf-font,system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif)"
   },
   "pageProblems": [],
-  "note": "sha256 只锁定本文件；mdHash 与 renderConfigVersion 承担“同一输入”的稳定身份，沿用仓库既有产出身份模型。交付宿主字体环境须与本 environment 一致，否则固化分页的页面盒度量不匹配。"
+  "note": "sha256 只锁定本文件；mdHash 与 renderConfigVersion 承担\"同一输入\"的稳定身份，沿用仓库既有产出身份模型。交付宿主字体环境须与本 environment 一致，否则固化分页的页面盒度量不匹配。platformFonts 与 fontWidths 记录宿主实际解析到的字体，用于核对字体环境。"
 }

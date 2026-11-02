@@ -17,6 +17,7 @@
     "tests/e2e/**/*.ts",
     "tests/types/strict-contracts.ts",
     "scripts/measure-architecture-baseline.ts",
+    "scripts/pdf-probe-sample.ts",
     "src/types/**/*.d.ts",
     "tests/fixtures/architecture/worker-probe-client.ts",
     "tests/fixtures/architecture/markdown-worker-probe-client.ts",

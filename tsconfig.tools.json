@@ -15,6 +15,7 @@
     "*.config.cts"
   ],
   "exclude": [
-    "scripts/measure-architecture-baseline.ts"
+    "scripts/measure-architecture-baseline.ts",
+    "scripts/pdf-probe-sample.ts"
   ]
 }
