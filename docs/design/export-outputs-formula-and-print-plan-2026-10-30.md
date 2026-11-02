@@ -45,24 +45,24 @@ Web/Tauri 使用同一个 `ExportService` 类与格式生成器，各自组合�
 | selectSave(ExportFile) | 返回 ByteSaveTarget 或 undefined；undefined 仅表示选择未产生目标，不能推断所有原生弹窗故障均可辨识；可辨识错误抛出 |
 | ByteSaveTarget.save(Blob) | 保留字节保存专用 SaveReceipt，准确区分真实提交与浏览器接管，不加入打印状态 |
 | ByteSaveTarget.release?(): Promise<void> | 可选、幂等；Web 无授权可省略，Tauri 必须实现。应用服务取得目标后在 finally 调用，包括成功/失败；选择途中已取得授权但构造失败，由适配器清理 |
-| deliverPdf(html, ExportFile) | Promise<PdfDeliveryReceipt>；输入仅为同一次冻结产物生成的完整 HTML，ExportFile 提供建议名称，不授予路径权限 |
+| deliverPdf(html, ExportFile) | Promise<PdfDeliveryReceipt>；平台内部承担目标选择与交付，字节selectSave不参与PDF路径；输入仅为同一次冻结分页HTML，ExportFile提供名称，不授予路径权限 |
 | PdfDeliveryReceipt | 拟议联合类型为 `{status:'handed-off'}` / `{status:'saved'}` / `{status:'cancelled'}`；Web仅返回handed-off；桌面仅在原生输出及目标提交成功后saved，用户选择目标取消时cancelled。运行中的不可取消计算不伪报cancelled，失败抛错 |
 
-PDF 不可用、准备失败、原生调用/完成回调失败或目标提交失败时抛出错误，不能返回handed-off或saved。Web原生输出不能判断系统面板内保存/取消，afterprint仅用于清理，文案为“已提交 PDF 输出请求，请在系统对话框中完成保存。”桌面静默路径只有目标文件成功提交才提示“已保存文件”；取消选择目标则提示取消。ExportResult.completed表示应用步骤完成，必须携带交付回执区分交接与真实保存。
+PDF 不可用、准备失败、原生调用/完成回调失败或目标提交失败时抛出错误，不能返回handed-off或saved。Web原生输出不能判断系统面板内保存/取消，afterprint仅用于清理，文案为“已提交 PDF 输出请求，请在系统对话框中完成保存。”桌面静默路径只有目标文件成功提交才提示“已保存文件”；取消选择目标则提示取消。端口handed-off/saved映射ExportResult.completed并带成功回执；端口cancelled映射现有ExportResult.cancelled，不返回completed+cancelled，UI只处理应用层取消。端口必须显式回传取消信号，失败按错误处理。
 
 ### 4.1 三平台原生静默PDF目标
 
 | 平台 | 候选原生接口 | 实施顺序与状态 |
 | --- | --- | --- |
-| Windows | 隐藏专用WebView2加载冻结分页HTML，PrintToPdf输出受控临时PDF | D6/M8先做小范围能力验证，当前待验证；通过后才D7/M9生产接入 |
+| Windows | 隐藏专用WebView2加载冻结分页HTML，PrintToPdf输出受控临时PDF | 前置D1先独立技术验证；D7/M8产品化验收后才D8/M9生产接入，当前均待验证 |
 | macOS | 隐藏WKWebView；评估createPDF与printOperation/系统PDF输出的分页适配 | Future F-PDF-Mac，排在当前Windows/Web路线收口之后；待验证，不承诺createPDF天然产生正确多页A4 |
 | Linux | 隐藏WebKitGTK；评估WebKitPrintOperation配置PDF文件输出 | Future F-PDF-Linux，与macOS同属路线最后；待验证，核对发行版/GTK打印后端/打包环境 |
 
 目标都是统一导出入口、可选择保存位置、无应用专属PDF预览且不显示打印面板。静默不等于跳过用户授权或保存选择器；只有已明确授权的目标才可省略选择。三平台共用生成器与冻结HTML，原生交付按OS适配，不要求底层相同。未实现或未验证的平台标“待验证”，不得自动回退Web打印、截图或新浏览器。
 
-Windows宿主必须把冻结分页HTML作为顶层文档；PrintToPdf不能直接指定现有预览iframe。复用现有完整分页HTML生成路径和冻结资源，不抓取可见DOM、不重新解析Markdown/LaTeX，不要求先显示A4，不重复prepare或分页。新WebView只加载现成产物并等待字体/图片/布局；保持资源有效至完成。隐藏宿主的加载、就绪、输出可靠性都须实测，不依赖可能暂停的动画帧或固定睡眠充当就绪证据。
+Windows宿主必须把冻结分页HTML作为顶层文档；PrintToPdf不能直接指定现有预览iframe。复用现有完整分页HTML生成路径和冻结资源，不抓取可见DOM、不重新解析Markdown/LaTeX，不要求先显示A4，不重复prepare或分页。已核实pdfExporter调用paginatePreparedContent，后者在paged.preview完成后提取页面outerHTML和样式；交付HTML无Paged.js运行脚本。waitForLayout末尾双rAF对隐藏宿主不能直接照用，D1须验证专用就绪方式。新WebView只加载现成产物并等待字体/图片/布局；保持资源有效至完成。隐藏宿主的加载、就绪、输出可靠性都须实测，不依赖可能暂停的动画帧或固定睡眠充当就绪证据。
 
-Rust持有路径/授权，专用宿主不授予一般业务IPC或任意本地文件访问。受控一次性内容装载与就绪通知应限任务范围；保持静态HTML/CSP及资源策略，不执行作者脚本，不为就绪检测开放广泛权限。用户建议名仍由ExportFile产生；先选择/授权目标，再由原生端输出临时PDF，完成成功回调后检查输出并通过受控提交替换目标，最后返回saved。原生回调仅证明临时输出完成，不等于目标已提交；失败保留原文件。选择目标在完整PDF交付HTML生成后进行，与字节格式“完整字节生成后选择”的路径分开描述，不改字节端口。
+Rust持有路径/授权，专用宿主不授予一般业务IPC或任意本地文件访问。受控一次性内容装载与就绪通知应限任务范围；保持静态HTML/CSP及资源策略，不执行作者脚本，不为就绪检测开放广泛权限。用户建议名仍由ExportFile产生；先选择/授权目标，再由原生端在目标目录输出受控临时PDF，完成成功回调后检查输出并同卷受控提交替换目标，最后返回saved。原生回调仅证明临时输出完成，不等于目标已提交；失败保留原文件。选择目标在完整PDF交付HTML生成后进行，与字节格式“完整字节生成后选择”的路径分开描述，不改字节端口。
 
 输出宿主一次只执行一个打印任务，沿用导出busy，不新增任务平台。纸张、缩放、页边距、背景、页眉页脚与既有分页HTML匹配，避免二次缩放/空白页。成功、失败、超时、关闭均释放宿主及临时资源；超时后须先使原生任务不能再提交/写入目标再清理临时文件，迟到回调不得报成功。原生调用返回或销毁宿主能否可靠终止写入也属于PoC验证项，不伪称系统提供可中断取消。授权release失败不掩盖输出主错误。
 
@@ -80,7 +80,7 @@ Rust持有路径/授权，专用宿主不授予一般业务IPC或任意本地文
 | DOCX | 同一产物→共用公式判定→exportDocumentToDocx | 同上 | 同上 |
 | PDF | 同一产物→generatePdfHtml/Paged.js→完整分页 HTML | 浏览器原生输出请求 | 所声明 OS 已验证的静默原生 PDF 端口（Windows先行） |
 
-两平台沿用 ExportFile 的 MIME、完整扩展名、255 UTF-8 字节及完整 grapheme 规则。Web PDF 的 HTML title/建议名只是提示，系统驱动可能忽略；桌面静默保存由ExportFile提供默认名并由用户选择目标，不依赖打印机驱动命名。桌面当前尚无已接生产的 PDF 端口，M8 先验证能力，不能把“系统 WebView 必然支持”写成事实。
+两平台沿用 ExportFile 的 MIME、完整扩展名、255 UTF-8 字节及完整 grapheme 规则。Web PDF 的 HTML title/建议名只是提示，系统驱动可能忽略；桌面静默保存由ExportFile提供默认名并由用户选择目标，不依赖打印机驱动命名。桌面当前尚无已接生产的PDF端口，D1先验证技术能力，D7/M8再做产品化验收，不能把“系统 WebView 必然支持”写成事实。
 
 Web 现有降级分支 download-started/recovered-download/activation-expired 必须在 UI 如实区分，硬写入失败不静默改投。生成耗时导致激活过期时，优先沿用明确下载反馈；若实际需求要求始终选择位置，后续再设计一次用户确认动作，不重新生成或重复确认 DOCX。保存选择器取消与异常分开测试。
 
@@ -116,22 +116,28 @@ Web 现有降级分支 download-started/recovered-download/activation-expired �
 
 本表全部为待实施/待完成验收单位，不把现有代码再做一遍。每单位经授权实施、Luna 审查测试后一次本地提交；文档更新本身不授权实施、推送或发布。
 
+编号按实际优先执行顺序排列；可并行项仍遵守其依赖。D0先确认代码/产物契约，不要求全量历史回归闭合后才做D1。
+
 | 单位 | 依赖/映射 | 单次范围 | 退出条件 |
 | --- | --- | --- | --- |
-| D0 代码基线与回归缺口 | 当前 HEAD；可独立 | 再现历史两项 e2e 失败，确认当前是否存在；核对已实现 A/B/C 与原始证据 | 自动结果与失败归因归档，不把“既有”当通过 |
-| D1 交付契约 | D0；为 M8/M9 准备 | 最小 PdfDeliveryReceipt、名称上下文、ByteSaveTarget.release 及 ExportResult 回执；更新 Web 适配不改变生成路径 | 类型边界、单次 prepare/确认/busy；成功/失败释放，主要错误不被覆盖；PDF 交接不误报保存 |
-| D2 Web 交付收口 | D1 | 清理宿主监听器/定时器，支持重复 afterprint、pagehide、后续导出；核对保存回读 unknown 的回执，不把未知说成已确认 | 有界且可观察清理；失败/取消/激活过期/回读失败准确；不依赖任意延迟证明系统已写完 |
-| D3 源绑定 UI | M4→M5；D1 释放语义 | 迁移路线的 M4/M5 内实现会话绑定、恢复未关联状态、重新关联/另存及按修订写回 | 重启恢复草稿不恢复授权；关联不覆盖草稿；重复打开聚焦；取消/失败与较新修订保护。此行是验收补充，不另做 M4/M5 |
-| D4 DOCX 正确性收口 | D0；与平台准备可并行 | 对第7节语义缺口做定向审查/语料/必要修复，同步能力表 | 不丢嵌套结构、不误称视觉等价；OOXML/PNG 检查；Word/WPS 实测仍分列 |
-| D5 Web 系统证据 | D2/D4；沿用 EX-W0/EX-W3 | 原生 PDF 实际保存、默认名、文字/CJK/字体/链接/矢量/分页、Web 字节文件及 Word/WPS 清单 | 留存实际文件/hash/OS/版本，无法补齐者保持待补；不据自动结果宣称完整 EX-W3 |
-| D6 Windows静默PDF小范围PoC | M6、完整EX-W3→M7→M8；D1/D5 | 独立夹具：隐藏WebView2载入完整冻结分页HTML，PrintToPdf到临时文件并提交目标；不接生产UI | 无窗口闪现/打印面板；完整多页、可选文本/CJK/字体/链接/矢量及分页；命名、取消选择、覆盖失败保护、资源/超时/迟到回调清理；保存文件/hash与版本证据。失败先修本路径，不转截图 |
-| D7 Windows双组合根生产接入 | M9；Windows M8通过，D1/D2 | 统一服务选择入口 + tauri/exportService，连接 M3 原生保存端口、名称、释放及已验证 PDF 交付 | 六格式同业务流程；不散布环境判断；原生失败不回退 Web，不泄露路径；导出不修改源绑定 |
-| D8 当前Web/Windows范围收口 | M10/M11对应阶段；D7 | Luna 全面审查、自动回归、真实系统/包证据、支持表 | 历史记录不被覆盖，缺项不标通过，未授权不推送/发布 |
+| D0 当前代码与产物基线 | 当前HEAD | 核对已实现A/B/C、固化分页HTML和历史失败，记录待复核项 | 确认D1真实产物与版本；不把旧失败算通过，不以全量回归阻塞独立探索 |
+| D1 Windows静默PDF技术验证 | D0产物核对、现有桌面壳；不依赖D2、M4—M7或完整EX-W3 | 独立小夹具：隐藏WebView2顶层加载固化分页HTML，PrintToPdf生成多页PDF；可顺带核对同目录临时输出，不接生产UI | 实际文件/hash/环境，无闪现或面板、正文/页数/可选文字/CJK/公式图表完整、字体图片就绪及基本清理；不宣称产品或发布通过 |
+| D2 交付契约 | D0；参考D1结论 | PdfDeliveryReceipt、名称、release与应用结果映射；Web沿用生成路径 | handed-off/saved→completed+成功回执；cancelled→ExportResult.cancelled；单次准备/确认/busy及释放主错保护 |
+| D3 Web交付收口 | D2 | 宿主监听器/定时器及回读unknown反馈 | 取消/失败/激活过期/重复导出准确，不以延迟证明保存 |
+| D4 源绑定UI | D2；在M4/M5实施 | 绑定、恢复未关联、重新关联/另存及修订写回 | 不恢复旧授权、不覆盖草稿、不重复建设M4/M5，较新修订不误标写回 |
+| D5 DOCX正确性收口 | D0；可与平台准备并行 | 第7节缺口定向核对/必要修复/能力表 | 不丢结构、不误称视觉等价；OOXML/PNG与Word/WPS证据分列 |
+| D6 Web系统证据 | D3/D5；EX-W0/EX-W3 | 实际PDF/默认名/文字字体链接矢量分页、字节保存及Word/WPS，复核相关历史失败 | 文件/hash/环境，缺项待补，不据自动结果宣布完整EX-W3 |
+| D7 Windows产品化验收 | D1、D2及M6→完整EX-W3→M7；映射M8 | 复用技术PoC，验收命名/取消选择、同目录临时提交、覆盖失败保护、资源/超时/迟到清理 | 目标提交成功才saved，失败保留旧文件；完整PDF/纸张/缩放/边距核对及清理证据，不重复建设PoC |
+| D8 Windows双组合根生产接入 | D7/M8通过；映射M9 | 统一入口及Tauri组合，原生字节与PDF交付 | 六格式同操作/快照/命名/一次确认；原生失败不改投Web，不污染源绑定 |
+| D9 当前Web/Windows收口 | D8；映射M10/M11 | 按累计影响审查回归、系统/包证据及支持表 | 缺项不标通过，不自动推送/发布 |
+| Future F-PDF-Mac | D9/M11当前范围收口后 | WKWebView独立多页PDF PoC，再决定接入 | 隐藏/分页/字体资源/提交/清理各自验证，当前待验证 |
+| Future F-PDF-Linux | D9/M11当前范围收口后，与Mac独立 | WebKitGTK明确PDF文件输出PoC，再按已验环境接入 | 不误发实体打印机，核对发行版/后端/包及失败保护，当前待验证 |
 
-| Future F-PDF-Mac | D8完成后，已有门槛不豁免 | 先独立小范围WKWebView多页PDF PoC，比较createPDF与原生打印PDF，再决定接生产端口 | 隐藏宿主、A4多页、正文/字体/链接/矢量与静默、写入/清理证据；未通过保持待验证或据事实记录限制 |
-| Future F-PDF-Linux | D8完成后，与Mac独立评估，位于当前路线最后 | WebKitGTK文件输出PoC，明确输出PDF而非默认实体打印机，再按已验环境接端口 | 目标发行版/后端/安装包内静默与输出证据，失败/清理及原文件保护；不由Windows/Mac结果推断 |
+D1是明确允许前置的独立技术探索，不是M7/EX-T0或M8产品验收，不再受完整EX-W3和M6前置限制；该例外不放行其他生产EX-T工作。D7/M8、D8/M9和D9发布收口保留原完整EX-W3/M7等门槛。Mac/Linux位于最后，不阻塞限定Web/Windows收口，也不能据此宣称已支持。
 
-D1/D2 是现有 Web 输出边界收口，可在 M7 前进行；D6/D7仍严格遵循既有EX-T前置；本次先安排Windows小范围PoC，不因新路线解除完整EX-W3门槛。Mac/Linux的Future位于D8之后，不阻塞当前Web/Windows限定范围收口，但禁止宣称其PDF已支持；各自通过后再补M9—M11对应平台验收。每个较大单位可再拆提交，但不拆出第二个服务或重复生成流程。Rust locator 持久恢复、更多原生公式能力、额外格式均延期。
+历史编号对照：旧D0→D0、D1→D2、D2→D3、D3→D4、D4→D5、D5→D6；旧D6拆为前置D1与产品化D7；旧D7→D8、D8→D9。不再以D6a/D6b作为当前实施编号，不改写历史提交或验收。
+
+同目录临时提交：参考M3 commit_bytes的new_in(parent)/sync/persist保护原则，但该函数接收bytes，不等于原生PDF文件输出已适配。默认不走系统临时卷rename；只有确有必要才另规划复制至目标目录临时文件再安全替换。D1可顺带验证临时输出，覆盖失败/权限/清理在D7验收，不默认把跨卷分支塞入技术PoC。
 
 ## 9. 验收记录与支持声明
 
@@ -146,3 +152,5 @@ D1/D2 是现有 Web 输出边界收口，可在 M7 前进行；D6/D7仍严格遵
 - [WebKitGTK PrintOperation](https://webkitgtk.org/reference/webkit2gtk/2.37.1/class.PrintOperation.html)：可无面板启动打印，但需显式文件输出配置，不可误发默认打印机。具体系统版本和PDF后端仍待Future验证。
 
 本次更新只改设计；三平台静默PDF均未在本项目验证，不新增代码或发布支持声明。
+
+本轮Q1—Q5结论见[开放问题决策记录](export-outputs-open-questions-2026-11-02.md)。本次只改文档，前置D1尚未实施。
