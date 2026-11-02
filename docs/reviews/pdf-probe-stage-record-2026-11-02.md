@@ -104,7 +104,20 @@ bun scripts/pdf-probe-sample.ts
 
 九项核对全部有结论（源码级），交接物五项齐备且输入身份（mdHash、renderConfigVersion）跨运行一致、文件哈希可复算。生成工具已入库（`scripts/pdf-probe-sample.ts`），并已记录宿主实际解析到的平台字体。**D1 开工前须在交付宿主上取样并替换归档；macOS 归档不得用于 D1。**
 
+### 工具链评审发现（2026-11-02，尚未修）
+
+对生成工具与配置做了一次评审，发现三条。均属工具与配置，不涉及产品代码；三条都不阻断 D0，但前两条会在交付宿主取样时产生"看起来成功、实则与记录矛盾"的产物，故排在取样之前处理。
+
+| # | 发现 | 影响 | 拟修 |
+| --- | --- | --- | --- |
+| R1 | **自检比记录的交接期望弱**。阶段记录写死"HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次"，而脚本只断言"标记页码非 null"。若 Windows 的字体度量把标记挪位，脚本照旧写盘并报成功，产出的 meta 与本记录直接矛盾 | 归档与记录不一致，且由工具自证 | 自检改为断言期望值本身：`headMarkerPage===1`、`tailMarkerPage===pageElements`、两标记各出现 1 次、`platformFonts` 非空 |
+| R2 | **`/src/*` 路径映射放在 `tsconfig.base.json`，范围过宽**。四个 profile 全部继承，于是任何源文件都可写 `import x from '/src/foo.ts'` 并通过类型检查；但该写法只在 Vite dev server 下成立（dev server 按仓库根路径提供 `/src/...`），`vite build` 会当成 URL 路径，生产构建直接坏掉。即以构建期地雷换掉了类型期护栏 | 未来有人这样写 import 时不会被类型检查拦下 | 映射下沉到 `tsconfig.integration.json`（脚本所在 profile），base 保持干净。实测 TS 的 `paths` 从 `extends` 继承时是整体替换而非合并，下沉时须把 `@/*` 一并重新声明，否则该 profile 的 `@/` 别名失效 |
+| R3 | **meta 记了宿主绝对路径**（`file`、`source`）。交付宿主取样后仓库里会留下 `C:\Users\<用户名>\...` | 归档带宿主信息，不该入库 | 改为记仓库相对路径 |
+
+R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `platformFonts` 是空数组，自检照样通过，字体证据静默退化为空而产物看起来正常。**产物型断言须编码期望值，而非编码"非空"**，此条一并记此。
+
 ## 待补
 
 - D1a—D1d 尚未实施；本文件当前只有 D0 一节
 - 样本的交付宿主重生成：按上节步骤在 Windows 上执行 `bun scripts/pdf-probe-sample.ts`，取回 `docs/acceptance/pdf-probe/` 下的两个文件后替换归档并更新本记录的交接物表（SHA-256、字节数、平台字体、宿主事实）
+- 上表 R1—R3 三条评审发现待修；R1 应在交付宿主取样之前修，否则取样产物可能带着与记录矛盾的 meta 归档
