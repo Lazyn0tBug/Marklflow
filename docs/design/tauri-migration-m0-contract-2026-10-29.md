@@ -59,9 +59,17 @@
 
 - D0交接固化分页HTML固定文件、SHA-256、data-export-pages预期值、关键内容及生成提交/OS/WebView/字体说明；含CJK/公式/图片/表格。D1直接加载，不要求其自行构建前端；hash仅锁定输入，不证明保真。
 - D0确认Tauri 2.12.4 with_webview及Windows controller/environment入口、锁文件传递webview2-com/windows与直接使用的依赖匹配。D1复用Tauri宿主/控制器，承担接口转换、异步PrintToPdf完成、COM引用/回调生命周期和基本清理，不另建通用COM平台；尚未运行验证。
-- 候选就绪：顶层导航成功且文档加载完成、document.fonts.ready、图片成功加载/解码、页面盒数量/尺寸核对；HTML img与SVG image区别处理，使用目标文档环境API。不以固定睡眠/rAF为必需，不放开作者脚本；组合是否充分由D1实测，不能说固定页面盒没有重新布局。
+- 候选就绪的完整判据统一见[主方案第4.2节](export-outputs-formula-and-print-plan-2026-10-30.md)，由D1验证，不以隐藏rAF或固定睡眠为必需，不开放作者脚本；本契约不重复维护另一套详细检测步骤。
 - D1输出物理页数须等于data-export-pages，并核对关键首尾、可选正文/CJK/代表公式图表，无空白/截断或窗口/面板闪现；页数不是唯一证据。Windows完整产品化保真仍归D7/M8，D6是Web系统证据。
 - 当前验证本机生成/交付；冻结分页HTML跨环境重输出一致性未验，不等于PDF成品只能本机阅读。记录正文/图表字体与MathJax SVG图形/MathML字体差异；成品字体嵌入、显示及可选文字另验，不在本轮新增字体打包。
+
+### 3.3 D1首选形态、停止与隔离（Q11—Q13）
+
+- D0确定首选Tauri独立label、visible(false)专用WebviewWindow；D1复用其WebView2控制器，验证异步回调和COM生命周期。不同时实现三种宿主，不自动退到独立原生窗口。附着窗口的独立WebView不等于预览iframe，不据此推断安全属性。
+- D1结论为通过/当前形态不可行/未能确认；后两者保存证据并完成安全清理，可结束本轮但D7/D8暂停、Web不受影响，不把未确认当证伪或通过。清理失败保留阻塞，进一步备选需根据结果另决。
+- D0核对label与capability、core/插件权限和应用自定义命令暴露；D1负向验证输出宿主不能调用敏感文件选择/读取/写入。无capability匹配不保证无IPC，自定义invoke_handler命令另施适当权限/来源限制。就绪检测走原生受控脚本执行而非Tauri IPC，不新增一般业务权限或作者脚本权限。
+- Tauri PlatformWebview的controller()/environment()是包装层方法，不能用内部wry字段形态否定；原生接口覆盖和版本匹配由D0核对，存在入口不代表运行已验。
+- D1按主方案§4.2保留页数、pdffonts报告、关键文本/CJK提取、代表页渲染和IPC负向验证结果；嵌入不是完整保真证明，uni=no不直接判不可提取，路径化正文不得冒充可选文本。D7补完整样本和目标阅读器；不为验收新增产品端工具依赖。
 
 ## 4. 源文件操作与状态冻结
 

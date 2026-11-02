@@ -123,7 +123,7 @@ M0已完成冻结、Luna独立审查与验证；M1已完成独立审查/本机Wi
 | E0 共享行布局映射 | M0，可与桌面准备独立推进 | 在当前编辑器/sourceScroll内建立可变行高映射和逻辑锚点，暂保wrap off | 已通过：[记录](../reviews/tauri-migration-e0-2026-10-30.md)、[验收](../acceptance/tauri-migration-e0-2026-10-30.json)，447单元/check及11项Chromium工作台回归。E0完成时可变行高仅纯模型验证、生产wrap off；E1接入结果见下行。不改Markdown/Worker映射 |
 | E1 自动换行 | E0 | 适配3686eed的wrap/行号测量，默认开启及弹窗开关，IME和水平滚动 | 已通过：[记录](../reviews/tauri-migration-e1-2026-10-30.md)、[验收](../acceptance/tauri-migration-e1-2026-10-30.json)，450单元/check及最终fresh-dist 18项Chromium回归。默认soft与设置偏好、原生行高对照、逻辑定位/缓存/源码不变通过；OS真实IME及跨浏览器/Tauri视觉未验，E2未实施 |
 | E2 拖动分栏 | E1 | 适配74d7a3c分隔条/比例偏好/键盘/取消清理，接逻辑锚点重排 | 已通过：[记录](../reviews/tauri-migration-e2-2026-10-30.md)、[验收](../acceptance/tauri-migration-e2-2026-10-30.json)，453单元/check、21项Chromium及3项取消加强复验。显隐/窄屏/取消/焦点/缓存/A4通过，不改1024配置/分页/缓存身份；跨浏览器/Tauri视觉未验 |
-| 前置D1技术探索（非新M阶段） | D0固定HTML/hash/预期页数与环境交接、原生入口/依赖核对及现有壳；无需完整EX-W3/M4—M7或D2 | 复用Tauri隐藏宿主/控制器，验证原生接口转换、PrintToPdf异步完成与COM引用生命周期，不接生产UI | 物理页数=data-export-pages且关键正文/代表内容可用；无闪现/面板，候选就绪与基本清理，待验证，不等于M8通过 |
+| 前置D1技术探索（非新M阶段） | D0固定产物/环境、入口/依赖、首选宿主及IPC边界核对；无需完整EX-W3/M4—M7或D2 | 首选独立visible(false) WebviewWindow及控制器，原生接口/回调/COM生命周期和IPC负向验证，不接生产UI | 按主方案§4.2核对页数/字体报告/文本/代表渲染/静默/就绪/清理；通过、当前形态不可行或未能确认分别落档，后两者暂停D7/D8 |
 | M7 EX-T0差异冻结 | M6、完整EX-W3及原EX-T0启动条件 | 映射当前端口与已完成准备工作，列出各OS导出能力和占位清理范围 | 复用准备成果不重复提交；禁止把临时HTML命令当PDF成功 |
 | M8 EX-T1 Windows产品化验收 | M7、前置D1与D2契约 | 映射D7，复用技术PoC验收目标选择/同目录临时提交/覆盖失败保护/超时迟到及清理，不重建PoC | 完整PDF与真实文件证据、命名取消准确、失败保留原文件，不接生产UI |
 | M9 EX-T2a Windows统一导出接入 | Windows M8通过 | 启动选择Web/Tauri双组合根，共用ExportService；Tauri selectSave/deliverPdf、独立PDF回执及目标finally释放，沿用同一生成/确认 | 六格式同命名/源快照/单次prepare/busy；真实保存/取消/覆盖/失败，错误不降级不覆盖源 |
@@ -154,8 +154,16 @@ PDF端口内部承担平台目标选择和交付，字节selectSave不参与；�
 
 ## 11. Q6—Q10范围补充
 
-D0固定交接物、D1互操作范围、候选就绪及字体边界统一见[完整输出方案的D0/D1边界](export-outputs-formula-and-print-plan-2026-10-30.md#d0d1样本与能力边界q6q102026-11-02)。D0记录生成提交/OS/WebView/字体和样本hash，不把SHA当正确性证明；D1直接使用固定文件，不重跑映射或分页。
+D0固定交接物、D1互操作范围、候选就绪及字体边界统一见[完整输出方案第4.2节](export-outputs-formula-and-print-plan-2026-10-30.md)。D0记录生成提交/OS/WebView/字体和样本hash，不把SHA当正确性证明；D1直接使用固定文件，不重跑映射或分页。
 
 当前Tauri有with_webview和Windows控制器/环境入口，锁文件含传递COM相关依赖；D0核对直接使用时的版本匹配，不从零建设第二套COM/窗口管理层。D1“小”是范围限定，不是工时或调用次数承诺。Windows产品保真仍归D7/M8，D6只验证Web，不因页数相等就认定无截断。
 
 就绪采用导航/文档加载成功、字体/图片就绪及页面盒数量尺寸检查的候选组合，在D1实测；不同图片API分流，检测属于目标文档环境，不以固定睡眠/rAF为必需条件、不放开作者脚本。冻结HTML跨环境重输出一致性未验，PDF成品跨机阅读另验，不限定为本机阅读。macOS/Linux Future和生产/发布门槛均不变。
+
+## 12. Q11—Q13停止与验证约定
+
+D0将首选宿主定为Tauri独立label、visible(false) WebviewWindow；D1验证，不同时实现多种宿主。通过才能推进D7/M8；当前形态不可行或未能确认均可结束探索但不得声称技术通过，保留证据并清理，D7/D8暂停、Web不受影响。不自动改用其他宿主或新增引擎；不能安全清理时保留阻塞。
+
+IPC须核对capability及应用自定义命令两层，独立label/未匹配capability不证明无IPC。D0记录暴露和限制，D1负向验证输出宿主不能调用敏感文件选择/读/写；就绪只走原生受控脚本执行，不为其开放Tauri命令或作者脚本。PlatformWebview包装层controller()/environment()与内部wry字段不混用。
+
+D1保存pdffonts、关键正文/CJK提取及代表页渲染证据，页数正确不独自证明完整；字体嵌入不独自证明跨机阅读，可选文字也不能靠uni字段单判。D7再对更完整样本和支持阅读器验收，未嵌入正文列待处理，不引入用户端PDF检查工具依赖。候选就绪的权威说明在完整输出方案§4.2，本路线不另维护详细判据。
