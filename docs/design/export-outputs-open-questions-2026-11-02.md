@@ -826,4 +826,19 @@ D0核对与D1运行分工（本轮修订）：
 - 受控样本生成按Q30(a)执行，不改被检查的产品代码；捕获通道在执行时确认，既有路径无法满足时回到Q30(a)边界另行决定，不在D0静默改产品代码。
 - 本轮取依赖源码与改文档，未修改产品代码或构建配置，未运行编译测试。
 
+第十四轮补充事实（D0执行后）：
+
+- D0-3已定论：本地来源的应用自定义命令在Tauri v2中**默认放行**，ACL不构成隔离——invoke时的ACL判定仅在插件命令、`has_app_acl_manifest`或非本地来源三者之一成立时才检查，而仓库无`src-tauri/permissions/`目录，`has_app_acl`为false。证据：tauri-2.12.4/src/webview/mod.rs:2078-2083、tauri-utils-2.10.2/src/acl/mod.rs:352、src-tauri/gen/schemas/acl-manifests.json。
+- 由此四条后果：Q36落在「默认放行」分支，D1b-3的正向证据为自有共享拒绝码；ACL不是本项目隔离层、来源守卫是唯一隔离层；D1a落地前输出宿主无任何IPC隔离故不得提前创建；若将来引入应用级ACL manifest则ACL开始检查应用命令，D1b与D7的复用前提须含「未引入应用级ACL manifest」。
+- D0-5成立：`invoke`走`window.__TAURI_INTERNALS__.invoke`（core.js:340-341），`window.__TAURI__`仅是withGlobalTauri控制的命名空间；internals由initialization script注入，不受页面CSP约束。
+- D0-7源码级成立：主界面身份对为`("main","main")`（webview_window.rs:105、:150），运行时由D1a-6核对。
+- D0-8机制已录：`resolve_access`以webviews或windows任一匹配即通过（authority.rs:462-489），按Q27未创建未调用该形态。
+- D0-9成立：三条matrix args均无feature开关，Cargo.toml无`[features]`段，CI固定toolchain 1.98.1。
+- MSRV由1.98降到1.94（本机Rust 1.94.0，原声明来自M1当时的1.98.1）；cargo build与cargo test通过，但**CI仍固定1.98.1，MSRV下限不在CI中验证**。本机Rust测试6项通过，files.rs第7个测试为`#[cfg(windows)]`，属平台差异。
+- 固化产物不是字节可复现的：同一受控源两次生成字节数相同而SHA-256不同，Paged.js写入631处随机`data-ref`；SHA-256锁定的是该固化文件本身，不是「同一输入」的稳定标识。
+- D0交接物已产出并自检：固化分页HTML 136213字节、`data-export-pages=3`、页面盒3、HEAD标记第1页与TAIL标记第3页各出现1次、SHA-256可独立复算；生成工具入库为`scripts/pdf-probe-sample.ts`。
+- **待决：样本的字体环境。** 样本在macOS生成，分页按macOS系统字体度量；D1在Windows加载同一文件会以Windows字体重排，固定高度页面盒可能溢出或截断且无法再分页。须在D1开工前决定是否在Windows上重新生成样本。
+
+D0证据记于docs/reviews/pdf-probe-stage-record-2026-11-02.md。
+
 第十一轮只同步五份项目文档，不修改代码或构建，不运行编译测试，不提交、不推送。旧提问中的强制命名空间、D1a真实输出宿主调用及D0直接决定实际层不作为当前要求。

@@ -44,14 +44,14 @@ D0 基线核对与既有路径受控样本生成（不改产品代码）
 | # | 核对内容 | 判定依据 | 状态 |
 | --- | --- | --- | --- |
 | D0-1 | `webview2-com 0.39.1` 是否覆盖 `ICoreWebView2_7` 与 `PrintToPdf` | 该版本对应文档或源码；本地 registry 无该版本源码。获取途径：上游仓库指定 tag、文档站或由提供方给出，**记录来源与版本号**；拿错版本会与 `windows` 的 COM 类型不兼容，直接导致 D1c 互操作代码编译不过。**已核（2026-11-02）**：接口在 `webview2-com-sys` 声明、经 `webview2-com` 的 `pub use webview2_com_sys::Microsoft` 可达；`webview2-com` 手写包装层不暴露 `PrintToPdf`，须走 sys 层；`windows 0.62.2` **不含** WebView2 绑定，锁定版本只有 webview2-com 一条路线 | 已核，见 §14 与 §18 |
-| D0-2 | 锁定版 `wry 0.57.1` 下 Tauri `PlatformWebview` 的 `controller()` / `environment()` 形态 | 锁定版本 API 文档，来源与版本同 D0-1 | 未核 |
-| D0-3 | 自定义命令默认行为及可能的ACL/来源守卫路径 | D0查源码/配置仅记预期，准备自有码或版本绑定平台识别依据；实际通道/拦截与正向证据在D1b确认 | 未核【TBD-03】 |
-| D0-4 | 异步命令能否取调用方 `Webview` / `WebviewWindow`；注入 owned `tauri::Webview` 的解析行为 | `CommandArg` 与借用参数相关宏的实际签名，来源与版本同 D0-1 | 未核【TBD-02】 |
-| D0-5 | 未开 `withGlobalTauri` 时的实际 invoke 通道与全局名 | D0确认官方API/代码路径，不猜私有全局名；实际通道阳性在D1b | 未核【TBD-04】 |
+| D0-2 | 锁定版 `wry 0.57.1` 下 Tauri `PlatformWebview` 的 `controller()` / `environment()` 形态 | 锁定版本 API 文档，来源与版本同 D0-1 | 已核，见 §18 |
+| D0-3 | 自定义命令默认行为及可能的ACL/来源守卫路径 | D0查源码/配置仅记预期，准备自有码或版本绑定平台识别依据；实际通道/拦截与正向证据在D1b确认。**已核（2026-11-02）**：本地来源的应用自定义命令**默认放行**，ACL 不构成隔离；D1b-3 的正向证据因此为自有共享拒绝码 | 已核，见 §18 |
+| D0-4 | 异步命令能否取调用方 `Webview` / `WebviewWindow`；注入 owned `tauri::Webview` 的解析行为 | `CommandArg` 与借用参数相关宏的实际签名，来源与版本同 D0-1。**已核**：`CommandArg` 无同步或异步约束，async 命令可注入 owned `Webview`；注入 `WebviewWindow` 在调用方非 WebviewWindow 时失败 | 已核，见 §18 |
+| D0-5 | 未开 `withGlobalTauri` 时的实际 invoke 通道与全局名 | D0确认官方API/代码路径，不猜私有全局名；实际通道阳性在D1b。**已核**：`invoke` 走 `window.__TAURI_INTERNALS__.invoke`，由 initialization script 注入，不受页面 CSP `script-src` 约束 | 已核，见 §18 |
 | D0-6 | 探针通道、同命令对照方法与受控授权签发入口的最终形态 | 与 D1b 范围一致 | 未核 |
-| D0-7 | 主界面窗口↔前端 WebView 的真实 label 对应 | D0读配置/创建路径记录预期对应；D1a核对注入签名/入口取值，D1b运行确认实际身份，不假设相等 | 未核 |
-| D0-8 | 附着式宿主形态下的授权继承机制与未验边界 | 只记录机制与边界，**不创建、不调用**该形态 | 未核 |
-| D0-9 | 实际发行脚本 / 包装命令与最终有效 feature 集合 | 实际脚本与命令；`--all-features` 会启用所选包全部 feature，无通用排除单个 feature 的选项，`--exclude` 排除的是包而非 feature | 未核 |
+| D0-7 | 主界面窗口↔前端 WebView 的真实 label 对应 | D0读配置/创建路径记录预期对应；D1a核对注入签名/入口取值，D1b运行确认实际身份，不假设相等。**已核（源码级）**：身份对为 `("main","main")`，运行时由 D1a-6 核对 | 已核，见 §18 |
+| D0-8 | 附着式宿主形态下的授权继承机制与未验边界 | 只记录机制与边界，**不创建、不调用**该形态。**已核（机制）**：`resolve_access` 以 webviews 或 windows 任一匹配即通过 | 已核，见 §18 |
+| D0-9 | 实际发行脚本 / 包装命令与最终有效 feature 集合 | 实际脚本与命令；`--all-features` 会启用所选包全部 feature，无通用排除单个 feature 的选项，`--exclude` 排除的是包而非 feature。**已核**：三条 matrix args 均无 feature 开关，Cargo.toml 无 `[features]` 段，CI 固定 toolchain 1.98.1 | 已核，见 §18 |
 
 ### 3.2 产物交接物
 
@@ -358,8 +358,29 @@ D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运�
 | D0-2 | 成立。`PlatformWebview::controller()`与`environment()`均为包装层方法 | tauri-2.12.4/src/webview/mod.rs:184、:193 |
 | D0-4 | **纠正**：无async限制。`impl CommandArg for Webview<R>`存在，`from_command`返回`command.message.webview()`且注释写明never fail；`CommandArg` trait签名不含同步或异步约束 | tauri-2.12.4/src/webview/mod.rs:2604；tauri-2.12.4/src/ipc/command.rs:66 |
 | D0-4注入类型 | 支持Q23与Q33。`WebviewWindow`的`CommandArg`实现在调用方非WebviewWindow时返回错误，注入`Webview`无此失败模式 | tauri-2.12.4/src/webview/webview_window.rs:1606 |
-| D0-3（部分） | 命令须命中`allowed_commands`否则拒绝，该表由`resolved_acl.allowed_commands`即capability解析结果构建；应用自定义命令是否默认入表取决于生成的app manifest与`has_app_acl`语义，待D0以一次构建产物定论 | tauri-2.12.4/src/ipc/authority.rs:462、:121、:213、:338 |
+| D0-3 | **已定论**：本地来源的应用自定义命令**默认放行，ACL不构成隔离**。invoke时的ACL判定仅在「插件命令／`has_app_acl_manifest`／非本地来源」三者之一成立时才检查；`has_app_manifest`为`acl.contains_key(APP_ACL_KEY)`，而生成的`gen/schemas/acl-manifests.json`只有`core:*`与`dialog`、**无应用作用域条目**（仓库无`src-tauri/permissions/`目录），故`has_app_acl`为false | tauri-2.12.4/src/webview/mod.rs:2078-2083；tauri-utils-2.10.2/src/acl/mod.rs:352；tauri-2.12.4/src/ipc/authority.rs:462、:121、:213、:338；src-tauri/gen/schemas/acl-manifests.json |
+| D0-5 | 成立。`invoke`直接调用`window.__TAURI_INTERNALS__.invoke`；`window.__TAURI__`只是`withGlobalTauri`控制的全局命名空间，底层通道不依赖它。internals由initialization script注入，不受页面CSP `script-src`约束 | node_modules/@tauri-apps/api/core.js:340-341；tauri-2.12.4/src/app.rs:1733、:1808 |
+| D0-7 | 源码级成立。`WebviewWindowBuilder::new`把同一label传给`WebviewBuilder::new`，`from_config`取config的label，故主界面前端WebView的label与窗口label同为`main`，身份对为`("main","main")`；运行时由D1a-6核对 | tauri-2.12.4/src/webview/webview_window.rs:105、:150 |
+| D0-8 | 机制已录。`resolve_access`以`cmd.webviews`或`cmd.windows`任一匹配即通过，故同窗webview命中`windows:["main"]`的capability；capability亦可用`webviews:[...]`精确列举。按Q27未创建、未调用该形态 | tauri-2.12.4/src/ipc/authority.rs:462-489 |
+| D0-9 | 成立。三条matrix `args`均无`--features`或`--all-features`（`--target`／`--bundles`／`--ci`／`-- --locked`）；`src-tauri/Cargo.toml`目前无`[features]`段；`ci.yml`无cargo构建步骤；`tauri-build.yml`固定toolchain 1.98.1 | .github/workflows/tauri-build.yml:33-40、:55-58；.github/workflows/ci.yml |
 
 前轮Q6“未见于Tauri 2.12的Rust API面”结论不变，补充：该接口在webview2-com-sys而非Tauri表面；前轮“需版本与类型匹配、不称天然互斥”在锁定版本下的事实更强，即只有webview2-com可用。
 
-本次仅取依赖源码与改文档，未修改产品代码或构建配置，未运行编译、探针或PDF检查；证据记录不因文档更新自动变为通过。
+### D0-3的四条后果
+
+1. Q36的证据来源分支落在「默认放行」一侧：输出宿主调用敏感命令时ACL不拦，来源守卫会执行并返回共享稳定拒绝码，**D1b-3的正向证据完全自有，不需匹配任何Tauri消息格式**。
+2. **ACL不是本项目的隔离层，来源守卫是唯一隔离层。**
+3. **D1a落地前输出宿主不存在任何IPC隔离**，故不得在D1a之前创建输出宿主。
+4. 若将来引入应用级ACL manifest（新增`src-tauri/permissions/`目录），`has_app_acl`变true，ACL将开始检查应用自定义命令，D1b-3的证据来源与放行行为都会变；**D1b与D7的复用前提须包含「未引入应用级ACL manifest」**。
+
+### 两项工程事实
+
+**MSRV由1.98降到1.94。** 本机Rust 1.94.0低于原声明的1.98（原声明来自M1当时的本机1.98.1），`cargo build`因版本不足被拒；降到1.94后`cargo build`（225 crates）与`cargo test --locked`（6 passed／3 suites）通过。**CI仍固定toolchain 1.98.1，MSRV下限在CI中不被验证。** 本机Rust测试6项通过：files.rs共7个`#[test]`，其中`persist_failure_preserves_existing_file_and_cleans_temp_file`为`#[cfg(windows)]`，在macOS不编译——与M3记录的「7项Rust通过」为平台差异，非用例缺失。
+
+**固化产物不是字节可复现的。** 同一受控源两次生成字节数相同而SHA-256不同，原因是Paged.js为每个元素写入随机`data-ref`（631处、629个唯一UUID）。因此**SHA-256锁定的是这一个固化文件，不是「同一输入」的稳定标识**；重新生成会使哈希记录失效。
+
+D0的完整证据（命令与退出码、交接物五项、环境说明、未验边界）记于[阶段记录](../reviews/pdf-probe-stage-record-2026-11-02.md)。样本生成工具已入库（`scripts/pdf-probe-sample.ts`），可重复产出。
+
+**待决：样本的字体环境。** 当前样本在macOS生成，页面盒高度与断页按macOS系统字体度量算得；D1在Windows加载同一文件时以Windows字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着D1无法修正。处理方式二选一：在Windows上用同一工具重新生成样本（使生成环境与交付宿主同环境），或沿用本样本并由D1d的「无截断」检查在Windows上判定——届时按内容不一致而非宿主失败归因。记录时不默认任一方案。
+
+本次取依赖源码、生成样本与改文档，未修改产品代码或构建配置，未运行探针或PDF检查；证据记录不因文档更新自动变为通过。

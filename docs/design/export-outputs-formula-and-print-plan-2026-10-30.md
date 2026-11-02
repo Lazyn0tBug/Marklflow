@@ -150,7 +150,9 @@ Q42—Q44身份与证据：D1a在既有原生主窗口创建/初始化路径或�
 
 Q45—Q47归因口径、身份取值与流程收敛：归因口径统一为“请求未到守卫只记原因待查，ACL、路由、通道均为候选，不直接认定ACL”，只统一口径不改通过条件，不弱化任何断言。D1a-6的运行身份取值来源明确为由既有非敏感命令get_platform_info注入owned tauri::Webview后回报调用方身份，不新增阶段或命令；该命令不属受保护集合，但承担身份回报职责，前端platformInfoSchema为strict解析，加字段必须同步改schema与类型。本轮之后停止新增问题编号，剩余待定分属D0核对、D1b设计时定、后半段实测三类，实施中出现的新问题记入阶段记录。
 
-D0核对已确立（2026-11-02，源码级，运行能力仍未验）：ICoreWebView2_7::PrintToPdf在webview2-com-sys 0.39.1声明并经webview2-com再导出可达，手写包装层不暴露该方法须走sys层；锁定版本下只有webview2-com一条路线，windows 0.62.2不含WebView2绑定，不得与windows crate的COM类型混用。PlatformWebview的controller()与environment()为包装层方法。CommandArg对owned Webview无同步或异步约束，async命令可注入Webview；WebviewWindow的实现在调用方非WebviewWindow时失败，注入Webview无此失败模式。命令须命中由capability构建的allowed_commands否则拒绝。
+D0核对已确立（2026-11-02，源码级，运行能力仍未验）：ICoreWebView2_7::PrintToPdf在webview2-com-sys 0.39.1声明并经webview2-com再导出可达，手写包装层不暴露该方法须走sys层；锁定版本下只有webview2-com一条路线，windows 0.62.2不含WebView2绑定，不得与windows crate的COM类型混用。PlatformWebview的controller()与environment()为包装层方法。CommandArg对owned Webview无同步或异步约束，async命令可注入Webview；WebviewWindow的实现在调用方非WebviewWindow时失败，注入Webview无此失败模式。D0-5成立：invoke走window.__TAURI_INTERNALS__.invoke，withGlobalTauri只控制window.__TAURI__命名空间，internals由initialization script注入不受页面CSP约束。D0-7源码级成立：主界面身份对为("main","main")。D0-8机制已录：resolve_access以webviews或windows任一匹配即通过。D0-9成立：三条matrix args均无feature开关，Cargo.toml无[features]段，CI固定toolchain 1.98.1。
+
+D0-3定论与四条后果：本地来源的应用自定义命令在Tauri v2中默认放行，ACL不构成隔离——invoke时的ACL判定仅在插件命令、has_app_acl_manifest或非本地来源三者之一成立时才检查，仓库无应用级permissions目录故has_app_acl为false。由此：Q36落在「默认放行」分支，D1b-3的正向证据为自有共享拒绝码，不需匹配Tauri消息格式；ACL不是本项目隔离层，来源守卫是唯一隔离层；D1a落地前输出宿主不存在任何IPC隔离，不得在D1a之前创建输出宿主；若将来引入应用级ACL manifest则ACL开始检查应用命令，D1b与D7的复用前提须包含「未引入应用级ACL manifest」。
 
 ## 5. 格式输出路径
 
