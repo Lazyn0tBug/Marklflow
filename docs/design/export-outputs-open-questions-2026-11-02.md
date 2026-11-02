@@ -2,7 +2,7 @@
 
 更新：2026-11-02。项目内决策副本，来源为用户Downloads中的同名问题清单；原件保持不变。本文同步讨论结论，不授权实施、提交或推送。主方案见[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)，平台路线见[迁移方案](tauri-migration-plan-2026-10-29.md)，端口见[契约](tauri-migration-m0-contract-2026-10-29.md)。
 
-代码核对基线：architecture-refactor / 686ab7a（方案修订2062655，决策落档614107d，合并4ddee4b，本轮输入来自 bec0358 与 686ab7a）；原清单所称当前HEAD 58bb1a2不作为本次基线。以下区分已核对事实、设计决定与尚未验证的原生能力。第二轮Q6—Q10已形成决定见§2；原提问留作讨论背景，不代表能力已经验证。第三轮Q11—Q13已决定见§3；保留原提问仅供历史追踪，能力仍待验证。
+代码核对基线：architecture-refactor / 95c7f1b（方案修订2062655，决策落档614107d，合并4ddee4b，本轮输入来自 bec0358、686ab7a 与 95c7f1b）；原清单所称当前HEAD 58bb1a2不作为本次基线。以下区分已核对事实、设计决定与尚未验证的原生能力。第二轮Q6—Q10已形成决定见§2；原提问留作讨论背景，不代表能力已经验证。第三轮Q11—Q13已决定见§3；保留原提问仅供历史追踪，能力仍待验证。第四轮Q14—Q16见§4，尚未决定。
 
 ## 1. Q1—Q5决定
 
@@ -118,13 +118,53 @@
 
 历史提问（已由上方决定表替代）：是否把该检查项写入主方案§4.2或§8的D1/D7退出条件。
 
-## 4. 当前编号及映射
+## 4. 第四轮问题（2026-11-02，待决）
+
+本轮只读核对桌面壳配置与既有Web打印实现后新增，不改变§1至§3已决结论；主方案§4.2/§8、迁移§7/§12及契约§3.3尚未同步本节。
+
+| 编号 | 问题 | 状态 |
+| --- | --- | --- |
+| Q14 | 负向验证可能空转，须断言失败原因并设阳性对照 | 待决 |
+| Q15 | 就绪判据覆盖排版而非渲染帧，首页为空的风险未被覆盖 | 待决 |
+| Q16 | D0的只读定位可能不足，命令暴露收紧的改动落点未定 | 待决 |
+
+### Q14 负向验证可能空转，须断言失败原因并设阳性对照
+
+事实依据：`src-tauri/capabilities/default.json`为identifier main-shell、windows仅main、permissions为空数组，且无`src-tauri/permissions/`目录；`src-tauri/src/lib.rs`的invoke_handler注册6个命令，除get_platform_info外为files的select_native_open、select_native_save、read_native_text、write_native_bytes、release_native_file；`src-tauri/tauri.conf.json`未设withGlobalTauri，app.security.csp的connect-src含ipc:与http://ipc.localhost；`src/core/export/pdfExporter.ts:9`的冻结交付HTML自带CSP default-src 'none'且无script-src，脚本不能执行；files.rs的读写命令在Rust侧由FileAccess管理态按UUID key换取已授权路径，key无效时同样失败。
+
+影响：Q12决定要求D1“用有限负向调用验证输出宿主不能调用敏感文件选择/读取/写入命令”，存在四处空转可能。其一，探针若无脚本，在交付HTML上失败的是CSP而非权限。其二，未开withGlobalTauri时window.__TAURI__不存在，通道选错同样“通过”。其三，命令在Rust侧key门控，ACL放行而key无效时调用也会失败，断言“调用失败”不能证明隔离。其四，无阳性对照时上述任一情形都会让阴性结果失去意义。
+
+建议：负向验证使用独立的带脚本测试探针页，与交付样本分离；走实际存在的低层invoke通道，具体全局名在D0确认；断言失败原因属ACL拒绝而非Rust侧未知授权键；同一通道在主窗口成功调用get_platform_info作为阳性对照，阳性对照不成立则阴性结果作废。
+
+待决：是否把“独立探针页、断言失败原因、阳性对照”写入主方案§4.2与§8的D1退出条件。
+
+### Q15 就绪判据覆盖排版而非渲染帧，首页为空的风险未被覆盖
+
+事实依据：`src/core/platform/web/pdfDelivery.ts:6-9`的注释写明打印宿主须在视口内且不可见，移出视口则不属于渲染输出，打印浏览器从未渲染过的帧会得到空白首页；其PRINT_FRAME_STYLE用position:fixed;left:0;top:0;opacity:0，即视口内不可见而非视口外。`src/core/render/htmlPaginator.ts:20`的排版台用left:-20000px置于视口外，排版仍正常。差别在于：排版只需layout，打印需要真的渲染过一帧。
+
+影响：Q8的候选就绪集（导航成功、fonts.ready、图片解码、页面盒数量与尺寸）全部是layout层面证据，没有一项能保证目标文档被渲染过；首选形态visible(false)的WebviewWindow属于从未渲染，比Web的渲染过但不可见更远一层。首页为空时页数仍可能等于data-export-pages，字体报告也可能正常，两项都察觉不到。
+
+建议：主方案§4.2与§8的D1退出条件显式写明“首页非空且首行文本与固化HTML第一页首行对应”；D1失败证据记录“目标文档是否至少渲染过一帧”，使后续是否试离屏显示形态（窗口移出可视区但可见）有依据，该备选与Web侧已验证做法同构。
+
+待决：是否显式化首页非空与渲染帧记录。
+
+### Q16 D0的只读定位可能不足，命令暴露收紧的改动落点未定
+
+事实依据：Q12决定写“独立label或不匹配capability不等于无IPC，invoke_handler注册的应用命令默认行为必须单独约束”；结合capabilities/default.json的permissions为空与无permissions目录，该结论可能要求改代码而非仅核对。
+
+影响：D0在主方案§8的定位是当前代码与产物基线的核对。若D0结论为需收紧命令暴露而只记录不改代码，D1的负向验证必然失败，D1会按§4.2的三类结论归因为“当前形态不可行”，属错误归因——问题在命令权限配置而非宿主形态。
+
+建议：明确D0若得出需收紧命令暴露时的改动落点，三者择一：D1单次范围内的第一个小步、单列独立小步、归入D8生产接入；并把Rust侧key门控作为风险缓解事实写入§4.2，即即使IPC放行，无有效key仍取不到路径。
+
+待决：改动落点选哪一种。
+
+## 5. 当前编号及映射
 
 D0基线→D1技术探索→D2契约→D3 Web收口→D4绑定(M4/M5)→D5 DOCX→D6 Web证据→D7产品化(M8)→D8生产(M9)→D9收口(M10/M11)。D5依赖允许可并行；Mac/Linux Future最后，在D9之后，均待验证。
 
 旧D0→D0；D1→D2、D2→D3、D3→D4、D4→D5、D5→D6；旧D6拆为前置D1与产品化D7；旧D7→D8、D8→D9。D6a/D6b仅为讨论时临时叫法，不作为现行编号。历史提交/验收不重编号。
 
-## 5. 其余事实和未完成项
+## 6. 其余事实和未完成项
 
 - Vite配置未将@tauri-apps/api external，不能据此推断无法同步检测isTauri；组合方式仍按初始化需要决定。
 - ByteSaveTarget.release缺口、回读unknown及监听器/定时器仍归D2/D3核对修复，不能因记录问题就称已修复；D5公式语义缺口仍需定向审查。
@@ -161,7 +201,22 @@ D0基线→D1技术探索→D2契约→D3 Web收口→D4绑定(M4/M5)→D5 DOCX�
 - 候选就绪详细判据统一在主方案§4.2，§4.1和平台契约引用该处，尚须D1验证，不由文档合并视作运行可靠。
 - Q11—Q13已同步三方案；D0/D1未实施，首选宿主、IPC限制、字体/文本/渲染检查尚待实际验证。
 
-## 6. 原问题清单溯源
+第四轮已核对事实补录：
+
+- `src-tauri/capabilities/default.json`：identifier为main-shell，windows仅含main，permissions为空数组；仓库内无`src-tauri/permissions/`目录，即未自建命令权限文件。见Q14与Q16。
+- `src-tauri/src/lib.rs`的invoke_handler注册6个命令：get_platform_info，以及files的select_native_open、select_native_save、read_native_text、write_native_bytes、release_native_file。见Q14与Q16。
+- `src-tauri/tauri.conf.json`未设withGlobalTauri；app.security.csp的connect-src含ipc:与http://ipc.localhost，说明CSP本身不隔离IPC通道，隔离取决于capability匹配与命令暴露。见Q12与Q14。
+- `src/core/export/pdfExporter.ts:9`：冻结交付HTML自带CSP default-src 'none'且无script-src，脚本不可执行，故该HTML不适合作IPC负向探针载体。见Q14。
+- `src/core/platform/web/pdfDelivery.ts:6-9`及其PRINT_FRAME_STYLE：打印宿主取视口内不可见而非视口外，注释明确“打印浏览器从未渲染过的帧会得到空白首页”；`src/core/render/htmlPaginator.ts:20`的排版台置于视口外仍可正常排版。两者共同支撑Q15的排版与渲染之分。
+- files.rs的文件命令在Rust侧由FileAccess管理态按UUID key换取已授权路径，key无效时同样失败。见Q14与Q16。
+
+第四轮待补与待办：
+
+- withGlobalTauri未开启时实际可用的invoke全局名与通道形态，需在D0确认，避免探针写在不存在的对象上。
+- ACL对应用自定义命令的默认行为（permissions为空数组时注册命令是否仍可被调用）需在D0以实际调用核对，不能只读配置推断。
+- §4中Q14—Q16尚未决定，主方案§4.2/§8、迁移§7/§12与契约§3.3均未同步。
+
+## 7. 原问题清单溯源
 
 原始材料：C:/Users/清明/Downloads/export-outputs-open-questions-2026-11-02.md，未改写；本项目副本保留决定及问题编号，避免把原文待决提问或旧基线当当前约束。原件SHA-256：`2d28d04a9e769540b4a7804e2af3e4c5b5a849be10e03f07359e219af2d05b91`。
 
