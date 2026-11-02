@@ -1,1 +1,4 @@
+# 检出必须处处同字节：输入哈希（架构基线的夹具、探针受控样本、导出的主题 CSS）
+# 是对文件内容算的，Windows 上把 LF 转成 CRLF 会让同一份源码换了身份。
+* text=auto eol=lf
 tests/fixtures/architecture/*.md text eol=lf
