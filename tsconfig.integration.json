@@ -10,7 +10,15 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "/src/*": [
+        "./src/*"
+      ]
+    }
   },
   "include": [
     "tests/unit/**/*.ts",
