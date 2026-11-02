@@ -190,10 +190,16 @@ D1优先最小Rust来源检查，使用Tauri注入调用者身份，不信任前
 
 ## 15. Q20—Q22异步来源检查与D1小步
 
-优先保留async文件命令，采用Tauri注入的owned Webview/WebviewWindow真实身份在副作用前限制。源码含CommandArg实现，不能将借用参数限制误作全面禁止async；D0核对签名，D1a编译及针对性验证，不预先同步化命令或新增身份检查IPC。原生COM线程/生命周期约束独立保留。
+优先保留async文件命令，采用Tauri注入的owned tauri::Webview真实身份在副作用前限制。源码含CommandArg实现，不能将借用参数限制误作全面禁止async；D0核对签名，D1a编译及针对性验证，不预先同步化命令或新增身份检查IPC。原生COM线程/生命周期约束独立保留。
 
 探针拟用默认关闭、显式启用的pdf-probe Cargo feature，Rust初始化签发不经IPC、不改invoke_handler，完整夹具路径编译隔离，不以debug_assertions替代；普通debug和发行配置均不自动启用，发行时核对feature未启用。
 
 D1a来源限制→D1b受控授权与权限对照→D1c隐藏宿主/就绪/原生PDF→D1d内容核验和三类总阶段结论，各实质小步一次本地提交，共用简明证据记录。详细依赖/退出条件以[主方案§8.1](export-outputs-formula-and-print-plan-2026-10-30.md)为准，不重编号D2—D9或M阶段。D1c文件生成不放行D7；D1d失败落档不等于通过。
 
 PDF失败不自动废弃D1a/b的窄范围证据，复用需相关代码/配置/依赖/宿主身份来源/调用路径未失效，变更则补相关验证；不无条件承诺D8复用。D0仍只读，实际调用不归D0；本次只修改文档，feature及小步尚未实施。
+
+## 16. Q23—Q24身份与feature边界
+
+D0明确当前主/输出宿主窗口与WebView身份映射；命令注入owned tauri::Webview，从真实对象分别取得WebView及所属窗口label，D1a验证解析和允许范围。不能把WebviewWindow::label()直接当窗口label；Capability支持windows与webviews，当前窗口级划分不外推同窗多WebView授权，未来变化须重新核对粒度。来源检查与ACL不要求机械同键，差异必须符合结果契约并经对照验证。
+
+D1a生产来源限制、敏感命令拒绝和正常授权/释放不受pdf-probe开关影响；D1b仅测试夹具、签发/交付、测试回收和探针启动路径受feature控制。feature关闭时验证限制仍生效、主窗口允许操作仍可用、测试入口不进入正常构建，并记录实际命令与有效feature集合。不仅看默认列表或命令参数，也核对实际解析结果；正常发行不得用会启用探针的--all-features。正常授权释放不得误关，专用探针release不等于正常发行。详细退出条件见主方案§8.1；本次仅文档，未修改构建或执行验证。
