@@ -115,6 +115,20 @@ node -e "console.log(require('crypto').createHash('sha256').update(require('fs')
 
 **这一条记进 D1 的前提**：产出身份由输入哈希承担，因此"同一输入"的前提是**同一批字节**，不只是同一份源码。交付宿主、Windows 的 git 配置、以及夹具是否被行尾规则覆盖，都是身份的一部分。
 
+### 交付宿主事实（2026-11-03，人工确认）
+
+| 事实 | 状态 | 对 D1 的意义 |
+| --- | --- | --- |
+| WebView2 运行时 | **已安装**（版本号待取，见下） | Tauri v2 桌面端在该宿主可启动。**D1c 的硬前提**：D1c 要经 `ICoreWebView2_7::PrintToPdf` 出 PDF，运行时须支持该接口（Evergreen 运行时自 93 版起支持）；此前 D1c 的状态是"环境依赖缺失"，现在不是了 |
+| 微软雅黑 | **已安装** | 与 `platformFonts` 实测到的 `Microsoft YaHei UI` 一致；样本的 CJK 与拉丁在该宿主都用雅黑 UI |
+| 操作系统 | Windows 11，内部版本 10.0.26300（取自 meta 的 `environment.osRelease`） | 宿主标识，随交接物表归档 |
+
+取 WebView2 运行时的准确版本（不猜注册表 GUID，直接看安装目录）：
+
+```powershell
+Get-ChildItem 'C:\Program Files (x86)\Microsoft\EdgeWebView\Application' -Directory | Select-Object Name
+```
+
 ### 交付宿主实测到的字体（2026-11-03）
 
 - **CJK 与拉丁都落到 `Microsoft YaHei UI`**（948 字形／58 节点），代码落到 **Consolas**（51／1）。
