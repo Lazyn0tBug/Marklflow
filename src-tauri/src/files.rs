@@ -1,4 +1,6 @@
 use serde::Serialize;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::{
     collections::HashMap,
     fs::File,
@@ -28,11 +30,12 @@ fn error(_: impl std::fmt::Display) -> String {
 }
 impl FileAccess {
     fn grant(&self, path: PathBuf, writable: bool) -> Result<SelectedFile, String> {
+        // A name that is not valid UTF-8 is still a usable path: show it lossily
+        // instead of failing the whole selection.
         let name = path
             .file_name()
-            .and_then(|s| s.to_str())
-            .ok_or("invalid-file-name")?
-            .to_owned();
+            .map(|s| s.to_string_lossy().into_owned())
+            .ok_or("invalid-file-name")?;
         let size = match path.metadata() {
             Ok(meta) if meta.is_file() => meta.len(),
             Ok(_) => return Err("not-a-file".into()),
@@ -84,10 +87,22 @@ pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
         _ => {}
     }
     let parent = path.parent().ok_or("invalid-target")?;
+    // The temporary file is created 0600; the target keeps its own permission bits.
+    #[cfg(unix)]
+    let existing_mode = std::fs::metadata(path).ok().map(|meta| meta.permissions().mode());
     let mut temp = tempfile::NamedTempFile::new_in(parent).map_err(error)?;
+    #[cfg(unix)]
+    if let Some(mode) = existing_mode {
+        let _ = temp.as_file().set_permissions(std::fs::Permissions::from_mode(mode));
+    }
     temp.write_all(bytes).map_err(error)?;
     temp.as_file().sync_all().map_err(error)?;
     temp.persist(path).map_err(error)?;
+    // The rename is only durable once the directory entry reaches the disk.
+    #[cfg(unix)]
+    if let Ok(dir) = File::open(parent) {
+        let _ = dir.sync_all();
+    }
     Ok(())
 }
 #[tauri::command]
@@ -266,6 +281,33 @@ mod tests {
             access.path(&read.key, false).unwrap_err(),
             "unknown-file-key"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn commit_bytes_preserves_target_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("mode.md");
+        std::fs::write(&path, b"old").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        commit_bytes(&path, b"new").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"new");
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o644);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn grant_accepts_names_that_are_not_valid_utf8() {
+        use std::os::unix::ffi::OsStrExt;
+        let dir = tempfile::tempdir().unwrap();
+        // The file need not exist: the name is what must survive the round trip.
+        let path = dir.path().join(std::ffi::OsStr::from_bytes(b"report-\xff.md"));
+        let access = FileAccess::default();
+        let granted = access.grant(path.clone(), false).unwrap();
+        assert!(granted.name.contains('\u{fffd}'));
+        assert_eq!(access.path(&granted.key, false).unwrap(), path);
     }
 
     #[cfg(windows)]
