@@ -833,11 +833,11 @@ D0核对与D1运行分工（本轮修订）：
 - D0-5成立：`invoke`走`window.__TAURI_INTERNALS__.invoke`（core.js:340-341），`window.__TAURI__`仅是withGlobalTauri控制的命名空间；internals由initialization script注入，不受页面CSP约束。
 - D0-7源码级成立：主界面身份对为`("main","main")`（webview_window.rs:105、:150），运行时由D1a-6核对。
 - D0-8机制已录：`resolve_access`以webviews或windows任一匹配即通过（authority.rs:462-489），按Q27未创建未调用该形态。
-- D0-9成立：三条matrix args均无feature开关，Cargo.toml无`[features]`段，CI固定toolchain 1.98.1。
-- MSRV由1.98降到1.94（本机Rust 1.94.0，原声明来自M1当时的1.98.1）；cargo build与cargo test通过，但**CI仍固定1.98.1，MSRV下限不在CI中验证**。本机Rust测试6项通过，files.rs第7个测试为`#[cfg(windows)]`，属平台差异。
-- 固化产物不是字节可复现的：同一受控源两次生成字节数相同而SHA-256不同，Paged.js写入631处随机`data-ref`；SHA-256锁定的是该固化文件本身，不是「同一输入」的稳定标识。
+- D0-9成立：三条matrix args均无feature开关，Cargo.toml无`[features]`段，CI固定toolchain 1.94.0（随MSRV同步降级）。
+- MSRV由1.98降到1.94（本机Rust 1.94.0，原声明来自M1当时的1.98.1）；cargo build与cargo test通过，CI的toolchain同步降为1.94.0，MSRV下限在CI中验证。本机Rust测试6项通过，files.rs第7个测试为`#[cfg(windows)]`，属平台差异。
+- 固化产物不是字节可复现的：同一受控源两次生成字节数相同而SHA-256不同，Paged.js写入635处随机`data-ref`；SHA-256锁定的是该固化文件本身，不是「同一输入」的稳定标识。
 - D0交接物已产出并自检：固化分页HTML 136213字节、`data-export-pages=3`、页面盒3、HEAD标记第1页与TAIL标记第3页各出现1次、SHA-256可独立复算；生成工具入库为`scripts/pdf-probe-sample.ts`。
-- 样本的字体环境**定为与交付宿主同环境**：主题字体栈为`system-ui,"Microsoft YaHei","PingFang SC",sans-serif`，Windows上CJK落到微软雅黑、macOS上落到苹方，度量不同即断行与行高不同；已新增`.github/workflows/pdf-probe-sample.yml`（手动触发、windows-latest）用同一工具产出样本，macOS归档仅作占位，D1不得加载。
+- 样本的字体环境**定为与交付宿主同环境**：主题字体栈为`system-ui,"Microsoft YaHei","PingFang SC",sans-serif`，度量不同即断行与行高不同；样本由人工在交付宿主执行`bun scripts/pdf-probe-sample.ts`产出，脚本另记宿主实际解析到的平台字体以核对字体环境，macOS归档仅作占位，D1不得加载。
 - 固化产物非字节可复现**不需要解决**：仓库既有产出身份模型从不对产出字节做哈希，而以输入哈希承担（`exportContent.ts:18`的renderConfigVersion与mdHash、`previewIdentity.ts:7`的缓存键、`documentRepository.ts:50`的render nonce）；D0交接物沿用同一模型，以mdHash与renderConfigVersion承担「同一输入」的稳定身份，文件sha256只作完整性校验，不引入UUID归一化等自造手段。
 - MSRV由1.98降到1.94，`.github/workflows/tauri-build.yml`的toolchain同步降为1.94.0，与Cargo.toml声明一致，MSRV下限在CI中得以验证。
 

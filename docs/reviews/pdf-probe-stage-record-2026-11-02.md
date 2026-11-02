@@ -38,10 +38,10 @@
 | 项 | 内容 |
 | --- | --- |
 | 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，136213 字节；元数据同目录 `frozen-sample.meta.json` |
-| 文件 SHA-256 | `d98bfead9de52efb9f490bcfa460d2145d4fb9ed5aa1499482b7f7b2b516e163`（`shasum -a 256` 独立复算一致）。**只锁定这一个文件** |
-| 输入身份 | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行一致 |
+| 文件 SHA-256 | `67a7fbf4985a7fe5280ce6cca96239f418e2557666a12d4f4979779f2d5f4f58`（`shasum -a 256` 独立复算一致）。**只锁定这一个文件** |
+| 输入身份 | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行、跨宿主一致 |
 | 预期值 | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；随机 UUID 属性 635 处 |
-| 环境说明 | 生成提交 `a65c5ee`；macOS 26.6.2（25G83）arm64；Playwright chromium 1.64.1；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
+| 环境说明 | macOS 26.6.2（25G83）arm64；Playwright chromium 1.64.1；vite 运行时 `node`；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；宿主实际解析到的平台字体 PingFang SC（CJK，810 字形／47 节点）、.SF NS（拉丁，138／18）、Courier（代码，51／1）；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
 | 结论 | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成。**本表为 macOS 占位样本**，交付宿主为 Windows，见下「样本的字体环境」 |
 
 ### 命令与退出码
@@ -51,14 +51,19 @@
 | `cargo fetch --locked`（src-tauri） | 0 | 取到 tauri 2.12.4、wry 0.57.1、webview2-com(-sys) 0.39.1、windows 0.62.2；未改仓库、未改 Cargo.lock |
 | `cargo build`（src-tauri） | 0 | 225 crates，32.51s；生成 `src-tauri/gen/schemas/`（构建产物，不入库） |
 | `cargo test --locked`（src-tauri） | 0 | 6 passed / 3 suites |
-| `bun scripts/pdf-probe-sample.ts` | 0 | 产出固化样本并自检（页数、标记、页盒数一致） |
+| `bun scripts/pdf-probe-sample.ts` | 0 | 产出固化样本并自检（页数、标记、页盒数一致、字体证据已取） |
 | `bun run lint` | 0 | check:source、check:boundaries、oxlint 均通过 |
+| `bun run typecheck` | 0 | 四个 tsconfig 配置全部通过；`bun run test:unit` 69 文件 491 用例通过 |
 
 ### 两项工程事实
 
 **MSRV 由 1.98 降到 1.94，CI 一致降版本。** `.github/workflows/tauri-build.yml` 的 toolchain 同步由 1.98.1 降为 1.94.0，与 `src-tauri/Cargo.toml` 的声明一致，MSRV 下限在 CI 中得以验证。本机 Rust 1.94.0 低于原声明的 1.98（原声明来自 M1 当时的本机 1.98.1，见 `docs/reviews/tauri-migration-m1-2026-10-29.md:10`），`cargo build` 因版本不足被拒；降到 1.94 后编译与测试通过。 本机 Rust 测试 6 项通过：files.rs 共 7 个 `#[test]`，其中 `persist_failure_preserves_existing_file_and_cleans_temp_file` 为 `#[cfg(windows)]`，在 macOS 不编译——与 M3 记录的「7 项 Rust 通过」为平台差异，非用例缺失。
 
 **固化产物不是字节可复现的，但这不是缺陷，也不需要解决。** 同一受控源两次生成字节数相同而 SHA-256 不同，原因是 Paged.js 写入 635 处随机 UUID 属性（`data-ref`、`data-split-to`、`data-split-from` 等）。检索仓库既有实现：**仓库从不对产出字节做哈希**，产出身份由输入哈希承担——`src/core/export/exportContent.ts:18` 的 `renderConfigVersion` 为 sha256({contract, theme, options, css, assets[source,sha256]})，`mdHash` 为 sha256(markdown)，`src/application/tasks/previewIdentity.ts:7` 的预览缓存键即 (documentId, previewKind, mdHash, renderConfigVersion)；对可能不完整的产出另用 render nonce 区分（`src/core/platform/web/documentRepository.ts:50`）。故本阶段沿用同一模型：**`mdHash` 与 `renderConfigVersion` 承担「同一输入」的稳定身份，文件 SHA-256 只作为该文件的完整性校验**。实测两者跨运行一致、文件哈希每次不同，与既有模型吻合。不引入 UUID 归一化等自造手段，也不为哈希改生产代码。
+
+### 第三项工程事实：样本脚本此前不在类型检查内，CI 会被破坏
+
+`c22cef7` 引入的 `scripts/pdf-probe-sample.ts` 在浏览器端用 `/src/...` 动态导入并直接引用 DOM 全局，在 Node 侧 tsconfig 下报 7 处错误；而 CI 每次推送都跑 `bun run typecheck`，**该提交一旦推送即破 CI**。修法按仓库既有做法，不新造配置：`scripts/measure-architecture-baseline.ts` 早已因同类原因被排除在 tools 配置外并收入 integration 配置，本脚本照此归入 `tsconfig.integration.json`（带 DOM lib），从 `tsconfig.tools.json` 排除，并在 base 的 `paths` 增加 `/src/*` → `./src/*` 映射。现在四个配置全部通过，类型覆盖检查仍为 229 个受管源全覆盖。
 
 ### 未验项与待 D1 验证的边界
 
@@ -70,15 +75,36 @@
 
 ### 样本的字体环境：定为与交付宿主同环境
 
-主题字体栈为 `system-ui,"Microsoft YaHei","PingFang SC",sans-serif`：**Windows 上 CJK 实际落到微软雅黑，macOS 上落到苹方**，两者度量不同，断行与行高随之不同。固化分页的页面盒高度按生成时的字体度量算得，跨环境加载同一文件会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着 D1 无法修正。
+主题字体栈为 `system-ui,"Microsoft YaHei","PingFang SC",sans-serif`。字体度量不同，断行与行高随之不同；固化分页的页面盒高度按生成时的字体度量算得，跨环境加载同一文件会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着 D1 无法修正。
 
-因此**定为：受控样本必须在交付宿主同环境生成**。已新增 `.github/workflows/pdf-probe-sample.yml`（手动触发、windows-latest）用同一工具产出该样本并上传构件，取回后替换 `docs/acceptance/pdf-probe/` 下的归档并更新本记录的交接物表。macOS 归档仅作占位与流程验证，**D1 不得加载它**。
+因此**定为：受控样本必须在交付宿主同环境生成**。本机 macOS 归档仅作占位与流程验证，**D1 不得加载它**；交付宿主（Windows）上的产出取回后替换 `docs/acceptance/pdf-probe/` 下的归档并更新本记录的交接物表。
+
+**宿主实际字体现已可测。** 脚本此前只记 CSS 字体栈，记的是"要求用什么"，不是"实际用了什么"；现补两项证据并写入 meta：CDP `CSS.getPlatformFontsForNode` 逐节点读出浏览器实际用于渲染的平台字体名（只对直接含文本的节点有结果，故遍历正文节点聚合），以及逐族 canvas 测宽（以故意不存在的族作基线，宽度与基线相同即该族在宿主上不存在）。macOS 实测：CJK 落到 **PingFang SC**（810 字形／47 节点），拉丁落到 **.SF NS**（138／18），代码落到 **Courier**（51／1）；测宽显示 `"Microsoft YaHei"` 与基线同宽，即该族在 macOS 上不存在。
+
+Windows 侧的**预期**（待人工实测核对，非既成事实）：拉丁经 `system-ui` 落到 Segoe UI，CJK 因 Segoe UI 无汉字而落到 **Microsoft YaHei**，代码落到 **Consolas**；测宽应显示 `"Microsoft YaHei"` 与基线不同宽。若实测与此不符，先查宿主字体与主题栈的实际解析，再谈样本可用性。
+
+### 交付宿主上的取样步骤（人工执行）
+
+前置：Git、Bun、Node.js LTS（脚本已支持 node→bun→自身运行时依次回退启动 vite）、`bun install --frozen-lockfile`、`bun run --bun playwright install chromium`。Rust 与 MSVC 工具链在本步不需要，D1 之后才需要。
+
+```powershell
+git clone https://github.com/Lazyn0tBug/Marklflow.git
+cd Marklflow
+git checkout architecture-refactor
+bun install --frozen-lockfile
+bun run --bun playwright install chromium
+bun scripts/pdf-probe-sample.ts
+```
+
+判定：`mdHash` 与 `renderConfigVersion` 必须与本记录交接物表**完全相同**（输入相同）；文件 `sha256` 与 `bytes` **必须不同**（字体度量不同则排版不同）。页数、标记页码按表核对。另取三条宿主事实：系统字体文件 `Get-ChildItem C:\Windows\Fonts -Filter msyh*`、WebView2 运行时版本（`HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients` 下各 `pv`）、`[System.Environment]::OSVersion.VersionString`。
+
+此前为此准备的 `.github/workflows/pdf-probe-sample.yml` 已撤除：GitHub 的 `windows-latest` 不是交付宿主，在那儿生成的样本带的是 CI 镜像的字体环境，恰恰是本节要避免的错配；交付宿主是人工操作的 Windows 机器。
 
 ### D0 结论
 
-九项核对全部有结论（源码级），交接物五项齐备且输入身份（mdHash、renderConfigVersion）跨运行一致、文件哈希可复算。生成工具已入库（`scripts/pdf-probe-sample.ts`），Windows 产出工作流已入库（`.github/workflows/pdf-probe-sample.yml`）。**D1 开工前须取回 Windows 产出的样本并替换归档；macOS 归档不得用于 D1。**
+九项核对全部有结论（源码级），交接物五项齐备且输入身份（mdHash、renderConfigVersion）跨运行一致、文件哈希可复算。生成工具已入库（`scripts/pdf-probe-sample.ts`），并已记录宿主实际解析到的平台字体。**D1 开工前须在交付宿主上取样并替换归档；macOS 归档不得用于 D1。**
 
 ## 待补
 
 - D1a—D1d 尚未实施；本文件当前只有 D0 一节
-- 样本的 Windows 重生成：手动触发 `.github/workflows/pdf-probe-sample.yml`，取回构件后替换 `docs/acceptance/pdf-probe/` 下的归档并更新本记录的交接物表
+- 样本的交付宿主重生成：按上节步骤在 Windows 上执行 `bun scripts/pdf-probe-sample.ts`，取回 `docs/acceptance/pdf-probe/` 下的两个文件后替换归档并更新本记录的交接物表（SHA-256、字节数、平台字体、宿主事实）

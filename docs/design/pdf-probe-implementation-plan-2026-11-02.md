@@ -381,6 +381,6 @@ D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运�
 
 D0的完整证据（命令与退出码、交接物五项、环境说明、未验边界）记于[阶段记录](../reviews/pdf-probe-stage-record-2026-11-02.md)。样本生成工具已入库（`scripts/pdf-probe-sample.ts`），可重复产出。
 
-**样本的字体环境：定为与交付宿主同环境。** 主题字体栈为`system-ui,"Microsoft YaHei","PingFang SC",sans-serif`，Windows上CJK实际落到微软雅黑、macOS上落到苹方，度量不同则断行与行高不同；固化分页的页面盒高度按生成时字体度量算得，跨环境加载会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着D1无法修正。故受控样本必须在交付宿主同环境生成：已新增`.github/workflows/pdf-probe-sample.yml`（手动触发、windows-latest）用同一工具产出并上传构件，取回后替换归档。当前macOS归档仅作占位与流程验证，**D1不得加载它**。
+**样本的字体环境：定为与交付宿主同环境。** 主题字体栈为`system-ui,"Microsoft YaHei","PingFang SC",sans-serif`，度量不同则断行与行高不同；固化分页的页面盒高度按生成时字体度量算得，跨环境加载会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着D1无法修正。故受控样本必须在交付宿主同环境生成。脚本现补记宿主实际解析到的平台字体（CDP `CSS.getPlatformFontsForNode`逐节点聚合，另加逐族canvas测宽以基线族判定该族是否存在），macOS实测CJK落到PingFang SC、拉丁落到.SF NS、代码落到Courier，且`"Microsoft YaHei"`与基线同宽即该族在macOS不存在；Windows侧预期拉丁经`system-ui`落到Segoe UI、CJK落到Microsoft YaHei、代码落到Consolas，待交付宿主实测核对。样本由人工在交付宿主执行`bun scripts/pdf-probe-sample.ts`产出，取回后替换归档；此前准备的GitHub Actions工作流已撤除，因`windows-latest`不是交付宿主、在其上生成即为字体环境错配。当前macOS归档仅作占位与流程验证，**D1不得加载它**。
 
 本次取依赖源码、生成样本与改文档，未修改产品代码或构建配置，未运行探针或PDF检查；证据记录不因文档更新自动变为通过。
