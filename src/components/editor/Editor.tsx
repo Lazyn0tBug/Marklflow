@@ -4,7 +4,7 @@
  * 支持与 HTML 渲染视窗双向精准同步滚动与联动锁保护
  */
 
-import React, { useRef,useLayoutEffect } from 'react';
+import React, { useRef,useLayoutEffect,useState } from 'react';
 import {editorGeometry,invalidateEditorGeometry,setEditorComposing,sourceAnchorAt,sourceAnchorTop,type EditorGeometry} from '../workspace/sourceScroll';
 import type {SourceAnchor} from '../../core/model/sourceLayout';
 import { generateMarkdownTable } from '../../core/parse/markdown';
@@ -41,9 +41,10 @@ export const Editor: React.FC<EditorProps> = ({
   const lineNumbersRef = useRef<HTMLDivElement>(null);
 
   const composing=useRef(false);
+  const [composition,setComposition]=useState<string|null>(null);
   const directScroll=useRef(false);
   const refreshLayout=useRef<()=>void>(()=>{});
-  useLayoutEffect(()=>{const editor=activeTextareaRef.current;return()=>{composing.current=false;directScroll.current=false;if(editor)setEditorComposing(editor,false)}},[sessionId,activeTextareaRef]);
+  useLayoutEffect(()=>{const editor=activeTextareaRef.current;setComposition(null);return()=>{composing.current=false;directScroll.current=false;if(editor)setEditorComposing(editor,false)}},[sessionId,activeTextareaRef]);
   const lastLayout=useRef<{value:string;geometry:EditorGeometry;sessionId:string|undefined;anchor:SourceAnchor}|undefined>(undefined);
   useLayoutEffect(()=>{
     const textarea=activeTextareaRef.current,gutter=lineNumbersRef.current;if(!textarea||!gutter)return;
@@ -173,8 +174,12 @@ export const Editor: React.FC<EditorProps> = ({
           {/* Text Area */}
           <textarea
             ref={activeTextareaRef as React.RefObject<HTMLTextAreaElement>}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={composition ?? value}
+            onChange={(e)=>{
+              // 合成中的文本先留在本地，合成结束才提交：否则一次输入会变成多次修订。
+              if(composing.current){setComposition(e.target.value);return}
+              onChange(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
             onWheel={markScrollIntent}
@@ -183,7 +188,7 @@ export const Editor: React.FC<EditorProps> = ({
             wrap={softWrap?'soft':'off'}
             style={{whiteSpace:softWrap?'pre-wrap':'pre',overflowWrap:softWrap?'anywhere':'normal',wordBreak:'normal',overflowY:'scroll',minWidth:0}}
             onCompositionStart={()=>{composing.current=true;const editor=activeTextareaRef.current;if(editor)setEditorComposing(editor,true)}}
-            onCompositionEnd={()=>{composing.current=false;const editor=activeTextareaRef.current;if(editor)setEditorComposing(editor,false);refreshLayout.current()}}
+            onCompositionEnd={(e)=>{composing.current=false;setComposition(null);const editor=activeTextareaRef.current;if(editor)setEditorComposing(editor,false);onChange(e.currentTarget.value);refreshLayout.current()}}
             aria-label="Markdown 编辑器"
             spellCheck={false}
             autoCapitalize="off"
