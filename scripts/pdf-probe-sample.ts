@@ -48,8 +48,10 @@ async function startDevServer():Promise<{stop:()=>void;runtime:string}>{
   const port=new URL(origin).port;
   const failures:string[]=[];
   for(const runtime of runtimeCandidates()){
-    const child=spawn(runtime,[VITE_ENTRY,'--host','127.0.0.1','--port',port,'--strictPort'],{cwd:repo,stdio:'ignore'});
+    const child=spawn(runtime,[VITE_ENTRY,'--host','127.0.0.1','--port',port,'--strictPort'],{cwd:repo,stdio:['ignore','ignore','pipe']});
     let spawnFailed=false;
+    let diagnostics='';
+    child.stderr?.on('data',chunk=>{diagnostics=(diagnostics+String(chunk)).slice(-800);});
     child.on('error',()=>{spawnFailed=true;});
     for(let attempt=0;attempt<60&&!spawnFailed;attempt++){
       try{
@@ -59,9 +61,9 @@ async function startDevServer():Promise<{stop:()=>void;runtime:string}>{
       await new Promise<void>(done=>setTimeout(done,500));
     }
     try{child.kill();}catch{}
-    failures.push(runtime+(spawnFailed?'（无法启动）':'（未能提供探针页）'));
+    failures.push(runtime+(spawnFailed?'（无法启动）':'（未能提供探针页）')+(diagnostics.trim()?'：'+diagnostics.trim().replace(/\s+/g,' '):''));
   }
-  throw new Error('无法启动 vite 开发服务器：'+failures.join('、'));
+  throw new Error('无法启动 vite 开发服务器：'+failures.join('；'));
 }
 
 /** 读出浏览器实际用于渲染的字体的平台字体名。只对直接含文本的节点有结果，故遍历正文节点聚合。 */
