@@ -85,6 +85,8 @@ Windows 侧的**预期**（待人工实测核对，非既成事实）：拉丁�
 
 ### 交付宿主首次取样（2026-11-03）：输入身份不一致，暂不能归档
 
+**此节已于同日消解**：重新检出为 LF 后，交付宿主第二次取样的 `mdHash` 与 `renderConfigVersion` 均与本记录交接物表一致，CRLF 一条消除（处置见下）。本节保留首次取样的数据作为该陷阱的证据。
+
 交付宿主（Windows 11，内部版本 10.0.26300，`D:\code\Marklflow`）已跑过一次取样，产出与本机 macOS 归档**在输入身份上就不一致**，因此暂不替换归档。
 
 | 项 | macOS（本机） | Windows（交付宿主） | 判定 |
@@ -102,18 +104,14 @@ Windows 侧的**预期**（待人工实测核对，非既成事实）：拉丁�
 
 **已修**：`.gitattributes` 增加 `* text=auto eol=lf`，把行尾规则提升到全仓库。仓库内既有 blob 本就是 LF（逐文件核对 CR 数为 0），故该改动只影响 Windows 的**检出**，不改仓库内容，不产生规范化改动。
 
-**交付宿主须重新检出后再取样**（否则得到的仍是 CRLF 输入）：
+**处置过程与其教训**：交付宿主按"拉取 → 重新检出"重做后，哈希仍是 CRLF 的那一个——因为带 `.gitattributes` 的提交（`0845cde`）当时**只在 macOS 本地，未到远端**，`git pull` 没有新东西可拉，重新检出用的仍是只钉了一个 glob 的旧规则。改为在交付宿主上 `git config core.autocrlf false` 后重新检出，输入哈希随即与本记录一致。
 
-```powershell
-git pull
-git rm -r --cached .
-git reset --hard
-node -e "console.log(require('crypto').createHash('sha256').update(require('fs').readFileSync('tests/fixtures/export-source/pdf-probe-sample.md')).digest('hex'))"
-```
+两条教训记此：
 
-最后一条应打印 `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`。是了再跑 `bun scripts/pdf-probe-sample.ts`；新的 meta 里 `mdHash` 与 `renderConfigVersion` 必须与本记录交接物表**完全相同**，此后两个哈希相同、文件哈希不同才是"同一输入、不同字体环境"的正确形态。
+1. **凡是"让两台机器行为一致"的修改，验收必须在两台机器上做。** 单平台的检出恒等于 blob 内容，CRLF 这类问题在单平台上永远测不出来；本地全绿的验证对"跨机器契约"无效。
+2. **行尾规则不只保护输入，也保护归档自身。** `docs/acceptance/pdf-probe/frozen-sample.html` 是文本文件，未钉行尾时在 Windows 上检出同样变 CRLF，磁盘上复算的 SHA-256 会与 meta 里记的（生成时内存中的内容）对不上，那条"独立复算一致"的校验随之失效。
 
-**这一条记进 D1 的前提**：产出身份由输入哈希承担，因此"同一输入"的前提是**同一批字节**，不只是同一份源码。交付宿主、Windows 的 git 配置、以及夹具是否被行尾规则覆盖，都是身份的一部分。
+**这一条记进 D1 的前提**：产出身份由输入哈希承担，因此"同一输入"的前提是**同一批字节**，不只是同一份源码。交付宿主、Windows 的 git 配置、以及夹具与归档是否被行尾规则覆盖，都是身份的一部分。
 
 ### 交付宿主事实（2026-11-03，人工确认）
 
