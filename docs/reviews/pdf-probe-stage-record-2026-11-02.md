@@ -24,7 +24,7 @@
 | D0-6 探针通道与签发入口 | 形态已由 Q14、Q17、Q18、Q20、Q21 定形，本轮无新增核对项 | 决定 | 决策记录 §4、§5 |
 | D0-7 主界面身份对应 | 源码级成立。`WebviewWindowBuilder::new` 把同一 label 传给 `WebviewBuilder::new`，`from_config` 取 config 的 label，故主界面前端 WebView 的 label 与窗口 label 同为 `main`，身份对为 `("main","main")`。运行时由 D1a-6 核对 | 源码级 | `tauri-2.12.4/src/webview/webview_window.rs:105`、`:150` |
 | D0-8 附着式继承机制 | 机制已录：`resolve_access` 以 `cmd.webviews` 或 `cmd.windows` 任一匹配即通过，故同窗 webview 命中 `windows:["main"]` 的 capability；capability 亦可用 `webviews:[...]` 精确列举。按 Q27 未创建、未调用该形态 | 源码级 | `tauri-2.12.4/src/ipc/authority.rs:462-489` |
-| D0-9 发行脚本与有效 feature | 成立。三条 matrix `args` 均无 `--features` 或 `--all-features`（`--target`/`--bundles`/`--ci`/`-- --locked`）；`src-tauri/Cargo.toml` 目前无 `[features]` 段；`ci.yml` 无 cargo 构建步骤；`tauri-build.yml` 固定 toolchain 1.98.1 | 源码级 | `.github/workflows/tauri-build.yml:33-40`、`:55-58`；`.github/workflows/ci.yml`；`src-tauri/Cargo.toml` |
+| D0-9 发行脚本与有效 feature | 成立。三条 matrix `args` 均无 `--features` 或 `--all-features`（`--target`/`--bundles`/`--ci`/`-- --locked`）；`src-tauri/Cargo.toml` 目前无 `[features]` 段；`ci.yml` 无 cargo 构建步骤；`tauri-build.yml` 固定 toolchain 1.94.0 | 源码级 | `.github/workflows/tauri-build.yml:33-40`、`:55-58`；`.github/workflows/ci.yml`；`src-tauri/Cargo.toml` |
 
 ### D0-3 的四条后果
 
@@ -37,11 +37,12 @@
 
 | 项 | 内容 |
 | --- | --- |
-| 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，136213 字节 |
-| SHA-256 | `c7768fcb0ed205d28c9c95b999715765317a74fadd9d0af938e8571925df7d9b`（`shasum -a 256` 独立复算一致） |
-| 预期值 | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；`data-ref` 631 处 |
-| 环境说明 | 生成提交 `a65c5ee`；macOS 26.6.2（25G83）arm64；Playwright chromium 1.64.1；系统字体 Hiragino Sans GB、STHeiti Light/Medium；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
-| 结论 | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成 |
+| 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，136213 字节；元数据同目录 `frozen-sample.meta.json` |
+| 文件 SHA-256 | `d98bfead9de52efb9f490bcfa460d2145d4fb9ed5aa1499482b7f7b2b516e163`（`shasum -a 256` 独立复算一致）。**只锁定这一个文件** |
+| 输入身份 | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行一致 |
+| 预期值 | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；随机 UUID 属性 635 处 |
+| 环境说明 | 生成提交 `a65c5ee`；macOS 26.6.2（25G83）arm64；Playwright chromium 1.64.1；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
+| 结论 | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成。**本表为 macOS 占位样本**，交付宿主为 Windows，见下「样本的字体环境」 |
 
 ### 命令与退出码
 
@@ -55,9 +56,9 @@
 
 ### 两项工程事实
 
-**MSRV 由 1.98 降到 1.94。** 本机 Rust 1.94.0 低于原声明的 1.98（原声明来自 M1 当时的本机 1.98.1，见 `docs/reviews/tauri-migration-m1-2026-10-29.md:10`），`cargo build` 因版本不足被拒；按指示降到 1.94 后编译与测试通过。**CI 仍固定 toolchain 1.98.1，MSRV 下限在 CI 中不被验证。** 本机 Rust 测试 6 项通过：files.rs 共 7 个 `#[test]`，其中 `persist_failure_preserves_existing_file_and_cleans_temp_file` 为 `#[cfg(windows)]`，在 macOS 不编译——与 M3 记录的「7 项 Rust 通过」为平台差异，非用例缺失。
+**MSRV 由 1.98 降到 1.94，CI 一致降版本。** `.github/workflows/tauri-build.yml` 的 toolchain 同步由 1.98.1 降为 1.94.0，与 `src-tauri/Cargo.toml` 的声明一致，MSRV 下限在 CI 中得以验证。本机 Rust 1.94.0 低于原声明的 1.98（原声明来自 M1 当时的本机 1.98.1，见 `docs/reviews/tauri-migration-m1-2026-10-29.md:10`），`cargo build` 因版本不足被拒；降到 1.94 后编译与测试通过。 本机 Rust 测试 6 项通过：files.rs 共 7 个 `#[test]`，其中 `persist_failure_preserves_existing_file_and_cleans_temp_file` 为 `#[cfg(windows)]`，在 macOS 不编译——与 M3 记录的「7 项 Rust 通过」为平台差异，非用例缺失。
 
-**固化产物不是字节可复现的。** 同一受控源两次生成字节数相同而 SHA-256 不同，原因是 Paged.js 为每个元素写入随机 `data-ref`（631 处、629 个唯一 UUID）。因此 **SHA-256 锁定的是这一个固化文件，不是「同一输入」的稳定标识**；重新生成会使哈希记录失效。
+**固化产物不是字节可复现的，但这不是缺陷，也不需要解决。** 同一受控源两次生成字节数相同而 SHA-256 不同，原因是 Paged.js 写入 635 处随机 UUID 属性（`data-ref`、`data-split-to`、`data-split-from` 等）。检索仓库既有实现：**仓库从不对产出字节做哈希**，产出身份由输入哈希承担——`src/core/export/exportContent.ts:18` 的 `renderConfigVersion` 为 sha256({contract, theme, options, css, assets[source,sha256]})，`mdHash` 为 sha256(markdown)，`src/application/tasks/previewIdentity.ts:7` 的预览缓存键即 (documentId, previewKind, mdHash, renderConfigVersion)；对可能不完整的产出另用 render nonce 区分（`src/core/platform/web/documentRepository.ts:50`）。故本阶段沿用同一模型：**`mdHash` 与 `renderConfigVersion` 承担「同一输入」的稳定身份，文件 SHA-256 只作为该文件的完整性校验**。实测两者跨运行一致、文件哈希每次不同，与既有模型吻合。不引入 UUID 归一化等自造手段，也不为哈希改生产代码。
 
 ### 未验项与待 D1 验证的边界
 
@@ -67,15 +68,17 @@
 - D0-7 的运行时实际身份归 D1a-6
 - D0-9 的当次发行环境归 D1b 与 D7
 
-### 需在 D1 开工前决定的一项
+### 样本的字体环境：定为与交付宿主同环境
 
-**样本的字体环境与 D1 宿主不一致。** 本样本在 macOS 上生成，页面盒高度与断页按 macOS 系统字体度量算得；D1 在 Windows 加载同一文件时以 Windows 字体重新排版，固定高度页面盒可能出现内容溢出或截断，而「不重复分页」意味着 D1 无法修正。处理方式二选一：(a) 在 Windows 上用同一工具重新生成样本，使生成环境与交付宿主同环境；(b) 沿用本样本，但 D1d 的「无截断」检查在 Windows 上可能直接判失败，届时按内容不一致而非宿主失败归因。**记录此项时不默认任一方案。**
+主题字体栈为 `system-ui,"Microsoft YaHei","PingFang SC",sans-serif`：**Windows 上 CJK 实际落到微软雅黑，macOS 上落到苹方**，两者度量不同，断行与行高随之不同。固化分页的页面盒高度按生成时的字体度量算得，跨环境加载同一文件会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着 D1 无法修正。
+
+因此**定为：受控样本必须在交付宿主同环境生成**。已新增 `.github/workflows/pdf-probe-sample.yml`（手动触发、windows-latest）用同一工具产出该样本并上传构件，取回后替换 `docs/acceptance/pdf-probe/` 下的归档并更新本记录的交接物表。macOS 归档仅作占位与流程验证，**D1 不得加载它**。
 
 ### D0 结论
 
-九项核对全部有结论（源码级），交接物五项齐备且 SHA-256 可复算，D1 可直接加载固定文件。生成工具已入库（`scripts/pdf-probe-sample.ts`），可重复产出。**D1 开工前须先决定样本的生成环境是否改为 Windows。**
+九项核对全部有结论（源码级），交接物五项齐备且输入身份（mdHash、renderConfigVersion）跨运行一致、文件哈希可复算。生成工具已入库（`scripts/pdf-probe-sample.ts`），Windows 产出工作流已入库（`.github/workflows/pdf-probe-sample.yml`）。**D1 开工前须取回 Windows 产出的样本并替换归档；macOS 归档不得用于 D1。**
 
 ## 待补
 
 - D1a—D1d 尚未实施；本文件当前只有 D0 一节
-- 样本的 Windows 重生成与哈希更新，待上述决定后执行
+- 样本的 Windows 重生成：手动触发 `.github/workflows/pdf-probe-sample.yml`，取回构件后替换 `docs/acceptance/pdf-probe/` 下的归档并更新本记录的交接物表

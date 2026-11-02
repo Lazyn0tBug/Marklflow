@@ -259,6 +259,6 @@ D1a-6的运行身份取值来源明确为由既有非敏感命令get_platform_in
 D0核对已确立（源码级，运行能力仍未验证）：ICoreWebView2_7::PrintToPdf在webview2-com-sys 0.39.1声明并经webview2-com再导出可达，手写包装层不暴露该方法须走sys层；锁定版本下只有webview2-com一条路线，windows 0.62.2不含WebView2绑定。PlatformWebview的controller()与environment()为包装层方法。CommandArg对owned Webview无同步或异步约束，async命令可注入Webview；WebviewWindow的实现在调用方非WebviewWindow时失败。命令须命中由capability构建的allowed_commands否则拒绝，应用命令是否默认入表待D0以生成物定论。
 
 本轮之后停止新增问题编号；剩余待定分属D0核对、D1b设计时定、后半段实测三类，实施中出现的新问题记入阶段记录而非再开编号轮次。
-D0执行后补记：应用自定义命令在本地来源默认放行，ACL不构成隔离，来源守卫是唯一隔离层；D1a落地前不得创建输出宿主；D1b与D7的复用前提须含「未引入应用级ACL manifest」。固化产物非字节可复现（631处随机data-ref），SHA-256锁定的是该固化文件本身。MSRV由1.98降到1.94（本机Rust 1.94.0），CI仍固定1.98.1，MSRV下限不在CI中验证。完整证据见docs/reviews/pdf-probe-stage-record-2026-11-02.md。
+D0执行后补记：应用自定义命令在本地来源默认放行，ACL不构成隔离，来源守卫是唯一隔离层；D1a落地前不得创建输出宿主；D1b与D7的复用前提须含「未引入应用级ACL manifest」。固化产物非字节可复现（631处随机data-ref），SHA-256锁定的是该固化文件本身。MSRV由1.98降到1.94（本机Rust 1.94.0），CI的toolchain同步降为1.94.0，与Cargo.toml声明一致，MSRV下限在CI中得以验证。样本的字体环境定为与交付宿主同环境（Windows产出工作流已入库，macOS归档仅作占位，D1不得加载）；固化产物非字节可复现不解决，沿用仓库既有输入哈希模型（mdHash与renderConfigVersion）。完整证据见docs/reviews/pdf-probe-stage-record-2026-11-02.md。
 
 上述均为后续实施验收要求，本次仅文档修订，尚未运行验证。

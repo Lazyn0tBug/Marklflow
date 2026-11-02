@@ -152,6 +152,8 @@ Q45—Q47归因口径、身份取值与流程收敛：归因口径统一为“�
 
 D0核对已确立（2026-11-02，源码级，运行能力仍未验）：ICoreWebView2_7::PrintToPdf在webview2-com-sys 0.39.1声明并经webview2-com再导出可达，手写包装层不暴露该方法须走sys层；锁定版本下只有webview2-com一条路线，windows 0.62.2不含WebView2绑定，不得与windows crate的COM类型混用。PlatformWebview的controller()与environment()为包装层方法。CommandArg对owned Webview无同步或异步约束，async命令可注入Webview；WebviewWindow的实现在调用方非WebviewWindow时失败，注入Webview无此失败模式。D0-5成立：invoke走window.__TAURI_INTERNALS__.invoke，withGlobalTauri只控制window.__TAURI__命名空间，internals由initialization script注入不受页面CSP约束。D0-7源码级成立：主界面身份对为("main","main")。D0-8机制已录：resolve_access以webviews或windows任一匹配即通过。D0-9成立：三条matrix args均无feature开关，Cargo.toml无[features]段，CI固定toolchain 1.98.1。
 
+D0执行后补记：样本的字体环境定为与交付宿主同环境——主题字体栈为system-ui加微软雅黑与苹方，Windows与macOS的CJK实际字体不同，度量不同则断行与行高不同，跨环境加载同一固化文件会以宿主字体重新排版，固定高度页面盒可能溢出或截断且无法再分页；已新增手动触发的Windows产出工作流，macOS归档仅作占位，D1不得加载。固化产物非字节可复现不需要解决：仓库既有产出身份模型从不对产出字节做哈希，而以输入哈希承担（mdHash与renderConfigVersion，预览缓存键同此），D0交接物沿用同一模型。MSRV由1.98降到1.94，CI的toolchain同步降为1.94.0，与Cargo.toml声明一致。
+
 D0-3定论与四条后果：本地来源的应用自定义命令在Tauri v2中默认放行，ACL不构成隔离——invoke时的ACL判定仅在插件命令、has_app_acl_manifest或非本地来源三者之一成立时才检查，仓库无应用级permissions目录故has_app_acl为false。由此：Q36落在「默认放行」分支，D1b-3的正向证据为自有共享拒绝码，不需匹配Tauri消息格式；ACL不是本项目隔离层，来源守卫是唯一隔离层；D1a落地前输出宿主不存在任何IPC隔离，不得在D1a之前创建输出宿主；若将来引入应用级ACL manifest则ACL开始检查应用命令，D1b与D7的复用前提须包含「未引入应用级ACL manifest」。
 
 ## 5. 格式输出路径

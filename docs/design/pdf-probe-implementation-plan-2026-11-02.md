@@ -375,12 +375,12 @@ D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运�
 
 ### 两项工程事实
 
-**MSRV由1.98降到1.94。** 本机Rust 1.94.0低于原声明的1.98（原声明来自M1当时的本机1.98.1），`cargo build`因版本不足被拒；降到1.94后`cargo build`（225 crates）与`cargo test --locked`（6 passed／3 suites）通过。**CI仍固定toolchain 1.98.1，MSRV下限在CI中不被验证。** 本机Rust测试6项通过：files.rs共7个`#[test]`，其中`persist_failure_preserves_existing_file_and_cleans_temp_file`为`#[cfg(windows)]`，在macOS不编译——与M3记录的「7项Rust通过」为平台差异，非用例缺失。
+**MSRV由1.98降到1.94，CI一致降版本。** 本机Rust 1.94.0低于原声明的1.98（原声明来自M1当时的本机1.98.1），`cargo build`因版本不足被拒；降到1.94后`cargo build`（225 crates）与`cargo test --locked`（6 passed／3 suites）通过。`.github/workflows/tauri-build.yml`的toolchain同步由1.98.1降为1.94.0，与Cargo.toml声明一致，MSRV下限在CI中得以验证。 本机Rust测试6项通过：files.rs共7个`#[test]`，其中`persist_failure_preserves_existing_file_and_cleans_temp_file`为`#[cfg(windows)]`，在macOS不编译——与M3记录的「7项Rust通过」为平台差异，非用例缺失。
 
-**固化产物不是字节可复现的。** 同一受控源两次生成字节数相同而SHA-256不同，原因是Paged.js为每个元素写入随机`data-ref`（631处、629个唯一UUID）。因此**SHA-256锁定的是这一个固化文件，不是「同一输入」的稳定标识**；重新生成会使哈希记录失效。
+**固化产物不是字节可复现的，但这不是缺陷也不需要解决。** 同一受控源两次生成字节数相同而SHA-256不同，原因是Paged.js写入635处随机UUID属性（`data-ref`、`data-split-to`、`data-split-from`等）。仓库既有产出身份模型**从不对产出字节做哈希**，而以输入哈希承担：`exportContent.ts:18`的`renderConfigVersion`为sha256({contract,theme,options,css,assets[source,sha256]})、`mdHash`为sha256(markdown)，`previewIdentity.ts:7`的预览缓存键即(documentId,previewKind,mdHash,renderConfigVersion)，对可能不完整的产出另用render nonce区分（`documentRepository.ts:50`）。故沿用同一模型：**`mdHash`与`renderConfigVersion`承担「同一输入」的稳定身份，文件SHA-256只作为该文件的完整性校验**；实测输入哈希跨运行一致、文件哈希每次不同，与既有模型吻合。不引入UUID归一化等自造手段，也不为哈希改生产代码。
 
 D0的完整证据（命令与退出码、交接物五项、环境说明、未验边界）记于[阶段记录](../reviews/pdf-probe-stage-record-2026-11-02.md)。样本生成工具已入库（`scripts/pdf-probe-sample.ts`），可重复产出。
 
-**待决：样本的字体环境。** 当前样本在macOS生成，页面盒高度与断页按macOS系统字体度量算得；D1在Windows加载同一文件时以Windows字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着D1无法修正。处理方式二选一：在Windows上用同一工具重新生成样本（使生成环境与交付宿主同环境），或沿用本样本并由D1d的「无截断」检查在Windows上判定——届时按内容不一致而非宿主失败归因。记录时不默认任一方案。
+**样本的字体环境：定为与交付宿主同环境。** 主题字体栈为`system-ui,"Microsoft YaHei","PingFang SC",sans-serif`，Windows上CJK实际落到微软雅黑、macOS上落到苹方，度量不同则断行与行高不同；固化分页的页面盒高度按生成时字体度量算得，跨环境加载会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着D1无法修正。故受控样本必须在交付宿主同环境生成：已新增`.github/workflows/pdf-probe-sample.yml`（手动触发、windows-latest）用同一工具产出并上传构件，取回后替换归档。当前macOS归档仅作占位与流程验证，**D1不得加载它**。
 
 本次取依赖源码、生成样本与改文档，未修改产品代码或构建配置，未运行探针或PDF检查；证据记录不因文档更新自动变为通过。

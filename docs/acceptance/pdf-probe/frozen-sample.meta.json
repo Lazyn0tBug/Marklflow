@@ -1,0 +1,28 @@
+{
+  "file": "/Users/gpdi/code/ai/Marklflow/docs/acceptance/pdf-probe/frozen-sample.html",
+  "source": "/Users/gpdi/code/ai/Marklflow/tests/fixtures/export-source/pdf-probe-sample.md",
+  "bytes": 136213,
+  "sha256": "d98bfead9de52efb9f490bcfa460d2145d4fb9ed5aa1499482b7f7b2b516e163",
+  "mdHash": "d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b",
+  "renderConfigVersion": "00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e",
+  "dataExportPages": 3,
+  "pageElements": 3,
+  "headMarkerPage": 1,
+  "tailMarkerPage": 3,
+  "headMarkerOccurrences": 1,
+  "tailMarkerOccurrences": 1,
+  "randomUuidAttributes": 635,
+  "hasImage": true,
+  "hasFormulaSvg": true,
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "25.6.0",
+    "fontVariables": {
+      "--mf-font": "system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif"
+    },
+    "fontFamily": "font-family:var(--mf-font,system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif)"
+  },
+  "pageProblems": [],
+  "note": "sha256 只锁定本文件；mdHash 与 renderConfigVersion 承担“同一输入”的稳定身份，沿用仓库既有产出身份模型。交付宿主字体环境须与本 environment 一致，否则固化分页的页面盒度量不匹配。"
+}

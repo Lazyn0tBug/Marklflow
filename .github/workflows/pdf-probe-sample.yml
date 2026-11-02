@@ -1,0 +1,47 @@
+name: PDF Probe Sample (Windows)
+
+# 静默 PDF 探针的受控样本必须在交付宿主同环境生成：固化分页的页面盒高度与断页
+# 按生成时的系统字体度量算得，跨环境加载同一文件会以宿主字体重新排版，固定高度
+# 页面盒可能溢出或截断，而流程不重复分页。本工作流在 Windows 上产出该样本。
+# 手动触发，产物作为构件上传，由主代理取回后归档到 docs/acceptance/pdf-probe/。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    name: Generate frozen sample on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.4.2'
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+
+      - name: Install locked frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install test browser
+        run: bun run --bun playwright install chromium
+
+      - name: Generate frozen sample
+        run: bun scripts/pdf-probe-sample.ts
+
+      - name: Upload frozen sample
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pdf-probe-sample-windows
+          path: docs/acceptance/pdf-probe/
+          if-no-files-found: error
