@@ -55,6 +55,14 @@
 
 - macOS WKWebView createPDF/printOperation、Linux WebKitPrintOperation文件输出属于最后Future（D9/M11当前范围收口之后）；分别验证多页/打印CSS和系统后端，未验统一标待验证。将来各平台仍需自己的生产接入和发布验收，不以Windows通过替代。
 
+### 3.2 D0/D1交接与候选就绪（Q6—Q10）
+
+- D0交接固化分页HTML固定文件、SHA-256、data-export-pages预期值、关键内容及生成提交/OS/WebView/字体说明；含CJK/公式/图片/表格。D1直接加载，不要求其自行构建前端；hash仅锁定输入，不证明保真。
+- D0确认Tauri 2.12.4 with_webview及Windows controller/environment入口、锁文件传递webview2-com/windows与直接使用的依赖匹配。D1复用Tauri宿主/控制器，承担接口转换、异步PrintToPdf完成、COM引用/回调生命周期和基本清理，不另建通用COM平台；尚未运行验证。
+- 候选就绪：顶层导航成功且文档加载完成、document.fonts.ready、图片成功加载/解码、页面盒数量/尺寸核对；HTML img与SVG image区别处理，使用目标文档环境API。不以固定睡眠/rAF为必需，不放开作者脚本；组合是否充分由D1实测，不能说固定页面盒没有重新布局。
+- D1输出物理页数须等于data-export-pages，并核对关键首尾、可选正文/CJK/代表公式图表，无空白/截断或窗口/面板闪现；页数不是唯一证据。Windows完整产品化保真仍归D7/M8，D6是Web系统证据。
+- 当前验证本机生成/交付；冻结分页HTML跨环境重输出一致性未验，不等于PDF成品只能本机阅读。记录正文/图表字体与MathJax SVG图形/MathML字体差异；成品字体嵌入、显示及可选文字另验，不在本轮新增字体打包。
+
 ## 4. 源文件操作与状态冻结
 
 | 操作 | 接受时/完成时规则 |
