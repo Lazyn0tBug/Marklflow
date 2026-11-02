@@ -10,6 +10,15 @@ use std::{
 };
 use tauri_plugin_dialog::DialogExt;
 
+use crate::source_guard;
+
+/// 取调用方身份并按允许范围判定。拒绝时返回共享稳定拒绝码。
+/// 五个受保护入口都在任何文件、对话框或授权撤销的副作用之前调用它。
+fn ensure_allowed(webview: &tauri::Webview) -> Result<(), String> {
+    let identity = source_guard::Identity::from_labels(webview.window().label(), webview.label());
+    source_guard::check_source(&identity, source_guard::ALLOWED_CALLERS).map_err(str::to_owned)
+}
+
 pub const READ_LIMIT: u64 = 50 * 1024 * 1024;
 pub const WRITE_LIMIT: usize = 100 * 1024 * 1024;
 #[derive(Default)]
@@ -108,8 +117,10 @@ pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
 #[tauri::command]
 pub async fn select_native_open(
     app: tauri::AppHandle,
+    webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
 ) -> Result<Option<Vec<SelectedFile>>, String> {
+    ensure_allowed(&webview)?;
     let paths = app
         .dialog()
         .file()
@@ -141,9 +152,11 @@ pub async fn select_native_open(
 #[tauri::command]
 pub async fn select_native_save(
     app: tauri::AppHandle,
+    webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     name: String,
 ) -> Result<Option<SelectedFile>, String> {
+    ensure_allowed(&webview)?;
     if name.is_empty() || name.contains(['/', '\\', '\0']) || name == "." || name == ".." {
         return Err("invalid-file-name".into());
     }
@@ -156,24 +169,30 @@ pub async fn select_native_save(
 }
 #[tauri::command]
 pub async fn read_native_text(
+    webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<String, String> {
+    ensure_allowed(&webview)?;
     read_text(&access.path(&key, false)?)
 }
 #[tauri::command]
 pub async fn write_native_bytes(
+    webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     key: String,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
+    ensure_allowed(&webview)?;
     commit_bytes(&access.path(&key, true)?, &bytes)
 }
 #[tauri::command]
 pub fn release_native_file(
+    webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<(), String> {
+    ensure_allowed(&webview)?;
     access.0.lock().map_err(error)?.remove(&key);
     Ok(())
 }

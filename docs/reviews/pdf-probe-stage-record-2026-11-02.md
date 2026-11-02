@@ -181,6 +181,62 @@ bun scripts/pdf-probe-sample.ts
 
 R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `platformFonts` 是空数组，自检照样通过，字体证据静默退化为空而产物看起来正常。**产物型断言须编码期望值，而非编码"非空"**，此条一并记此。
 
+## D1a 来源限制与身份回报（2026-11-03）
+
+生产代码，不受 `pdf-probe` feature 控制，D8 生产接入复用。本节记实现与证据；运行期身份值归 D1a-6，在交付宿主核对。
+
+### 实现落点
+
+| 件 | 位置 | 内容 |
+| --- | --- | --- |
+| 纯函数守卫 | `src-tauri/src/source_guard.rs:57` | `check_source(caller, allowed)`：输入身份与允许范围，输出放行或共享稳定拒绝码 `native-source-denied`（`:42`） |
+| 身份类型 | `src-tauri/src/source_guard.rs:16` | `Identity` 为窗口 label 与 webview label 的配对，**label 级，不含实例标识**；`declared`（`:21`）供常量用，`from_labels`（`:29`）供运行期用 |
+| 具名身份 | `src-tauri/src/source_guard.rs:45`、`:51` | `MAIN_WINDOW` = ("main","main")（源码级依据 D0-7，运行值 D1a-6 核对）；`OUTPUT_HOST` = ("pdf-output","pdf-output")，**默认不在允许范围内** |
+| 允许范围 | `src-tauri/src/source_guard.rs:54` | `ALLOWED_CALLERS` 只含主界面，静态、默认拒绝 |
+| 入口守卫 | `src-tauri/src/files.rs:17` | `ensure_allowed` 取原生注入的身份后调用共享守卫，拒绝即返回共享码 |
+| 身份回报 | `src-tauri/src/lib.rs:18` | `get_platform_info` 注入 owned `tauri::Webview`，回报 `windowLabel` 与 `webviewLabel`；该命令**不受守卫限制**（不碰文件、对话框与授权） |
+| 前端同步 | `src/core/platform/tauri/runtime.ts:3` | strict schema 加 `windowLabel` / `webviewLabel`（缺字段即解析失败，故必须与 Rust 同步） |
+| 用户可见映射 | `src/core/platform/tauri/files.ts:9` | 共享拒绝码映射为友好提示，不露裸码、调用方身份或允许名单；**受控探针不经此路径，仍按机器码取证** |
+
+### 五个受保护入口 × 四项证据（D1a-5）
+
+| 入口 | 调用共享守卫 | 身份取自原生注入 | 拒绝返回路径 | 检查先于副作用 |
+| --- | --- | --- | --- | --- |
+| `select_native_open` | `files.rs:123` | `files.rs:17`（`webview.window().label()` 与 `webview.label()`） | `files.rs:18` 返回共享码 | 先于 `files.rs:124` 的对话框 |
+| `select_native_save` | `files.rs:159` | 同上 | 同上 | 先于 `files.rs:160` 的文件名校验与 `files.rs:163` 的对话框 |
+| `read_native_text` | `files.rs:176` | 同上 | 同上 | 先于 `files.rs:177` 的授权解析与读取 |
+| `write_native_bytes` | `files.rs:186` | 同上 | 同上 | 先于 `files.rs:187` 的授权解析与 `files.rs:188` 的提交 |
+| `release_native_file` | `files.rs:195` | 同上 | 同上 | 先于 `files.rs:196` 的授权撤销 |
+
+### 六条断言
+
+| # | 断言 | 判定 | 证据 |
+| --- | --- | --- | --- |
+| D1a-1 | 注入 owned Webview 且身份解析符合预期 | 成立 | 五个入口与 `get_platform_info` 均注入 `tauri::Webview`；`CommandArg` 对 owned `Webview` 无同步或异步约束且不失败（D0-4）。**本断言只覆盖注入签名与主窗口身份取值接线**，真实 IPC 调用归 D1b |
+| D1a-2 | 允许范围按真实身份映射表达，不假设 label 相等、不以枚举即允许 | 成立 | 允许范围是 (window label, webview label) 的配对（`source_guard.rs:54`）；单元测试断言窗口或 webview 任一不符即拒绝；输出宿主身份虽已具名但**不在范围内**（测试 `the_output_host_is_not_in_the_allowed_range_by_default`） |
+| D1a-3 | 允许范围的判定正确 | 成立 | 守卫为纯函数，5 项 Rust 单测覆盖放行、范围外拒绝、窗口与 webview 单独不符、空范围全拒、输出宿主默认被拒 |
+| D1a-4 | feature 关闭时来源限制仍生效 | 成立 | 守卫代码不在任何 `cfg(feature)` 之后；`Cargo.toml` 目前仍无 `[features]` 段，故 feature 关闭即当前构建。以默认 feature 集构建通过、单测通过 |
+| D1a-5 | 限制发生在副作用前 | 成立 | 上表五入口 × 四项，逐项标源码位置；均为定向源码审查证据，**不冒充框架实际 IPC 响应**，后者归 D1b |
+| D1a-6 | 允许范围写入的主窗口身份对与运行中实际值一致 | **待交付宿主核对** | 写入值为 ("main","main")（D0-7 源码级）；运行值由 `get_platform_info` 在真实调用中回报，核对在 Windows 上进行。**不提前接 M4/M5 生产文件交互** |
+
+### 本轮验证
+
+| 项 | 结果 |
+| --- | --- |
+| `cargo build`（src-tauri） | 0 错误 0 警告 |
+| `cargo test --locked` | 13 项通过（3 套件），较上轮新增 5 项守卫单测 |
+| `bun run typecheck` | 四个配置通过，类型覆盖 231 源 |
+| `bun run test:unit` | 71 文件 497 项通过（新增 1 项前端友好映射） |
+| `bun run lint` | 通过 |
+| 全量 e2e | 143 通过 1 跳过（跳过项为既有）。注：e2e 跑的是 Web 应用，不经过 Tauri 命令，故**它验不到本轮的 Rust 改动**；Rust 侧由 `cargo build` 与 `cargo test` 覆盖，注入行为由 D1b 在真实调用中取证 |
+
+### 本轮未做与边界
+
+- **未创建输出宿主**：按 D0-3 后果三，D1a 落地前不得创建输出宿主，故 `OUTPUT_HOST` 只有身份定义，没有创建函数。
+- **未接线生产文件交互**：文件命令仍无生产调用方（属 M4/M5 范围），D1a 只做来源限制。
+- **未做运行期验证**：D1a-6 归 Windows；真实 IPC 的允许与拒绝证据归 D1b。
+- **输出宿主 label "pdf-output" 是本轮取定的名字**，D1b 的宿主创建函数须引用同一常量；若要改，改这一处即可。
+
 ## 待补
 
 - D1a—D1d 尚未实施；本文件当前只有 D0 一节

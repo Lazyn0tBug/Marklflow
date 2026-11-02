@@ -1,11 +1,20 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
 const selectedSchema=z.object({key:z.string().uuid(),name:z.string().min(1),size:z.number().int().nonnegative().safe()}).strict();
+// 与 Rust 侧 source_guard::SOURCE_DENIED 一致；两处必须同步改。
+const SOURCE_DENIED='native-source-denied';
+const SOURCE_DENIED_MESSAGE='当前窗口无权使用原生文件能力';
 export type NativeSelection=z.infer<typeof selectedSchema>;
 async function invoke(command:string,args?:Record<string,unknown>):Promise<unknown>{
  const native=await import('@tauri-apps/api/core');
  if(!native.isTauri())throw new Error('原生文件能力仅在桌面应用中可用');
- return native.invoke(command,args);
+ try{return await native.invoke(command,args)}
+ catch(error){
+  // 来源拒绝的共享稳定码在用户可见路径映射为友好提示：不露裸码、调用方身份或允许名单。
+  // 受控探针不经这里，仍按机器码取证。
+  if(String(error).includes(SOURCE_DENIED))throw new Error(SOURCE_DENIED_MESSAGE);
+  throw error;
+ }
 }
 /** Independent M3 adapter. No production composition or document bindings yet. */
 export async function selectNativeOpen():Promise<NativeSelection[]|undefined>{

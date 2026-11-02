@@ -1,19 +1,28 @@
 mod files;
+mod source_guard;
 use serde::Serialize;
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlatformInfo {
     os: &'static str,
     arch: &'static str,
     version: &'static str,
+    window_label: String,
+    webview_label: String,
 }
 
+/// 平台信息兼作调用方身份回报：窗口与 webview 的 label 配对由原生注入取出。
+/// 该命令不受来源守卫限制（它不碰文件、对话框与授权），但承担 D1a-6 的身份回报职责。
 #[tauri::command]
-fn get_platform_info() -> PlatformInfo {
+fn get_platform_info(webview: tauri::Webview) -> PlatformInfo {
+    let identity = source_guard::Identity::from_labels(webview.window().label(), webview.label());
     PlatformInfo {
         os: std::env::consts::OS,
         arch: std::env::consts::ARCH,
         version: env!("CARGO_PKG_VERSION"),
+        window_label: identity.window_label.into_owned(),
+        webview_label: identity.webview_label.into_owned(),
     }
 }
 

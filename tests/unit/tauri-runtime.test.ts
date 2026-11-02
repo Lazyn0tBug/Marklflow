@@ -13,7 +13,7 @@ it('does not invoke a native command in the Web environment',async()=>{
 });
 it('validates the native platform response and returns an owned value',async()=>{
  native.isTauri.mockReturnValue(true);
- const value={os:'windows',arch:'x86_64',version:'0.9.1'};
+ const value={os:'windows',arch:'x86_64',version:'0.9.1',windowLabel:'main',webviewLabel:'main'};
  native.invoke.mockResolvedValue(value);
  const result=await readTauriPlatformInfo();
  expect(native.invoke).toHaveBeenCalledExactlyOnceWith('get_platform_info');
@@ -21,7 +21,7 @@ it('validates the native platform response and returns an owned value',async()=>
 });
 it('rejects malformed or unexpected native platform fields',async()=>{
  native.isTauri.mockReturnValue(true);
- for(const value of [null,{os:'windows',arch:'',version:'0.9.1'},{os:'unknown',arch:'x86_64',version:'0.9.1'},{os:'windows',arch:'x86_64',version:'0.9.1',path:'private'}]){
+ for(const value of [null,{os:'windows',arch:'',version:'0.9.1',windowLabel:'main',webviewLabel:'main'},{os:'unknown',arch:'x86_64',version:'0.9.1',windowLabel:'main',webviewLabel:'main'},{os:'windows',arch:'x86_64',version:'0.9.1',windowLabel:'main',webviewLabel:'main',path:'private'},{os:'windows',arch:'x86_64',version:'0.9.1'},{os:'windows',arch:'x86_64',version:'0.9.1',windowLabel:'',webviewLabel:'main'}]){
   native.invoke.mockResolvedValue(value);
   await expect(readTauriPlatformInfo()).rejects.toThrow();
  }

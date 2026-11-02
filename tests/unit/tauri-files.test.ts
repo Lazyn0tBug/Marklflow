@@ -21,6 +21,12 @@ it('rejects native file operations outside Tauri',async()=>{
  await expect(selectNativeSave('report.md')).rejects.toThrow('原生文件能力');
  expect(native.invoke).not.toHaveBeenCalled();
 });
+it('maps the shared source denial to a friendly message without exposing the code',async()=>{
+ native.invoke.mockRejectedValue(new Error('native-source-denied'));
+ const error=await selectNativeOpen().catch(failure=>failure);
+ expect(String(error)).toContain('当前窗口无权使用原生文件能力');
+ expect(String(error)).not.toContain('native-source-denied');
+});
 it('validates selected metadata strictly and preserves only opaque keys',async()=>{
  native.invoke.mockResolvedValue([selected]);
  expect(await selectNativeOpen()).toEqual([selected]);
