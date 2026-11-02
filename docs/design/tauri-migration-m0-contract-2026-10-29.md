@@ -143,6 +143,16 @@ D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运�
 
 上述为待实施契约，不代表已取得运行证据。
 
+### 3.14 Q45—Q47归因统一与身份回报
+
+- 归因口径统一：请求未到守卫只记原因待查，ACL、路由、通道均为候选，不直接认定ACL；到达handler不等于业务成功。只统一口径不改任何通过条件。
+- D1a-6的运行身份取值来源：由既有非敏感命令get_platform_info注入owned tauri::Webview后回报调用方身份，不新增阶段或命令；该命令不属受保护集合，但承担身份回报职责。
+- 前端platformInfoSchema为strict解析（src/core/platform/tauri/runtime.ts:3），加字段必须同步改schema与TauriPlatformInfo类型，否则既有读取路径解析失败；D1a实施时不得遗漏。
+- 锁定版本下COM绑定只有webview2-com一条路线（windows 0.62.2不含WebView2绑定），不得与windows crate的COM类型混用；ICoreWebView2_7::PrintToPdf经webview2-com的再导出可达，手写包装层不暴露该方法。
+- 本轮之后停止新增问题编号；剩余待定分属D0核对、D1b设计时定、后半段实测三类，实施中出现的新问题记入阶段记录。
+
+上述为待实施契约；D0核对结论为源码级，运行能力仍未验证。
+
 ## 4. 源文件操作与状态冻结
 
 | 操作 | 接受时/完成时规则 |

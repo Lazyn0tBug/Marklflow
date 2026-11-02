@@ -2,7 +2,7 @@
 
 更新：2026-11-02。项目内决策副本，来源为用户Downloads中的同名问题清单；原件保持不变。本文同步讨论结论，不授权实施、提交或推送。主方案见[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)，平台路线见[迁移方案](tauri-migration-plan-2026-10-29.md)，端口见[契约](tauri-migration-m0-contract-2026-10-29.md)。
 
-代码核对基线：architecture-refactor / 5883d8a（方案修订2062655，决策落档614107d，合并4ddee4b，本轮输入来自 bec0358、686ab7a、95c7f1b、3d62c24、9413d57、915b991、16226bd、ece160c、100738d、1a48ba0、349a0b9 与 5883d8a）；原清单所称当前HEAD 58bb1a2不作为本次基线。以下区分已核对事实、设计决定与尚未验证的原生能力。第二轮Q6—Q10已形成决定见§2；原提问留作讨论背景，不代表能力已经验证。第三轮Q11—Q13已决定见§3；保留原提问仅供历史追踪，能力仍待验证。第四轮Q14—Q16已决定见§4，原提问仅作历史背景，运行能力仍未验证。第五轮Q17—Q19已决定见§5，原提问保留为历史背景，能力仍未验证。第六轮Q20—Q22已决定见§6，原提问为历史背景，尚无运行验证。第七轮Q23—Q24已决定见§7，原提问保留为历史背景，尚无编译/运行验证。第八轮Q25—Q28已决定见§8，旧提问作历史背景，运行验证仍未执行。第九轮Q29—Q31已同步决定见§9，实施与能力仍未验证。第十轮Q32—Q35已决定见§10，原问题保留历史背景，能力仍未验证。第十一轮Q36—Q38已决定见§11，第十二轮Q39—Q41见§12，能力与代码尚未实施。
+代码核对基线：architecture-refactor / afd2a9f（方案修订2062655，决策落档614107d，合并4ddee4b，本轮输入来自 bec0358、686ab7a、95c7f1b、3d62c24、9413d57、915b991、16226bd、ece160c、100738d、1a48ba0、349a0b9、5883d8a 与 afd2a9f）；原清单所称当前HEAD 58bb1a2不作为本次基线。以下区分已核对事实、设计决定与尚未验证的原生能力。第二轮Q6—Q10已形成决定见§2；原提问留作讨论背景，不代表能力已经验证。第三轮Q11—Q13已决定见§3；保留原提问仅供历史追踪，能力仍待验证。第四轮Q14—Q16已决定见§4，原提问仅作历史背景，运行能力仍未验证。第五轮Q17—Q19已决定见§5，原提问保留为历史背景，能力仍未验证。第六轮Q20—Q22已决定见§6，原提问为历史背景，尚无运行验证。第七轮Q23—Q24已决定见§7，原提问保留为历史背景，尚无编译/运行验证。第八轮Q25—Q28已决定见§8，旧提问作历史背景，运行验证仍未执行。第九轮Q29—Q31已同步决定见§9，实施与能力仍未验证。第十轮Q32—Q35已决定见§10，原问题保留历史背景，能力仍未验证。第十一轮Q36—Q38已决定见§11，第十二轮Q39—Q41见§12，第十三轮Q42—Q44见§13，第十四轮Q45—Q47见§14，能力与代码尚未实施。
 
 ## 1. Q1—Q5决定
 
@@ -559,13 +559,60 @@ D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运�
 
 历史提问（已由上方决定表替代）：接线检查如何留证；清单的行列。
 
-## 14. 当前编号及映射
+## 14. 第十四轮问题与决定（2026-11-02）
+
+本轮记录D0核对中已确立的事实与两处对前轮推断的纠正，统一归因口径，明确D1a-6的身份取值来源，并收敛后续流程。方案文档已按本轮改写；主方案、迁移与契约的对应条目待同步。原提问仅作历史背景。
+
+| 编号 | 当前决定 | 边界 |
+| --- | --- | --- |
+| Q45 | §8与§17的归因口径统一为“请求未到守卫只记原因待查，ACL、路由、通道均为候选，不直接认定ACL”；本记录Q43行同步记此修正 | 只统一口径不改通过条件，不因统一而弱化任何断言 |
+| Q46 | D1a-6的运行身份取值来源明确为：由既有非敏感命令get_platform_info注入owned tauri::Webview并回报调用方身份；不新增阶段或命令 | 响应字段变化须同步前端platformInfoSchema（runtime.ts为strict解析，加字段必须同步改schema与类型）；该命令本就描述调用方所处的平台上下文，不作为测试钩子 |
+| Q47 | 本轮之后停止新增问题编号；剩余待定分属D0核对、D1b设计时定、后半段实测三类 | 流程约定，不改任何断言；实施中出现的新问题记入阶段记录而非再开编号轮次 |
+
+### 本轮D0核对已确立的事实
+
+| 核对项 | 结论 | 证据 |
+| --- | --- | --- |
+| D0-1 COM接口覆盖 | 成立。ICoreWebView2_7::PrintToPdf在webview2-com-sys 0.39.1声明，经webview2-com的`pub use webview2_com_sys::Microsoft`可达；webview2-com手写包装层不暴露PrintToPdf，须走sys层接口 | webview2-com-0.39.1/src/lib.rs:2；webview2-com-sys-0.39.1/src/bindings.rs的impl ICoreWebView2_7 |
+| D0-1备选路线 | 纠正：windows 0.62.2不含WebView2绑定（无Win32_System_Win32_WebView2特性、无src/Windows/Win32/WebView2目录）。前轮“若webview2-com不含ICoreWebView2_7可改用windows crate”的备选在锁定版本下不存在 | windows-0.62.2/Cargo.toml与src树 |
+| D0-2 PlatformWebview形态 | 成立。controller()与environment()均为包装层方法 | tauri-2.12.4/src/webview/mod.rs:184、:193 |
+| D0-4异步身份注入 | 纠正：CommandArg无async约束，async命令可注入owned Webview。impl CommandArg for Webview存在，from_command返回command.message.webview()且注释写明never fail | tauri-2.12.4/src/webview/mod.rs:2604；tauri-2.12.4/src/ipc/command.rs:66 |
+| D0-4注入类型 | 支持Q23与Q33。WebviewWindow的CommandArg实现在调用方非WebviewWindow时返回错误，注入Webview无此失败模式 | tauri-2.12.4/src/webview/webview_window.rs:1606 |
+| D0-3 ACL机制 | 部分落定。命令须命中allowed_commands否则拒绝，该表由resolved_acl.allowed_commands即capability解析结果构建 | tauri-2.12.4/src/ipc/authority.rs:462、:121、:213、:338 |
+
+前轮Q6“ICoreWebView2_7::PrintToPdf未见于Tauri 2.12的Rust API面”结论不变，补充：该接口在webview2-com-sys而非Tauri表面，且锁定版本下只有webview2-com一条路线。前轮Q35“webview2-com与windows组合需版本和类型匹配，不称天然互斥”在锁定版本下的事实更强：只有webview2-com可用。
+
+### Q45 归因口径统一
+
+事实依据：方案§17写“请求未到守卫只能记原因待查，ACL、路由、通道均为候选，不能直接认定ACL”，而§8归因表原写“守卫未被调用→平台ACL路径（D0-3分支）”。
+
+影响：同一条失败被两处给出不同归因，后者把未经验证的结论当结论；§17自身还写有“ACL先拒绝不证明Rust已运行”，两处口径互相抵触。
+
+建议：以§17为准统一§8与本记录Q43行；请求未达守卫时ACL、路由、通道三者均为候选，先分别排除，不直接认定ACL。
+
+### Q46 D1a-6的身份取值来源
+
+事实依据：能同时给出运行中window label与webview label的只有被调用命令里注入的tauri::Webview；窗口创建路径最多给出窗口label。今天会从主窗口发起的IPC只有get_platform_info（runtime.ts:15），它既不注入Webview也不回报身份；受保护的五个命令今天没有生产调用方。
+
+影响：§17写“运行身份核对可复用D1a-1既有原生取值路径……不新增阶段、命令或报告”，但未指明取值来自哪个命令，D1a-6缺少可执行形态。
+
+建议：由既有非敏感命令get_platform_info注入owned tauri::Webview并在响应中回报调用方身份；不新增阶段或命令；前端platformInfoSchema为strict解析，须同步改schema与类型，否则既有读取路径解析失败。
+
+### Q47 流程收敛
+
+事实依据：设计决定在Q44收敛，第十四轮之后剩余待定分别归属D0核对、D1b实施时设计与后半段实测。
+
+影响：继续开编号轮次的边际内容已多为措辞精度而非设计；决策记录与主文档的同步成本随轮次上升。
+
+建议：本轮之后不再新增问题编号；实施中出现的新问题记入阶段记录。
+
+## 15. 当前编号及映射
 
 D0基线→D1技术探索（D1a→D1b→D1c→D1d）→D2契约→D3 Web收口→D4绑定(M4/M5)→D5 DOCX→D6 Web证据→D7产品化(M8)→D8生产(M9)→D9收口(M10/M11)。D5依赖允许可并行；Mac/Linux Future最后，在D9之后，均待验证。
 
 旧D0→D0；D1→D2、D2→D3、D3→D4、D4→D5、D5→D6；旧D6拆为前置D1与产品化D7；旧D7→D8、D8→D9。D6a/D6b仅为讨论时临时叫法，不作为现行编号。历史提交/验收不重编号。
 
-## 15. 其余事实和未完成项
+## 16. 其余事实和未完成项
 
 - Vite配置未将@tauri-apps/api external，不能据此推断无法同步检测isTauri；组合方式仍按初始化需要决定。
 - ByteSaveTarget.release缺口、回读unknown及监听器/定时器仍归D2/D3核对修复，不能因记录问题就称已修复；D5公式语义缺口仍需定向审查。
@@ -617,7 +664,7 @@ D0基线→D1技术探索（D1a→D1b→D1c→D1d）→D2契约→D3 Web收口�
 - D0只读定位自定义命令与权限暴露，必要限制在D1首个小步落实；实际调用及拒绝原因/有效对照归D1，不把D0默认为运行探针阶段。
 - Q14—Q16已同步方案，IPC探针、权限修改及实际PDF首末页均未实施/验收；不能因文档明确而算通过。
 
-## 16. 原问题清单溯源
+## 17. 原问题清单溯源
 
 原始材料：C:/Users/清明/Downloads/export-outputs-open-questions-2026-11-02.md，未改写；本项目副本保留决定及问题编号，避免把原文待决提问或旧基线当当前约束。原件SHA-256：`2d28d04a9e769540b4a7804e2af3e4c5b5a849be10e03f07359e219af2d05b91`。
 
@@ -763,5 +810,20 @@ D0核对与D1运行分工（本轮修订）：
 - 方案文档已落定Q42、Q43、Q44；主方案§4.2/§8.1、迁移§22、契约§3.13及探针相关条目已同步。
 - 前半段（D0、D1a、D1b）仍无悬空项。
 - 本轮只改文档，未改代码或构建配置，未获取依赖，未运行编译测试。
+
+第十四轮已核对事实补录：
+
+- 依赖源码已按`cargo fetch --locked`取到本地registry（tauri 2.12.4、wry 0.57.1、webview2-com与webview2-com-sys 0.39.1、windows 0.62.2），未改仓库、未改Cargo.lock。见Q45至Q47的事实表。
+- 锁定版本下COM绑定只有webview2-com一条路线：`windows 0.62.2`不含WebView2绑定，与webview2-com的COM类型不可混用。前轮“需版本与类型匹配、不称天然互斥”的表述在锁定版本下应记为“只有webview2-com可用”。见§14事实表。
+- `CommandArg`对owned Webview无async约束，前轮“异步命令不能取调用方Webview”的文档印象已被源码否定；Q20保留async的决定成立。见§14事实表。
+- `WebviewWindow`的CommandArg实现在调用方非WebviewWindow时失败，注入`Webview`无此失败模式，印证Q23与Q33的注入类型选择。见§14事实表。
+- `get_platform_info`现有前端schema为strict解析（src/core/platform/tauri/runtime.ts:3），按Q46回报调用方身份必须同步改schema与类型。见Q46。
+
+第十四轮待补与待办：
+
+- 方案文档已落定Q45、Q46；主方案§4.2、迁移与契约的对应条目待同步。
+- D0剩余核对项：D0-3应用自定义命令默认行为（需一次cargo build生成gen/schemas读app manifest）、D0-5 invoke通道、D0-7窗口与前端WebView的label对应、D0-8附着式继承机制、D0-9发行脚本与有效feature。
+- 受控样本生成按Q30(a)执行，不改被检查的产品代码；捕获通道在执行时确认，既有路径无法满足时回到Q30(a)边界另行决定，不在D0静默改产品代码。
+- 本轮取依赖源码与改文档，未修改产品代码或构建配置，未运行编译测试。
 
 第十一轮只同步五份项目文档，不修改代码或构建，不运行编译测试，不提交、不推送。旧提问中的强制命名空间、D1a真实输出宿主调用及D0直接决定实际层不作为当前要求。

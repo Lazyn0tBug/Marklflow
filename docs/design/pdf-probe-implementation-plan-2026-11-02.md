@@ -1,6 +1,6 @@
 # Windows 静默 PDF 探针实施方案（D0 与 D1a—D1d）
 
-更新：2026-11-02。方案来源基线：architecture-refactor / 0fc1257；已同步Q29—Q44决定，见§3—§8及§13—§17。设计已定不等于能力已验，本次仅文档修订。
+更新：2026-11-02。方案来源基线：architecture-refactor / 0fc1257；已同步Q29—Q47决定，见§3—§8及§13—§18。设计已定不等于能力已验，本次仅文档修订。
 
 本文把[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)§4.2/§8.1的既定约定落成可执行步骤与逐条断言，供实施时逐项勾选。原则以主方案为准，本文只做执行层索引，不新增设计决定、不改发布门槛、不授权实施、提交或推送。
 
@@ -43,7 +43,7 @@ D0 基线核对与既有路径受控样本生成（不改产品代码）
 
 | # | 核对内容 | 判定依据 | 状态 |
 | --- | --- | --- | --- |
-| D0-1 | `webview2-com 0.39.1` 是否覆盖 `ICoreWebView2_7` 与 `PrintToPdf` | 该版本对应文档或源码；本地 registry 无此版本源码。获取途径：上游仓库指定 tag、文档站或由提供方给出，**记录来源与版本号**；拿错版本会与 `windows` 的 COM 类型不兼容，直接导致 D1c 互操作代码编译不过 | 未核【TBD-01】 |
+| D0-1 | `webview2-com 0.39.1` 是否覆盖 `ICoreWebView2_7` 与 `PrintToPdf` | 该版本对应文档或源码；本地 registry 无该版本源码。获取途径：上游仓库指定 tag、文档站或由提供方给出，**记录来源与版本号**；拿错版本会与 `windows` 的 COM 类型不兼容，直接导致 D1c 互操作代码编译不过。**已核（2026-11-02）**：接口在 `webview2-com-sys` 声明、经 `webview2-com` 的 `pub use webview2_com_sys::Microsoft` 可达；`webview2-com` 手写包装层不暴露 `PrintToPdf`，须走 sys 层；`windows 0.62.2` **不含** WebView2 绑定，锁定版本只有 webview2-com 一条路线 | 已核，见 §14 与 §18 |
 | D0-2 | 锁定版 `wry 0.57.1` 下 Tauri `PlatformWebview` 的 `controller()` / `environment()` 形态 | 锁定版本 API 文档，来源与版本同 D0-1 | 未核 |
 | D0-3 | 自定义命令默认行为及可能的ACL/来源守卫路径 | D0查源码/配置仅记预期，准备自有码或版本绑定平台识别依据；实际通道/拦截与正向证据在D1b确认 | 未核【TBD-03】 |
 | D0-4 | 异步命令能否取调用方 `Webview` / `WebviewWindow`；注入 owned `tauri::Webview` 的解析行为 | `CommandArg` 与借用参数相关宏的实际签名，来源与版本同 D0-1 | 未核【TBD-02】 |
@@ -79,7 +79,7 @@ D0 基线核对与既有路径受控样本生成（不改产品代码）
 
 1. 保留现有 async 命令签名，注入 owned `tauri::Webview`，在文件与对话框副作用**之前**执行来源限制。
 2. 明确主界面与输出宿主的静态(window label, webview label)配对，真实调用者和可信创建路径为前提；不增加当前不需实例ID。受保护敏感命令默认拒绝，确需允许才列入，不自动授权新宿主。允许范围为**静态、默认拒绝**：未列入的窗口与独立 webview 一律受限。身份为 **label 级**，即窗口 label 与 webview label 的配对，不引入实例标识——实例级会使允许范围必须动态化，等同权限平台。
-3. 判定逻辑收在一处（共享守卫函数），各敏感命令调用它。守卫塑造成**纯函数**：以允许范围与调用方身份为输入，返回允许或共享稳定拒绝码。不引入注册表、配置层或权限平台。**受保护命令集合**为当前 `files.rs` 的 5 个命令：`select_native_open`、`select_native_save`、`read_native_text`、`write_native_bytes`、`release_native_file`；`get_platform_info` 不在其中。身份与命令是两个正交维度——允许范围管哪个身份，命令集合管哪个对象，守卫按命令安装。
+3. 判定逻辑收在一处（共享守卫函数），各敏感命令调用它。守卫塑造成**纯函数**：以允许范围与调用方身份为输入，返回允许或共享稳定拒绝码。不引入注册表、配置层或权限平台。**受保护命令集合**为当前 `files.rs` 的 5 个命令：`select_native_open`、`select_native_save`、`read_native_text`、`write_native_bytes`、`release_native_file`；`get_platform_info` 不在其中（它不受守卫限制，但按Q46承担D1a-6的调用方身份回报职责）。身份与命令是两个正交维度——允许范围管哪个身份，命令集合管哪个对象，守卫按命令安装。
 4. 来源守卫使用一处共享稳定拒绝常量，语义唯一、与业务错误不混淆，不新增错误命名空间框架。现有UI可见路径映射友好提示，不露裸码/调用方/允许名单；探针按机器码，受控内部验收记录可保必要身份。
 5. 输出宿主的身份由生产侧具名常量定义（label 与形态同源），允许范围引用该常量；D1b、D1c、D8使用生产单点身份定义与创建函数；输出身份不自动加入允许范围。宿主创建归D1b，D1c 复用该创建函数/身份/形态，每次创建独立实例而非共用实例。
 
@@ -94,7 +94,7 @@ D0 基线核对与既有路径受控样本生成（不改产品代码）
 | D1a-3 | 允许范围的判定正确 | 主窗口身份对在允许范围内时守卫放行、范围外身份对返回共享稳定拒绝码，由 Rust 单元测试断言（守卫为纯函数，不依赖 Tauri 运行时或生产调用方）。端到端允许路径的运行期证据归 D1b-2 |
 | D1a-4 | feature 关闭时来源限制仍生效 | 以默认 feature 集构建，上述单元测试仍通过，且守卫代码不在 `pdf-probe` 之后；仅证明编译边界与判定逻辑，入口接线由D1a-5另证，真实IPC拒绝归D1b |
 | D1a-5 | 限制发生在副作用前 | 对守卫/命令入口定向检查：拒绝返回共享稳定码、后续文件/对话框副作用未执行；另核对五入口均调用守卫、身份取自原生注入、拒绝码正确传递；证据采用定向源码审查或可行入口级测试，不能用纯函数单测替代。接线检查按五个入口×四项（守卫调用／原生身份来源／拒绝返回路径／检查先于副作用）列清单，每项标源码或测试位置；源码证到返回值路径，实际IPC响应归D1b。主窗口及真实输出宿主IPC调用证据在D1b，不要求尚未创建的宿主在D1a实际返回拒绝 |
-| D1a-6 | 允许范围写入的主窗口身份对与运行中实际值一致 | D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运行中的完整(window label, webview label)，与允许范围预期比较并记录来源。D0配置/创建路径可作为初始依据，运行值用于校验，避免仅用同一常量自证；不新增身份IPC命令，不提前接M4/M5生产文件交互。不一致先核实际取值路径与配置版本，再修正身份映射或允许范围；运行身份匹配不代表真实IPC隔离已验。本步不一致须排查修正后再退出，不留作D1b已通过前提 |
+| D1a-6 | 允许范围写入的主窗口身份对与运行中实际值一致 | 运行中的完整(window label, webview label)由**既有非敏感命令 `get_platform_info` 注入 owned `tauri::Webview` 后回报**（按Q46）；不新增阶段或命令。`get_platform_info` 不属受保护命令集合，不受守卫限制，但承担身份回报职责；前端 `platformInfoSchema` 为strict解析（`src/core/platform/tauri/runtime.ts:3`），**加字段必须同步改schema与`TauriPlatformInfo`类型**，否则既有读取路径解析失败。D0配置/创建路径可作为初始依据，运行值用于校验，避免仅用同一常量自证；不提前接M4/M5生产文件交互。不一致先核实际取值路径与配置版本，再修正身份映射或允许范围；运行身份匹配不代表真实IPC隔离已验。本步不一致须排查修正后再退出，不留作D1b已通过前提 |
 
 ### 4.3 退出条件
 
@@ -128,7 +128,7 @@ D1a-1 至 D1a-6 全部成立；类型检查通过；定向回归通过。纯守�
 
 Q32已决：权限拒绝须稳定拒绝代码、可识别平台权限结果或其他充分正向证据，不以排除files.rs四业务串/参数/通道错误后的剩余集合证明权限。自有来源守卫可提供稳定拒绝代码；性质未知仍未能确认。性质确认但具体层不明记录“拒绝层归因未确认”，不等同于总阶段未能确认，不由探针自行降级证据。
 
-证据路径：D0-3只给源码/配置预期，D1b确认实际来源。若来源守卫执行，用共享稳定码作正向证据，不匹配Tauri消息；ACL确先拒绝时用绑定实际Tauri版本且可靠的权限识别方式，依据失效则拒绝性质未确认。不能凭D0预期宣称某层运行，不能用排除业务串取代正向识别，也不要求稳定码路径无任何平台调用依赖。具体层不明但性质已确认时仍按§8记录归因与复验限制。
+证据路径：D0-3只给源码/配置预期，D1b确认实际来源。若来源守卫执行，用共享稳定码作正向证据，不匹配Tauri消息；ACL确先拒绝时用绑定实际Tauri版本且可靠的权限识别方式，依据失效则拒绝性质未确认。不能凭D0预期宣称某层运行，不能用排除业务串取代正向识别，也不要求稳定码路径无任何平台调用依赖。具体层不明但性质已确认时仍按§8记录归因与复验限制。锁定版本下COM绑定只有webview2-com一条路线（windows 0.62.2不含WebView2绑定），实现不得与windows crate的COM类型混用。
 
 ### 5.3 退出条件
 
@@ -255,7 +255,7 @@ D1c-1 至 D1c-5 成立，或取得明确失败证据。**取得文件不等于�
 
 | 编号 | 位置 | 存疑内容 | 影响范围 | 消解方式 |
 | --- | --- | --- | --- | --- |
-| TBD-01 | §3.1 D0-1 | `webview2-com 0.39.1` 是否含 `ICoreWebView2_7` 与 `PrintToPdf`；本地 registry 无该版本源码 | D1c 全部；若不含，需改用 `windows 0.62.2` 的 WebView2 绑定或另寻路线 | D0 查该版本文档或源码 |
+| TBD-01（已核） | §3.1 D0-1 | `webview2-com 0.39.1` 是否含 `ICoreWebView2_7` 与 `PrintToPdf` | 已核：接口在`webview2-com-sys 0.39.1`声明并经`webview2-com`再导出可达；`webview2-com`手写包装层不暴露`PrintToPdf`，须走sys层；`windows 0.62.2`不含WebView2绑定，锁定版本只有webview2-com一条路线。运行能力仍未验 | 见§18 |
 | TBD-02 | §3.1 D0-4 | owned `tauri::Webview` 在 async 命令下的解析行为 | D1a 全部；若不可解析则需改签名或换注入形态 | D0读签名/宏，D1a最小编译验证 |
 | TBD-03 | §3.1 D0-3 | 应用自定义命令的默认放行行为 | 决定 ACL 层是否构成隔离，以及 D1b-3 的分层判定是否成立 | D0只读定位；D1b实际调用验证 |
 | TBD-04 | §3.1 D0-5 | 未开 `withGlobalTauri` 时的 invoke 通道与全局名 | D1b 全部；探针能否发起调用 | D0只读定位；D1b实际调用验证 |
@@ -311,7 +311,7 @@ D0通过既有前端生成路径受控产出固定样本，不改产品代码；
 
 D8清单核对须覆盖届时每个实际窗口/WebView的敏感命令需要：确需允许且路径可用，或有意受限且限制有效。当前D1a采用默认拒绝，不等于把所有API均锁死，不因新增宿主自动允许。身份为静态label配对，不加实例ID；同逻辑宿主重建不另签实例权限，但真实调用者、可信创建与label不被不可信内容占用是前提。
 
-D0-1/2/4资料来源优先Cargo.lock对应registry源码、精确版本API文档或可确认的上游提交，记录URL/版本提交、锁文件标识及必要工具链信息。缺本地缓存可后续按授权cargo fetch --locked，不升级依赖；不用latest/近似tag替代。webview2-com/windows组合需版本和类型匹配，不称天然互斥。所有源码预期与实测冲突均按§8核同环境与探针，再用可复现结果新增更正记录，不覆盖历史。
+D0-1/2/4资料来源优先Cargo.lock对应registry源码、精确版本API文档或可确认的上游提交，记录URL/版本提交、锁文件标识及必要工具链信息。缺本地缓存可后续按授权cargo fetch --locked，不升级依赖；不用latest/近似tag替代。**已核（2026-11-02）**：锁定版本下COM绑定只有webview2-com一条路线——`webview2-com-sys 0.39.1`声明`ICoreWebView2_7::PrintToPdf`，`webview2-com`经`pub use webview2_com_sys::Microsoft`可达，而`windows 0.62.2`不含WebView2绑定；故不得与windows crate的COM类型混用。所有源码预期与实测冲突均按§8核同环境与探针，再用可复现结果新增更正记录，不覆盖历史。
 
 本次仅文档修订，未执行源码获取/编译/探针或PDF检查；证据记录不因文档更新自动变为通过。
 
@@ -345,4 +345,21 @@ D1a在既有原生主窗口创建/初始化路径或受控验收入口读取运�
 
 失败按同一请求的实际观察排查：守卫对本应拒绝的实际输出身份返回允许，检查允许范围和身份提取；共享拒绝码已可靠对应到该请求且无业务效果，来源守卫拒绝有效，有可信运行对应证据时拒绝层已知；已有拒绝记录却另有操作成功，先核请求、命令入口、实例、版本及结果传播，再查漏接或副作用先于拒绝；请求未到守卫只能记原因待查，ACL、路由、通道均为候选，不能直接认定ACL。到达handler不等于业务成功。继续遵守正向权限证据要求，权限性质未知不通过；只有拒绝性质已证而具体层未知时才按Q32限定结论。
 
-运行身份核对可复用D1a-1既有原生取值路径，D1a-6仅单列其值匹配断言，不新增阶段、命令或报告。本次未运行验证。
+运行身份核对可复用D1a-1既有原生取值路径，D1a-6仅单列其值匹配断言，不新增阶段或命令；按Q46，调用方身份由既有非敏感命令`get_platform_info`注入owned `tauri::Webview`后回报，前端strict schema须同步。本次未运行验证。
+
+## 18. D0核对已确立事实（2026-11-02）
+
+依赖源码已按`cargo fetch --locked`取到本地registry（tauri 2.12.4、wry 0.57.1、webview2-com与webview2-com-sys 0.39.1、windows 0.62.2），未改仓库、未改Cargo.lock。以下为源码级结论，**运行能力仍未验证**。
+
+| 核对项 | 结论 | 证据 |
+| --- | --- | --- |
+| D0-1 | 成立。`ICoreWebView2_7::PrintToPdf`在`webview2-com-sys 0.39.1/src/bindings.rs`声明，经`webview2-com`的`pub use webview2_com_sys::Microsoft`可达，路径为`webview2_com::Microsoft::WebView2::ICoreWebView2_7`；`webview2-com`手写包装层不暴露`PrintToPdf`，须走sys层 | webview2-com-0.39.1/src/lib.rs:2 |
+| D0-1备选路线 | **纠正**：锁定版本下只有webview2-com一条路线——`windows 0.62.2`不含`Win32_System_Win32_WebView2`特性、亦无`src/Windows/Win32/WebView2`目录；不得与windows crate的COM类型混用 | windows-0.62.2/Cargo.toml与src树 |
+| D0-2 | 成立。`PlatformWebview::controller()`与`environment()`均为包装层方法 | tauri-2.12.4/src/webview/mod.rs:184、:193 |
+| D0-4 | **纠正**：无async限制。`impl CommandArg for Webview<R>`存在，`from_command`返回`command.message.webview()`且注释写明never fail；`CommandArg` trait签名不含同步或异步约束 | tauri-2.12.4/src/webview/mod.rs:2604；tauri-2.12.4/src/ipc/command.rs:66 |
+| D0-4注入类型 | 支持Q23与Q33。`WebviewWindow`的`CommandArg`实现在调用方非WebviewWindow时返回错误，注入`Webview`无此失败模式 | tauri-2.12.4/src/webview/webview_window.rs:1606 |
+| D0-3（部分） | 命令须命中`allowed_commands`否则拒绝，该表由`resolved_acl.allowed_commands`即capability解析结果构建；应用自定义命令是否默认入表取决于生成的app manifest与`has_app_acl`语义，待D0以一次构建产物定论 | tauri-2.12.4/src/ipc/authority.rs:462、:121、:213、:338 |
+
+前轮Q6“未见于Tauri 2.12的Rust API面”结论不变，补充：该接口在webview2-com-sys而非Tauri表面；前轮“需版本与类型匹配、不称天然互斥”在锁定版本下的事实更强，即只有webview2-com可用。
+
+本次仅取依赖源码与改文档，未修改产品代码或构建配置，未运行编译、探针或PDF检查；证据记录不因文档更新自动变为通过。
