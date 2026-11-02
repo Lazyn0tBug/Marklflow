@@ -38,11 +38,11 @@
 | 项 | 内容 |
 | --- | --- |
 | 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，129184 字节；元数据同目录 `frozen-sample.meta.json` |
-| 文件 SHA-256 | `e8e6c5b710a0fb27cd8dbabb38d9be18a7df3f5b69f2fed5388112e3eb4c3872`（`shasum -a 256` 独立复算一致）。**只锁定这一个文件** |
+| 文件 SHA-256 | `78aff00c92253b499fb400c72117348bdad7af8c1b0a9ace50812d0f553b50c0`（`shasum -a 256` 独立复算一致，与交付宿主原件逐字节相同）。**只锁定这一个文件** |
 | 输入身份 | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行、跨宿主一致 |
 | 预期值 | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；随机 UUID 属性 635 处 |
-| 环境说明 | macOS 26.6.2（25G83）arm64；Playwright chromium 1.64.1；vite 运行时 `node`；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；宿主实际解析到的平台字体 PingFang SC（CJK，810 字形／47 节点）、.SF NS（拉丁，138／18）、Courier（代码，51／1）；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
-| 结论 | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成。**本表为 macOS 占位样本**，交付宿主为 Windows，见下「样本的字体环境」 |
+| 环境说明 | **交付宿主**：Windows 11，内部版本 10.0.26300，x64；Playwright chromium 1.64.1（Chromium 156.0.8078.4）；vite 运行时 `node`；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；宿主实际解析到的平台字体 **Microsoft YaHei UI**（CJK 与拉丁，948 字形／58 节点）与 **Consolas**（代码，51／1）；WebView2 运行时 156.0.4314.58；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
+| 结论 | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成。**本表已换成交付宿主产出的样本**（此前为 macOS 占位，不得用于 D1） |
 
 ### 命令与退出码
 
@@ -77,7 +77,7 @@
 
 主题字体栈为 `system-ui,"Microsoft YaHei","PingFang SC",sans-serif`。字体度量不同，断行与行高随之不同；固化分页的页面盒高度按生成时的字体度量算得，跨环境加载同一文件会以宿主字体重新排版，固定高度页面盒可能溢出或截断，而「不重复分页」意味着 D1 无法修正。
 
-因此**定为：受控样本必须在交付宿主同环境生成**。本机 macOS 归档仅作占位与流程验证，**D1 不得加载它**；交付宿主（Windows）上的产出取回后替换 `docs/acceptance/pdf-probe/` 下的归档并更新本记录的交接物表。
+因此**定为：受控样本必须在交付宿主同环境生成**。归档**已换成交付宿主产出的样本**（2026-11-03），交接物表随之更新；此前的 macOS 占位样本不得用于 D1。
 
 **宿主实际字体现已可测。** 脚本此前只记 CSS 字体栈，记的是"要求用什么"，不是"实际用了什么"；现补两项证据并写入 meta：CDP `CSS.getPlatformFontsForNode` 逐节点读出浏览器实际用于渲染的平台字体名（只对直接含文本的节点有结果，故遍历正文节点聚合），以及逐族 canvas 测宽（以故意不存在的族作基线，宽度与基线相同即该族在宿主上不存在）。macOS 实测：CJK 落到 **PingFang SC**（810 字形／47 节点），拉丁落到 **.SF NS**（138／18），代码落到 **Courier**（51／1）；测宽显示 `"Microsoft YaHei"` 与基线同宽，即该族在 macOS 上不存在。
 
@@ -130,6 +130,16 @@ Windows 侧的**预期**（待人工实测核对，非既成事实）：拉丁�
 - **逐族测宽在本机退化了**：六个族（含故意不存在的族、`sans-serif`、`system-ui`）宽度全部相同（1150.5234375），即 canvas 侧无法区分族是否存在。**这份数据不可读作"某族不存在"**——正是这点上 CDP 的平台字体清单承担了证据。macOS 上测宽是可区分的（`"Microsoft YaHei"` 与基线同宽而 `PingFang SC` 不同宽），同一套代码在两个宿主上的判别力不同，故两项证据须并读。
 - **跨宿主分页稳定**：字体度量不同（雅黑 UI 与苹方/系统 UI），页数仍为 3、首尾标记仍落在第 1 页与第 3 页，说明该样本的断页位置对字体差异不敏感。
 
+### 两台机器的固化样本归一化后逐字节相同（2026-11-03）
+
+把两台机器产出的固化样本里的随机 UUID（`data-ref`、`data-split-to`、`data-split-from` 等 635 处）统一替换后，两份文件**逐字节完全相同**（长度同为 129184，各页可见文本长度逐页一致 `[37, 182, 158, 713, 162, 158, 757, 163, 158, 456]`），差异仅存在于那些随机标识本身。
+
+这个结论比"文件哈希不同"信息量大：**跨宿主的分页结果完全一致**，字体环境没有改变断行与分页。
+
+**同时暴露本样本的局限**：它以中文为主，而苹方与雅黑 UI 的 CJK 字形都是全宽等宽，advance width 相同，故行宽与断行必然一致。**因此这个样本无法暴露字体度量差异带来的风险**（页面盒按一方度量切好、在另一方溢出或截断）。要覆盖该风险，需要一份以拉丁文为主或混排宽度差异大的受控样本；当前样本的作用是验证流程、公式、图片、表格与首尾标记的通路，不是字体度量的探针。
+
+（此处用 UUID 归一化只作**跨宿主结构比对**的分析手段，不作产出的身份机制：身份仍由 `mdHash` 与 `renderConfigVersion` 承担，文件 SHA-256 只作完整性校验，见上文「两项工程事实」。）
+
 ### 交付宿主上的取样步骤（人工执行）
 
 前置：Git、Bun、Node.js LTS（脚本已支持 node→bun→自身运行时依次回退启动 vite）、`bun install --frozen-lockfile`、`bun run --bun playwright install chromium`。Rust 与 MSVC 工具链在本步不需要，D1 之后才需要。
@@ -149,7 +159,7 @@ bun scripts/pdf-probe-sample.ts
 
 ### D0 结论
 
-九项核对全部有结论（源码级），交接物五项齐备且输入身份（mdHash、renderConfigVersion）跨运行一致、文件哈希可复算。生成工具已入库（`scripts/pdf-probe-sample.ts`），并已记录宿主实际解析到的平台字体。**D1 开工前须在交付宿主上取样并替换归档；macOS 归档不得用于 D1。**
+九项核对全部有结论（源码级），交接物五项齐备且输入身份（mdHash、renderConfigVersion）跨运行一致、文件哈希可复算。生成工具已入库（`scripts/pdf-probe-sample.ts`），并已记录宿主实际解析到的平台字体。**归档已换成交付宿主产出的样本（2026-11-03），D1 可直接加载该文件开工。**
 
 ### 工具链评审发现（2026-11-02，尚未修）
 
@@ -166,6 +176,6 @@ R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `plat
 ## 待补
 
 - D1a—D1d 尚未实施；本文件当前只有 D0 一节
-- 样本的交付宿主重生成：按上节步骤在 Windows 上执行 `bun scripts/pdf-probe-sample.ts`，取回 `docs/acceptance/pdf-probe/` 下的两个文件后替换归档并更新本记录的交接物表（SHA-256、字节数、平台字体、宿主事实）
+- ~~样本的交付宿主重生成~~ **已完成（2026-11-03）**：交付宿主产出已替换归档，交接物表与宿主事实已更新
 - 上表 R1—R3 三条评审发现待修；R1 应在交付宿主取样之前修，否则取样产物可能带着与记录矛盾的 meta 归档
 - 全仓库评审的其余待修项（17 条确认项与 8 条可能项，含预览热路径与导出路径）记于[全仓库代码评审记录](codebase-review-2026-11-02.md)，本文件只记探针相关者

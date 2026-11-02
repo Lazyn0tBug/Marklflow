@@ -1,8 +1,8 @@
 {
-  "file": "/Users/gpdi/code/ai/Marklflow/docs/acceptance/pdf-probe/frozen-sample.html",
-  "source": "/Users/gpdi/code/ai/Marklflow/tests/fixtures/export-source/pdf-probe-sample.md",
+  "file": "D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\frozen-sample.html",
+  "source": "D:\\code\\Marklflow\\tests\\fixtures\\export-source\\pdf-probe-sample.md",
   "bytes": 129184,
-  "sha256": "e8e6c5b710a0fb27cd8dbabb38d9be18a7df3f5b69f2fed5388112e3eb4c3872",
+  "sha256": "78aff00c92253b499fb400c72117348bdad7af8c1b0a9ace50812d0f553b50c0",
   "mdHash": "d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b",
   "renderConfigVersion": "00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e",
   "dataExportPages": 3,
@@ -22,36 +22,31 @@
   ],
   "platformFonts": [
     {
-      "familyName": "PingFang SC",
-      "glyphCount": 810,
-      "nodes": 47
+      "familyName": "Microsoft YaHei UI",
+      "glyphCount": 948,
+      "nodes": 58
     },
     {
-      "familyName": ".SF NS",
-      "glyphCount": 138,
-      "nodes": 18
-    },
-    {
-      "familyName": "Courier",
+      "familyName": "Consolas",
       "glyphCount": 51,
       "nodes": 1
     }
   ],
   "platformFontsError": null,
   "fontWidths": {
-    "baseline": 1122.1875,
+    "baseline": 1150.5234375,
     "widths": {
-      "\"Microsoft YaHei\"": 1122.1875,
-      "\"Microsoft YaHei UI\"": 1122.1875,
-      "\"PingFang SC\"": 1179.864013671875,
-      "system-ui": 1067.3818359375,
-      "sans-serif": 1160.015625
+      "\"Microsoft YaHei\"": 1150.5234375,
+      "\"Microsoft YaHei UI\"": 1150.5234375,
+      "\"PingFang SC\"": 1150.5234375,
+      "system-ui": 1150.5234375,
+      "sans-serif": 1150.5234375
     }
   },
   "environment": {
-    "platform": "darwin",
-    "arch": "arm64",
-    "osRelease": "25.6.0",
+    "platform": "win32",
+    "arch": "x64",
+    "osRelease": "10.0.26300",
     "viteRuntime": "node",
     "fontVariables": {
       "--mf-font": "system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif"
