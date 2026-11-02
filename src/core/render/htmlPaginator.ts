@@ -22,9 +22,10 @@ export function paginatePreparedContent(input:HtmlLayoutInput,signal?:AbortSigna
    source.innerHTML='<article class="mf-document-shell mf-doc" style="'+variableStyleAttribute(input.presentation.variables)+'">'+content+'</article>';
    for(const item of source.querySelectorAll('details'))item.setAttribute('open','');
    stage.append(source,target);document.body.append(stage);
-   const existing=new Set(document.querySelectorAll('style'));
-   const printTree=parse(input.presentation.css+pageCss(input.presentation.page.margins));
-   walk(printTree,{visit:'Atrule',enter(node,item,list){if(node.name.toLowerCase()==='container'&&item&&list)list.remove(item)}});
+   // 分页样式只带页面几何：文档样式由 nativeStyle 提供一次。
+   // 若把 presentation.css 也塞进分页样式，同一批规则会在导出 CSS 里出现两遍，
+   // 而第二遍经 Paged.js 转换后缺 @container，层叠上反盖掉容器查询（两栏不塌成单栏）。
+   const printTree=parse(pageCss(input.presentation.page.margins));
    walk(printTree,{visit:'Rule',enter(node,item,list){if(node.prelude.type==='SelectorList'&&item&&list){let hidesUI=false;walk(node.prelude,n=>{if(n.type==='ClassSelector'&&n.name==='no-print')hidesUI=true});if(hidesUI)list.remove(item)}}});
    // The page margins replace the content padding: a paged page must not carry both.
    const paginationCss=generate(printTree)+'\n.mf-doc{padding:0}';
@@ -38,9 +39,11 @@ export function paginatePreparedContent(input:HtmlLayoutInput,signal?:AbortSigna
    guard();
    const flow=await paged.preview(source.innerHTML,[{[location.href]:paginationCss}],target);
    guard();
-   const css=Array.from(document.querySelectorAll('style')).filter(s=>!existing.has(s)).map(s=>s.textContent||'').join('\n');
+   // Paged.js 把自己注入的样式标记为 data-pagedjs-inserted-styles：只收这些，
+   // 免得把分页期间并发加入的样式写进交付文档。
+   const pagedCss=Array.from(document.querySelectorAll('style[data-pagedjs-inserted-styles]')).map(s=>s.textContent||'').join('\n');
    const pages=target.querySelector('.pagedjs_pages');if(!pages||pages.querySelectorAll('.pagedjs_page').length!==flow.total)throw new Error('分页页面数量与结果不一致');
    // Keep all content, including page fragments with their data-line mappings.
-   return {html:pages.outerHTML,css:input.presentation.css+css,total:flow.total};
+   return {html:pages.outerHTML,css:nativeStyle.textContent+pagedCss,total:flow.total};
   });
 }

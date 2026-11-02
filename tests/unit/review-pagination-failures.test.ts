@@ -2,7 +2,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 const state=vi.hoisted(()=>({cssFailure:false,previewFailure:false,destroyFailure:false}));
 vi.mock('css-tree',async()=>{
  const actual=await vi.importActual<typeof import('css-tree')>('css-tree');
- return {...actual,parse:(...args:Parameters<typeof actual.parse>)=>{if(state.cssFailure&&args[0].length>1000)throw new Error('CSS parsing failed');return actual.parse(...args)}};
+ return {...actual,parse:(...args:Parameters<typeof actual.parse>)=>{if(state.cssFailure&&args[0].includes('@page'))throw new Error('CSS parsing failed');return actual.parse(...args)}};
 });
 vi.mock('pagedjs',()=>({Previewer:class{
  chunker={destroy(){if(state.destroyFailure)throw new Error('chunker cleanup failed')},hooks:{beforeParsed:{register(){}},beforePageLayout:{register(){}},afterPageLayout:{register(){}}}};

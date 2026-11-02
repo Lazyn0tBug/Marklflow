@@ -37,8 +37,8 @@
 
 | 项 | 内容 |
 | --- | --- |
-| 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，136213 字节；元数据同目录 `frozen-sample.meta.json` |
-| 文件 SHA-256 | `67a7fbf4985a7fe5280ce6cca96239f418e2557666a12d4f4979779f2d5f4f58`（`shasum -a 256` 独立复算一致）。**只锁定这一个文件** |
+| 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，129184 字节；元数据同目录 `frozen-sample.meta.json` |
+| 文件 SHA-256 | `e8e6c5b710a0fb27cd8dbabb38d9be18a7df3f5b69f2fed5388112e3eb4c3872`（`shasum -a 256` 独立复算一致）。**只锁定这一个文件** |
 | 输入身份 | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行、跨宿主一致 |
 | 预期值 | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；随机 UUID 属性 635 处 |
 | 环境说明 | macOS 26.6.2（25G83）arm64；Playwright chromium 1.64.1；vite 运行时 `node`；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；宿主实际解析到的平台字体 PingFang SC（CJK，810 字形／47 节点）、.SF NS（拉丁，138／18）、Courier（代码，51／1）；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |

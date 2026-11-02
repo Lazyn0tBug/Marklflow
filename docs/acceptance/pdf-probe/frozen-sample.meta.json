@@ -1,8 +1,8 @@
 {
   "file": "/Users/gpdi/code/ai/Marklflow/docs/acceptance/pdf-probe/frozen-sample.html",
   "source": "/Users/gpdi/code/ai/Marklflow/tests/fixtures/export-source/pdf-probe-sample.md",
-  "bytes": 136213,
-  "sha256": "67a7fbf4985a7fe5280ce6cca96239f418e2557666a12d4f4979779f2d5f4f58",
+  "bytes": 129184,
+  "sha256": "e8e6c5b710a0fb27cd8dbabb38d9be18a7df3f5b69f2fed5388112e3eb4c3872",
   "mdHash": "d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b",
   "renderConfigVersion": "00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e",
   "dataExportPages": 3,
