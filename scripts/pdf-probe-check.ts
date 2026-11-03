@@ -1013,7 +1013,11 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
    issues.push('未见就绪探测记录：原生侧未测');
   }else if(!target){
    verdict='fail';
-   issues.push('就绪探测没有读到目标文档：原生求值落在了别的文档上');
+   // 两种"没读到目标文档"要分开：求值根本拿不到内容，与读到了别的文档，是不同的故障。
+   const blind=readiness.some(record=>record.fields.eval_ok!=='true');
+   issues.push(blind
+    ?'就绪探测连内容都没拿到：原生求值失败'
+    :'就绪探测没有读到目标文档：原生求值落在了别的文档上');
   }else if(target.fields.ready!=='true'){
    verdict='fail';
    issues.push(`目标文档未达就绪条件：ready_state=${target.fields.ready_state||'未记'}，fonts=${target.fields.fonts_status||'未记'}`);

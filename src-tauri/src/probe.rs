@@ -334,6 +334,8 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                 let ready = probe_readiness(window, "print", &expected);
                 if ready {
                     let temp = temp_path(&target);
+                    // 上一次运行的残留先清掉：打印要的是一个干净的临时文件。
+                    let _ = std::fs::remove_file(&temp);
                     match print_host::print_to_pdf(window, &temp) {
                         Ok(outcome) => {
                             let committed = commit_pdf(&temp, &target);
@@ -363,6 +365,12 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                     reason = "打印宿主或输出目标不可用",
                 );
             }
+        }
+
+        // 探针专用宿主用完即关：**丢掉 Rust 句柄不等于关窗**（窗口仍在应用的窗口表里），
+        // 残留的隐藏宿主就是 D1c-4「无残留宿主」不成立的原因。主窗口是应用自己的，不关。
+        for host in [&output_window, &print_window].into_iter().flatten() {
+            let _ = host.close();
         }
 
         // 探针跑完把主窗口导回应用自己的页面：探针是测试路径，不该把用户留在探针页上。
