@@ -30,6 +30,15 @@ fn get_platform_info(webview: tauri::Webview) -> PlatformInfo {
     }
 }
 
+/// web 侧日志回传：**只写日志，不铸任何授权**。
+///
+/// 这是方案 §4 的 L2：命令只把事件写进日志，不碰 `FileAccess`，发不出任何能力。
+/// 返回稳定结果（accepted／dropped／rejected）：accepted 只表示已校验并入队，不表示已落盘。
+#[tauri::command]
+fn log_event(webview: tauri::Webview, payload: String) -> Result<String, String> {
+    Ok(logging::record_web_event(&webview, payload).to_owned())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -37,6 +46,7 @@ pub fn run() {
         .manage(files::FileAccess::default())
         .invoke_handler(tauri::generate_handler![
             get_platform_info,
+            log_event,
             files::select_native_open,
             files::select_native_save,
             files::read_native_text,

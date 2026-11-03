@@ -8,17 +8,18 @@
 //! - **记录自己成形**：必填字段与 span 上下文由本模块生成，不依赖 formatter 的默认形态；
 //! - **如实记录**：不记录完整授权 key、文档正文与完整本地路径；字段纪律由 §5.2 的白名单约束。
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender, TrySendError};
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use serde::Deserialize;
 use tauri::Manager;
 use tracing::field::{Field, Visit};
 use tracing::{Event, Subscriber};
@@ -42,6 +43,116 @@ pub const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 const SCHEMA_VERSION: u32 = 1;
 /// 健康摘要的输出间隔（限频，避免每次丢弃都递归产生日志）。
 const HEALTH_SUMMARY_INTERVAL: Duration = Duration::from_secs(30);
+
+/// 限流器：固定一秒窗口的计数。超限的请求被丢弃并计数。
+pub struct RateLimiter {
+    state: Mutex<(u64, u32)>,
+    per_second: u32,
+}
+
+impl RateLimiter {
+    pub fn new(per_second: u32) -> Self {
+        Self {
+            state: Mutex::new((0, 0)),
+            per_second,
+        }
+    }
+
+    /// 是否放行。超限返回 false。
+    pub fn allow(&self) -> bool {
+        let now = unix_seconds();
+        let Ok(mut state) = self.state.lock() else {
+            return false;
+        };
+        let (window, count) = *state;
+        if now != window {
+            *state = (now, 1);
+            return true;
+        }
+        if count >= self.per_second {
+            return false;
+        }
+        *state = (window, count + 1);
+        true
+    }
+}
+
+/// web 侧可回传的事件枚举。业务事件只能是这四个，不能变成原生事件名。
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WebEventKind {
+    PageReady,
+    CallStarted,
+    CallFinished,
+    PageError,
+}
+
+/// web 侧可回传的命令枚举。
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WebCommand {
+    GetPlatformInfo,
+    SelectNativeOpen,
+    SelectNativeSave,
+    ReadNativeText,
+    WriteNativeBytes,
+    ReleaseNativeFile,
+}
+
+/// 结果枚举。
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WebResult {
+    Ok,
+    Denied,
+    Error,
+    Cancelled,
+}
+
+/// 错误类别枚举：只传类别，不传原始异常 message。
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WebErrorCategory {
+    NoTauriInternals,
+    InvokeRejected,
+    InvalidPayload,
+    RateLimited,
+    Timeout,
+    Unknown,
+}
+
+/// web 侧回传的最小事件结构。**未知字段或未知事件一律拒收**：
+/// 允许清单靠 `deny_unknown_fields` 实现，不靠事后过滤。
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebEventPayload {
+    pub event: WebEventKind,
+    #[serde(default)]
+    pub call_id: Option<String>,
+    #[serde(default)]
+    pub command: Option<WebCommand>,
+    #[serde(default)]
+    pub result: Option<WebResult>,
+    #[serde(default)]
+    pub error_category: Option<WebErrorCategory>,
+    #[serde(default)]
+    pub bytes: Option<u64>,
+}
+
+/// web 侧请求的处理结果：accepted（已校验并入队）、dropped（超限丢弃）、rejected（不合规拒收）。
+/// **accepted 不表示已落盘**。
+pub const WEB_ACCEPTED: &str = "accepted";
+pub const WEB_DROPPED: &str = "dropped";
+pub const WEB_REJECTED: &str = "rejected";
+
+/// 关联 ID 的长度上限（不是能力，不授予任何权限）。
+const MAX_CALL_ID_LEN: usize = 64;
+/// 单个 web 请求的字节上限。
+pub const MAX_WEB_REQUEST_BYTES: usize = 4 * 1024;
+/// 每个允许身份对每秒的 web 调用上限。
+const WEB_PER_IDENTITY_PER_SECOND: u32 = 20;
+/// 进程内全部 web 调用每秒的上限。
+const WEB_GLOBAL_PER_SECOND: u32 = 100;
 
 /// 进程内的日志健康状态。计数有界，不跨崩溃保留。
 #[derive(Default)]
@@ -74,15 +185,22 @@ pub struct HealthSnapshot {
     pub stdout_failed: bool,
 }
 
-static HEALTH: Health = Health::new_const();
+/// 应用用的健康状态。测试各建各的实例，互不干扰。
+static HEALTH: OnceLock<Arc<Health>> = OnceLock::new();
 static RUN_ID: OnceLock<String> = OnceLock::new();
 /// 根 span：本次运行。所有调用 span 都是它的直接子。
 static RUN_SPAN: OnceLock<tracing::Span> = OnceLock::new();
+/// 根 span 的 id：调用 span 的父恒是它（两级模型）。
+static RUN_SPAN_ID: OnceLock<u64> = OnceLock::new();
 /// 写线程的唤醒通道，退出时用它排空队列。
 static SENDER: OnceLock<SyncSender<QueuedRecord>> = OnceLock::new();
+/// 全局发送口：web 回传路径没有 layer 可用，走这一个。
+static EMITTER: OnceLock<RecordEmitter> = OnceLock::new();
+/// 日志基座自身的 span（契约 span 表里的 `log`）：健康摘要记在其中。
+static LOG_SPAN: OnceLock<tracing::Span> = OnceLock::new();
 
 impl Health {
-    const fn new_const() -> Self {
+    pub const fn new() -> Self {
         Self {
             dropped: AtomicU64::new(0),
             rejected: AtomicU64::new(0),
@@ -107,9 +225,122 @@ impl Health {
     }
 }
 
+/// 已登记的探针输出实例（仅 pdf-probe 构建）。
+///
+/// 由原生创建宿主时登记；页面不能自报身份获得允许，也不因此扩展文件权限。
+#[cfg(feature = "pdf-probe")]
+static PROBE_INSTANCES: OnceLock<std::sync::Mutex<Vec<crate::source_guard::Identity>>> = OnceLock::new();
+
+/// 登记一个原生实际创建的探针输出实例。
+///
+/// 只有 pdf-probe 构建会真正登记；页面不能自报身份获得允许。
+#[allow(dead_code)]
+pub fn register_probe_instance(identity: &crate::source_guard::Identity) {
+    #[cfg(feature = "pdf-probe")]
+    {
+        let instances = PROBE_INSTANCES.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+        if let Ok(mut instances) = instances.lock() {
+            instances.push(identity.clone());
+        }
+    }
+    #[cfg(not(feature = "pdf-probe"))]
+    let _ = identity;
+}
+
+/// 写日志的准入：与敏感命令同一套身份判定。
+///
+/// 正常路径只允许允许范围内的身份；pdf-probe 构建额外接受原生实际创建并登记的探针输出实例。
+fn log_writer_allowed(identity: &crate::source_guard::Identity) -> bool {
+    if crate::source_guard::check_source(identity, crate::source_guard::ALLOWED_CALLERS).is_ok() {
+        return true;
+    }
+    #[cfg(feature = "pdf-probe")]
+    {
+        PROBE_INSTANCES
+            .get_or_init(|| std::sync::Mutex::new(Vec::new()))
+            .lock()
+            .ok()
+            .map(|instances| instances.iter().any(|instance| instance == identity))
+            .unwrap_or(false)
+    }
+    #[cfg(not(feature = "pdf-probe"))]
+    false
+}
+
+/// web 请求的限流器。按允许身份对各限 20 条/秒，进程内全部限 100 条/秒，固定一秒窗口。
+struct WebLimiters {
+    per_identity: HashMap<(String, String), RateLimiter>,
+    global: RateLimiter,
+}
+
+static WEB_LIMITERS: OnceLock<std::sync::Mutex<WebLimiters>> = OnceLock::new();
+
+/// 限流判定：先看进程总量，再看身份对。**只有通过准入的身份才建桶**，拒绝者不建无限身份桶。
+fn web_rate_allowed(identity: &crate::source_guard::Identity) -> bool {
+    let limiters = WEB_LIMITERS.get_or_init(|| {
+        Mutex::new(WebLimiters {
+            per_identity: HashMap::new(),
+            global: RateLimiter::new(WEB_GLOBAL_PER_SECOND),
+        })
+    });
+    let Ok(mut limiters) = limiters.lock() else {
+        return false;
+    };
+    if !limiters.global.allow() {
+        return false;
+    }
+    let key = (
+        identity.window_label.to_string(),
+        identity.webview_label.to_string(),
+    );
+    limiters
+        .per_identity
+        .entry(key)
+        .or_insert_with(|| RateLimiter::new(WEB_PER_IDENTITY_PER_SECOND))
+        .allow()
+}
+
+/// 把一个 span 折成记录里的上下文：名字、id、父 id。父恒为根 span（两级模型）。
+fn span_context(span: &tracing::Span) -> (String, Option<u64>, Option<u64>) {
+    (
+        span.metadata()
+            .map(|metadata| metadata.name().to_owned())
+            .unwrap_or_default(),
+        span.id().map(|id| id.into_u64()),
+        RUN_SPAN_ID.get().copied(),
+    )
+}
+
+/// 凭据的可公开形态：前 8 位。用于关联，不足以兑现。
+/// 探针构建用它记清理事件；默认构建没有调用点。
+#[allow(dead_code)]
+pub fn credential_prefix(value: &str) -> String {
+    value.chars().take(8).collect()
+}
+
+/// 日志基座自身的 span（契约 span 表里的 `log`）：健康摘要记在其中。
+pub fn log_span() -> tracing::Span {
+    LOG_SPAN
+        .get()
+        .cloned()
+        .unwrap_or_else(|| run_span().in_scope(|| tracing::info_span!("log")))
+}
+
+/// 日志基座自身 span 的上下文（契约 span 表里的 `log`）。
+fn log_span_context() -> SpanContext {
+    LOG_SPAN.get().map(span_context)
+}
+
+/// 对全局健康状态做一次操作。未初始化时无操作（应用尚未启动日志基座）。
+fn with_global_health(action: impl FnOnce(&Health)) {
+    if let Some(health) = HEALTH.get() {
+        action(health);
+    }
+}
+
 /// 当前运行的健康状态。受控验收入口可直接读它，并把状态与观察来源抄进验证记录。
 pub fn health() -> HealthSnapshot {
-    HEALTH.snapshot()
+    HEALTH.get().map(|health| health.snapshot()).unwrap_or_default()
 }
 
 /// 本次运行的标识（同时是记录的根归属）。
@@ -123,18 +354,21 @@ pub fn run_id() -> &'static str {
 pub fn init(app: &tauri::AppHandle, feature: &str) {
     let run_id = uuid::Uuid::new_v4().to_string();
     let _ = RUN_ID.set(run_id.clone());
+    // 健康状态先建好并登记：目录不可用、写失败、丢弃都要落到它上面。
+    let health = Arc::new(Health::new());
+    let _ = HEALTH.set(health.clone());
     // 目录不可用时也要装订阅并起写线程：文件 sink 停用，stdout 仍尽力输出。
     let path = match app.path().app_log_dir() {
         Ok(directory) => {
             if fs::create_dir_all(&directory).is_err() {
-                HEALTH.file_unavailable.store(true, Ordering::Relaxed);
+                health.file_unavailable.store(true, Ordering::Relaxed);
                 None
             } else {
                 Some(directory.join(format!("markflow.{}.log", std::process::id())))
             }
         }
         Err(_) => {
-            HEALTH.file_unavailable.store(true, Ordering::Relaxed);
+            health.file_unavailable.store(true, Ordering::Relaxed);
             None
         }
     };
@@ -144,21 +378,31 @@ pub fn init(app: &tauri::AppHandle, feature: &str) {
     let level = level_from_env();
     let (sender, receiver) = sync_channel::<QueuedRecord>(QUEUE_CAPACITY);
     let _ = SENDER.set(sender.clone());
-    let writer_run_id = run_id.clone();
-    if thread::Builder::new()
-        .name("markflow-log".into())
-        .spawn(move || writer_loop(receiver, path, writer_run_id, json))
-        .is_err()
-    {
-        HEALTH.file_unavailable.store(true, Ordering::Relaxed);
-        return;
-    }
-    let layer = RecordLayer {
+    let writer_format = RecordFormat {
         json,
         run_id: run_id.clone(),
+    };
+    let writer_health = health.clone();
+    if thread::Builder::new()
+        .name("markflow-log".into())
+        .spawn(move || writer_loop(receiver, path, writer_format, writer_health))
+        .is_err()
+    {
+        health.file_unavailable.store(true, Ordering::Relaxed);
+        return;
+    }
+    let emitter = RecordEmitter {
+        format: RecordFormat {
+            json,
+            run_id: run_id.clone(),
+        },
+        sender: sender.clone(),
+        health: health.clone(),
+    };
+    let _ = EMITTER.set(emitter.clone());
+    let layer = RecordLayer {
+        emitter,
         level,
-        sender,
-        health: &HEALTH,
     };
     let builder = tracing_subscriber::registry().with(layer);
     if builder.try_init().is_err() {
@@ -174,14 +418,33 @@ pub fn init(app: &tauri::AppHandle, feature: &str) {
         feature,
     );
     let _ = RUN_SPAN.set(span.clone());
-    span.in_scope(|| tracing::info!(event = "run_start", origin = "rust", feature = feature));
+    let _ = RUN_SPAN_ID.set(span.id().map(|id| id.into_u64()).unwrap_or_default());
+    // 日志基座自身的 span：健康摘要记在其中（契约 span 表里的 `log`）。
+    let log_span = span.in_scope(|| tracing::info_span!("log"));
+    let _ = LOG_SPAN.set(log_span.clone());
+    span.in_scope(|| tracing::info!(event = "run_start", feature = feature));
 }
 
 /// 结束本次运行：写 `run_end`，排空队列并刷新，最多等 `SHUTDOWN_TIMEOUT`。
 ///
 /// 不阻塞退出：超时即放弃等待。
 pub fn shutdown(feature: &str) {
-    run_span().in_scope(|| tracing::info!(event = "run_end", origin = "rust", feature = feature));
+    run_span().in_scope(|| tracing::info!(event = "run_end", feature = feature));
+    // 退出时把健康状态摘要写进日志：丢弃与写入错误要显形，缺失时不得宣称日志完整。
+    let health = health();
+    log_span().in_scope(|| {
+        tracing::info!(
+            event = "log_health",
+            observed_by = "shutdown",
+            dropped = health.dropped,
+            rejected = health.rejected,
+            write_failures = health.write_failures,
+            rotate_failures = health.rotate_failures,
+            delete_failures = health.delete_failures,
+            file_unavailable = health.file_unavailable,
+            stdout_failed = health.stdout_failed,
+        );
+    });
     if let Some(sender) = SENDER.get() {
         // 队列满时不阻塞退出：放弃这次排空请求，最多等 SHUTDOWN_TIMEOUT。
         let _ = sender.try_send(QueuedRecord {
@@ -221,16 +484,213 @@ fn level_from_env() -> tracing::level_filters::LevelFilter {
     }
 }
 
+/// 处理一条 web 侧回传：按准入与限流判定后落成 `web_event` 记录。
+///
+/// 顺序按契约：先做廉价的大小检查，再做身份准入，最后才解析载荷。
+/// 外层字段（origin、身份、接收时间、run_id）一律由本侧生成，页面不能覆盖。
+pub fn record_web_event(webview: &tauri::Webview, payload: String) -> &'static str {
+    let identity = crate::source_guard::Identity::from_labels(
+        webview.window().label(),
+        webview.label(),
+    );
+    let Some(emitter) = EMITTER.get() else {
+        return WEB_REJECTED;
+    };
+    record_web_event_for(&identity, payload, emitter)
+}
+
+/// 纯逻辑部分：判定与记录。与 webview 无关，便于直接断言。
+fn record_web_event_for(
+    identity: &crate::source_guard::Identity,
+    payload: String,
+    emitter: &RecordEmitter,
+) -> &'static str {
+    // 计数记在发送口自己的健康实例上：丢弃与拒收要显形，不能只存在于限流器里。
+    let health = emitter.health.as_ref();
+    if payload.len() > MAX_WEB_REQUEST_BYTES {
+        health.rejected.fetch_add(1, Ordering::Relaxed);
+        return WEB_REJECTED;
+    }
+    if !log_writer_allowed(identity) {
+        health.rejected.fetch_add(1, Ordering::Relaxed);
+        return WEB_REJECTED;
+    }
+    if !web_rate_allowed(identity) {
+        health.dropped.fetch_add(1, Ordering::Relaxed);
+        return WEB_DROPPED;
+    }
+    let Ok(event) = serde_json::from_str::<WebEventPayload>(&payload) else {
+        health.rejected.fetch_add(1, Ordering::Relaxed);
+        return WEB_REJECTED;
+    };
+    if event
+        .call_id
+        .as_ref()
+        .map(|call_id| call_id.len() > MAX_CALL_ID_LEN)
+        .unwrap_or(false)
+    {
+        health.rejected.fetch_add(1, Ordering::Relaxed);
+        return WEB_REJECTED;
+    }
+    // 只放业务字段：origin 与身份由发送口统一加（页面不能覆盖）。
+    let mut fields: BTreeMap<String, String> = BTreeMap::new();
+    fields.insert("page_event".to_owned(), event_kind_name(event.event).to_owned());
+    if let Some(call_id) = &event.call_id {
+        fields.insert("call_id".to_owned(), call_id.clone());
+    }
+    if let Some(command) = event.command {
+        fields.insert("command".to_owned(), command_name(command).to_owned());
+    }
+    if let Some(result) = event.result {
+        fields.insert("result".to_owned(), result_name(result).to_owned());
+    }
+    if let Some(category) = event.error_category {
+        fields.insert("error_category".to_owned(), error_category_name(category).to_owned());
+    }
+    if let Some(bytes) = event.bytes {
+        fields.insert("bytes".to_owned(), bytes.to_string());
+    }
+    let level = if event.event == WebEventKind::PageError {
+        "WARN"
+    } else {
+        "INFO"
+    };
+    let span = event.call_id.as_ref().map(|call_id| {
+        page_call_span(
+            call_id,
+            event.command.map(command_name).unwrap_or("unknown"),
+            identity.window_label.as_ref(),
+            identity.webview_label.as_ref(),
+        )
+    });
+    // 外层事件名固定为 web_event；业务事件在 page_event 字段内，不能变成原生事件名。
+    // 外层字段（origin、身份）由发送口生成，页面不能覆盖。
+    emitter.emit_web(level, "web_event", fields, span.as_ref().map(span_context), identity);
+    WEB_ACCEPTED
+}
+
+/// span 上下文：名字、id、父 id。
+type SpanContext = Option<(String, Option<u64>, Option<u64>)>;
+
+/// 记录成形：必填字段在这里装配一次。
+///
+/// 必填字段：`schema_version`、`run_id`、`timestamp`、`level`、`origin`、`event` 与 span 上下文。
+/// 业务字段里的 `event` 不重复出现：事件名只由这里写一次。
+struct RecordFormat {
+    json: bool,
+    run_id: String,
+}
+
+impl RecordFormat {
+    fn format(
+        &self,
+        level: &str,
+        event: &str,
+        fields: &BTreeMap<String, String>,
+        span: SpanContext,
+    ) -> String {
+        let mut fields = fields.clone();
+        fields.remove("event");
+        let timestamp = SystemTime::now();
+        if self.json {
+            json_record(&self.run_id, timestamp, level, event, &fields, span)
+        } else {
+            text_record(&self.run_id, timestamp, level, event, &fields, span)
+        }
+    }
+}
+
+/// 统一的记录发送口：native 事件、web 回传与健康摘要都经它。
+///
+/// 机制统一、语义不抹平：native 的事件名就是业务事件名；web 的外层事件名固定 `web_event`、
+/// 业务事件在 `page_event` 字段里；健康摘要是 `log_health`。
+/// 外层字段（origin、身份）由本侧生成，页面不能覆盖——故调用点不必自己写 `origin`。
+struct RecordEmitter {
+    format: RecordFormat,
+    sender: SyncSender<QueuedRecord>,
+    health: Arc<Health>,
+}
+
+impl Clone for RecordEmitter {
+    fn clone(&self) -> Self {
+        Self {
+            format: RecordFormat {
+                json: self.format.json,
+                run_id: self.format.run_id.clone(),
+            },
+            sender: self.sender.clone(),
+            health: self.health.clone(),
+        }
+    }
+}
+
+impl RecordEmitter {
+    /// 记一条 native 事件。origin 固定为 rust。
+    fn emit_native(
+        &self,
+        level: &str,
+        event: &str,
+        fields: BTreeMap<String, String>,
+        span: SpanContext,
+    ) {
+        self.emit(level, event, fields, span, &[("origin", "rust")]);
+    }
+
+    /// 记一条 web 回传。origin 固定为 web，身份由原生取出，页面不能覆盖。
+    fn emit_web(
+        &self,
+        level: &str,
+        event: &str,
+        fields: BTreeMap<String, String>,
+        span: SpanContext,
+        identity: &crate::source_guard::Identity,
+    ) {
+        let window = identity.window_label.to_string();
+        let webview = identity.webview_label.to_string();
+        self.emit(
+            level,
+            event,
+            fields,
+            span,
+            &[
+                ("origin", "web"),
+                ("window_label", &window),
+                ("webview_label", &webview),
+            ],
+        );
+    }
+
+    fn emit(
+        &self,
+        level: &str,
+        event: &str,
+        mut fields: BTreeMap<String, String>,
+        span: SpanContext,
+        outer: &[(&str, &str)],
+    ) {
+        for (name, value) in outer {
+            fields.insert((*name).to_owned(), (*value).to_owned());
+        }
+        let line = self.format.format(level, event, &fields, span);
+        let urgent = level == "WARN";
+        push_with(
+            &self.sender,
+            self.health.as_ref(),
+            QueuedRecord {
+                bytes: line.into_bytes(),
+                urgent,
+            },
+        );
+    }
+}
+
 /// 记录层：把事件成形为记录并送进有界队列。
 ///
 /// 记录由本层自己生成（必填字段、span 上下文、事件字段），不借 formatter 的默认形态，
 /// 这样契约里的字段与顺序不受 formatter 版本影响。
 struct RecordLayer {
-    json: bool,
-    run_id: String,
+    emitter: RecordEmitter,
     level: tracing::level_filters::LevelFilter,
-    sender: SyncSender<QueuedRecord>,
-    health: &'static Health,
 }
 
 /// 待写记录。`urgent` 标记 WARN/ERROR：这类记录写后立即刷新，不等下一秒的例行刷新。
@@ -239,20 +699,18 @@ struct QueuedRecord {
     urgent: bool,
 }
 
-impl RecordLayer {
-    /// 送进队列：超长拒收（不截断，截断会产出无效 JSON），队列满则丢弃并计数。
-    fn push(&self, record: QueuedRecord) {
-        if record.bytes.len() > MAX_RECORD_BYTES {
-            self.health.rejected.fetch_add(1, Ordering::Relaxed);
-            return;
+/// 送进队列的共用路径。
+fn push_with(sender: &SyncSender<QueuedRecord>, health: &Health, record: QueuedRecord) {
+    if record.bytes.len() > MAX_RECORD_BYTES {
+        health.rejected.fetch_add(1, Ordering::Relaxed);
+        return;
+    }
+    match sender.try_send(record) {
+        Ok(()) => {}
+        Err(TrySendError::Full(_)) => {
+            health.dropped.fetch_add(1, Ordering::Relaxed);
         }
-        match self.sender.try_send(record) {
-            Ok(()) => {}
-            Err(TrySendError::Full(_)) => {
-                self.health.dropped.fetch_add(1, Ordering::Relaxed);
-            }
-            Err(TrySendError::Disconnected(_)) => {}
-        }
+        Err(TrySendError::Disconnected(_)) => {}
     }
 }
 
@@ -279,32 +737,13 @@ where
                     reference.parent().map(|parent| parent.id().into_u64()),
                 )
             });
-        let timestamp = SystemTime::now();
+        // 事件名取自 `event` 字段（缺则回落到元数据名）；origin 由发送口统一加。
+        let name = fields
+            .get("event")
+            .cloned()
+            .unwrap_or_else(|| event.metadata().name().to_owned());
         let level = event.metadata().level();
-        let line = if self.json {
-            json_record(
-                &self.run_id,
-                timestamp,
-                level.as_str(),
-                event.metadata().name(),
-                &fields,
-                span,
-            )
-        } else {
-            text_record(
-                &self.run_id,
-                timestamp,
-                level.as_str(),
-                event.metadata().name(),
-                &fields,
-                span,
-            )
-        };
-        let urgent = *level <= tracing::Level::WARN;
-        self.push(QueuedRecord {
-            bytes: line.into_bytes(),
-            urgent,
-        });
+        self.emitter.emit_native(level.as_str(), &name, fields, span);
     }
 }
 
@@ -314,18 +753,18 @@ where
 fn writer_loop(
     receiver: Receiver<QueuedRecord>,
     path: Option<PathBuf>,
-    run_id: String,
-    json: bool,
+    format: RecordFormat,
+    health: Arc<Health>,
 ) {
     WRITER_ALIVE.store(true, Ordering::Relaxed);
     let mut file = match path.as_deref().map(open_log) {
         Some(Ok(file)) => Some(file),
         Some(Err(_)) => {
-            HEALTH.file_unavailable.store(true, Ordering::Relaxed);
+            with_global_health(|health| health.file_unavailable.store(true, Ordering::Relaxed));
             None
         }
         None => {
-            HEALTH.file_unavailable.store(true, Ordering::Relaxed);
+            with_global_health(|health| health.file_unavailable.store(true, Ordering::Relaxed));
             None
         }
     };
@@ -342,7 +781,7 @@ fn writer_loop(
             let file_day = utc_day_of(modified);
             if file_day != day || size >= MAX_FILE_BYTES {
                 if let Some(path) = path.as_deref() {
-                    rotate(path, &mut file, &mut size, file_day);
+                    rotate(path, &mut file, &mut size, file_day, &health);
                 }
                 day = utc_day();
             }
@@ -359,13 +798,13 @@ fn writer_loop(
                 if should_rotate(size, record.bytes.len(), day, utc_day()) {
                     // 空文件不轮转（否则每天会多出一个空归档）。
                     if let Some(path) = path.as_deref() {
-                        rotate(path, &mut file, &mut size, day);
+                        rotate(path, &mut file, &mut size, day, &health);
                     }
                     day = utc_day();
                 }
                 if let Some(file) = file.as_mut() {
                     if file.write_all(&record.bytes).is_err() {
-                        HEALTH.write_failures.fetch_add(1, Ordering::Relaxed);
+                        health.write_failures.fetch_add(1, Ordering::Relaxed);
                     } else {
                         size += record.bytes.len() as u64;
                     }
@@ -385,13 +824,13 @@ fn writer_loop(
                 }
                 if last_summary.elapsed() >= HEALTH_SUMMARY_INTERVAL {
                     last_summary = Instant::now();
-                    write_health_summary(&mut file, &run_id, json);
+                    write_health_summary(&mut file, &format, &health);
                 }
             }
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
-    write_health_summary(&mut file, &run_id, json);
+    write_health_summary(&mut file, &format, &health);
     if let Some(file) = file.as_mut() {
         let _ = file.flush();
     }
@@ -400,8 +839,8 @@ fn writer_loop(
 
 /// 健康摘要：把计数按限频写进日志（直接写文件，不经 tracing，避免递归）。
 /// 有丢弃、拒收或写入错误时，校验器据此不宣称日志完整。
-fn write_health_summary(file: &mut Option<File>, run_id: &str, json: bool) {
-    let snapshot = HEALTH.snapshot();
+fn write_health_summary(file: &mut Option<File>, format: &RecordFormat, health: &Health) {
+    let snapshot = health.snapshot();
     if snapshot.dropped == 0
         && snapshot.rejected == 0
         && snapshot.write_failures == 0
@@ -420,25 +859,8 @@ fn write_health_summary(file: &mut Option<File>, run_id: &str, json: bool) {
     fields.insert("delete_failures".to_owned(), snapshot.delete_failures.to_string());
     fields.insert("file_unavailable".to_owned(), snapshot.file_unavailable.to_string());
     fields.insert("stdout_failed".to_owned(), snapshot.stdout_failed.to_string());
-    let line = if json {
-        json_record(
-            run_id,
-            SystemTime::now(),
-            "WARN",
-            "log_health",
-            &fields,
-            None,
-        )
-    } else {
-        text_record(
-            run_id,
-            SystemTime::now(),
-            "WARN",
-            "log_health",
-            &fields,
-            None,
-        )
-    };
+    // 健康摘要直写文件，不经队列（否则会递归产生日志）。
+    let line = format.format("WARN", "log_health", &fields, log_span_context());
     if let Some(file) = file.as_mut() {
         let _ = file.write_all(line.as_bytes());
         let _ = file.flush();
@@ -456,11 +878,13 @@ fn should_rotate(current_size: u64, next_record: usize, current_day: u64, today:
 
 /// stdout 是尽力镜像：失败只停用 stdout，不拖累文件 sink。
 fn write_stdout(record: &[u8]) {
-    if HEALTH.stdout_failed.load(Ordering::Relaxed) {
+    let mut stdout_failed = false;
+    with_global_health(|health| stdout_failed = health.stdout_failed.load(Ordering::Relaxed));
+    if stdout_failed {
         return;
     }
     if io::stdout().write_all(record).is_err() {
-        HEALTH.stdout_failed.store(true, Ordering::Relaxed);
+        with_global_health(|health| health.stdout_failed.store(true, Ordering::Relaxed));
     }
 }
 
@@ -469,7 +893,13 @@ fn open_log(path: &Path) -> io::Result<File> {
 }
 
 /// 轮转：把当前文件归档，重开新的当前文件，并裁掉过旧的归档。
-fn rotate(path: &Path, file: &mut Option<File>, size: &mut u64, archive_day: u64) {
+fn rotate(
+    path: &Path,
+    file: &mut Option<File>,
+    size: &mut u64,
+    archive_day: u64,
+    health: &Health,
+) {
     let Some(mut current) = file.as_ref() else {
         return;
     };
@@ -477,22 +907,22 @@ fn rotate(path: &Path, file: &mut Option<File>, size: &mut u64, archive_day: u64
     let archive = match archive_path(path, archive_day) {
         Ok(archive) => archive,
         Err(_) => {
-            HEALTH.rotate_failures.fetch_add(1, Ordering::Relaxed);
+            health.rotate_failures.fetch_add(1, Ordering::Relaxed);
             return;
         }
     };
     if fs::rename(path, &archive).is_err() {
-        HEALTH.rotate_failures.fetch_add(1, Ordering::Relaxed);
+        health.rotate_failures.fetch_add(1, Ordering::Relaxed);
         return;
     }
-    prune_archives(path);
+    prune_archives(path, health);
     match open_log(path) {
         Ok(new_file) => {
             *file = Some(new_file);
             *size = 0;
         }
         Err(_) => {
-            HEALTH.file_unavailable.store(true, Ordering::Relaxed);
+            with_global_health(|health| health.file_unavailable.store(true, Ordering::Relaxed));
             *file = None;
         }
     }
@@ -518,7 +948,7 @@ fn archive_path(path: &Path, day: u64) -> io::Result<PathBuf> {
 }
 
 /// 只清理本模块精确命名的归档文件，保留最新 `KEEP_ARCHIVES` 份。
-fn prune_archives(path: &Path) {
+fn prune_archives(path: &Path, health: &Health) {
     let Some(directory) = path.parent() else {
         return;
     };
@@ -533,7 +963,7 @@ fn prune_archives(path: &Path) {
         let Some(file_name) = candidate.file_name().map(|value| value.to_string_lossy().into_owned()) else {
             continue;
         };
-        if !file_name.starts_with(&prefix) || !is_archive_name(&file_name) {
+        if !file_name.starts_with(prefix) || !is_archive_name(&file_name) {
             continue;
         }
         let Some(sort_key) = archive_sort_key(&file_name) else {
@@ -547,7 +977,7 @@ fn prune_archives(path: &Path) {
             break;
         };
         if fs::remove_file(oldest).is_err() {
-            HEALTH.delete_failures.fetch_add(1, Ordering::Relaxed);
+            health.delete_failures.fetch_add(1, Ordering::Relaxed);
         }
         archives.remove(0);
     }
@@ -751,6 +1181,46 @@ fn json_number(value: Option<u64>) -> String {
     }
 }
 
+fn event_kind_name(event: WebEventKind) -> &'static str {
+    match event {
+        WebEventKind::PageReady => "page_ready",
+        WebEventKind::CallStarted => "call_started",
+        WebEventKind::CallFinished => "call_finished",
+        WebEventKind::PageError => "page_error",
+    }
+}
+
+fn command_name(command: WebCommand) -> &'static str {
+    match command {
+        WebCommand::GetPlatformInfo => "get_platform_info",
+        WebCommand::SelectNativeOpen => "select_native_open",
+        WebCommand::SelectNativeSave => "select_native_save",
+        WebCommand::ReadNativeText => "read_native_text",
+        WebCommand::WriteNativeBytes => "write_native_bytes",
+        WebCommand::ReleaseNativeFile => "release_native_file",
+    }
+}
+
+fn result_name(result: WebResult) -> &'static str {
+    match result {
+        WebResult::Ok => "ok",
+        WebResult::Denied => "denied",
+        WebResult::Error => "error",
+        WebResult::Cancelled => "cancelled",
+    }
+}
+
+fn error_category_name(category: WebErrorCategory) -> &'static str {
+    match category {
+        WebErrorCategory::NoTauriInternals => "no_tauri_internals",
+        WebErrorCategory::InvokeRejected => "invoke_rejected",
+        WebErrorCategory::InvalidPayload => "invalid_payload",
+        WebErrorCategory::RateLimited => "rate_limited",
+        WebErrorCategory::Timeout => "timeout",
+        WebErrorCategory::Unknown => "unknown",
+    }
+}
+
 /// JSON 字符串转义。
 fn json_string(value: &str) -> String {
     let mut out = String::with_capacity(value.len() + 2);
@@ -810,6 +1280,12 @@ pub fn command_span(
             webview_label = webview_label,
         )
     })
+}
+
+/// 探针装配的 span：根 span 的直接子。
+#[allow(dead_code)]
+pub fn probe_span() -> tracing::Span {
+    run_span().in_scope(|| tracing::info_span!("probe"))
 }
 
 /// 页面侧调用的 span。
@@ -964,7 +1440,7 @@ mod tests {
         }
         std::fs::write(dir.path().join("other.log"), b"x").unwrap();
         std::fs::write(dir.path().join("markflow.42.log"), b"active").unwrap();
-        prune_archives(&path);
+        prune_archives(&path, &Health::new());
         let remaining: Vec<String> = std::fs::read_dir(dir.path())
             .unwrap()
             .flatten()
@@ -1001,33 +1477,114 @@ mod tests {
 
     #[test]
     fn over_long_records_are_rejected_and_a_full_queue_drops_with_a_count() {
-        let (sender, receiver) = sync_channel::<QueuedRecord>(1);
-        let layer = RecordLayer {
-            json: true,
-            run_id: "run-1".to_owned(),
-            level: tracing::level_filters::LevelFilter::INFO,
-            sender: sender.clone(),
-            health: &HEALTH,
-        };
-        let rejected_before = HEALTH.rejected.load(Ordering::Relaxed);
-        let dropped_before = HEALTH.dropped.load(Ordering::Relaxed);
-        // 超长记录被拒收：既不入队也不截断。
-        layer.push(QueuedRecord {
-            bytes: vec![b'x'; MAX_RECORD_BYTES + 1],
-            urgent: false,
-        });
-        assert_eq!(HEALTH.rejected.load(Ordering::Relaxed), rejected_before + 1);
+        let (emitter, receiver, health) = test_emitter(1);
+        let rejected_before = health.rejected.load(Ordering::Relaxed);
+        let dropped_before = health.dropped.load(Ordering::Relaxed);
+        // 超长记录被拒收：既不入队也不截断（字段值超限即编码后超限）。
+        let mut huge = BTreeMap::new();
+        huge.insert("event".to_owned(), "source_decision".to_owned());
+        huge.insert("body".to_owned(), "x".repeat(MAX_RECORD_BYTES + 1));
+        emitter.emit_native("INFO", "source_decision", huge, None);
+        assert_eq!(health.rejected.load(Ordering::Relaxed), rejected_before + 1);
         assert!(receiver.try_recv().is_err());
         // 队列满时丢弃并计数。
-        layer.push(QueuedRecord {
-            bytes: vec![b'a'; 10],
-            urgent: false,
-        });
-        layer.push(QueuedRecord {
-            bytes: vec![b'b'; 10],
-            urgent: false,
-        });
-        assert_eq!(HEALTH.dropped.load(Ordering::Relaxed), dropped_before + 1);
+        let mut small = BTreeMap::new();
+        small.insert("event".to_owned(), "source_decision".to_owned());
+        emitter.emit_native("INFO", "source_decision", small.clone(), None);
+        emitter.emit_native("INFO", "source_decision", small, None);
+        assert_eq!(health.dropped.load(Ordering::Relaxed), dropped_before + 1);
+    }
+
+    fn web_identity(window: &str, webview: &str) -> crate::source_guard::Identity {
+        crate::source_guard::Identity::from_labels(window, webview)
+    }
+
+    /// 测试用的发送口：自己的健康实例与队列，互不影响其它用例。
+    fn test_emitter(capacity: usize) -> (RecordEmitter, Receiver<QueuedRecord>, Arc<Health>) {
+        let (sender, receiver) = sync_channel::<QueuedRecord>(capacity);
+        let health = Arc::new(Health::new());
+        let emitter = RecordEmitter {
+            format: RecordFormat {
+                json: true,
+                run_id: "run-1".to_owned(),
+            },
+            sender,
+            health: health.clone(),
+        };
+        (emitter, receiver, health)
+    }
+
+    #[test]
+    fn web_payload_rejects_unknown_fields_and_unknown_events() {
+        // 未知字段：不透明字符串绕过脱敏的路被 deny_unknown_fields 堵住。
+        let with_extra = serde_json::json!({"event":"page_ready","body":"自由正文"});
+        assert!(serde_json::from_str::<WebEventPayload>(&with_extra.to_string()).is_err());
+        // 未知事件名同样拒收。
+        let unknown_event = serde_json::json!({"event":"not_an_event"});
+        assert!(serde_json::from_str::<WebEventPayload>(&unknown_event.to_string()).is_err());
+        // 允许的最小结构可解析。
+        let allowed = serde_json::json!({"event":"call_finished","call_id":"c1","command":"read_native_text","result":"denied","bytes":3});
+        let parsed: WebEventPayload = serde_json::from_str(&allowed.to_string()).unwrap();
+        assert_eq!(parsed.event, WebEventKind::CallFinished);
+        assert_eq!(parsed.command, Some(WebCommand::ReadNativeText));
+    }
+
+    #[test]
+    fn web_events_are_admitted_only_for_allowed_identities() {
+        let (emitter, _receiver, health) = test_emitter(8);
+        let before = health.rejected.load(Ordering::Relaxed);
+        // 允许范围内的身份：主窗口。
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("main", "main"),
+                r#"{"event":"page_ready"}"#.to_owned(),
+                &emitter
+            ),
+            WEB_ACCEPTED
+        );
+        // 范围外的身份：被拒，且计数。
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("other", "other"),
+                r#"{"event":"page_ready"}"#.to_owned(),
+                &emitter
+            ),
+            WEB_REJECTED
+        );
+        assert!(health.rejected.load(Ordering::Relaxed) > before);
+    }
+
+    #[test]
+    fn oversized_web_requests_are_rejected_before_parsing() {
+        let (emitter, _receiver, health) = test_emitter(8);
+        let before = health.rejected.load(Ordering::Relaxed);
+        let oversized = "x".repeat(MAX_WEB_REQUEST_BYTES + 1);
+        assert_eq!(
+            record_web_event_for(&web_identity("main", "main"), oversized, &emitter),
+            WEB_REJECTED
+        );
+        assert!(health.rejected.load(Ordering::Relaxed) > before);
+    }
+
+    #[test]
+    fn web_rate_limit_drops_beyond_the_per_second_budget() {
+        // 每个身份每秒 20 条：第 21 条起被丢弃并计数。
+        let (emitter, _receiver, health) = test_emitter(64);
+        let identity = web_identity("main", "main");
+        let payload = r#"{"event":"page_ready"}"#.to_owned();
+        let before = health.dropped.load(Ordering::Relaxed);
+        let mut accepted = 0;
+        let mut dropped = 0;
+        for _ in 0..(WEB_PER_IDENTITY_PER_SECOND + 5) {
+            match record_web_event_for(&identity, payload.clone(), &emitter) {
+                WEB_ACCEPTED => accepted += 1,
+                WEB_DROPPED => dropped += 1,
+                _ => {}
+            }
+        }
+        assert!(dropped > 0);
+        assert!(accepted <= WEB_PER_IDENTITY_PER_SECOND as usize);
+        assert!(health.dropped.load(Ordering::Relaxed) > before);
     }
 
     #[test]

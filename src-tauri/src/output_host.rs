@@ -33,10 +33,22 @@ pub fn create(
     url: WebviewUrl,
 ) -> tauri::Result<WebviewWindow> {
     let label = next_label();
-    tauri::WebviewWindowBuilder::new(app, label, url)
+    let window = tauri::WebviewWindowBuilder::new(app, label.clone(), url)
         .visible(false)
         .title("MarkFlow 输出宿主")
-        .build()
+        .build()?;
+    // 宿主创建是一条观测事件：身份、形态与实例数都留痕。
+    tracing::info_span!("host", host_kind = "output", host_label = label.as_str(), visible = false).in_scope(|| {
+        tracing::info!(
+            event = "host_state",
+            state = "created",
+            host_kind = "output",
+            host_label = label.as_str(),
+            visible = false,
+            instances = instance_count(),
+        );
+    });
+    Ok(window)
 }
 
 /// 当前进程已创建的输出宿主实例数。用于断言"每次创建独立实例，不共用运行实例"。

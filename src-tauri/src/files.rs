@@ -21,8 +21,7 @@ fn ensure_allowed(command: &str, identity: &source_guard::Identity) -> Result<()
         Ok(()) => {
             tracing::info!(
                 event = "source_decision",
-                origin = "rust",
-                decision = "allow",
+                    decision = "allow",
                 command = command,
                 window = identity.window_label.as_ref(),
                 webview = identity.webview_label.as_ref(),
@@ -32,8 +31,7 @@ fn ensure_allowed(command: &str, identity: &source_guard::Identity) -> Result<()
         Err(code) => {
             tracing::warn!(
                 event = "source_decision",
-                origin = "rust",
-                decision = "deny",
+                    decision = "deny",
                 command = command,
                 reason_code = code,
                 window = identity.window_label.as_ref(),
@@ -182,8 +180,7 @@ pub async fn select_native_open(
             Ok(files) => {
                 tracing::info!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "ok",
+                            result = "ok",
                     command = "select_native_open",
                     count = files.as_ref().map(|items| items.len()).unwrap_or(0),
                     elapsed_ms = elapsed,
@@ -193,8 +190,7 @@ pub async fn select_native_open(
             Err(code) => {
                 tracing::warn!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "error",
+                            result = "error",
                     command = "select_native_open",
                     reason_code = code,
                     elapsed_ms = elapsed,
@@ -263,8 +259,7 @@ pub async fn select_native_save(
             Ok(file) => {
                 tracing::info!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "ok",
+                            result = "ok",
                     command = "select_native_save",
                     granted = file.is_some(),
                     elapsed_ms = elapsed,
@@ -274,8 +269,7 @@ pub async fn select_native_save(
             Err(code) => {
                 tracing::warn!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "error",
+                            result = "error",
                     command = "select_native_save",
                     reason_code = code,
                     elapsed_ms = elapsed,
@@ -300,8 +294,7 @@ pub async fn read_native_text(
             Ok(text) => {
                 tracing::info!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "ok",
+                            result = "ok",
                     command = "read_native_text",
                     bytes = text.len(),
                     elapsed_ms = elapsed,
@@ -311,8 +304,7 @@ pub async fn read_native_text(
             Err(code) => {
                 tracing::warn!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "error",
+                            result = "error",
                     command = "read_native_text",
                     reason_code = code,
                     elapsed_ms = elapsed,
@@ -338,8 +330,7 @@ pub async fn write_native_bytes(
             Ok(()) => {
                 tracing::info!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "ok",
+                            result = "ok",
                     command = "write_native_bytes",
                     bytes = bytes.len(),
                     elapsed_ms = elapsed,
@@ -349,8 +340,7 @@ pub async fn write_native_bytes(
             Err(code) => {
                 tracing::warn!(
                     event = "operation_result",
-                    origin = "rust",
-                    result = "error",
+                            result = "error",
                     command = "write_native_bytes",
                     reason_code = code,
                     elapsed_ms = elapsed,
@@ -371,7 +361,6 @@ pub fn release_native_file(
         access.0.lock().map_err(error)?.remove(&key);
         tracing::info!(
             event = "operation_result",
-            origin = "rust",
             result = "ok",
             command = "release_native_file",
         );

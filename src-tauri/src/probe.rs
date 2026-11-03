@@ -5,8 +5,10 @@
 //! key 经探针页 URL 的查询串交付，探针页从 `location.search` 取。
 //!
 //! 装配后的两个载体：
+//!
 //! - 主窗口被导航到探针页，其身份仍是 ("main","main")，在允许范围内；
 //! - 输出宿主承载同一个探针页，其身份是 ("pdf-output","pdf-output")，不在允许范围内。
+//!
 //! 两者的差别只有身份，因此允许与拒绝的证据出自同一条生产路径。
 
 use std::fs;
@@ -17,7 +19,9 @@ use std::time::{Duration, Instant};
 use tauri::{Manager, Url, WebviewUrl};
 
 use crate::files::FileAccess;
+use crate::logging;
 use crate::output_host;
+use crate::source_guard;
 
 /// 受控夹具的内容。探针页从 URL 拿到期望值，与实际读到的内容逐字比对。
 pub const FIXTURE_CONTENT: &str = "MF-PROBE-FIXTURE-20261103";
@@ -40,18 +44,22 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let write_grant = access.grant(fixture.clone(), true)?;
 
     let url = probe_url(app, &read_grant.key, &write_grant.key)?;
+    let page_origin = origin_of(&url);
+
+    // 探针装配的 span：根 span 的直接子。
+    let probe = logging::probe_span();
 
     // 主窗口导航到探针页：身份仍是 ("main","main")，在允许范围内。
-    let main = app.get_webview_window("main").ok_or("缺少主窗口")?;
     let source_reachable = source_is_reachable(&url);
-    println!(
-        "PDF-PROBE source origin={} reachable={source_reachable} initial_main_url={}",
-        origin_of(&url),
-        main.url().map(|value| value.to_string()).unwrap_or_default()
+    tracing::info!(
+        event = "probe_source_check",
+        page_origin = page_origin.as_str(),
+        reachable = source_reachable,
     );
     if !source_reachable {
-        println!(
-            "PDF-PROBE abort 探针页源不可达：应用与探针页必须同源，且该源须在运行"
+        tracing::warn!(
+            event = "probe_abort",
+            reason = "探针页源不可达：应用与探针页必须同源，且该源须在运行",
         );
     }
     // 主窗口的导航放到后台线程：先等它的初始页面落地，再导航到探针页。
@@ -60,6 +68,11 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // 输出宿主承载同一个探针页：身份是 ("pdf-output","pdf-output")，不在允许范围内。
     let output = output_host::create(app, WebviewUrl::External(url.clone()))?;
     let output_label = output.label().to_owned();
+    // 登记为可写日志的探针输出实例（仅 pdf-probe 构建生效）：页面不能自报身份获得允许。
+    logging::register_probe_instance(&source_guard::Identity::from_labels(
+        output_label.as_str(),
+        output_label.as_str(),
+    ));
 
     // 事件循环在 setup 钩子返回之后才启动：eval 的回调要经事件循环送达，
     // 因此报告读取必须放到后台线程，否则在 setup 里读会一直等到超时。
@@ -68,6 +81,7 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let write_key = write_grant.key.clone();
     let fixture_dir = fixture_dir;
     std::thread::spawn(move || {
+        probe.in_scope(|| {
         let main_window = handle.get_webview_window("main");
         let output_window = handle.get_webview_window(&output_label);
         let mut navigated = false;
@@ -76,12 +90,18 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             // 先等主窗口的初始页面落地（URL 不是 about:blank）：Windows 上 webview 的
             // 初次加载可能还没发出，这时抢先导航会让窗口停在 about:blank。
             let initial = wait_initial_load(window, Duration::from_secs(30));
-            println!(
-                "PDF-PROBE initial_load={initial} initial_url={}",
-                window.url().map(|value| value.to_string()).unwrap_or_default()
+            let initial_url = window.url().map(|value| value.to_string()).unwrap_or_default();
+            tracing::info!(
+                    event = "probe_initial_load",
+                host = "main",
+                loaded = initial,
+                url = initial_url.as_str(),
             );
             if !initial {
-                println!("PDF-PROBE abort 主窗口初始页面未落地，无法把探针页挂上去");
+                tracing::warn!(
+                            event = "probe_abort",
+                    reason = "主窗口初始页面未落地，无法把探针页挂上去",
+                );
             }
             // 只在探针页还没就位时导航：重复导航会让探针页跑第二遍，
             // 而第一遍已经撤销了受控授权，第二遍的读取就会拿到 unknown-file-key。
@@ -105,35 +125,115 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        println!(
-            "PDF-PROBE navigation navigated={navigated} navigate_error={navigate_error:?} main_url={}",
-            main_window
-                .as_ref()
-                .and_then(|window| window.url().ok())
-                .map(|value| value.to_string())
-                .unwrap_or_default()
+        let page_path = url_path(&url);
+        tracing::info!(
+            event = "probe_navigation",
+            host = "main",
+            navigated,
+            navigate_error = navigate_error.as_str(),
+            // 只记路径：查询串里带受控授权的 key。
+            url = page_path.as_str(),
         );
 
-        let main_report = main_window.as_ref().and_then(|window| read_report(window, REPORT_TIMEOUT));
-        let output_report = output_window.as_ref().and_then(|window| read_report(window, REPORT_TIMEOUT));
-        println!("PDF-PROBE main {}", main_report.clone().unwrap_or_default());
-        println!("PDF-PROBE output {}", output_report.clone().unwrap_or_default());
-        println!(
-            "PDF-PROBE output_host label={output_label} instances={}",
-            output_host::instance_count()
-        );
+        // 页面报告由 Rust 读回：这是 **native 侧对页面结果的读数**，内容仍是页面自述。
+        if let Some(window) = &main_window {
+            if let Some(report) = read_report(window, REPORT_TIMEOUT) {
+                log_observed_report("main", &report);
+            }
+        }
+        if let Some(window) = &output_window {
+            if let Some(report) = read_report(window, REPORT_TIMEOUT) {
+                log_observed_report("output", &report);
+            }
+        }
 
         // 探针专用回收：撤销两份受控授权。正常 release_native_file 的业务清理不受影响。
         let access = handle.state::<FileAccess>();
         access.revoke(&read_key);
         access.revoke(&write_key);
-        println!(
-            "PDF-PROBE cleanup revoked read={read_key} write={write_key} fixture_removed_on_drop=true"
+        let read_prefix = logging::credential_prefix(&read_key);
+        let write_prefix = logging::credential_prefix(&write_key);
+        tracing::info!(
+            event = "probe_cleanup",
+            read_key_prefix = read_prefix.as_str(),
+            write_key_prefix = write_prefix.as_str(),
+            revoked = true,
+            fixture_removed_on_drop = true,
         );
+        // 受控验收入口直接读取健康状态，并把状态与观察来源抄进日志。
+        let health = logging::health();
+        logging::log_span().in_scope(|| tracing::info!(
+            event = "log_health",
+            observed_by = "probe",
+            dropped = health.dropped,
+            rejected = health.rejected,
+            write_failures = health.write_failures,
+            rotate_failures = health.rotate_failures,
+            delete_failures = health.delete_failures,
+            file_unavailable = health.file_unavailable,
+            stdout_failed = health.stdout_failed,
+        ));
         drop(fixture_dir);
+        });
     });
 
     Ok(())
+}
+
+/// 记下 Rust 侧对页面报告的读数。
+///
+/// 这是 **native 侧对页面结果的读数**：内容仍是页面自述，不因此成为原生证实。
+fn log_observed_report(host: &str, raw: &str) {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+        tracing::warn!(event = "page_report_observed", host, parsed = false);
+        return;
+    };
+    let text = |key: &str| {
+        value
+            .get(key)
+            .and_then(|entry| entry.as_str())
+            .unwrap_or("")
+            .to_owned()
+    };
+    let outcome_text = |key: &str, field: &str| {
+        value
+            .get(key)
+            .and_then(|entry| entry.get(field))
+            .and_then(|entry| entry.as_str())
+            .unwrap_or("")
+            .to_owned()
+    };
+    let outcome_ok = |key: &str| {
+        value
+            .get(key)
+            .and_then(|entry| entry.get("ok"))
+            .and_then(|entry| entry.as_bool())
+            .unwrap_or(false)
+    };
+    let role = text("role");
+    let identity_window = text("identity_window");
+    let read_error = outcome_text("read", "error");
+    let select_error = outcome_text("select", "error");
+    let release_error = outcome_text("releaseAttempt", "error");
+    tracing::info!(
+        event = "page_report_observed",
+        host,
+        role = role.as_str(),
+        read_ok = outcome_ok("read"),
+        read_error = read_error.as_str(),
+        read_matches_fixture = value
+            .get("readMatchesFixture")
+            .and_then(|entry| entry.as_bool())
+            .unwrap_or(false),
+        select_error = select_error.as_str(),
+        release_error = release_error.as_str(),
+        identity_window = identity_window.as_str(),
+    );
+}
+
+/// URL 的路径部分：查询串里带受控授权的 key，不进日志。
+fn url_path(url: &Url) -> String {
+    url.path().to_owned()
 }
 
 /// 探针页 URL：与主窗口同源，查询串带两份 key 与期望内容。
@@ -202,7 +302,10 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<Strin
         .map(|value| value.to_string())
         .unwrap_or_default();
     if current == "about:blank" {
-        println!("PDF-PROBE abort 该窗口未加载任何页面（about:blank），报告无从产生");
+        tracing::warn!(
+            event = "probe_report_unreadable",
+            reason = "该窗口未加载任何页面（about:blank），报告无从产生",
+        );
         return None;
     }
     let deadline = Instant::now() + timeout;
@@ -223,7 +326,7 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<Strin
             continue;
         };
         if !printed {
-            println!("PDF-PROBE eval raw={raw:?}");
+            tracing::debug!(event = "probe_eval_raw", raw = raw.as_str());
             printed = true;
         }
         if raw.contains("\"done\"") {
@@ -231,5 +334,9 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<Strin
         }
         std::thread::sleep(Duration::from_millis(200));
     }
+    tracing::warn!(
+        event = "probe_report_timeout",
+        reason = "探针页未在超时内标记完成",
+    );
     None
 }
