@@ -76,17 +76,42 @@
 
 **两侧对照**用于定位某次调用的两份记述是否一致：一致是常态，不一致就是线索。它不证明所有事件均发生或完整。原生结果以同请求的Rust观测为准；Web侧的成功声明不能覆盖原生的拒绝或缺证。实际IPC结果及拒绝归因继续遵守探针方案的正向证据规则。
 
-### 5.1 最小记录契约
+### 5.1 span 模型（两级）
+
+**观测单位是 span**：一条孤立的事件说明不了什么，一次调用（守卫判定、对话框、读写、撤销）才是有意义的单位。每次调用开一个 span，调用内的事件挂在该 span 上；本次运行是所有 span 的**根**。
+
+**层级只有两级**，且所有调用 span 都是根 span 的**直接子**。探针装配、宿主创建、各次调用互为兄弟，不因"因果"再嵌一层——否则正常会话里的调用与探针里的调用形状不同，读日志的规则就要分叉。
+
+**span 上放这次调用的标识与参数，事件上放这次调用的结果与结论**：读日志时先看 span（这是什么操作），再看事件（发生了什么）。span 词汇表是固定的，不开放任意结构：
+
+| span 名 | 谁开 | span 上的字段 | span 内的事件 | 事件字段 |
+| --- | --- | --- | --- | --- |
+| `run` | 进程启动 | run_id, os, arch, app_version, feature | `run_start` / `run_end` | — |
+| `command` | 每个受保护命令 | command, window_label, webview_label | `source_decision` | decision(allow/deny), reason_code |
+| | | | `operation_result` | result, bytes, elapsed_ms |
+| `page_call` | 页面侧每次调用 | call_id, command, window_label, webview_label | `call_started` / `call_finished` / `page_error` | result, error_category |
+| `host` | 每次原生宿主创建 | host_kind, host_label, visible | `host_state` | state, instances |
+| `probe` | 探针装配一次 | — | `probe_source_check` / `probe_initial_load` / `probe_navigation` / `probe_cleanup` | reachable, loaded, navigated, revoked |
+| `log` | 日志基座自身 | — | `log_health` | dropped, rejected, write_failures, rotate_failures, stdout_failed |
+
+两条实现约束（都会咬人，写在这里免得实现时再撞）：
+
+- **异步命令用 `Instrument` 附着 span，不用 `enter()` 守卫跨 await**。守卫是 `!Send`，跨 `.await` 持有会让 future 不再是 `Send`，Tauri 命令直接编译不过；即便绕过去，跨线程后"当前 span"也是错的。
+- **span 的耗时不会自动记录**。`tracing` 的 formatter 只输出 span 名与 id，不输出起止与耗时，故耗时由结束事件带 `elapsed_ms` 字段。
+
+**span 实例数**：单次运行的实例数约 20（run 1 + probe 1 + host 1 + 受保护命令 span 约 8 + 页面调用 span 约 8 + log 1）。这是**单次运行**的量级，不是全局上限——正常会话里受保护命令的调用次数无界。
+
+### 5.2 最小记录契约
 
 - 机器验收使用JSONL；人读格式只供诊断，不解析其文字作机器证据。两种格式共享字段过滤与脱敏。
-- 每条必填 `schema_version=1`、`run_id`（Rust每次启动生成，即本次运行的根 span）、`timestamp`（Rust记录UTC时间）、`level`、`origin`、`event`，以及**所在 span 的上下文**（span 名、span id、父 span）。**不设全局序号**：区分记录靠时间戳与 span 上下文，同一时间戳涌入多个事件是正常现象；真正要防的是**同一事件被重复输出**。Web外层事件固定 `web_event`，附原生取出的 `window_label` / `webview_label`；业务事件在受校验的 `page_event` 字段内，不能变成原生事件名。
+- 每条必填 `schema_version=1`、`run_id`（Rust每次启动生成，即本次运行的根 span）、`timestamp`（Rust记录UTC时间）、`level`、`origin`、`event`，以及**所在 span 的上下文**（span 名、span id、父 span）。span 的划分与字段按 §5.1 的词汇表。**不设全局序号**：区分记录靠时间戳与 span 上下文，同一时间戳涌入多个事件是正常现象；真正要防的是**同一事件被重复输出**。Web外层事件固定 `web_event`，附原生取出的 `window_label` / `webview_label`；业务事件在受校验的 `page_event` 字段内，不能变成原生事件名。
 - 最小稳定原生事件：`run_start`、`run_end`、`source_decision`、`operation_result`、`host_state`、`page_report_observed`、`log_health`；Web事件枚举先限 `page_ready`、`call_started`、`call_finished`、`page_error`。具体阶段只能按需增加枚举，不开放任意结构化字段。
 - **观测单位是 span，不是单条记录**：一次调用开一个 span，调用内的守卫判定与操作结果是该 span 内的事件，span 携带起止与耗时。原生侧每个受保护命令一个 span（`command` 为 span 名）；Web侧每次调用一个 span，`call_id` 即其 span id。调用类记录带不具授权能力的 `call_id`、命令枚举、结果枚举；原生守卫记录allow/deny及稳定原因码。Web应用层调用ID只用于关联，不是身份或权限；Rust限制其长度和字符集，绑定run_id、原生身份、命令。每个探针请求使用唯一ID；若需传入生产命令，仅作为可选诊断关联字段，不改变返回值和业务判定，也不允许关联字段控制身份。未落实同请求贯通时，不能只按时间近似配对后宣称调用已对应。
 - 其他字段只允许固定枚举、计数、布尔值或有界诊断ID；`page_error`只传错误类别，不传原始异常message。日志入口和底层sink均不输出原始授权key，不以secret=true作为泄露许可。字段白名单的作用是**记录的内容受控**，不承担防伪职责。
 
-### 5.2 校验与归档
+### 5.3 校验与归档
 
-- 校验器记录run_id、原始日志文件集合及SHA-256、构建/feature和环境；跨轮转时收集本次运行所需全部文件。缺run_start、未知schema、JSON损坏、所需事件缺失/重复或关联不匹配，相关断言记未能确认，不自动补齐。
+- 校验器记录run_id、原始日志文件集合及SHA-256、构建/feature和环境；跨轮转时收集本次运行所需全部文件（按运行分文件后，同一运行的日志通常只在一份文件里，但轮转会把它分成多份）。缺run_start、未知schema、JSON损坏、所需事件缺失/重复或关联不匹配，相关断言记未能确认，不自动补齐。
 - 同一 span 内同名事件重复出现即视为重复输出，须报告；跨侧按 call_id 与 span 上下文配对，允许Web异步迟到。身份/命令冲突及结果不一致均须报告；无对应Rust观察的Web声明不能证明原生成功。只对该验收所需事件设完整性条件，不要求全部业务事件两侧双写。
 - 验收取证运行须显式启用覆盖所需事件的级别与JSON格式；release默认WARN不保证收集INFO证据。缺少过滤掉的事件仍属证据不足，不能认作未发生。
 - 日志不含文档正文、完整本地路径或任何授权凭据，包括查询串、异常与DOM报告的间接泄露。关联使用单独ID，不使用key片段作为常规关联办法。已有探针URL/cleanup打印原始key的路径须在接入基座时同步迁移，不能tee后继续泄露。
@@ -106,7 +131,7 @@
 
 ## 8. 退出条件
 
-- **L1**：定向验证级别/JSON和人读输出、必填字段、字段脱敏、按运行分文件后同一文件只有一个写者；验证8 MiB边界/UTC跨日/同日重启后归档序号续接、保留排序与活动文件限额，以及不误删其他文件。
+- **L1**：定向验证级别/JSON和人读输出、必填字段、字段脱敏、span 词汇表与两级结构（span 名与字段的枚举、调用 span 均为根的直接子、结束事件带 `elapsed_ms`）、按运行分文件后同一文件只有一个写者；验证8 MiB边界/UTC跨日/同日重启后归档序号续接、保留排序与活动文件限额，以及不误删其他文件。
 - **故障**：以可控sink或临时目录夹具验证目录不可写、写入/删除/stdout失败、队列满和超长行、健康计数；验证正常退出排空和2秒超时不拖住退出。明确崩溃/强杀尾部不保证，不能宣称崩溃可靠性已验。跨平台文件锁/轮转行为逐平台留证，未测平台列待验。
 - **L2**：实际IPC验证允许/拒绝身份、未知字段与超长/超频请求、原生身份不可被载荷覆盖、无文件授权副作用、失败不递归；返回accepted不误报落盘。默认feature关闭时无探针额外身份与专用入口。
 - **证据**：用小夹具验证原生allow/deny与Web声明正常配对；缺失、重复、乱序、页面写原生事件名、未知schema、损坏JSON、结果不符分别按§5处理。所有来源均验证无key、路径、正文与带凭据URL；不得以“已通过单测”代替真实IPC证据。
