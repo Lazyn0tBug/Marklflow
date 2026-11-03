@@ -10,7 +10,7 @@
 //! - **完成是异步回调**：错误与成功标志经 `ICoreWebView2PrintToPdfCompletedHandler`
 //!   送达。**超时即失败**：迟到回调不得改写回执。
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -23,6 +23,9 @@ use windows::core::{Interface, PCWSTR};
 
 /// 打印的等待上限。超时即失败——迟到回调不得报成功。
 const PRINT_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// "发起"阶段的等待上限：UI 线程把接收端送回来要不了这么久。
+const SETUP_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// A4 的页面尺寸（英寸）。WebView2 的打印设置以英寸计。
 const A4_WIDTH_IN: f64 = 210.0 / 25.4;
@@ -102,6 +105,39 @@ pub fn start_print(
         let _ = sender.send(Err(error));
     }
     Ok(receiver)
+}
+
+/// 发起并等待打印。
+///
+/// `dispatch` 被调用一次，它负责在 **UI 线程**上真正发起（取控制器与环境、调用
+/// `PrintToPdf`），并把"完成结果的接收端"经 `setup_sender` 送回来。
+///
+/// **路径由本函数拥有一份**再交给 `dispatch`：`dispatch` 往往是 `'static` 的闭包
+/// （`with_webview` 要求如此），借用函数参数会编译不过——borrowed data escapes。
+/// 路径在这里转成 `PathBuf` 交出去，闭包便能真正拥有它。
+///
+/// 等待在**当前线程**完成（通常是后台线程）：完成回调在 UI 线程触发，
+/// 在 UI 线程上等就是自己等自己。
+pub fn print_dispatch(
+    target: &Path,
+    dispatch: impl FnOnce(
+            PathBuf,
+            mpsc::Sender<Result<mpsc::Receiver<PrintResult>, String>>,
+        ) -> Result<(), String>
+        + Send
+        + 'static,
+) -> Result<PrintOutcome, String> {
+    let started = Instant::now();
+    let owned = target.to_path_buf();
+    let (setup_sender, setup_receiver) =
+        mpsc::channel::<Result<mpsc::Receiver<PrintResult>, String>>();
+    dispatch(owned, setup_sender)?;
+    let receiver = match setup_receiver.recv_timeout(SETUP_TIMEOUT) {
+        Ok(Ok(receiver)) => receiver,
+        Ok(Err(error)) => return Err(error),
+        Err(_) => return Err("打印未发起：与 UI 线程的调度中断".to_owned()),
+    };
+    finish_print(receiver, target, started)
 }
 
 /// 等打印完成（**后台线程**调用）。超时即失败：迟到回调不得报成功。

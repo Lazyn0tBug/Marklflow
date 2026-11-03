@@ -1,16 +1,13 @@
 //! 静默 PDF 输出的宿主侧（把窗口接到 COM 打印上）。
 //!
-//! COM 部分在 [`crate::print_com`]（Windows 专属，与 tauri 无关，可被交叉编译夹具验证）；
-//! 本模块负责从 Tauri 的窗口取到 WebView2 的控制器与环境，并调度到 UI 线程。
+//! COM 部分与编排部分都在 [`crate::print_com`]（Windows 专属，与 tauri 无关，
+//! 可被交叉编译夹具验证）；本模块只负责从 Tauri 的窗口取到 WebView2 的
+//! 控制器与环境，并把它交给编排。
 //!
 //! **两步不可颠倒**：发起在 UI 线程（COM 亲和），等待在后台线程（完成回调也在 UI 线程，
 //! 在 UI 线程上等就是自己等自己）。
 
 use std::path::Path;
-#[cfg(target_os = "windows")]
-use std::sync::mpsc;
-#[cfg(target_os = "windows")]
-use std::time::Instant;
 
 #[cfg(target_os = "windows")]
 pub use crate::print_com::PrintOutcome;
@@ -29,30 +26,21 @@ pub struct PrintOutcome {
 ///
 /// 失败时给出可诊断的原因（错误码、超时、平台不支持），不吞错。
 #[cfg(target_os = "windows")]
-pub fn print_to_pdf(
-    window: &tauri::WebviewWindow,
-    target: &Path,
-) -> Result<crate::print_com::PrintOutcome, String> {
-    let started = Instant::now();
-    // 发起阶段的结果也要穿过 UI 线程：with_webview 的闭包只能返回 ()。
-    let (setup_sender, setup_receiver) =
-        mpsc::channel::<Result<mpsc::Receiver<crate::print_com::PrintResult>, String>>();
-    window
-        .with_webview(move |platform| {
-            let attempt = crate::print_com::start_print(
-                platform.controller(),
-                platform.environment(),
-                target,
-            );
-            let _ = setup_sender.send(attempt);
-        })
-        .map_err(|e| e.to_string())?;
-    let receiver = match setup_receiver.recv_timeout(std::time::Duration::from_secs(30)) {
-        Ok(Ok(receiver)) => receiver,
-        Ok(Err(error)) => return Err(error),
-        Err(_) => return Err("打印未发起：与 UI 线程的调度中断".to_owned()),
-    };
-    crate::print_com::finish_print(receiver, target, started)
+pub fn print_to_pdf(window: &tauri::WebviewWindow, target: &Path) -> Result<PrintOutcome, String> {
+    // 窗口句柄得**拥有**一份：`with_webview` 的闭包是 `'static` 的。
+    let window = window.clone();
+    crate::print_com::print_dispatch(target, move |path, setup_sender| {
+        window
+            .with_webview(move |platform| {
+                let attempt = crate::print_com::start_print(
+                    platform.controller(),
+                    platform.environment(),
+                    &path,
+                );
+                let _ = setup_sender.send(attempt);
+            })
+            .map_err(|e| e.to_string())
+    })
 }
 
 /// 非 Windows 平台没有 WebView2，也就没有静默打印能力。
