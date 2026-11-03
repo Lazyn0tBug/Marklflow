@@ -723,6 +723,8 @@ macOS 上没有 llvm-rc，`cargo check --target x86_64-pc-windows-msvc` 会在�
 
 ### D1d 的机器部分：PDF 内容检查器（2026-11-04）
 
+> 实现选择（手写解析器 vs 第三方库/工具）的讨论、代价与建议见[PDF 内容核验的实现选择：问题与建议](pdf-content-check-decision-2026-11-04.md)。
+
 `scripts/pdf-probe-pdf-check.ts`：读探针产出的 PDF，核对**页数与页面尺寸**、**每页正文**（经字体的 ToUnicode CMap 还原字形码）、**首末标记落在哪一页**、**字体与图像**（子类型／是否内嵌／是否子集／有无 ToUnicode；每页图像数量与尺寸；每页矢量绘图算子数——公式在 PDF 里是矢量图形）。
 
 **不引外部工具**：poppler 未安装且需另行授权（TBD-13），故自己解 PDF。
