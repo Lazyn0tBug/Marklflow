@@ -243,6 +243,61 @@ R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `plat
 - **未做运行期验证**：D1a-6 归 Windows；真实 IPC 的允许与拒绝证据归 D1b。
 - **输出宿主 label "pdf-output" 是本轮取定的名字**，D1b 的宿主创建函数须引用同一常量；若要改，改这一处即可。
 
+## D1b 授权夹具与权限探针（2026-11-03）
+
+仅测试路径受默认关闭的 `pdf-probe` feature 控制。正常授权释放、来源检查与业务清理始终保留。
+
+### TBD-14 的处置（已定）
+
+| 问题 | 决定 | 理由 |
+| --- | --- | --- |
+| 受控授权的形态 | **复用现有 `FileAccess` 授权**（path + writable + UUID key），在受控初始化里为一份受控夹具文件签发读、写两种角色 | 探针要验的是**生产命令在真实身份下的真实行为**；给探针单开分支会验到测试替身，与"隔离证据不落在测试替身上"同源 |
+| key 向探针页的交付 | **URL 查询串**：Rust 铸造后经探针页 URL 交付，页面从 `location.search` 取 | 初始化脚本注入这条路主窗口用不了（主窗口是应用自己的 webview，注入就要动生产 webview 的初始化脚本）；URL 这条路让主窗口导航到探针页，身份仍是 ("main","main") |
+| "未弹出任何原生对话框" | **机器码 + 人工观察**（拒绝由共享稳定码取证，不弹框由人在机器前确认） | 成本最低，且操作者本就在那台机器前；自动判定要写 Win32 窗口枚举，另议 |
+
+### 实现落点
+
+| 件 | 位置 | 内容 |
+| --- | --- | --- |
+| feature | `src-tauri/Cargo.toml` | `pdf-probe` 默认关闭；来源守卫不在它之后，故生产构建始终带守卫 |
+| 输出宿主单点创建 | `src-tauri/src/output_host.rs` | 身份取自 `source_guard::OUTPUT_HOST`（"pdf-output"），形态为不可见的独立 WebviewWindow；每次调用创建独立实例（首个实例 label 逐字为 "pdf-output"，同进程后续实例追加序号） |
+| 受控初始化 | `src-tauri/src/probe.rs` | 铸造受控授权（不经 IPC，`invoke_handler` 未变，未新增前端铸造命令）、把主窗口导航到探针页、创建输出宿主承载同一页、读取两份报告、撤销授权 |
+| 探针页 | `tests/fixtures/architecture/pdf-probe-client.html` / `.ts` | 与交付用样本分离；不经前端适配器，故取到机器码；外部脚本文件，不内联，不放宽生产 CSP |
+
+### 证据矩阵（本机 macOS 流程验证，交付宿主复跑待做）
+
+| # | 证据 | 判定 | 本机实测 |
+| --- | --- | --- | --- |
+| D1b-1 | 通道阳性 | 成立 | 主窗口 `get_platform_info` 返回 ok，身份 ("main","main") |
+| D1b-2 | 主窗口同命令允许 | 成立 | `read_native_text` 配受控读 key 返回**夹具原文** `MF-PROBE-FIXTURE-20261103`（`readMatchesFixture: true`） |
+| D1b-3 | 输出宿主同命令拒绝 | 成立 | 同一 key 在输出宿主（"pdf-output","pdf-output"）返回 `native-source-denied`，**无内容泄露**，无副作用 |
+| D1b-4 | 选择器补充 | 成立 | 输出宿主调用 `select_native_open` 返回 `native-source-denied`；守卫在对话框之前（`files.rs:132` 先于 `:133` 的对话框），**未弹框**（本机为流程验证，交付宿主需人工确认一次） |
+| D1b-5 | feature 关闭构建 | 成立 | 默认 feature 构建 0 错误 0 警告，`probe` 模块整段不在默认构建内；来源守卫与主窗口允许路径不受 feature 影响 |
+| D1b-6 | 清理证据 | 成立 | 探针授权在报告读完后被撤销（`PDF-PROBE cleanup`），夹具随临时目录销毁；正常 `release_native_file` 业务清理未被一并移除——主窗口的撤销调用返回 ok，输出宿主的撤销尝试被守卫拒绝（防越权撤销） |
+
+额外观察：写角色 key 用于读取时返回 `file-capability-mismatch`（角色校验在来源守卫之后、授权解析之前生效），证明读、写两种角色的授权互不通用。
+
+### 本轮验证
+
+| 项 | 结果 |
+| --- | --- |
+| `cargo build`（默认 feature） | 0 错误 0 警告 |
+| `cargo build --features pdf-probe` | 0 错误 0 警告 |
+| `cargo test --locked` | 13 项通过 |
+| `bun run typecheck` | 四个配置通过，类型覆盖 232 源 |
+| `bun run test:unit` | 71 文件 497 项通过 |
+| `bun run lint` | 通过 |
+| 探针实跑 | 本机 macOS 一次跑通，报告完整（见上表） |
+
+### 两处由实跑暴露的缺陷（已修）
+
+1. **报告必须在事件循环启动后读**：`eval` 的回调经事件循环送达，在 `setup` 钩子里读会一直等到超时、报告为空。改为后台线程读取。
+2. **探针页不能在同一个窗口里加载两次**：第一遍跑完撤销了受控授权，第二遍的读取就拿到 `unknown-file-key`。改为仅在探针页尚未就位时才导航。
+
+### 待交付宿主复跑
+
+本节的实测取自本机 macOS，只作流程验证。**D1b 的证据须在交付宿主（Windows）上重取**：命令与判据同上表，另加人工确认"输出宿主调用选择器时屏幕未弹出原生对话框"。
+
 ## 待补
 
 - D1a—D1d 尚未实施；本文件当前只有 D0 一节
