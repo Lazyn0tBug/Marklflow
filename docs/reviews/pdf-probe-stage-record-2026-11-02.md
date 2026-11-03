@@ -384,9 +384,11 @@ page_report_observed host=output role=output-host read_ok=false read_error=nativ
 log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
 ```
 
-### 交付宿主取证步骤（待执行）
+### 交付宿主取证步骤
 
 前置：分支尚未 push（未经明确要求不 push）；交付宿主需能跑 dev server（探针页必须与主窗口**同源**，否则 IPC 与 CSP 都不成立）。
+
+#### A. D1b 部分（2026-11-03 已完成，日志已归档）
 
 | 步 | 操作 | 要点 |
 | --- | --- | --- |
@@ -401,6 +403,40 @@ log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
 | 9 | 归档 | 归档日志原文与 SHA-256 到 `docs/acceptance/pdf-probe/`（**改名为 `.jsonl` 入库**：仓库忽略 `*.log`），并把校验器输出抄进本记录 |
 
 人工项：第 3 步运行期间，**输出宿主调用选择器命令时屏幕上不得弹出原生文件对话框**（D1b-4）。这一步机器只证"被拒"，弹框与否由人在机器前确认。
+
+#### B. D1c 部分（2026-11-03 待执行）
+
+Windows 侧代码本机只能交叉编译验类型（`bun scripts/check-windows-com.ts` 已通过），**运行能力必须在真机上看**。
+
+| 步 | 操作 | 要点 |
+| --- | --- | --- |
+| B1 | push 分支 | 交付宿主要先拿到代码（`architecture-refactor` 领先 origin 26 个提交） |
+| B2 | 取代码 | `git pull` 到 `D:\code\Marklflow` |
+| B3 | **编译**（第一次 Windows 编译） | `cd src-tauri`；`cargo build --locked --features pdf-probe`。MSVC 工具链 1.94.0（与 CI 一致）；WebView2 运行时 156.0.4314.58 已装 |
+| B4 | 起 dev server | `bun run dev:desktop`（**另开一个终端**，保持它跑着） |
+| B5 | 跑探针构建 | `cd src-tauri`；`set MARKFLOW_LOG=info`；`set MARKFLOW_LOG_FORMAT=json`；`cargo run --no-default-features --features pdf-probe` |
+| B6 | 等探针跑完 | 本轮比 D1b 长：探针页证据 → **就绪探测（≤30s）** → **打印（≤60s）**。合计可能几分钟。**期间屏幕上不应出现任何原生对话框或打印面板**（D1c-5） |
+| B7 | 从界面正常退出 | 关闭窗口即触发 `run_end`；强杀则日志缺 `run_end` |
+| B8 | 取日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` |
+| B9 | 取产出的 PDF | 默认 `D:\code\Marklflow\docs\acceptance\pdf-probe\probe-pdf-output.pdf`（可用 `set MARKFLOW_PROBE_PDF=<别的路径>` 改）。**同目录的 `*.tmp-<pid>` 若还在，说明提交（rename）没成功** |
+| B10 | 回传 | 把日志与 PDF 传回开发机 |
+| B11 | 机器核对 | `bun scripts/pdf-probe-check.ts <日志>`：期望 **D1b-1—D1b-6 与 D1c-1、D1c-2 全通过**、错误级诊断 0 |
+| B12 | 核对 PDF | 页数应为 3、页面尺寸应为 A4（210×297mm）。**若 PDF 是空白页**：症结在"打印宿主是隐藏窗口，隐藏的 WebView2 是否照常排版"，不是打印设置也不是就绪判据 |
+| B13 | 归档 | 日志原文与 SHA-256、PDF、校验器输出都记进本记录 |
+
+#### 读日志速查（省一次往返）
+
+| 事件 | 含义与处置 |
+| --- | --- |
+| `probe_source_check reachable=false` | dev server 没起或端口不对 → 回 B4 |
+| `probe_navigation navigated=false` | 主窗口没导航到探针页 → 探针页不可达 → 回 B4 |
+| `probe_readiness eval_ok=false` | 原生求值拿不到内容 → 页面没加载或执行被挡 |
+| `probe_readiness is_target=false` | 求值落在了别的文档上（导航没换文档） |
+| `probe_readiness ready=false` | 文档未达就绪条件（看 `ready_state`／`fonts_status` 字段） |
+| `probe_pdf ok=false reason=…` | 打印失败，reason 里带 HRESULT 或超时 |
+| `probe_pdf ok=true committed=false` | 打印成功但 rename 没成功 → 目标未被替换，原文件仍在 ✓ |
+| `log_health dropped/rejected > 0` | 有记录没落盘，证据可能不全 → 记"未能确认"，不要当作通过 |
+| 无 `run_end` | 强杀退出 → 不宣称日志完整（回 B7） |
 
 ### 已知边界（不掩盖）
 
@@ -690,8 +726,11 @@ macOS 上没有 llvm-rc，`cargo check --target x86_64-pc-windows-msvc` 会在�
 ## 待补
 
 - **D1a 已完成**（2026-11-03）：六条断言齐了，D1a-6 的运行期身份由交付宿主核对通过（("main","main") 与允许范围写入值一致）。
-- **D1b 实现完成、取证未完成**：探针在本机跑通并产出完整证据集；交付宿主首次复跑为装配缺陷（主窗口停在 `about:blank`，探针页未加载），成因已定位并已改（导航延到后台线程、先等初载落地、另加两处自述诊断），**待重跑取证**。
-- **日志基座 L1/L2 已实现**（2026-11-03）：L1 见上节；L2 与机器校验器见本节。**待交付宿主复跑取日志**，用校验器核对六条断言并把日志与 SHA-256 归档到 `docs/acceptance/pdf-probe/`。
+- **D1b 已完成**（2026-11-03）：六条断言在交付宿主上全部通过，人工项（未弹原生对话框）已确认并附阳性对照，日志已归档。
+- **日志基座 L1/L2 已实现**（2026-11-03）：L1 见上节；L2 与机器校验器见本节。校验器已能读 JSONL 与人读两种形态 ✓。
+- **D1c 实现完成、取证未完成**（2026-11-03）：静默打印走 WebView2 的 `PrintToPdf`（COM 部分已交叉编译验证类型）；就绪判据已在本机成立（页面盒 3 个 794×1123、图片 1/1）；**待交付宿主编译并运行**，步骤见上文「B. D1c 部分」。
+  - **待人工确认**：D1c-5（无窗口闪现、无打印面板）、D1c-4（无残留宿主与临时文件——本轮已改为显式关闭探针宿主）。
+  - **待 D1d**：PDF 的页数、页面尺寸、文字提取与字体报告（文字提取依赖 poppler，TBD-13 未授权安装）。
 - ~~交付宿主第二次复跑为白屏~~ **已修并复跑取证（2026-11-03）**：根因是探针页 URL 的源取自窗口的瞬时 URL（初载前是 about:blank），已改为取自配置的 devUrl，并顺带修掉两处凭据泄露与校验器的一处漏检。第三次复跑**六条断言全部通过**，日志已归档。
 - ~~D1b 取证的人工确认~~ **已完成（2026-11-03）**：D1b-4 的"未弹出原生对话框"由人在交付宿主确认，并附阳性对照（主窗口放行时原生对话框确实会弹）。**D1b 六条断言全部成立。**
 - **生产 UI 尚无原生文件路径**：导入走浏览器 `file input`、导出走浏览器下载，原生适配器没有接入生产组合。故默认构建的放行路径只能靠"临时把 devUrl 指向探针页"的运行取到（D1b-5 已如此取证）；生产路径的接线归 D8。
