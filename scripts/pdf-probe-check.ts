@@ -41,6 +41,8 @@ export interface ParsedFile{
  issues:ParseIssue[];
  /** 未知 schema_version 的记录：形状不可信，不进证据池。 */
  unknownSchema:LogRecord[];
+ /** 文件形态：JSONL（机器形态）或人读文本。两者由同一个写出器生成。 */
+ format:'jsonl'|'text';
 }
 
 export interface RunView{
@@ -75,7 +77,7 @@ export interface Diagnostic{
 }
 
 export interface CheckReport{
- files:{path:string;sha256:string;bytes:number;records:number}[];
+ files:{path:string;sha256:string;bytes:number;records:number;format:'jsonl'|'text'}[];
  runs:{run_id:string;feature:string;records:number;os?:string;arch?:string;app_version?:string}[];
  assertions:AssertionResult[];
  diagnostics:Diagnostic[];
@@ -128,8 +130,20 @@ const number=(value:string|undefined):number|undefined=>{
  return Number.isFinite(parsed)?parsed:undefined;
 };
 
-/** 解析一行 JSONL。返回记录或问题。 */
+/**
+ * 解析一行日志。返回记录或问题。
+ *
+ * 两种形态都认：JSONL（机器形态）与人读文本。两者由**同一个写出器**从同一批记录
+ * 生成，字段与脱敏规则相同；人读形态的值里没有转义，含空格的���由续写规则还原。
+ */
 export function parseLogLine(raw:string,file:string,line:number):{record?:LogRecord;issue?:ParseIssue}{
+ return raw.trimStart().startsWith('{')
+  ?parseJsonLine(raw,file,line)
+  :parseTextLine(raw,file,line);
+}
+
+/** 解析一行 JSONL。返回记录或问题。 */
+export function parseJsonLine(raw:string,file:string,line:number):{record?:LogRecord;issue?:ParseIssue}{
  let parsed:unknown;
  try{
   parsed=JSON.parse(raw);
@@ -171,6 +185,76 @@ export function parseLogLine(raw:string,file:string,line:number):{record?:LogRec
  return {record};
 }
 
+/**
+ * 解析一行人读形态：`时间 级别 run_id=… event=… span=… 字段=值…`。
+ *
+ * span 写作 `name{id=…,parent_id=…}`，无 span 写作 `-`。
+ * 值不含转义：含空格的��按"续写上一个字段"还原（写出器的字段值里目前没有空格，
+ * 这条规则只是兜底；值里若含 `=` 则以第一个 `=` 分界）。
+ */
+export function parseTextLine(raw:string,file:string,line:number):{record?:LogRecord;issue?:ParseIssue}{
+ const parts=raw.trim().split(/\s+/);
+ if(parts.length<3){
+  return {issue:{file,line,reason:'人读形态的行字段不足',raw}};
+ }
+ const timestamp=parts[0]??'';
+ const level=parts[1]??'';
+ const fields:Record<string,string>={};
+ let span:LogRecord['span']=null;
+ let lastKey:string|null=null;
+ for(const token of parts.slice(2)){
+  if(token.startsWith('span=')){
+   span=parseTextSpan(token.slice(5));
+   lastKey=null;
+   continue;
+  }
+  const at=token.indexOf('=');
+  if(at>0){
+   const key=token.slice(0,at);
+   fields[key]=token.slice(at+1);
+   lastKey=key;
+  }else if(lastKey){
+   fields[lastKey]=`${fields[lastKey]??''} ${token}`;
+  }else{
+   return {issue:{file,line,reason:`无法归属的片段：${token}`,raw}};
+  }
+ }
+ const missing=['run_id','event','origin'].filter(key=>!fields[key]);
+ if(missing.length){
+  return {issue:{file,line,reason:`人读形态缺必填字段：${missing.join('、')}`,raw}};
+ }
+ const {run_id,event,origin,...rest}=fields;
+ const record:LogRecord={
+  schema_version:1,
+  run_id:run_id??'',
+  timestamp,
+  level,
+  event:event??'',
+  origin:origin??'',
+  span,
+  fields:rest,
+ };
+ return {record};
+}
+
+/** 人读形态的 span：`name{id=…,parent_id=…}`，或 `-`（无 span）。 */
+function parseTextSpan(raw:string):LogRecord['span']{
+ if(raw==='-')return null;
+ const at=raw.indexOf('{');
+ if(at<0)return null;
+ const name=raw.slice(0,at);
+ const body=raw.slice(at+1).replace(/}$/,'');
+ const parts=body.split(',');
+ let id:number|null=null;
+ let parent:number|null=null;
+ for(const part of parts){
+  const [key,value]=part.split('=');
+  if(key==='id')id=value==='null'?null:Number(value);
+  if(key==='parent_id')parent=value==='null'?null:Number(value);
+ }
+ return {name,id,parent_id:parent};
+}
+
 /** 解析一个日志文件的全部记录。 */
 export async function parseLogFile(path:string):Promise<ParsedFile>{
  const bytes=await readFile(path);
@@ -179,12 +263,15 @@ export async function parseLogFile(path:string):Promise<ParsedFile>{
  const unknownSchema:LogRecord[]=[];
  const issues:ParseIssue[]=[];
  const lines=text.split('\n');
+ let format:'jsonl'|'text'='jsonl';
  for(let index=0;index<lines.length;index++){
   const raw=(lines[index]??'').trim();
   if(!raw)continue;
+  if(format==='jsonl'&&index===0&&!raw.startsWith('{'))format='text';
   const {record,issue}=parseLogLine(raw,path,index+1);
   if(issue){issues.push(issue);continue}
   if(!record)continue;
+  // 人读形态不带 schema_version：由同一个写出器生成，版本即写出器的版本。
   if(record.schema_version!==1){
    unknownSchema.push(record);
    issues.push({file:path,line:index+1,reason:`未知 schema_version：${record.schema_version}`,raw});
@@ -199,6 +286,7 @@ export async function parseLogFile(path:string):Promise<ParsedFile>{
   records,
   issues,
   unknownSchema,
+  format,
  };
 }
 
@@ -840,7 +928,9 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
   if(defaultRuns.length===0){
    issues.push('未提供默认构建（feature≠pdf-probe）的运行记录：无法核对');
   }else{
+   // 「不成立」与「没观察到」是两回事：前者判未通过，后者判未能确认。
    const problems:string[]=[];
+   const unobserved:string[]=[];
    for(const defaultRun of defaultRuns){
     if(defaultRun.runStart===undefined){
      problems.push(`运行 ${defaultRun.run_id} 缺 run_start`);
@@ -850,16 +940,26 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
     if(probeEvents.length)problems.push(`运行 ${defaultRun.run_id} 出现探针事件 ${probeEvents[0]!.event}`);
     const probeIdentity=defaultRun.native.filter(record=>record.fields.window==='pdf-output');
     if(probeIdentity.length)problems.push(`运行 ${defaultRun.run_id} 出现探针身份 pdf-output`);
-    const allowed=commandSpans(defaultRun).filter(span=>span.decision==='allow'&&span.window==='main');
-    if(!allowed.length){
-     problems.push(`运行 ${defaultRun.run_id} 没有主窗口的放行记录：需在默认构建中触发一次受保护命令（如从界面打开文档），否则生产允许路径未被证明`);
-    }
     const deniedMain=commandSpans(defaultRun).filter(span=>span.decision==='deny'&&span.window==='main');
     if(deniedMain.length)problems.push(`运行 ${defaultRun.run_id} 的主窗口被拒 ${deniedMain.length} 次：生产允许路径失效`);
    }
+   // 放行证据取自**任一**默认构建运行：某次运行没有触发受保护命令，
+   // 只说明那次没贡献证据，不代表别的运行也不成立。
+   const anyAllowed=defaultRuns.some(run=>
+    commandSpans(run).some(span=>span.decision==='allow'&&span.window==='main'));
+   if(!anyAllowed){
+    unobserved.push('默认构建的运行都没有主窗口的放行记录：默认构建需要触发一次受保护命令，否则「允许路径仍有效」无运行期证据');
+   }
+   const clean=defaultRuns.every(run=>run.runStart!==undefined)
+    &&!defaultRuns.some(run=>run.native.some(record=>record.event.startsWith('probe_')))
+    &&!defaultRuns.some(run=>run.native.some(record=>record.fields.window==='pdf-output'));
    if(problems.length){
     verdict='fail';
     issues.push(...problems);
+   }else if(unobserved.length){
+    verdict='unconfirmed';
+    issues.push(...unobserved);
+    if(clean)basis.push('默认构建运行里无探针事件与探针身份：测试入口未进入正常构建');
    }else{
     verdict='pass';
     basis.push(`默认构建运行 ${defaultRuns.map(run=>run.run_id).join('、')}：无探针事件与探针身份，主窗口放行路径仍有效`);
@@ -964,6 +1064,7 @@ export async function checkProbeLogs(paths:string[],targetRunId?:string):Promise
   sha256:file.sha256,
   bytes:file.bytes,
   records:file.records.length,
+  format:file.format,
  }));
  for(const file of parsed){
   for(const issue of file.issues){
@@ -995,7 +1096,7 @@ export function renderReport(report:CheckReport):string{
  lines.push('== 文件 ==');
  if(report.files.length===0)lines.push('（无）');
  for(const file of report.files){
-  lines.push(`${file.path}\n  sha256=${file.sha256} bytes=${file.bytes} 记录=${file.records}`);
+  lines.push(`${file.path}\n  sha256=${file.sha256} bytes=${file.bytes} 记录=${file.records} 形态=${file.format==='jsonl'?'JSONL':'人读文本'}`);
  }
  lines.push('== 运行 ==');
  for(const run of report.runs){

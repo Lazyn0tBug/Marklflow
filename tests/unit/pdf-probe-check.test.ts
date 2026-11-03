@@ -50,6 +50,7 @@ const file=(records:LogRecord[],path='memory.log'):ParsedFile=>({
  records,
  issues:[],
  unknownSchema:[],
+ format:'jsonl',
 });
 
 const verdictOf=(report:CheckReport,id:string):Verdict=>{
@@ -141,6 +142,20 @@ describe('pdf-probe 校验器',()=>{
   expect(verdictOf(report,'D1b-5')).toBe('unconfirmed');
  });
 
+ it('默认构建里没有主窗口放行记录时 D1b-5 记未能确认，不是不成立',()=>{
+  // 没有观察到 ≠ 不成立：缺证只能记未能确认。
+  const report=evaluate(healthyProbeRun(),healthyDefaultRun().filter(entry=>entry.event!=='source_decision'));
+  expect(verdictOf(report,'D1b-5')).toBe('unconfirmed');
+ });
+
+ it('默认构建里主窗口被拒时 D1b-5 判未通过',()=>{
+  const denied=healthyDefaultRun().map(entry=>entry.event==='source_decision'
+   ?{...entry,fields:{...entry.fields,decision:'deny',reason_code:'native-source-denied'}}
+   :entry);
+  const report=evaluate(healthyProbeRun(),denied);
+  expect(verdictOf(report,'D1b-5')).toBe('fail');
+ });
+
  it('默认构建里出现探针事件时 D1b-5 判未通过',()=>{
   const defaultRun=[
    ...healthyDefaultRun(),
@@ -208,6 +223,26 @@ describe('pdf-probe 校验器',()=>{
   const hits=diagnosticsOf(report,'credential-url');
   expect(hits.length).toBeGreaterThan(0);
   expect(hits[0]?.message).toContain('readKey');
+ });
+
+ it('人读形态的一行能解析出同样的字段',()=>{
+  const parsed=parseLogLine('2026-11-03T11:15:17.042Z INFO  run_id=r1 event=source_decision span=command{id=274877906945,parent_id=1} command=read_native_text decision=allow origin=rust webview=main window=main','a.log',1);
+  const record=parsed.record;
+  expect(record?.event).toBe('source_decision');
+  expect(record?.level).toBe('INFO');
+  expect(record?.origin).toBe('rust');
+  expect(record?.run_id).toBe('r1');
+  expect(record?.span?.name).toBe('command');
+  expect(record?.span?.id).toBe(274877906945);
+  expect(record?.span?.parent_id).toBe(1);
+  expect(record?.fields.decision).toBe('allow');
+  expect(record?.fields.window).toBe('main');
+ });
+
+ it('人读形态里无 span 写作 -，值含空格按续写还原',()=>{
+  const parsed=parseLogLine('2026-11-03T09:38:03.915Z WARN  run_id=r1 event=probe_abort span=- origin=rust reason=源不可达 且须同源','a.log',1);
+  expect(parsed.record?.span).toBeNull();
+  expect(parsed.record?.fields.reason).toBe('源不可达 且须同源');
  });
 
  it('JSON 损坏与未知 schema 不进证据池',()=>{
