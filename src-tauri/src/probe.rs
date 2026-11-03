@@ -43,7 +43,19 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     // 主窗口导航到探针页：身份仍是 ("main","main")，在允许范围内。
     let main = app.get_webview_window("main").ok_or("缺少主窗口")?;
-    main.navigate(url.clone())?;
+    let source_reachable = source_is_reachable(&url);
+    println!(
+        "PDF-PROBE source origin={} reachable={source_reachable} initial_main_url={}",
+        origin_of(&url),
+        main.url().map(|value| value.to_string()).unwrap_or_default()
+    );
+    if !source_reachable {
+        println!(
+            "PDF-PROBE abort 探针页源不可达：应用与探针页必须同源，且该源须在运行"
+        );
+    }
+    // 主窗口的导航放到后台线程：先等它的初始页面落地，再导航到探针页。
+    // 在 setup 钩子里抢先导航会与初次加载相撞，窗口会停在 about:blank。
 
     // 输出宿主承载同一个探针页：身份是 ("pdf-output","pdf-output")，不在允许范围内。
     let output = output_host::create(app, WebviewUrl::External(url.clone()))?;
@@ -59,18 +71,34 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         let main_window = handle.get_webview_window("main");
         let output_window = handle.get_webview_window(&output_label);
         let mut navigated = false;
+        let mut navigate_error = String::new();
         if let Some(window) = &main_window {
-            wait_page_ready(window, Duration::from_secs(30));
+            // 先等主窗口的初始页面落地（URL 不是 about:blank）：Windows 上 webview 的
+            // 初次加载可能还没发出，这时抢先导航会让窗口停在 about:blank。
+            let initial = wait_initial_load(window, Duration::from_secs(30));
+            println!(
+                "PDF-PROBE initial_load={initial} initial_url={}",
+                window.url().map(|value| value.to_string()).unwrap_or_default()
+            );
+            if !initial {
+                println!("PDF-PROBE abort 主窗口初始页面未落地，无法把探针页挂上去");
+            }
             // 只在探针页还没就位时导航：重复导航会让探针页跑第二遍，
             // 而第一遍已经撤销了受控授权，第二遍的读取就会拿到 unknown-file-key。
             if window.url().map(|current| current == url).unwrap_or(false) {
                 navigated = true;
             } else {
                 for _ in 0..5 {
-                    if window.navigate(url.clone()).is_ok() {
-                        std::thread::sleep(Duration::from_millis(700));
-                        if window.url().map(|current| current == url).unwrap_or(false) {
-                            navigated = true;
+                    match window.navigate(url.clone()) {
+                        Ok(()) => {
+                            std::thread::sleep(Duration::from_millis(700));
+                            if window.url().map(|current| current == url).unwrap_or(false) {
+                                navigated = true;
+                                break;
+                            }
+                        }
+                        Err(error) => {
+                            navigate_error = error.to_string();
                             break;
                         }
                     }
@@ -78,7 +106,7 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         println!(
-            "PDF-PROBE navigation navigated={navigated} main_url={}",
+            "PDF-PROBE navigation navigated={navigated} navigate_error={navigate_error:?} main_url={}",
             main_window
                 .as_ref()
                 .and_then(|window| window.url().ok())
@@ -127,31 +155,56 @@ fn probe_url(
     Ok(url)
 }
 
-/// 等页面的初始加载就绪。
-fn wait_page_ready(window: &tauri::WebviewWindow, timeout: Duration) -> bool {
+/// 探针页源的 origin。
+fn origin_of(url: &Url) -> String {
+    match (url.host_str(), url.port_or_known_default()) {
+        (Some(host), Some(port)) => format!("{host}:{port}"),
+        _ => url.to_string(),
+    }
+}
+
+/// 探针页源是否可达。源不可达时导航必然失败，报告必然空，先分清这两种情况。
+fn source_is_reachable(url: &Url) -> bool {
+    use std::net::{TcpStream, ToSocketAddrs};
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    let port = url.port_or_known_default().unwrap_or(80);
+    let Ok(mut addresses) = (host, port).to_socket_addrs() else {
+        return false;
+    };
+    match addresses.next() {
+        Some(address) => TcpStream::connect_timeout(&address, Duration::from_secs(2)).is_ok(),
+        None => false,
+    }
+}
+
+/// 等主窗口的初始页面落地：URL 不是 about:blank 即视为已加载。
+fn wait_initial_load(window: &tauri::WebviewWindow, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
-        let (sender, receiver) = mpsc::channel();
-        if window
-            .eval_with_callback("document.readyState", move |value| {
-                let _ = sender.send(value);
-            })
-            .is_err()
-        {
-            return false;
+        let current = window
+            .url()
+            .map(|value| value.to_string())
+            .unwrap_or_default();
+        if current != "about:blank" && !current.is_empty() {
+            return true;
         }
-        if let Ok(raw) = receiver.recv_timeout(Duration::from_millis(800)) {
-            if raw.contains("complete") {
-                return true;
-            }
-        }
-        std::thread::sleep(Duration::from_millis(200));
+        std::thread::sleep(Duration::from_millis(300));
     }
     false
 }
 
 /// 读取探针页写在 DOM 里的报告，等到它标记完成或超时。
 fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<String> {
+    let current = window
+        .url()
+        .map(|value| value.to_string())
+        .unwrap_or_default();
+    if current == "about:blank" {
+        println!("PDF-PROBE abort 该窗口未加载任何页面（about:blank），报告无从产生");
+        return None;
+    }
     let deadline = Instant::now() + timeout;
     let mut printed = false;
     while Instant::now() < deadline {
