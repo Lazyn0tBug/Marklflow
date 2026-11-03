@@ -93,6 +93,9 @@ const ASSERTION_TITLES:[string,string][]=[
  ['D1b-6','清理证据'],
 ];
 
+/** 输入日志的大小上限：文件会被逐行解析成对象，量级与文件同阶。 */
+const MAX_LOG_BYTES=256*1024*1024;
+
 /** 契约里的受保护命令集合：只有它们有 native 的守卫记录。 */
 const PROTECTED_COMMANDS=new Set([
  'select_native_open','select_native_save','read_native_text','write_native_bytes','release_native_file',
@@ -261,6 +264,10 @@ function parseTextSpan(raw:string):LogRecord['span']{
 /** 解析一个日志文件的全部记录。 */
 export async function parseLogFile(path:string):Promise<ParsedFile>{
  const bytes=await readFile(path);
+ // 输入大小上限：日志会被逐行解析成对象，量级与文件同阶。
+ if(bytes.length>MAX_LOG_BYTES){
+  throw new Error(`日志文件过大：${bytes.length} 字节，上限 ${MAX_LOG_BYTES}`);
+ }
  const text=bytes.toString('utf8');
  const records:LogRecord[]=[];
  const unknownSchema:LogRecord[]=[];

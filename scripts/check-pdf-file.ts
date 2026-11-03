@@ -31,7 +31,8 @@ export function reportPdfText(bytes:Buffer):{text:string|null;state:PdfTextState
   const length=Number(/\/Length\s+(\d+)/.exec(dictionary)?.[1]??'');
   if(!Number.isFinite(length)||length<=0)continue;
   let content:Buffer;
-  try{content=inflateSync(bytes.subarray(start,start+length))}catch{continue}
+  // 解压必须有输出上限：PDF 里的流是文件给的，几 KB 的压缩数据能撑出几个 GB。
+  try{content=inflateSync(bytes.subarray(start,start+length),{maxOutputLength:64*1024*1024})}catch{continue}
   inflated++;
   const text=content.toString('latin1');
   for(const literal of text.matchAll(/\(((?:[^()\\]|\\.)*)\)\s*Tj/g))parts.push(literal[1]??'');
