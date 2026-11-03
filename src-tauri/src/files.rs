@@ -30,7 +30,7 @@ struct Grant {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectedFile {
-    key: String,
+    pub(crate) key: String,
     name: String,
     size: u64,
 }
@@ -38,7 +38,8 @@ fn error(_: impl std::fmt::Display) -> String {
     "native-io-failed".into()
 }
 impl FileAccess {
-    fn grant(&self, path: PathBuf, writable: bool) -> Result<SelectedFile, String> {
+    /// 签发授权。生产入口只经由五个受保护命令；探针在受控初始化里直接调用它铸造受控授权。
+    pub(crate) fn grant(&self, path: PathBuf, writable: bool) -> Result<SelectedFile, String> {
         // A name that is not valid UTF-8 is still a usable path: show it lossily
         // instead of failing the whole selection.
         let name = path
@@ -65,6 +66,14 @@ impl FileAccess {
             return Err("file-capability-mismatch".into());
         }
         Ok(grant.path.clone())
+    }
+    /// 撤销授权。探针用它在受控初始化结束时回收自己的授权；
+    /// 正常的 release_native_file 业务清理不受影响。
+    #[allow(dead_code)]
+    pub(crate) fn revoke(&self, key: &str) {
+        if let Ok(mut grants) = self.0.lock() {
+            grants.remove(key);
+        }
     }
 }
 pub fn read_text(path: &Path) -> Result<String, String> {

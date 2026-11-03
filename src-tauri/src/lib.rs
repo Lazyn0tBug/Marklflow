@@ -1,5 +1,8 @@
 mod files;
+mod output_host;
 mod source_guard;
+#[cfg(feature = "pdf-probe")]
+mod probe;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -28,7 +31,7 @@ fn get_platform_info(webview: tauri::Webview) -> PlatformInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(files::FileAccess::default())
         .invoke_handler(tauri::generate_handler![
@@ -38,7 +41,14 @@ pub fn run() {
             files::read_native_text,
             files::write_native_bytes,
             files::release_native_file
-        ])
+        ]);
+    // 受控探针只在 pdf-probe feature 下装配；默认构建里没有这条路径。
+    #[cfg(feature = "pdf-probe")]
+    let builder = builder.setup(|app| {
+        probe::run(app.handle())?;
+        Ok(())
+    });
+    builder
         .run(tauri::generate_context!())
         .expect("error while running MarkFlow application");
 }

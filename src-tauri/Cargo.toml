@@ -6,6 +6,11 @@ authors = ["MarkFlow Team"]
 edition = "2021"
 rust-version = "1.94"
 
+# 默认关闭的探针 feature：只承载受控夹具、探针宿主与探针页装配。
+# 生产来源限制不受它控制（D8 生产接入复用 D1a 的实现）。
+[features]
+pdf-probe = []
+
 [lib]
 name = "markflow_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]

@@ -37,6 +37,7 @@
     "tests/fixtures/architecture/web-native-pdf-probe-client.ts",
     "tests/fixtures/architecture/diagram-dom-probe-client.ts",
     "tests/fixtures/architecture/pagination-dom-probe-client.ts",
+    "tests/fixtures/architecture/pdf-probe-client.ts",
     "tests/fixtures/architecture/tauri-native-io-probe-client.ts",
     "tests/fixtures/architecture/tauri-native-io-probe-report.ts"
   ]
