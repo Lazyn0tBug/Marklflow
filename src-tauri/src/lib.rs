@@ -1,4 +1,5 @@
 mod files;
+mod logging;
 mod output_host;
 mod source_guard;
 #[cfg(feature = "pdf-probe")]
@@ -42,13 +43,25 @@ pub fn run() {
             files::write_native_bytes,
             files::release_native_file
         ]);
+    // 日志基座在业务事件之前就位：守卫判定属安全事件，任何构建都该留痕。
     // 受控探针只在 pdf-probe feature 下装配；默认构建里没有这条路径。
-    #[cfg(feature = "pdf-probe")]
     let builder = builder.setup(|app| {
+        logging::init(app.handle(), feature_name());
+        #[cfg(feature = "pdf-probe")]
         probe::run(app.handle())?;
         Ok(())
     });
     builder
         .run(tauri::generate_context!())
         .expect("error while running MarkFlow application");
+    logging::shutdown(feature_name());
+}
+
+/// 本次构建的探针特征名（记进运行标记）。
+fn feature_name() -> &'static str {
+    if cfg!(feature = "pdf-probe") {
+        "pdf-probe"
+    } else {
+        "default"
+    }
 }
