@@ -1,0 +1,34 @@
+{
+  "artifact": "local-macos-pdf-probe.jsonl",
+  "kind": "D1b 本机流程验证日志（非交付宿主证据）",
+  "sha256": "aaa3866598b76b1d3821166e4443963a47374948ba1be44b51e9c5e3941e6072",
+  "bytes": 16559,
+  "records": 47,
+  "run_id": "a976ef1f-e147-4641-a1ad-7da21e1699fa",
+  "build": {
+    "feature": "pdf-probe",
+    "command": "cargo run --no-default-features --features pdf-probe",
+    "app_version": "0.9.1"
+  },
+  "environment": {
+    "os": "macos",
+    "arch": "aarch64",
+    "note": "本机流程验证；交付宿主的正式证据待重跑取归档"
+  },
+  "log_settings": {
+    "MARKFLOW_LOG": "info",
+    "MARKFLOW_LOG_FORMAT": "json"
+  },
+  "checker": {
+    "command": "bun scripts/pdf-probe-check.ts docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl",
+    "assertions_passed": ["D1b-1", "D1b-2", "D1b-3", "D1b-4", "D1b-6"],
+    "assertions_unconfirmed": ["D1b-5"],
+    "diagnostics": {"error": 0, "warning": 1, "info": 1},
+    "known_limits": [
+      "no-run-end：本次为强杀进程退出，非正常退出，故不宣称日志完整",
+      "D1b-2 的内容逐字相符只有页面自述依据（原生只证明成功与字节数）",
+      "D1b-4 的未弹框为人工项，本记录不含该人工确认",
+      "D1b-5 未提供默认构建的运行记录"
+    ]
+  }
+}

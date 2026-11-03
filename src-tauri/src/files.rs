@@ -10,13 +10,72 @@ use std::{
 };
 use tauri_plugin_dialog::DialogExt;
 
+use crate::logging;
 use crate::source_guard;
 
 /// 取调用方身份并按允许范围判定。拒绝时返回共享稳定拒绝码。
 /// 五个受保护入口都在任何文件、对话框或授权撤销的副作用之前调用它。
-fn ensure_allowed(webview: &tauri::Webview) -> Result<(), String> {
-    let identity = source_guard::Identity::from_labels(webview.window().label(), webview.label());
-    source_guard::check_source(&identity, source_guard::ALLOWED_CALLERS).map_err(str::to_owned)
+/// 判定结果留痕：守卫决策是安全事件，任何构建都该可观测。
+fn ensure_allowed(command: &str, identity: &source_guard::Identity) -> Result<(), String> {
+    match source_guard::check_source(identity, source_guard::ALLOWED_CALLERS) {
+        Ok(()) => {
+            tracing::info!(
+                event = "source_decision",
+                    decision = "allow",
+                command = command,
+                window = identity.window_label.as_ref(),
+                webview = identity.webview_label.as_ref(),
+            );
+            Ok(())
+        }
+        Err(code) => {
+            tracing::warn!(
+                event = "source_decision",
+                    decision = "deny",
+                command = command,
+                reason_code = code,
+                window = identity.window_label.as_ref(),
+                webview = identity.webview_label.as_ref(),
+            );
+            Err(code.to_owned())
+        }
+    }
+}
+
+/// 在命令 span 内执行命令体。
+///
+/// span 名为 `command`，是根 span 的直接子；判定与结果都记在该 span 内，
+/// 事件名取契约的最小原生事件集（`source_decision`、`operation_result`）。
+///
+/// 守卫只在这里判定一次：放行记 `source_decision=allow`；拒绝时命令体不会执行，
+/// 故由本层补一条 `operation_result=denied`——每个命令 span 都有结果事件，
+/// 拒绝的最终结果不会只存在于守卫的返回值里。
+fn in_command_span<T>(
+    command: &'static str,
+    webview: &tauri::Webview,
+    body: impl FnOnce(std::time::Instant) -> Result<T, String>,
+) -> Result<T, String> {
+    let identity =
+        source_guard::Identity::from_labels(webview.window().label(), webview.label());
+    let span = logging::command_span(
+        command,
+        identity.window_label.as_ref(),
+        identity.webview_label.as_ref(),
+    );
+    span.in_scope(|| {
+        let started = std::time::Instant::now();
+        if let Err(code) = ensure_allowed(command, &identity) {
+            tracing::warn!(
+                event = "operation_result",
+                result = "denied",
+                command = command,
+                reason_code = code.as_str(),
+                elapsed_ms = started.elapsed().as_millis(),
+            );
+            return Err(code);
+        }
+        body(started)
+    })
 }
 
 pub const READ_LIMIT: u64 = 50 * 1024 * 1024;
@@ -129,7 +188,39 @@ pub async fn select_native_open(
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
 ) -> Result<Option<Vec<SelectedFile>>, String> {
-    ensure_allowed(&webview)?;
+    in_command_span("select_native_open", &webview, |started| {
+        let outcome = paths_of(app, access);
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(files) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = "select_native_open",
+                    count = files.as_ref().map(|items| items.len()).unwrap_or(0),
+                    elapsed_ms = elapsed,
+                );
+                Ok(files)
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = "select_native_open",
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
+}
+
+/// 打开文件对话框并为选中的文件签发只读授权。
+fn paths_of(
+    app: tauri::AppHandle,
+    access: tauri::State<'_, FileAccess>,
+) -> Result<Option<Vec<SelectedFile>>, String> {
     let paths = app
         .dialog()
         .file()
@@ -165,16 +256,48 @@ pub async fn select_native_save(
     access: tauri::State<'_, FileAccess>,
     name: String,
 ) -> Result<Option<SelectedFile>, String> {
-    ensure_allowed(&webview)?;
-    if name.is_empty() || name.contains(['/', '\\', '\0']) || name == "." || name == ".." {
-        return Err("invalid-file-name".into());
-    }
-    app.dialog()
-        .file()
-        .set_file_name(name)
-        .blocking_save_file()
-        .map(|p| access.grant(p.into_path().map_err(error)?, true))
-        .transpose()
+    in_command_span("select_native_save", &webview, |started| {
+        if name.is_empty() || name.contains(['/', '\\', '\0']) || name == "." || name == ".." {
+            tracing::warn!(
+                event = "operation_result",
+                        result = "error",
+                command = "select_native_save",
+                reason_code = "invalid-file-name",
+                elapsed_ms = started.elapsed().as_millis(),
+            );
+            return Err("invalid-file-name".into());
+        }
+        let granted = app
+            .dialog()
+            .file()
+            .set_file_name(name)
+            .blocking_save_file()
+            .map(|p| access.grant(p.into_path().map_err(error)?, true))
+            .transpose();
+        let elapsed = started.elapsed().as_millis();
+        match granted {
+            Ok(file) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = "select_native_save",
+                    granted = file.is_some(),
+                    elapsed_ms = elapsed,
+                );
+                Ok(file)
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = "select_native_save",
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
 }
 #[tauri::command]
 pub async fn read_native_text(
@@ -182,8 +305,33 @@ pub async fn read_native_text(
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<String, String> {
-    ensure_allowed(&webview)?;
-    read_text(&access.path(&key, false)?)
+    in_command_span("read_native_text", &webview, |started| {
+        // 授权解析失败也是命令结果：早退路径同样记 operation_result，不留空白。
+        let outcome = access.path(&key, false).and_then(|path| read_text(&path));
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(text) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = "read_native_text",
+                    bytes = text.len(),
+                    elapsed_ms = elapsed,
+                );
+                Ok(text)
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = "read_native_text",
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
 }
 #[tauri::command]
 pub async fn write_native_bytes(
@@ -192,8 +340,34 @@ pub async fn write_native_bytes(
     key: String,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
-    ensure_allowed(&webview)?;
-    commit_bytes(&access.path(&key, true)?, &bytes)
+    in_command_span("write_native_bytes", &webview, |started| {
+        let outcome = access
+            .path(&key, true)
+            .and_then(|path| commit_bytes(&path, &bytes));
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(()) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = "write_native_bytes",
+                    bytes = bytes.len(),
+                    elapsed_ms = elapsed,
+                );
+                Ok(())
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = "write_native_bytes",
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
 }
 #[tauri::command]
 pub fn release_native_file(
@@ -201,9 +375,37 @@ pub fn release_native_file(
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<(), String> {
-    ensure_allowed(&webview)?;
-    access.0.lock().map_err(error)?.remove(&key);
-    Ok(())
+    in_command_span("release_native_file", &webview, |started| {
+        let outcome = access
+            .0
+            .lock()
+            .map_err(error)
+            .map(|mut grants| {
+                grants.remove(&key);
+            });
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(()) => {
+                tracing::info!(
+                    event = "operation_result",
+                    result = "ok",
+                    command = "release_native_file",
+                    elapsed_ms = elapsed,
+                );
+                Ok(())
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                    result = "error",
+                    command = "release_native_file",
+                    reason_code = code.as_str(),
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
 }
 
 #[cfg(test)]
