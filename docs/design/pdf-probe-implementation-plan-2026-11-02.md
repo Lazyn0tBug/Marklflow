@@ -162,7 +162,8 @@ D1b-1至D1b-6成立，权限拒绝正向确认，探针有效；具体层归因�
 
 1. 输出宿主：**用与 D1b 相同的创建函数、同一常量与同一形态创建**（独立 label、`visible(false)` 的专用 WebviewWindow），复用其 WebView2 控制器；不并行建设其他宿主形态，不自动换宿主。每次运行各自创建一台，走同一路径而非共用实例。
 2. 原生接口访问与转换、`PrintToPdf` 异步完成回调、COM 引用与回调生命周期、加载与基本清理。【源码级已定（2026-11-03）：`PrintToPdf` 属 `ICoreWebView2_7`，签名 `PrintToPdf(resultfilepath: PCWSTR, printsettings: ICoreWebView2PrintSettings, handler: ICoreWebView2PrintToPdfCompletedHandler)`；完成经**回调** `Invoke(errorcode: HRESULT, result: BOOL)` 送达，**不返回 operation 对象**，故无须管理 operation 的 Close，只需把 handler 持有到回调触发。`PrintToPdfStream` 在 `ICoreWebView2_16`，锁定接口用不上】
-3. 受控就绪检测：目标顶层导航成功且文档加载完成、`document.fonts.ready`、图片成功加载或解码、页面盒数量与尺寸核对。HTML `img` 与 SVG `image` 按实际 API 分流。**不使用固定睡眠，也不以 rAF 为必需就绪条件**；不开放作者脚本；须证明受控检测与 CSP 兼容。【待定 TBD-11：原生受控脚本执行是否受冻结 HTML 的 `default-src 'none'` 约束未核，若受限则就绪检测路径需另找】
+3. 受控就绪检测：目标顶层导航成功且文档加载完成、`document.fonts.ready`、图片成功加载或解码、页面盒数量与尺寸核对。HTML `img` 与 SVG `image` 按实际 API 分流。**不使用固定睡眠，也不以 rAF 为必需就绪条件**；不开放作者脚本；须证明受控检测与 CSP 兼容。【TBD-11 已决（2026-11-03，原生实测）：**原生受控脚本执行不受冻结 HTML 的 CSP 约束**——原生 eval 在 `default-src 'none'` 的归档原件上读到了 `ready_state=complete`、`fonts_status=loaded`、页面盒 3 个（794×1123 px）、图片 1/1 解码。**就绪判据须带文档身份**：导航到新页时求值可能落在旧文档上，而旧文档也可能"加载完成、字体已加载"，故须先确认文档身份再采信读数】
+   - **受控样本按路径加载归档原件，不走 dev server**：dev server 会往 HTML 注入 react-refresh 前导与 vite client，注入后的字节与被登记 SHA-256 的原件不是同一份（实测 `d09bc77b…` vs `78aff00c…`）。样本自包含（图片与字体皆 data:，零外部资源），用 `file://` 加载归档原件即可。
 4. `PrintToPdf` 输出到受控临时文件；默认与目标同目录、同卷提交，参考 M3 `commit_bytes` 的 `new_in(parent)` / `sync` / `persist` 保护原则；不默认走系统临时卷 rename，不默认引入跨卷复制分支。【TBD-12 已决（2026-11-03，源码级）：输出路径是调用方给的 `PCWSTR`，目标目录由我们选，**同目录临时文件 + rename 的提交策略可行**；TBD-15 仍待定：`commit_bytes` 接 bytes，把其保护原则套到原生 PDF 文件输出属新适配，非既有实现】
 5. **打印设置必须显式钉死**：冻结样本里有两条 `@page` 规则（`size: A4; margin: 0` 与 `size: letter; margin: 0`），页面盒是 210mm×297mm。故 `ICoreWebView2PrintSettings` 须设 PageWidth/PageHeight = 210÷25.4、297÷25.4 英寸、四边 Margin 全 0、ShouldPrintHeaderAndFooter = false——否则 PDF 页面尺寸与 HTML 页面盒对不上，D1d 的页数与尺寸核对会建立在错的基准上。`ShouldPrintBackgrounds` 取 true：样本里唯一的 CSS 背景是裁切标记，正文图片是 `<img>`、公式是内联 `<svg>`，都不依赖背景，该开关只影响裁切标记，而裁切标记属于打印就绪产物的一部分。
 6. 清理：成功、失败、超时、关闭均释放宿主与临时资源。超时后须先使原生任务不能再提交或写入目标，再清理临时文件；迟到回调不得报成功。
@@ -312,7 +313,7 @@ D1c-1 至 D1c-5 成立，或取得明确失败证据。**取得文件不等于�
 
 | 编号 | 位置 | 存疑内容 | 影响范围 | 消解方式 |
 | --- | --- | --- | --- | --- |
-| TBD-11 | §6.1 第3条 | 原生受控脚本执行是否受冻结 HTML 的 `default-src 'none'` 约束 | D1c-1；若受限则就绪检测路径需另找 | D1c 实测 |
+| TBD-11（已决） | §6.1 第3条 | 原生受控脚本执行是否受冻结 HTML 的 `default-src 'none'` 约束 | D1c-1；若受限则就绪检测路径需另找 | 已决（2026-11-03，原生实测）：原生 eval 在该页上读到了完整读数，**不受 CSP 约束**；就绪判据另加"文档身份"一项 |
 | TBD-12（已决） | §6.1 第4条 | 原生输出能否指定目标目录 | D1c-3 与同目录临时提交策略 | 已决（2026-11-03，源码级）：`PrintToPdf` 的 `resultfilepath` 是调用方给的 `PCWSTR`，目标目录由我们选，同目录临时文件 + rename 的提交策略可行 |
 | TBD-13 | §7.1 D1d-3、D1d-4、§12 | poppler 工具未安装且需另行授权 | D1d-3 与 D1d-4 的自动执行 | 授权安装，或改用其他既有工具 |
 | TBD-15 | §6.1 第4条、§8 | `commit_bytes` 接 bytes，把其保护原则套到原生 PDF 文件输出属新适配 | D1c-3 的覆盖失败保护 | D1c 实测，失败单独归类 |

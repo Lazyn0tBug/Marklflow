@@ -12,7 +12,7 @@
 //! 两者的差别只有身份，因此允许与拒绝的证据出自同一条生产路径。
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -31,6 +31,56 @@ const PROBE_PAGE_PATH: &str = "/tests/fixtures/architecture/pdf-probe-client.htm
 
 /// 报告的读取超时。探针页要跑完通道阳性、受控读取与选择器尝试。
 const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// 就绪探测的读取超时。冻结样本的加载与字体、图片就绪都在这个窗口内完成。
+const READINESS_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// 受控样本归档原件的位置。优先环境变量（交付宿主上的路径可能不同），
+/// 退回编译期的仓库路径（交付宿主从仓库构建，可用）。两者都没有就跳过就绪探测。
+const SAMPLE_ENV: &str = "MARKFLOW_PROBE_SAMPLE";
+
+/// 冻结样本的归档原件路径。
+///
+/// **必须加载归档原件，不能走 dev server**：dev server 会往 HTML 里注入
+/// react-refresh 前导与 vite client，注入后的字节与被记录了 SHA-256 的原件不是同一份
+/// （实测 d09bc77b… vs 78aff00c…），打印出来的就不是那个被登记的产物。
+fn frozen_sample_path() -> Option<PathBuf> {
+    if let Ok(value) = std::env::var(SAMPLE_ENV) {
+        let path = PathBuf::from(value);
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent()?.to_path_buf();
+    let path = repo.join("docs/acceptance/pdf-probe/frozen-sample.html");
+    if path.is_file() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// 就绪探测脚本：读页面的加载状态、字体、图片与页面盒。
+///
+/// 只读不写：不执行作者脚本，不改页面。返回 JSON 字符串，判定由 Rust 做。
+/// 字体与图片的"就绪"用状态而非 Promise 查询，避免依赖求值是否等待 Promise。
+const READINESS_SCRIPT: &str = r#"(()=>{
+  const boxes=[...document.querySelectorAll('.pagedjs_page')];
+  const images=[...document.images];
+  const fonts=document.fonts?document.fonts.status:'unknown';
+  const loaded=images.filter(image=>image.complete&&image.naturalWidth>0).length;
+  return {
+    href:location.href,
+    ready_state:document.readyState,
+    title:document.title,
+    fonts_status:fonts,
+    page_boxes:boxes.length,
+    page_box_size:boxes.length?boxes[0].offsetWidth+'x'+boxes[0].offsetHeight:'',
+    images_total:images.length,
+    images_loaded:loaded,
+    ready:document.readyState==='complete'&&fonts==='loaded'&&loaded===images.length,
+  };
+})()"#;
 
 /// 探针装配的失败类别。
 ///
@@ -212,6 +262,42 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             }
         }
 
+        // 就绪探测：把输出宿主导航到**归档原件**，用原生 eval 读它的 DOM。
+        // 这是 D1c-1 的就绪判据原型，也是 TBD-11 的决定性验证：
+        // 原生受控脚本执行若不受冻结样本的 CSP 约束，就能读到页面盒、字体与图片状态。
+        // 探针页的证据已在此之前读完，导航走不影响。
+        match frozen_sample_path().and_then(|path| Url::from_file_path(path).ok()) {
+            Some(url) => {
+                let expected = url
+                    .path_segments()
+                    .and_then(|mut segments| segments.rfind(|part| !part.is_empty()))
+                    .unwrap_or("frozen-sample.html")
+                    .to_owned();
+                if let Some(window) = &output_window {
+                    if window.navigate(url).is_ok() {
+                        probe_readiness(window, "output", &expected);
+                    } else {
+                        tracing::warn!(
+                            event = "probe_readiness",
+                            host = "output",
+                            eval_ok = false,
+                            ready = false,
+                            reason = "导航到受控样本失败",
+                        );
+                    }
+                }
+            }
+            None => {
+                tracing::warn!(
+                    event = "probe_readiness",
+                    host = "output",
+                    eval_ok = false,
+                    ready = false,
+                    reason = "受控样本归档原件不在预期位置",
+                );
+            }
+        }
+
         // 探针跑完把主窗口导回应用自己的页面：探针是测试路径，不该把用户留在探针页上。
         // 报告已在此之前读完，导回不影响证据。
         let app_restored = match (&main_window, &initial_target) {
@@ -272,6 +358,99 @@ fn navigate_to_probe(window: &tauri::WebviewWindow, url: &Url) -> (bool, bool, S
         }
     }
     (false, true, String::new())
+}
+
+/// 就绪探测：反复求值直到就绪条件成立或超时，结果记进日志。
+///
+/// **不用固定睡眠**：轮询的是条件（文档加载完成、字体已加载、图片已解码），
+/// 条件成立即返回。求值失败（页面尚未加载、或 CSP 挡住了求值）与"未就绪"分开记：
+/// 前者是 eval_ok=false，后者是 ready=false——两者对 D1c 的含义完全不同。
+fn probe_readiness(window: &tauri::WebviewWindow, host: &str, expected: &str) {
+    let deadline = Instant::now() + READINESS_TIMEOUT;
+    let mut last: Option<serde_json::Value> = None;
+    let expected = expected.to_lowercase();
+    while Instant::now() < deadline {
+        let (sender, receiver) = mpsc::channel();
+        if window
+            .eval_with_callback(READINESS_SCRIPT, move |value| {
+                let _ = sender.send(value);
+            })
+            .is_err()
+        {
+            break;
+        }
+        let Ok(raw) = receiver.recv_timeout(Duration::from_millis(800)) else {
+            std::thread::sleep(Duration::from_millis(200));
+            continue;
+        };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
+            continue;
+        };
+        // 文档身份先于就绪：导航到新页面时求值可能落在**旧文档**上，
+        // 旧文档也可能"加载完成、字体已加载"——那就白读了。文档身份对不上就继续等。
+        let is_target = value
+            .get("href")
+            .and_then(|entry| entry.as_str())
+            .map(|href| href.to_lowercase().contains(&expected))
+            .unwrap_or(false);
+        let ready = is_target
+            && value
+                .get("ready")
+                .and_then(|entry| entry.as_bool())
+                .unwrap_or(false);
+        last = Some(value);
+        if ready {
+            break;
+        }
+    }
+    // 只记一次：轮询的中间态不进日志（一次探测不该刷出成百上千条记录）。
+    let Some(value) = last else {
+        tracing::warn!(
+            event = "probe_readiness",
+            host = host,
+            eval_ok = false,
+            ready = false,
+            reason = "原生求值拿不到内容",
+        );
+        return;
+    };
+    let text = |key: &str| {
+        value
+            .get(key)
+            .and_then(|entry| entry.as_str())
+            .unwrap_or("")
+            .to_owned()
+    };
+    let number = |key: &str| {
+        value
+            .get(key)
+            .and_then(|entry| entry.as_i64())
+            .unwrap_or_default()
+    };
+    let is_target = value
+        .get("href")
+        .and_then(|entry| entry.as_str())
+        .map(|href| href.to_lowercase().contains(&expected))
+        .unwrap_or(false);
+    let ready = is_target
+        && value
+            .get("ready")
+            .and_then(|entry| entry.as_bool())
+            .unwrap_or(false);
+    tracing::info!(
+        event = "probe_readiness",
+        host = host,
+        eval_ok = true,
+        is_target = is_target,
+        ready = ready,
+        title = text("title").as_str(),
+        ready_state = text("ready_state").as_str(),
+        fonts_status = text("fonts_status").as_str(),
+        page_boxes = number("page_boxes"),
+        page_box_size = text("page_box_size").as_str(),
+        images_total = number("images_total"),
+        images_loaded = number("images_loaded"),
+    );
 }
 
 /// 记下 Rust 侧对页面报告的读数。

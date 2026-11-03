@@ -580,6 +580,51 @@ pub unsafe fn PrintToPdf<P0, P1, P2>(
 
 **TBD-11：就绪检测能否穿过冻结 HTML 的 `default-src 'none'`** —— 只能在交付宿主实测（`ExecuteScript` 是否受页面 CSP 约束）。这决定 D1c-1 的就绪判据走哪条路：能执行则按 §6.1 第 3 条（导航成功 + 文档加载完成 + `document.fonts.ready` + 图片解码 + 页面盒核对）；不能则须另找路径，且 D1c 的设计随之改。
 
+## TBD-11 消解：原生受控脚本执行不受 CSP 约束（2026-11-03，原生实测）
+
+### 交付宿主上的旁证（人工）
+
+在交付宿主上把冻结样本载进应用窗口、用 F12 看：
+
+```
+frozen-sample.html:809 Loading the script 'http://127.0.0.1:3000/@react-refresh' violates ... "default-src 'none'"
+eval('1+1') → EvalError: Evaluating a string as JavaScript violates ... 'unsafe-eval' is not an allowed source of script
+```
+
+两件事被分开：**页内 `eval()` 被 CSP 拦**（`'unsafe-eval'` 不在允许源里）；但**宿主发起的直接求值在同一页上是通的**（控制台能执行，报错来自套的那层 `eval()`）。Tauri 的 `eval` 走 WebView2 的 `ExecuteScript`，属宿主发起那一类 → 高置信不受页面 CSP 约束。**旁证不是结论**，故仍做了原生实测。
+
+### 原生实测（决定性）
+
+在 `pdf-probe` 构建里新增就绪探测：输出宿主导航到**归档原件**（`file://`），原生 eval 读它的 DOM。本机结果：
+
+```
+probe_readiness {
+  eval_ok: true,          ← 原生求值拿到了内容
+  is_target: true,        ← 读的是正确的文档
+  ready: true,
+  ready_state: "complete", fonts_status: "loaded",
+  page_boxes: 3, page_box_size: "794x1123",   ← A4 @96dpi
+  images_total: 1, images_loaded: 1,
+  title: "静默 PDF 探针受控样本"
+}
+```
+
+**TBD-11 结论：原生受控脚本执行不受冻结 HTML 的 `default-src 'none'` 约束** ✓。就绪判据（文档加载完成 + 字体已加载 + 图片已解码 + 页面盒数量与尺寸）全部成立，且页面盒尺寸 **794×1123 px = 210mm×297mm @96dpi** —— 正是打印设置要钉死的那个基准（TBD-12 的配套结论）。
+
+### 探测过程中自己踩的两个坑
+
+**① 求值落在旧文档上。** 首版探测把"就绪"判成 `readyState==='complete' && fonts==='loaded' && 图片全解码`，结果读到了**探针页**（导航还没换文档）：探针页恰好也满足这三条 → 探测误报成功，页面盒读成 0。**修法：就绪判据必须带文档身份**——先确认读到的文档就是目标文档（比对其 URL 含目标文件名），再采信读数。事件里记 `is_target` 字段，身份对不上就是"读到的不是那一页"。
+
+**② 轮询把日志刷爆了。** 首版每轮询一次记一条事件，一次探测刷出上千条、1.2 MB 日志。**修法：轮询的中间态不进日志，只记最终状态一次**（就绪了记 INFO，没就位记 WARN 并说明是没读到内容还是没达条件）。
+
+### 附带确立的一条约束
+
+**受控样本必须按路径加载归档原件，不能走 dev server。** dev server 注入 react-refresh 前导与 vite client，注入后的字节与被登记 SHA-256 的原件不是同一份（实测 `d09bc77b…` vs 归档的 `78aff00c…`）。走 dev server 的话，打印出来的就不是那个被登记的产物，D0 交接物表的输入身份模型也就断了。样本自包含（图片与字体皆 data:、零外部资源），`file://` 加载归档原件即可。
+
+### 下一步
+
+D1c 的实施：COM 侧 `PrintToPdf` 调用、打印设置钉死 A4 与零边距、输出到同目录临时文件再 rename、清理与迟到回调处理。就绪探测这一段已可直接复用（就是上面那套判据）。
+
 ## 待补
 
 - **D1a 已完成**（2026-11-03）：六条断言齐了，D1a-6 的运行期身份由交付宿主核对通过（("main","main") 与允许范围写入值一致）。

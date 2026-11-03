@@ -105,6 +105,7 @@ const EXPECTED_SPAN:Record<string,string>={
  host_state:'host',
  probe_source_check:'probe',probe_initial_load:'probe',probe_navigation:'probe',probe_cleanup:'probe',
  probe_abort:'probe',probe_report_unreadable:'probe',probe_report_timeout:'probe',probe_eval_raw:'probe',
+ probe_readiness:'probe',
  page_report_observed:'probe',
  log_health:'log',
 };
