@@ -406,6 +406,8 @@ log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
 
 #### B. D1c 部分（2026-11-03 待执行）
 
+> **详细清单与排查顺序见[Windows 侧检查与说明](windows-build-check-2026-11-03.md)**：已知问题（借用逃逸 E0521、未使用导入、交叉检查漏覆盖）、逐项检查表、按症状查因、以及本地交叉检查的用法与局限。
+
 Windows 侧代码本机只能交叉编译验类型（`bun scripts/check-windows-com.ts` 已通过），**运行能力必须在真机上看**。
 
 | 步 | 操作 | 要点 |
