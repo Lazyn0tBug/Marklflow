@@ -105,7 +105,7 @@ const EXPECTED_SPAN:Record<string,string>={
  host_state:'host',
  probe_source_check:'probe',probe_initial_load:'probe',probe_navigation:'probe',probe_cleanup:'probe',
  probe_abort:'probe',probe_report_unreadable:'probe',probe_report_timeout:'probe',probe_eval_raw:'probe',
- probe_readiness:'probe',
+ probe_readiness:'probe',probe_pdf:'probe',
  page_report_observed:'probe',
  log_health:'log',
 };
@@ -1000,6 +1000,65 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
    }
   }
   assertions.push(assertion('D1b-6','清理证据',verdict,basis,issues));
+ }
+
+ // D1c-1 就绪判据：原生求值读到目标文档，且就绪条件成立。
+ {
+  const readiness=run.native.filter(record=>record.event==='probe_readiness');
+  const target=readiness.find(record=>record.fields.is_target==='true');
+  const basis:string[]=[];
+  const issues:string[]=[];
+  let verdict:Verdict='unconfirmed';
+  if(readiness.length===0){
+   issues.push('未见就绪探测记录：原生侧未测');
+  }else if(!target){
+   verdict='fail';
+   issues.push('就绪探测没有读到目标文档：原生求值落在了别的文档上');
+  }else if(target.fields.ready!=='true'){
+   verdict='fail';
+   issues.push(`目标文档未达就绪条件：ready_state=${target.fields.ready_state||'未记'}，fonts=${target.fields.fonts_status||'未记'}`);
+  }else{
+   verdict='pass';
+   basis.push(`native 观察：目标文档就绪（ready_state=${target.fields.ready_state}，fonts=${target.fields.fonts_status}）`);
+   basis.push(`页面盒 ${target.fields.page_boxes} 个，尺寸 ${target.fields.page_box_size||'未记'}；图片 ${target.fields.images_loaded}/${target.fields.images_total} 已解码`);
+  }
+  assertions.push(assertion('D1c-1','就绪判据成立',verdict,basis,issues));
+ }
+
+ // D1c-2 打印结果：取得实际 PDF，或取得明确失败证据。
+ {
+  const prints=run.native.filter(record=>record.event==='probe_pdf');
+  const basis:string[]=[];
+  const issues:string[]=[];
+  let verdict:Verdict='unconfirmed';
+  if(prints.length===0){
+   issues.push('未见打印结果记录：未测');
+  }else{
+   const printed=prints.find(record=>record.fields.ok==='true');
+   const failed=prints.find(record=>record.fields.ok!=='true');
+   if(printed){
+    const bytes=Number(printed.fields.bytes??'0');
+    if(bytes>0){
+     verdict='pass';
+     basis.push(`native 观察：打印成功，产出 ${bytes} 字节，耗时 ${printed.fields.elapsed_ms??'未记'} ms`);
+     if(printed.fields.committed==='true')basis.push('临时文件已 rename 提交到目标');
+     else{
+      verdict='fail';
+      issues.push('打印成功但未提交：临时文件未 rename 到目标');
+     }
+    }else{
+     verdict='fail';
+     issues.push('打印报成功但产出为 0 字节');
+    }
+   }else if(failed){
+    verdict='pass';
+    basis.push(`native 观察：打印未成功，但有明确失败证据（${failed.fields.reason||'未记原因'}）`);
+   }else{
+    verdict='unconfirmed';
+    issues.push('打印结果记录缺失');
+   }
+  }
+  assertions.push(assertion('D1c-2','取得 PDF 或明确失败证据',verdict,basis,issues));
  }
 
  return {assertions,diagnostics};

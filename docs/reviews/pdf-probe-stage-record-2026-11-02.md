@@ -625,6 +625,49 @@ probe_readiness {
 
 D1c 的实施：COM 侧 `PrintToPdf` 调用、打印设置钉死 A4 与零边距、输出到同目录临时文件再 rename、清理与迟到回调处理。就绪探测这一段已可直接复用（就是上面那套判据）。
 
+## D1c 实施：静默 PDF 输出（2026-11-03）
+
+### 落点
+
+| 件 | 位置 | 内容 |
+| --- | --- | --- |
+| COM 核心 | `src-tauri/src/print_com.rs` | Windows 专属：`ICoreWebView2_7::PrintToPdf` 调用、打印设置、完成回调与等待。不依赖 tauri，可被交叉编译夹具直接验证 |
+| 宿主侧 | `src-tauri/src/print_host.rs` | 从 Tauri 窗口取到 WebView2 的控制器与环境，发起在 UI 线程、等待在后台线程；非 Windows 返回明确的不支持 |
+| 交叉检查 | `scripts/check-windows-com.ts` | 用临时小 crate 把 `print_com.rs` **真文件**编译成 Windows 目标 |
+| 探针接线 | `src-tauri/src/probe.rs` | 打印宿主（独立实例，载归档原件）→ 就绪探测 → 打印到目标同目录的临时文件 → rename 提交 |
+
+### 打印设置钉死 A4 与零边距
+
+`ICoreWebView2PrintSettings` 设 PageWidth/PageHeight = 210÷25.4、297÷25.4 英寸，四边 Margin 全 0，Orientation 纵向，ShouldPrintBackgrounds = true，ShouldPrintHeaderAndFooter = false。依据见 TBD-12 的配套结论。
+
+### 提交策略
+
+输出到**目标同目录**的临时文件（`<目标名>.tmp-<pid>`），成功后 rename 到目标——同卷 rename 是原子的，且**目标只在最后一步被触及**，故打印失败时原文件保持不变（D1c-3）。失败时临时文件被删除。
+
+### 三处设计错误，都是写下来才发现的
+
+**① 在 UI 线程等回调 = 死锁。** 初版把"发起 + 等待"写在同一个函数里，而那个函数经 `with_webview` 在 UI 线程执行；完成回调也在 UI 线程触发 → 自己等自己。拆成 `start_print`（UI 线程，只发起，返回接收端）与 `finish_print`（后台线程，等待）✓。
+
+**② 完成回调的第一个参数不是 HRESULT，是 `Result<(), Error>`。** HRESULT 在 COM 转换层就已经变成 Result 了。**这是交叉编译检查抓到的**——本机编不了 Windows 侧，靠读签名看不出来。
+
+**③ 发送端被移进闭包后，错误路径还在用它。** 同样是交叉编译检查抓到的（"use of moved value"）：回调闭包拿走的是克隆，原发送端留给错误路径 ✓。
+
+### 交叉编译检查为什么值得做
+
+macOS 上没有 llvm-rc，`cargo check --target x86_64-pc-windows-msvc` 会在资源编译那步卡住——整棵依赖树都过不去，**Windows 侧代码一处也验不了**。把 COM 部分拆成不依赖 tauri 的独立模块后，用一个只依赖 `webview2-com` 与 `windows` 的临时小 crate 就能把它编译成 Windows 目标；脚本 `scripts/check-windows-com.ts` 把这件事固定下来，且**编译的是仓库里的真文件**（`#[path]` 引入），不会与实际代码漂移。
+
+它当场抓到了上面 ② 与 ③ 两处错误——若没有它，这两处会留到交付宿主编译时才暴露。
+
+### 本机（macOS）能验到哪一步
+
+整条链除 COM 调用外全部跑通：打印宿主载归档原件 ✓ → 原生 eval 读 DOM（就绪、页面盒 3 个 794×1123、图片 1/1）✓ → 打印调用 → 如实报"静默 PDF 输出只支持 Windows（依赖 WebView2 的 PrintToPdf）" ✓ → 清理 ✓。
+
+校验器新增两条可从日志判定的断言：**D1c-1 就绪判据成立**、**D1c-2 取得 PDF 或明确失败证据**（后者按方案：失败证据同样成立）✓。D1c-3（同卷与失败保护）、D1c-4（无残留与迟到回调）、D1c-5（无窗口闪现与打印面板）需要文件与宿主的事实，其中 D1c-5 的"无闪现"与"无面板"只能人工确认。
+
+### 下一步
+
+**交付宿主编译并运行**（Windows 侧代码本机只能交叉编译验证类型，运行能力必须在真机上看）。要看的：`probe_pdf` 事件的 `ok`／`bytes`／`committed`，以及产出的 PDF 的页数与页面尺寸（D1d 的内容核验随后进行）。
+
 ## 待补
 
 - **D1a 已完成**（2026-11-03）：六条断言齐了，D1a-6 的运行期身份由交付宿主核对通过（("main","main") 与允许范围写入值一致）。

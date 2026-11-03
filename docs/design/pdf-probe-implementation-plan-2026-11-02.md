@@ -167,6 +167,8 @@ D1b-1至D1b-6成立，权限拒绝正向确认，探针有效；具体层归因�
 4. `PrintToPdf` 输出到受控临时文件；默认与目标同目录、同卷提交，参考 M3 `commit_bytes` 的 `new_in(parent)` / `sync` / `persist` 保护原则；不默认走系统临时卷 rename，不默认引入跨卷复制分支。【TBD-12 已决（2026-11-03，源码级）：输出路径是调用方给的 `PCWSTR`，目标目录由我们选，**同目录临时文件 + rename 的提交策略可行**；TBD-15 仍待定：`commit_bytes` 接 bytes，把其保护原则套到原生 PDF 文件输出属新适配，非既有实现】
 5. **打印设置必须显式钉死**：冻结样本里有两条 `@page` 规则（`size: A4; margin: 0` 与 `size: letter; margin: 0`），页面盒是 210mm×297mm。故 `ICoreWebView2PrintSettings` 须设 PageWidth/PageHeight = 210÷25.4、297÷25.4 英寸、四边 Margin 全 0、ShouldPrintHeaderAndFooter = false——否则 PDF 页面尺寸与 HTML 页面盒对不上，D1d 的页数与尺寸核对会建立在错的基准上。`ShouldPrintBackgrounds` 取 true：样本里唯一的 CSS 背景是裁切标记，正文图片是 `<img>`、公式是内联 `<svg>`，都不依赖背景，该开关只影响裁切标记，而裁切标记属于打印就绪产物的一部分。
 6. 清理：成功、失败、超时、关闭均释放宿主与临时资源。超时后须先使原生任务不能再提交或写入目标，再清理临时文件；迟到回调不得报成功。
+7. **发起与等待必须分开**：COM 调用线程亲和，`PrintToPdf` 须在 UI 线程发起；而完成回调也在 UI 线程触发——**在 UI 线程上等就是自己等自己**。故发起在 UI 线程（经 `with_webview` 调度），等待在后台线程（带超时的通道）。超时即失败，迟到回调不得改写回执。
+8. **Windows 侧代码的交叉编译检查**：COM 部分单独放在 `src-tauri/src/print_com.rs`（不依赖 tauri），由 `scripts/check-windows-com.ts` 用临时小 crate 把它编译成 Windows 目标——**编译的是仓库里的真文件，不是副本**，故不会漂移。macOS 上没有 llvm-rc，整棵依赖树过不去，故只能这样验。
 
 ### 6.2 断言
 

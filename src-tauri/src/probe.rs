@@ -21,6 +21,7 @@ use tauri::{Manager, Url, WebviewUrl};
 use crate::files::FileAccess;
 use crate::logging;
 use crate::output_host;
+use crate::print_host;
 use crate::source_guard;
 
 /// 受控夹具的内容。探针页从 URL 拿到期望值，与实际读到的内容逐字比对。
@@ -34,6 +35,9 @@ const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// 就绪探测的读取超时。冻结样本的加载与字体、图片就绪都在这个窗口内完成。
 const READINESS_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// 静默 PDF 的输出目标。默认落在归档目录；可用环境变量改到别处。
+const PDF_OUTPUT_ENV: &str = "MARKFLOW_PROBE_PDF";
 
 /// 受控样本归档原件的位置。优先环境变量（交付宿主上的路径可能不同），
 /// 退回编译期的仓库路径（交付宿主从仓库构建，可用）。两者都没有就跳过就绪探测。
@@ -58,6 +62,37 @@ fn frozen_sample_path() -> Option<PathBuf> {
     } else {
         None
     }
+}
+
+/// 目标同目录的临时文件：同卷，才能 rename 提交。
+fn temp_path(target: &Path) -> PathBuf {
+    let mut name = target
+        .file_name()
+        .map(|value| value.to_os_string())
+        .unwrap_or_default();
+    name.push(format!(".tmp-{}", std::process::id()));
+    target.with_file_name(name)
+}
+
+/// 提交：把临时文件 rename 到目标。目标只在这一步被触及，
+/// 故打印失败时原文件保持不变。
+fn commit_pdf(temp: &Path, target: &Path) -> bool {
+    match std::fs::rename(temp, target) {
+        Ok(()) => true,
+        Err(_) => {
+            let _ = std::fs::remove_file(temp);
+            false
+        }
+    }
+}
+
+/// 静默 PDF 的输出目标路径。
+fn pdf_output_path() -> Option<PathBuf> {
+    if let Ok(value) = std::env::var(PDF_OUTPUT_ENV) {
+        return Some(PathBuf::from(value));
+    }
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent()?.to_path_buf();
+    Some(repo.join("docs/acceptance/pdf-probe/probe-pdf-output.pdf"))
 }
 
 /// 就绪探测脚本：读页面的加载状态、字体、图片与页面盒。
@@ -153,6 +188,27 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         output_label.as_str(),
     ));
 
+    // D1c 的打印宿主：**独立实例**（每次运行各自创建，不共用运行实例），
+    // 载受控样本的归档原件。建窗必须在主线程，故在 setup 里建。
+    let print_target = match frozen_sample_path().and_then(|path| Url::from_file_path(path).ok()) {
+        Some(url) => {
+            let name = url
+                .path_segments()
+                .and_then(|mut segments| segments.rfind(|part| !part.is_empty()))
+                .unwrap_or("frozen-sample.html")
+                .to_owned();
+            output_host::create(app, WebviewUrl::External(url)).ok().map(|window| {
+                let label = window.label().to_owned();
+                logging::register_probe_instance(&source_guard::Identity::from_labels(
+                    label.as_str(),
+                    label.as_str(),
+                ));
+                (window, name)
+            })
+        }
+        None => None,
+    };
+
     // 事件循环在 setup 钩子返回之后才启动：eval 的回调要经事件循环送达，
     // 因此报告读取必须放到后台线程，否则在 setup 里读会一直等到超时。
     let handle = app.clone();
@@ -163,6 +219,10 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         probe.in_scope(|| {
         let main_window = handle.get_webview_window("main");
         let output_window = handle.get_webview_window(&output_label);
+        let (print_window, print_sample_name) = match print_target {
+            Some((window, name)) => (Some(window), name),
+            None => (None, String::new()),
+        };
         let mut initial_target: Option<Url> = None;
         let mut loaded = false;
         if let Some(window) = &main_window {
@@ -262,38 +322,45 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             }
         }
 
-        // 就绪探测：把输出宿主导航到**归档原件**，用原生 eval 读它的 DOM。
+        // 就绪探测：打印宿主载的就是**归档原件**，用原生 eval 读它的 DOM。
         // 这是 D1c-1 的就绪判据原型，也是 TBD-11 的决定性验证：
         // 原生受控脚本执行若不受冻结样本的 CSP 约束，就能读到页面盒、字体与图片状态。
         // 探针页的证据已在此之前读完，导航走不影响。
-        match frozen_sample_path().and_then(|path| Url::from_file_path(path).ok()) {
-            Some(url) => {
-                let expected = url
-                    .path_segments()
-                    .and_then(|mut segments| segments.rfind(|part| !part.is_empty()))
-                    .unwrap_or("frozen-sample.html")
-                    .to_owned();
-                if let Some(window) = &output_window {
-                    if window.navigate(url).is_ok() {
-                        probe_readiness(window, "output", &expected);
-                    } else {
-                        tracing::warn!(
-                            event = "probe_readiness",
-                            host = "output",
-                            eval_ok = false,
-                            ready = false,
-                            reason = "导航到受控样本失败",
-                        );
+        // D1c：就绪后静默打印，输出到目标同目录的临时文件，再 rename 提交。
+        // 失败时原文件保持不变：目标只在最后那一步被 rename 触及。
+        match (&print_window, pdf_output_path()) {
+            (Some(window), Some(target)) => {
+                let expected = print_sample_name.clone();
+                let ready = probe_readiness(window, "print", &expected);
+                if ready {
+                    let temp = temp_path(&target);
+                    match print_host::print_to_pdf(window, &temp) {
+                        Ok(outcome) => {
+                            let committed = commit_pdf(&temp, &target);
+                            tracing::info!(
+                                event = "probe_pdf",
+                                ok = outcome.ok,
+                                bytes = outcome.bytes,
+                                elapsed_ms = outcome.elapsed_ms,
+                                committed = committed,
+                            );
+                        }
+                        Err(reason) => {
+                            let _ = std::fs::remove_file(&temp);
+                            tracing::warn!(
+                                event = "probe_pdf",
+                                ok = false,
+                                reason = reason.as_str(),
+                            );
+                        }
                     }
                 }
             }
-            None => {
+            _ => {
                 tracing::warn!(
-                    event = "probe_readiness",
-                    host = "output",
-                    eval_ok = false,
-                    ready = false,
-                    reason = "受控样本归档原件不在预期位置",
+                    event = "probe_pdf",
+                    ok = false,
+                    reason = "打印宿主或输出目标不可用",
                 );
             }
         }
@@ -365,7 +432,7 @@ fn navigate_to_probe(window: &tauri::WebviewWindow, url: &Url) -> (bool, bool, S
 /// **不用固定睡眠**：轮询的是条件（文档加载完成、字体已加载、图片已解码），
 /// 条件成立即返回。求值失败（页面尚未加载、或 CSP 挡住了求值）与"未就绪"分开记：
 /// 前者是 eval_ok=false，后者是 ready=false——两者对 D1c 的含义完全不同。
-fn probe_readiness(window: &tauri::WebviewWindow, host: &str, expected: &str) {
+fn probe_readiness(window: &tauri::WebviewWindow, host: &str, expected: &str) -> bool {
     let deadline = Instant::now() + READINESS_TIMEOUT;
     let mut last: Option<serde_json::Value> = None;
     let expected = expected.to_lowercase();
@@ -412,7 +479,7 @@ fn probe_readiness(window: &tauri::WebviewWindow, host: &str, expected: &str) {
             ready = false,
             reason = "原生求值拿不到内容",
         );
-        return;
+        return false;
     };
     let text = |key: &str| {
         value
@@ -451,6 +518,7 @@ fn probe_readiness(window: &tauri::WebviewWindow, host: &str, expected: &str) {
         images_total = number("images_total"),
         images_loaded = number("images_loaded"),
     );
+    ready
 }
 
 /// 记下 Rust 侧对页面报告的读数。

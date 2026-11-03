@@ -11,6 +11,12 @@ rust-version = "1.94"
 [features]
 pdf-probe = []
 
+# 静默 PDF 输出用 WebView2 的 COM 接口（Windows 专属）：
+# PrintToPdf 在 webview2-com-sys 的绑定里，手写包装层不暴露它，须走 sys 层。
+[target.'cfg(windows)'.dependencies]
+webview2-com = "=0.39.1"
+windows = "=0.62.2"
+
 [lib]
 name = "markflow_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]

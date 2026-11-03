@@ -1,6 +1,10 @@
 mod files;
 mod logging;
 mod output_host;
+#[cfg(all(feature = "pdf-probe", target_os = "windows"))]
+mod print_com;
+#[cfg(feature = "pdf-probe")]
+mod print_host;
 mod source_guard;
 #[cfg(feature = "pdf-probe")]
 mod probe;
