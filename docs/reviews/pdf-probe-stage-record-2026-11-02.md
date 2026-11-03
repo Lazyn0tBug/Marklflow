@@ -547,6 +547,39 @@ operation_result  command=select_native_save  granted=false elapsed_ms=2724  res
 
 `scripts/pdf-probe-sample.ts` 原来把 `file`／`source` 写成宿主绝对路径（`D:\code\Marklflow\...`），归档换台机器就失去意义。改为**仓库相对路径**（正斜杠），并在 meta 里记下路径含义。已归档的 `frozen-sample.meta.json` 同步改写：文件内容与 sha256 未变，其余字段未动，改写事实记在 meta 的 `pathsRelative` 字段里。**下次交付宿主重跑取样脚本时，meta 将完全由脚本生成**。
 
+## D1c 前置：TBD-12 消解（2026-11-03，源码级）
+
+### TBD-12：原生输出能否指定目标目录 —— **能** ✓
+
+依据（`webview2-com-sys 0.39.1`，`ICoreWebView2_7`）：
+
+```rust
+pub unsafe fn PrintToPdf<P0, P1, P2>(
+    &self,
+    resultfilepath: P0,   // PCWSTR —— 输出文件路径由调用方给
+    printsettings: P1,    // ICoreWebView2PrintSettings
+    handler: P2,          // ICoreWebView2PrintToPdfCompletedHandler
+) -> windows_core::Result<()>
+```
+
+输出路径由调用方给 → 目标目录由我们选，**可以就是目标文件所在目录** → TBD-12 消解，同时把 TBD-15 的前提坐实：先写同目录临时路径再 rename 的提交策略可行。
+
+### 顺带消掉一个风险点
+
+完成经**回调** `ICoreWebView2PrintToPdfCompletedHandler::Invoke(errorcode: HRESULT, result: BOOL)` 送达，**不返回 operation 对象**。故原方案 §6.1 列的"COM 引用与回调生命周期"少一半：不必管理 operation 的 Close，只需把 handler 持有到回调触发。另一个形态 `PrintToPdfStream` 在 `ICoreWebView2_16`，锁定接口用不上。
+
+### 打印设置：必须显式钉死 A4 与零边距
+
+`ICoreWebView2PrintSettings` 可调：Orientation／ScaleFactor／**PageWidth/PageHeight**／四个 Margin／**ShouldPrintBackgrounds**／ShouldPrintSelectionOnly／ShouldPrintHeaderAndFooter。
+
+冻结样本里有**两条 `@page` 规则**（`size: A4; margin: 0` 与 `size: letter; margin: 0`），页面盒是 `210mm × 297mm`。故打印设置须设 PageWidth/PageHeight = 210÷25.4、297÷25.4 英寸、四边 Margin 全 0、ShouldPrintHeaderAndFooter = false——否则 PDF 页面尺寸与 HTML 页面盒对不上，**D1d 的页数与尺寸核对会建立在错的基准上**。这是 D1c 的口径前提，不是可事后调的细节。
+
+`ShouldPrintBackgrounds` 取 **true**：样本里唯一的 CSS 背景是裁切标记（`.pagedjs_marks-cross` 的 SVG 背景），正文图片是 `<img>`、11 处公式是内联 `<svg>`，都不依赖背景 → 该开关只影响裁切标记，而裁切标记属于打印就绪产物的一部分。
+
+### 下一步
+
+**TBD-11：就绪检测能否穿过冻结 HTML 的 `default-src 'none'`** —— 只能在交付宿主实测（`ExecuteScript` 是否受页面 CSP 约束）。这决定 D1c-1 的就绪判据走哪条路：能执行则按 §6.1 第 3 条（导航成功 + 文档加载完成 + `document.fonts.ready` + 图片解码 + 页面盒核对）；不能则须另找路径，且 D1c 的设计随之改。
+
 ## 待补
 
 - **D1a 已完成**（2026-11-03）：六条断言齐了，D1a-6 的运行期身份由交付宿主核对通过（("main","main") 与允许范围写入值一致）。
