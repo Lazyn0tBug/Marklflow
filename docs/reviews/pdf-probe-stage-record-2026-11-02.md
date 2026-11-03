@@ -750,6 +750,23 @@ macOS 上没有 llvm-rc，`cargo check --target x86_64-pc-windows-msvc` 会在�
 
 **两条教训都不因脚本撤销而失效** ✓：边界审查是所有读外部输入的代码都要做的 ✓（既有脚本 `check-pdf-file.ts` 的解压上限就是因此补上的 ✓）。
 
+### 查证：`custom-protocol` 特性缺失**不是缺陷**（2026-11-04）
+
+先前记了一条待查项：app 构件的 `Cargo.toml` 没有 `custom-protocol` 特性 ✓，而 Tauri v2 的模板要求有 ✓ —— 担心发行构建会因此失败 ✓。**查了，不成立** ✓：
+
+```
+bun run tauri build   →  exit 0
+  cargo build --bins --features tauri/custom-protocol --release
+  Finished `release` profile [optimized] target(s) in 52.06s
+  Bundling MarkFlow.app (11.66 MiB) / MarkFlow_0.9.1_aarch64.dmg
+```
+
+**Tauri v2 的 CLI 直接启用依赖构件的特性**（`tauri/custom-protocol` ✓），不是 app 构件自己的同名特性 ✓ → app 的 `Cargo.toml` 不必声明它 ✓ → 发行构建正常 ✓。
+
+**产物核对** ✓：`dist/index.html` 的标题串能在二进制里搜到 ✓ → **前端确实内嵌** ✓（不是开发模式加载 dev server ✓）；CLI **未改动 manifest** ✓（`git status` 干净 ✓）。
+
+**教训**：这条待查项的依据是"Tauri v2 模板要求 app 声明 custom-protocol"这个**记忆** ✗，而项目自己的规矩是"不要猜 API 与版本行为 ✓"——版本一换，模板的做法就可能不同 ✓（CLI 直接启用依赖的特性 ✓）。**先查再记 ✓**。
+
 ### 下一步
 
 **交付宿主编译并运行**（Windows 侧代码本机只能交叉编译验证类型，运行能力必须在真机上看）。要看的：`probe_pdf` 事件的 `ok`／`bytes`／`committed`，以及产出的 PDF 的页数与页面尺寸（D1d 的内容核验随后进行）。
@@ -764,6 +781,7 @@ macOS 上没有 llvm-rc，`cargo check --target x86_64-pc-windows-msvc` 会在�
   - **待 D1d**：PDF 的页数、页面尺寸、文字提取与字体报告（文字提取依赖 poppler，TBD-13 未授权安装）。
 - ~~交付宿主第二次复跑为白屏~~ **已修并复跑取证（2026-11-03）**：根因是探针页 URL 的源取自窗口的瞬时 URL（初载前是 about:blank），已改为取自配置的 devUrl，并顺带修掉两处凭据泄露与校验器的一处漏检。第三次复跑**六条断言全部通过**，日志已归档。
 - ~~D1b 取证的人工确认~~ **已完成（2026-11-03）**：D1b-4 的"未弹出原生对话框"由人在交付宿主确认，并附阳性对照（主窗口放行时原生对话框确实会弹）。**D1b 六条断言全部成立。**
+- ~~app 构件缺 `custom-protocol` 特性~~ **查证不是缺陷（2026-11-04）**：Tauri v2 的 CLI 直接启用 `tauri/custom-protocol` ✓，发行构建实测通过 ✓（exit 0 ✓，前端确认内嵌 ✓）。详见上文 ✓。
 - **生产 UI 尚无原生文件路径**：导入走浏览器 `file input`、导出走浏览器下载，原生适配器没有接入生产组合。故默认构建的放行路径只能靠"临时把 devUrl 指向探针页"的运行取到（D1b-5 已如此取证）；生产路径的接线归 D8。
 - ~~样本的交付宿主重生成~~ **已完成（2026-11-03）**：交付宿主产出已替换归档，交接物表与宿主事实已更新。
 - ~~R3~~ **已修（2026-11-03）**：取样 meta 改记仓库相对路径；已归档的 meta 同步改写（sha256 与内容未变）。下次交付宿主重跑取样脚本时，meta 将完全由脚本生成。
