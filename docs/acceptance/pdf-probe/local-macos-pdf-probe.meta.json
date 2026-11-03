@@ -1,10 +1,10 @@
 {
   "artifact": "local-macos-pdf-probe.jsonl",
-  "kind": "D1b 本机流程验证日志（非交付宿主证据）",
-  "sha256": "aaa3866598b76b1d3821166e4443963a47374948ba1be44b51e9c5e3941e6072",
-  "bytes": 16559,
+  "kind": "D1b 本机流程验证日志（非交付宿主证据；探针源取自配置后的复跑）",
+  "sha256": "5158ef68fd831b0ed127cd321f5df81454f5aead6a7adf82f68b370f65de5de8",
+  "bytes": 16567,
   "records": 47,
-  "run_id": "a976ef1f-e147-4641-a1ad-7da21e1699fa",
+  "run_id": "119ad06b-a2ce-4ef6-ac8b-eb46a5de27c5",
   "build": {
     "feature": "pdf-probe",
     "command": "cargo run --no-default-features --features pdf-probe",
@@ -21,9 +21,21 @@
   },
   "checker": {
     "command": "bun scripts/pdf-probe-check.ts docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl",
-    "assertions_passed": ["D1b-1", "D1b-2", "D1b-3", "D1b-4", "D1b-6"],
-    "assertions_unconfirmed": ["D1b-5"],
-    "diagnostics": {"error": 0, "warning": 1, "info": 1},
+    "assertions_passed": [
+      "D1b-1",
+      "D1b-2",
+      "D1b-3",
+      "D1b-4",
+      "D1b-6"
+    ],
+    "assertions_unconfirmed": [
+      "D1b-5"
+    ],
+    "diagnostics": {
+      "error": 0,
+      "warning": 1,
+      "info": 1
+    },
     "known_limits": [
       "no-run-end：本次为强杀进程退出，非正常退出，故不宣称日志完整",
       "D1b-2 的内容逐字相符只有页面自述依据（原生只证明成功与字节数）",

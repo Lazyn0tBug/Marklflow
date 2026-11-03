@@ -32,46 +32,73 @@ const PROBE_PAGE_PATH: &str = "/tests/fixtures/architecture/pdf-probe-client.htm
 /// 报告的读取超时。探针页要跑完通道阳性、受控读取与选择器尝试。
 const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// 装配探针并打印两份报告。调用方负责记录输出作为阶段证据。
+/// 探针装配的失败类别。
+///
+/// 只记类别，不记异常原文：异常原文可能带本地路径，而契约禁止完整本地路径入日志。
+#[derive(Debug, Clone, Copy)]
+enum ProbeError {
+    /// 生产构建没有 devUrl：应用自身的源无从取得，探针页也不在打包产物里。
+    NoAppOrigin,
+    /// 生产构建：页面由 tauri 协议提供，探针页既不在产物里，也不是同源。
+    NotADevBuild,
+    /// 受控夹具或受控授权的建立失败。
+    Fixture,
+    /// 输出宿主创建失败。
+    Host,
+}
+
+impl ProbeError {
+    /// 记进日志的稳定类别。
+    fn category(self) -> &'static str {
+        match self {
+            ProbeError::NoAppOrigin => "no-app-origin",
+            ProbeError::NotADevBuild => "not-a-dev-build",
+            ProbeError::Fixture => "fixture-failed",
+            ProbeError::Host => "host-failed",
+        }
+    }
+}
+
+/// 装配探针并留下运行证据。调用方负责把日志作为阶段证据。
+///
+/// **装配失败不拖住应用启动**：探针是测试路径，失败只记一条中止原因。
 pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let fixture_dir = tempfile::tempdir()?;
+    match assemble(app) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            logging::probe_span().in_scope(|| {
+                tracing::warn!(event = "probe_abort", reason = error.category());
+            });
+            Ok(())
+        }
+    }
+}
+
+/// 探针装配。失败时给出失败类别，不给异常原文。
+fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
+    let fixture_dir = tempfile::tempdir().map_err(|_| ProbeError::Fixture)?;
     let fixture: PathBuf = fixture_dir.path().join("probe-fixture.md");
-    fs::write(&fixture, FIXTURE_CONTENT)?;
+    fs::write(&fixture, FIXTURE_CONTENT).map_err(|_| ProbeError::Fixture)?;
 
     // 受控授权：读、写两种角色分别签发（不经 IPC）。
     let access = app.state::<FileAccess>();
-    let read_grant = access.grant(fixture.clone(), false)?;
-    let write_grant = access.grant(fixture.clone(), true)?;
+    let read_grant = access
+        .grant(fixture.clone(), false)
+        .map_err(|_| ProbeError::Fixture)?;
+    let write_grant = access
+        .grant(fixture.clone(), true)
+        .map_err(|_| ProbeError::Fixture)?;
 
+    // 探针页 URL 的源取自**配置**，不取自窗口的当前 URL：窗口在初载落地前是
+    // about:blank，据此算出来的源是错的——交付宿主上就是这么变成白屏的。
     let url = probe_url(app, &read_grant.key, &write_grant.key)?;
-    let page_origin = origin_of(&url);
 
     // 探针装配的 span：根 span 的直接子。
     let probe = logging::probe_span();
 
-    // 主窗口导航到探针页：身份仍是 ("main","main")，在允许范围内。
-    let source_reachable = source_is_reachable(&url);
-    // 源检查记在探针 span 内：事件落在契约规定的 span 里，不悬空。
-    probe.in_scope(|| {
-        tracing::info!(
-            event = "probe_source_check",
-            page_origin = page_origin.as_str(),
-            reachable = source_reachable,
-        );
-    });
-    if !source_reachable {
-        probe.in_scope(|| {
-            tracing::warn!(
-                event = "probe_abort",
-                reason = "探针页源不可达：应用与探针页必须同源，且该源须在运行",
-            );
-        });
-    }
-    // 主窗口的导航放到后台线程：先等它的初始页面落地，再导航到探针页。
-    // 在 setup 钩子里抢先导航会与初次加载相撞，窗口会停在 about:blank。
-
     // 输出宿主承载同一个探针页：身份是 ("pdf-output","pdf-output")，不在允许范围内。
-    let output = output_host::create(app, WebviewUrl::External(url.clone()))?;
+    let output = output_host::create(app, WebviewUrl::External(url.clone()))
+        .map_err(|_| ProbeError::Host)?;
     let output_label = output.label().to_owned();
     // 登记为可写日志的探针输出实例（仅 pdf-probe 构建生效）：页面不能自报身份获得允许。
     logging::register_probe_instance(&source_guard::Identity::from_labels(
@@ -90,29 +117,62 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         let main_window = handle.get_webview_window("main");
         let output_window = handle.get_webview_window(&output_label);
         let mut navigated = false;
+        let mut attempted = false;
         let mut navigate_error = String::new();
+        let mut initial_target: Option<Url> = None;
+        let mut loaded = false;
         if let Some(window) = &main_window {
             // 先等主窗口的初始页面落地（URL 不是 about:blank）：Windows 上 webview 的
             // 初次加载可能还没发出，这时抢先导航会让窗口停在 about:blank。
-            let initial = wait_initial_load(window, Duration::from_secs(30));
+            loaded = wait_initial_load(window, Duration::from_secs(30));
+            initial_target = window.url().ok();
             let initial_url = window.url().map(|value| value.to_string()).unwrap_or_default();
             tracing::info!(
                     event = "probe_initial_load",
                 host = "main",
-                loaded = initial,
+                loaded = loaded,
                 url = initial_url.as_str(),
             );
-            if !initial {
-                tracing::warn!(
-                            event = "probe_abort",
-                    reason = "主窗口初始页面未落地，无法把探针页挂上去",
-                );
-            }
+        }
+        // 主窗口实际所在的源必须与配置里的源一致：不一致说明应用不是从 dev server
+        // 起的，探针页就不同源，IPC 会被拒——那样的证据是假的。
+        let window_origin = initial_target.as_ref().map(origin_of).unwrap_or_default();
+        let configured_origin = origin_of(&url);
+        let same_origin = window_origin.is_empty() || window_origin == configured_origin;
+        // 源可达性在导航**之前**判：源不可达就别导航，把主窗口留在应用自己的页面上。
+        // 源检查记在探针 span 内：事件落在契约规定的 span 里，不悬空。
+        let source_reachable = source_is_reachable(&url);
+        probe.in_scope(|| {
+            tracing::info!(
+                event = "probe_source_check",
+                page_origin = configured_origin.as_str(),
+                reachable = source_reachable,
+            );
+        });
+        // 中止原因**只出一条**：探针页没就位的原因有几种，但一次运行记一条，
+        // 否则同一 span 里的同名事件会被判成重复输出。
+        let abort_reason = if !loaded {
+            Some("主窗口初始页面未落地，无法把探针页挂上去")
+        } else if !same_origin {
+            Some("应用源与配置源不一致：探针页必须与主窗口同源")
+        } else if !source_reachable {
+            Some("探针页源不可达：应用与探针页必须同源，且该源须在运行")
+        } else {
+            None
+        };
+        if let Some(reason) = abort_reason {
+            probe.in_scope(|| {
+                tracing::warn!(event = "probe_abort", reason = reason);
+            });
+        }
+        if abort_reason.is_none() {
+        if let Some(window) = &main_window {
             // 只在探针页还没就位时导航：重复导航会让探针页跑第二遍，
             // 而第一遍已经撤销了受控授权，第二遍的读取就会拿到 unknown-file-key。
             if window.url().map(|current| current == url).unwrap_or(false) {
                 navigated = true;
             } else {
+                attempted = true;
                 for _ in 0..5 {
                     match window.navigate(url.clone()) {
                         Ok(()) => {
@@ -130,6 +190,7 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        }
         let page_path = url_path(&url);
         tracing::info!(
             event = "probe_navigation",
@@ -139,16 +200,40 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             // 只记路径：查询串里带受控授权的 key。
             url = page_path.as_str(),
         );
+        // 探针没就位时不读报告：等满超时也读不到，白等一分钟。
+        // 主窗口也要导回初始页——探针失败不该把应用留在坏页面上。
+        if !navigated {
+            // 试过导航却没成位：把主窗口导回初始页——探针失败不该把应用留在坏页面上。
+            let restored = if attempted {
+                match (&main_window, &initial_target) {
+                    (Some(window), Some(target)) => window.navigate(target.clone()).is_ok(),
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            tracing::warn!(
+                event = "probe_report_unreadable",
+                host = "main",
+                reason = if restored {
+                    "探针页未就位：无报告可读，主窗口已导回初始页面"
+                } else {
+                    "探针页未就位：无报告可读"
+                },
+            );
+        }
 
         // 页面报告由 Rust 读回：这是 **native 侧对页面结果的读数**，内容仍是页面自述。
-        if let Some(window) = &main_window {
-            if let Some(report) = read_report(window, REPORT_TIMEOUT) {
-                log_observed_report("main", &report);
+        if navigated {
+            if let Some(window) = &main_window {
+                if let Some(report) = read_report(window, REPORT_TIMEOUT, "main") {
+                    log_observed_report("main", &report);
+                }
             }
-        }
-        if let Some(window) = &output_window {
-            if let Some(report) = read_report(window, REPORT_TIMEOUT) {
-                log_observed_report("output", &report);
+            if let Some(window) = &output_window {
+                if let Some(report) = read_report(window, REPORT_TIMEOUT, "output") {
+                    log_observed_report("output", &report);
+                }
             }
         }
 
@@ -241,29 +326,52 @@ fn url_path(url: &Url) -> String {
 }
 
 /// 探针页 URL：与主窗口同源，查询串带两份 key 与期望内容。
+///
+/// 源取自**配置里的 devUrl**（应用自身的源），不取自窗口的当前 URL：
+/// 窗口在初载落地前是 about:blank，据此算出来的源是错的——交付宿主上
+/// 就是这么把主窗口导航成 about:blank、屏幕全白的。
+/// 生产构建没有 devUrl（那时页面由 tauri 协议提供，探针页也不在产物里），
+/// 故这里返回失败，探针在生产构建上不做。
 fn probe_url(
     app: &tauri::AppHandle,
     read_key: &str,
     write_key: &str,
-) -> Result<Url, Box<dyn std::error::Error>> {
-    let main = app.get_webview_window("main").ok_or("缺少主窗口")?;
-    let origin = main.url()?;
-    let mut url = origin;
-    url.set_path(PROBE_PAGE_PATH);
-    url.set_query(Some(&format!(
+) -> Result<Url, ProbeError> {
+    // 生产构建里页面由 tauri 协议提供，与 dev server 不是同一个源，
+    // 探针页既不在产物里、IPC 也不通——那样的运行产出的证据是假的。
+    if !tauri::is_dev() {
+        return Err(ProbeError::NotADevBuild);
+    }
+    let origin = app
+        .config()
+        .build
+        .dev_url
+        .clone()
+        .ok_or(ProbeError::NoAppOrigin)?;
+    Ok(probe_url_from(origin, read_key, write_key))
+}
+
+/// 由应用源构造探针页 URL：路径换成探针页，查询串带两份 key 与期望内容。
+///
+/// 纯函数：源的路径与查询串一律被替换，不从源里继承任何内容。
+fn probe_url_from(mut origin: Url, read_key: &str, write_key: &str) -> Url {
+    origin.set_path(PROBE_PAGE_PATH);
+    origin.set_query(Some(&format!(
         "readKey={}&writeKey={}&expect={}",
         read_key,
         write_key,
         FIXTURE_CONTENT
     )));
-    Ok(url)
+    origin
 }
 
-/// 探针页源的 origin。
+/// 探针页源的 origin：只取 host:port。
+///
+/// **不回退成整个 URL**：查询串里带着受控授权的 key，整个 URL 进日志就是凭据泄露。
 fn origin_of(url: &Url) -> String {
     match (url.host_str(), url.port_or_known_default()) {
         (Some(host), Some(port)) => format!("{host}:{port}"),
-        _ => url.to_string(),
+        _ => "none".to_owned(),
     }
 }
 
@@ -300,7 +408,7 @@ fn wait_initial_load(window: &tauri::WebviewWindow, timeout: Duration) -> bool {
 }
 
 /// 读取探针页写在 DOM 里的报告，等到它标记完成或超时。
-fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<String> {
+fn read_report(window: &tauri::WebviewWindow, timeout: Duration, host: &str) -> Option<String> {
     let current = window
         .url()
         .map(|value| value.to_string())
@@ -308,6 +416,7 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<Strin
     if current == "about:blank" {
         tracing::warn!(
             event = "probe_report_unreadable",
+            host = host,
             reason = "该窗口未加载任何页面（about:blank），报告无从产生",
         );
         return None;
@@ -340,7 +449,41 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration) -> Option<Strin
     }
     tracing::warn!(
         event = "probe_report_timeout",
+        host = host,
         reason = "探针页未在超时内标记完成",
     );
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_probe_url_replaces_the_path_and_the_query_of_the_origin() {
+        let origin = Url::parse("http://127.0.0.1:3000/app/index.html?stale=1").unwrap();
+        let url = probe_url_from(origin, "read-key", "write-key");
+        assert_eq!(url.path(), PROBE_PAGE_PATH);
+        assert_eq!(url.host_str(), Some("127.0.0.1"));
+        assert_eq!(url.port(), Some(3000));
+        assert_eq!(
+            url.query(),
+            Some("readKey=read-key&writeKey=write-key&expect=MF-PROBE-FIXTURE-20261103")
+        );
+    }
+
+    #[test]
+    fn the_origin_never_falls_back_to_the_whole_url() {
+        // 无 host 的 URL（about: 方案）不能整串回退：查询串里带着受控授权的 key，
+        // 整串进日志就是凭据泄露——交付宿主上就是这么泄过一次。
+        let url = Url::parse("about:%2Ftests/x.html?readKey=secret").unwrap();
+        assert_eq!(origin_of(&url), "none");
+        assert!(!origin_of(&url).contains("secret"));
+    }
+
+    #[test]
+    fn the_origin_of_a_real_source_is_host_and_port() {
+        let url = Url::parse("http://127.0.0.1:3000/tests/x.html").unwrap();
+        assert_eq!(origin_of(&url), "127.0.0.1:3000");
+    }
 }

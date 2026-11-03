@@ -162,6 +162,26 @@ describe('pdf-probe 校验器',()=>{
   expect(diagnosticsOf(report,'correlation-mismatch').length).toBeGreaterThan(0);
  });
 
+ it('同一 span 内同名事件按宿主区分：两个宿主各一次不是重复',()=>{
+  const records=[
+   ...healthyProbeRun(),
+   record({event:'probe_report_unreadable',span:{name:'probe',id:3,parent_id:1},fields:{host:'main',reason:'x'}}),
+   record({event:'probe_report_unreadable',span:{name:'probe',id:3,parent_id:1},fields:{host:'output',reason:'x'}}),
+  ];
+  const report=evaluate(records,healthyDefaultRun());
+  expect(diagnosticsOf(report,'duplicate-event')).toHaveLength(0);
+ });
+
+ it('同一宿主同名事件重复仍报重复输出',()=>{
+  const records=[
+   ...healthyProbeRun(),
+   record({event:'probe_report_unreadable',span:{name:'probe',id:3,parent_id:1},fields:{host:'main',reason:'x'}}),
+   record({event:'probe_report_unreadable',span:{name:'probe',id:3,parent_id:1},fields:{host:'main',reason:'x'}}),
+  ];
+  const report=evaluate(records,healthyDefaultRun());
+  expect(diagnosticsOf(report,'duplicate-event').length).toBeGreaterThan(0);
+ });
+
  it('调用 span 不是根的直接子时报结构错误',()=>{
   const records=healthyProbeRun().map(entry=>entry.span?.name==='command'?{...entry,span:{...entry.span,parent_id:null}}:entry);
   const report=evaluate(records,healthyDefaultRun());
@@ -172,6 +192,22 @@ describe('pdf-probe 校验器',()=>{
   const records=healthyProbeRun().map(entry=>entry.event==='probe_cleanup'?{...entry,fields:{...entry.fields,read_key_prefix:'a2eba7e1'}}:entry);
   const report=evaluate(records,healthyDefaultRun());
   expect(diagnosticsOf(report,'credential-fragment').length).toBeGreaterThan(0);
+ });
+
+ it('查询串里带前缀的凭据参数名也算泄露',()=>{
+  // 交付宿主上的一次运行把 readKey= 与 writeKey= 原样写进了日志：
+  // 只匹配 `?key=` 的规则漏了它。
+  const records=[
+   ...healthyProbeRun(),
+   record({event:'probe_source_check',span:{name:'probe',id:3,parent_id:1},fields:{
+    page_origin:'about:%2Ftests/x.html?readKey=d06ec667-da05-4ea3-8afc-1545cb73cdc6&writeKey=71c31a7d',
+    reachable:'false',
+   }}),
+  ];
+  const report=evaluate(records,healthyDefaultRun());
+  const hits=diagnosticsOf(report,'credential-url');
+  expect(hits.length).toBeGreaterThan(0);
+  expect(hits[0]?.message).toContain('readKey');
  });
 
  it('JSON 损坏与未知 schema 不进证据池',()=>{

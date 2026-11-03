@@ -116,6 +116,9 @@ const WEB_SPAN:Record<string,string>={
 const DISCRIMINATOR:Record<string,string>={
  page_report_observed:'host',
  host_state:'host_label',
+ // 两个窗口各自读一次报告：同名事件按宿主区分，不是重复输出。
+ probe_report_unreadable:'host',
+ probe_report_timeout:'host',
 };
 
 const text=(value:string|undefined):string=>value??'';
@@ -598,11 +601,24 @@ function healthDiagnostics(run:RunView):Diagnostic[]{
  return diagnostics;
 }
 
+/**
+ * 查询串里的凭据参数名：出现凭据词就算泄露。
+ *
+ * 参数名**含**凭据词即算，不要求恰好是 key：交付宿主上的一次运行把
+ * `readKey=` 与 `writeKey=` 原样写进了日志，而只匹配 `?key=` 的规则漏了它。
+ */
+const credentialParameter=(value:string):string|null=>{
+ for(const entry of value.matchAll(/[?&]([^=&#]*)=/g)){
+  const name=entry[1]??'';
+  if(/key|secret|token|password|auth|credential/i.test(name))return name;
+ }
+ return null;
+};
+
 /** 诊断：脱敏扫描——凭据片段、绝对路径、带凭据 URL、正文。 */
 function redactionDiagnostics(run:RunView):Diagnostic[]{
  const diagnostics:Diagnostic[]=[];
  const pathPattern=/^(?:[A-Za-z]:\\|\/(?:Users|home|var|tmp|opt|private)\/)/;
- const queryPattern=/[?&](?:key|token|secret|password|auth)=/i;
  const fixturePattern=/MF-PROBE-FIXTURE/;
  for(const record of run.records){
   for(const [key,value] of Object.entries(record.fields)){
@@ -621,11 +637,12 @@ function redactionDiagnostics(run:RunView):Diagnostic[]{
      message:`完整本地路径入日志：字段 ${key}（event=${record.event}）`,
     });
    }
-   if(queryPattern.test(value)){
+   const parameter=credentialParameter(value);
+   if(parameter){
     diagnostics.push({
      id:'credential-url',
      severity:'error',
-     message:`带凭据 URL 入日志：字段 ${key}（event=${record.event}）`,
+     message:`带凭据 URL 入日志：字段 ${key}（参数 ${parameter}，event=${record.event}）`,
     });
    }
    if(fixturePattern.test(value)){

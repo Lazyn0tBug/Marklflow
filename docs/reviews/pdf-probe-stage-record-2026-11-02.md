@@ -366,7 +366,7 @@ L1 落地后（提交 `a8616ae`），本轮补上 L2 与**机器校验器**：D1
 
 ### 本机实跑（macOS，pdf-probe 构建）
 
-日志已归档：`docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl`（sha256 `aaa3866598b76b1d3821166e4443963a47374948ba1be44b51e9c5e3941e6072`，47 条记录，run_id `a976ef1f-e147-4641-a1ad-7da21e1699fa`，环境 macos/aarch64/0.9.1），元数据见同目录 `local-macos-pdf-probe.meta.json`。
+日志已归档：`docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl`（sha256 `5158ef68fd831b0ed127cd321f5df81454f5aead6a7adf82f68b370f65de5de8`，47 条记录，run_id `119ad06b-a2ce-4ef6-ac8b-eb46a5de27c5`，环境 macos/aarch64/0.9.1），元数据见同目录 `local-macos-pdf-probe.meta.json`。
 
 校验器结论：**错误 0、告警 1、提示 1**；D1b-1／2／3／4／6 通过，D1b-5 记「未能确认」（本机只跑了 pdf-probe 构建，未提供默认构建的运行记录）。告警是 `no-run-end`：本机结束时是强杀进程，非正常退出，故未宣称日志完整——交付宿主上从界面正常退出即有 `run_end`。
 
@@ -409,11 +409,65 @@ log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
 - **"未弹出原生对话框"是人工项**：机器只证"被拒"；弹框与否由人在交付宿主确认。
 - **本轮未取交付宿主证据**：以上均为本机 macOS 的流程验证。
 
+## 交付宿主第二次复跑：主屏全白（2026-11-03）
+
+交付宿主换上日志基座后复跑，主屏全白、无内容，日志如下：
+
+```
+probe_source_check page_origin=about:%2Ftests/fixtures/architecture/pdf-probe-client.html?readKey=…&writeKey=…&expect=… reachable=false
+probe_abort reason=探针页源不可达：应用与探针页必须同源，且该源须在运行
+probe_initial_load loaded=true url=http://127.0.0.1:3000/
+probe_navigation navigated=false navigate_error=
+probe_report_timeout / probe_report_unreadable（约 60 秒后）
+```
+
+### 诊断：一个根因，两个后果
+
+日志里两行自相矛盾：**初载是成功的**（`probe_initial_load loaded=true url=http://127.0.0.1:3000/`，dev server 在跑），**但探针页的源是 `about:`**。
+
+`probe_url()` 在 setup 钩子里读 `main.url()`。Windows 上此时 webview 的初载还没发出，`main.url()` 是 `about:blank`；于是路径被塞进 `about:` 方案，得到 `about:%2Ftests/…?readKey=…` 这个废 URL。后果连锁：
+
+1. `source_is_reachable` 取不到 host → 判定源不可达 → `probe_abort`；
+2. 主窗口随后被导航到这个 about: URL → **落到 about:blank，即主屏全白**（白屏是探针造成的，不是应用自己坏了）；
+3. 探针页从未加载 → 一条验证证据都产生不了。
+
+macOS 上没暴露：那时 `main.url()` 已经是 devUrl。**根因是"从窗口的瞬时状态取源，取早了"。**
+
+### 修复
+
+| 处 | 改法 | 理由 |
+| --- | --- | --- |
+| `probe.rs` 探针页 URL 的源 | 改从**配置**的 `build.devUrl` 取（新增纯函数 `probe_url_from`，配 3 项单测） | 配置是"应用自身的源"的稳定陈述；窗口 URL 是瞬时的（初载前是 about:blank） |
+| `probe.rs` 同源判定 | 生产构建（`tauri::is_dev()` 为假）直接不做探针；主窗口实际源与配置源不一致时中止 | 生产构建的页面由 tauri 协议提供，与 dev server 不同源，探针页既不在产物里、IPC 也不通，那样的证据是假的 |
+| `probe.rs` 导航时机 | 源可达性在**导航之前**判；不可达就不导航，把主窗口留在应用自己的页面上 | 探针不该把应用带到一个打不开的页面上 |
+| `probe.rs` 失败回退 | 试过导航却没成位时，把主窗口导回初始页 | 探针失败不该把应用留在坏页面上 |
+| `probe.rs` 报告读取 | 探针页没就位就不读报告 | 等满 60 秒超时也读不到，白等一分钟 |
+| `probe.rs` 装配失败 | 装配失败只记一条中止原因，**不拖住应用启动** | 探针是测试路径，不能让应用起不来 |
+
+### 顺带修掉的两处凭据泄露
+
+同一份日志里还暴露了两个问题，都已修：
+
+1. **`origin_of()` 回退成整个 URL**：无 host 的 URL（about: 方案）整串回退，把 `readKey=`、`writeKey=` 与夹具正文原样写进了 `probe_source_check`。契约 §3 要求"所有构建均不记录完整授权key"。改为只取 host:port，无 host 时记 `none`，**绝不回退整串 URL**（配 2 项单测）。
+2. **校验器漏检**：脱敏规则写的是"参数名恰好是 `key=`"，而实际参数名是 `readKey=`、`writeKey=`（带前缀）→ 漏。改为"查询串里任一参数名含 key/secret/token/password/auth 即报"，并加 1 项单测。
+
+**用交付宿主那份真实日志验过**：改后的校验器对它报出 2 个错误级诊断（`credential-url` 指向 `readKey`、`document-body` 指向夹具正文），六条断言全部记「未能确认」——那次运行确实一条证据都没产生，判得对。
+
+### 本机复验（macOS）
+
+| 场景 | 结果 |
+| --- | --- |
+| 源可达（dev server 在跑） | `probe_source_check page_origin=127.0.0.1:3000 reachable=true`、`probe_navigation navigated=true`；校验器**错误 0**，D1b-1/2/3/4/6 通过 |
+| 源不可达（dev server 已停） | `reachable=false` → `probe_abort` → **不导航**（主窗口留在应用页面）→ 不读报告 → 整轮几秒内结束，不再白等 60 秒 |
+
+日志里 `page_origin` 现在只有 `127.0.0.1:3000`：没有路径、没有查询串、没有 key。
+
 ## 待补
 
 - **D1a 已完成**（2026-11-03）：六条断言齐了，D1a-6 的运行期身份由交付宿主核对通过（("main","main") 与允许范围写入值一致）。
 - **D1b 实现完成、取证未完成**：探针在本机跑通并产出完整证据集；交付宿主首次复跑为装配缺陷（主窗口停在 `about:blank`，探针页未加载），成因已定位并已改（导航延到后台线程、先等初载落地、另加两处自述诊断），**待重跑取证**。
 - **日志基座 L1/L2 已实现**（2026-11-03）：L1 见上节；L2 与机器校验器见本节。**待交付宿主复跑取日志**，用校验器核对六条断言并把日志与 SHA-256 归档到 `docs/acceptance/pdf-probe/`。
+- **交付宿主第二次复跑为白屏（2026-11-03）**：根因是探针页 URL 的源取自窗口的瞬时 URL（初载前是 about:blank），已改为取自配置的 devUrl，并顺带修掉两处凭据泄露与校验器的一处漏检。**待重跑取证**。
 - ~~样本的交付宿主重生成~~ **已完成（2026-11-03）**：交付宿主产出已替换归档，交接物表与宿主事实已更新。
 - **R3 尚未修**：meta 记宿主绝对路径。修了需在交付宿主重跑脚本换 meta（HTML 产物不变），故排在下次取样时一并做。
 - 全仓库评审的其余待修项（17 条确认项与 8 条可能项，含预览热路径与导出路径）记于[全仓库代码评审记录](codebase-review-2026-11-02.md)，本文件只记探针相关者。
