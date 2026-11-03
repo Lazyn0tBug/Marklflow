@@ -50,13 +50,23 @@ warning: unused import: `crate::print_com::PrintOutcome`
 
 ---
 
+### 1.4 本轮修复：正常关窗缺少run_end
+
+交付宿主默认版与探针版正常关闭均未写run_end。根因是`lib.rs`将`logging::shutdown`放在Tauri `run()`之后；锁定的Tauri 2.12.4明确该调用不返回、直接退出进程，故收尾不可达。改为`build(...).run(...)`，在最终`RunEvent::Exit`中执行日志收尾，不放在可取消的`ExitRequested`。Luna实际复跑确认两种构建正常关窗均写出run_end及健康摘要。强杀/崩溃仍不保证，不将此修复扩大为崩溃可靠性声明。
+
+### 1.5 本轮修复：两次健康快照被误判重复
+
+正常收尾生效后，同一log span包含`observed_by=probe`和`observed_by=shutdown`两条log_health。校验器此前只以span和事件名判重复，误报`duplicate-event`。现将observed_by纳入log_health自然键；不同位置快照可共存，同位置重复仍须报错。新增两项定向单测，结果见§6。
+
+---
+
 ## 2. 操作清单
 
 ### 2.1 前置
 
 | 项 | 要求 |
 | --- | --- |
-| 代码 | `git pull` 到 `D:\\code\\Marklflow`（分支 `architecture-refactor`） |
+| 代码 | 确认 `D:\code\Marklflow` 的 `architecture-refactor` 分支及待验提交；先记录工作区状态，不自动pull覆盖本地工作 |
 | 工具链 | Rust 1.94.0（MSVC），与 CI 一致 |
 | WebView2 | 运行时 156.0.4314.58（已装） |
 | dev server | **必须在跑**（探针页要与应用同源）：另开终端 `bun run dev:desktop` |
@@ -76,7 +86,7 @@ cargo build --locked --features pdf-probe
 cd D:\code\Marklflow\src-tauri
 set MARKFLOW_LOG=info
 set MARKFLOW_LOG_FORMAT=json
-cargo run --no-default-features --features pdf-probe
+cargo run --locked --no-default-features --features pdf-probe
 ```
 
 **必须是 debug 构建**（`cargo run`，不是 release 产物）：debug 加载 `http://127.0.0.1:3000`（dev server），探针页与主窗口同源 ✓；release 加载内嵌前端（`tauri://localhost`），探针页成了异源，IPC 与 CSP 都不成立，**跑出来的是假证据**。
@@ -94,7 +104,7 @@ cargo run --no-default-features --features pdf-probe
 | 日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` |
 | PDF | 默认 `D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\probe-pdf-output.pdf`（可用 `set MARKFLOW_PROBE_PDF=<别的路径>` 改） |
 
-**若 PDF 旁边还留着 `*.tmp-<pid>`**：说明打印成功但 rename 提交没成功 → 目标文件未被替换（原文件仍在 ✓，这是保护生效）。
+**若 PDF 旁边还留着 `*.tmp-<pid>`**：只能证明存在残留，不能直接推出打印成功或提交失败。结合本次运行的打印回调、字节数和提交日志判断；正常提交失败路径会尝试删除临时文件，残留也可能来自超时、迟到写入、清理失败或非正常退出。目标是否保留须检查，不能仅凭残留认定保护已验。
 
 ### 2.5 机器核对
 
@@ -136,18 +146,18 @@ bun scripts/pdf-probe-check.ts <日志>
 | `probe_readiness is_target=false` | 导航是否换了文档 | 求值落在了别的文档上 |
 | `probe_readiness ready=false` | `ready_state` 与 `fonts_status` 字段 | 文档未达就绪条件 |
 | `probe_pdf ok=false` | `reason` 字段 | 带 HRESULT（原生错误码）或超时 |
-| `probe_pdf ok=true committed=false` | 目标同目录 | 打印成功但 rename 没成功 → 目标未被替换 |
-| PDF 是空白页 | 见 §4.1 | 打印宿主是隐藏窗口 |
+| `probe_pdf ok=true committed=false` | 目标同目录 | 提交未成功；结合错误及目标前后状态检查，不以日志字段代替文件核验 |
+| PDF 是空白页 | 见 §4.1 | 输入、就绪判据、打印参数或隐藏宿主行为均需排查 |
 | `log_health dropped/rejected > 0` | 队列与限流计数 | 有记录没落盘，证据可能不全 → 记"未能确认"，**不要当作通过** |
 | 没有 `run_end` | 是否强杀退出 | 不宣称日志完整 |
 
 ### 4.1 PDF 是空白页
 
-**先怀疑"打印宿主是 `visible(false)` 的隐藏窗口"**：隐藏窗口的 WebView2 是否照常排版并被打印，本机验不了（macOS 没有 WebView2）。
+先核本次输入身份、实际页面盒和字体/图片状态、打印参数、PDF页数与首末页内容，再检查隐藏宿主相关行为。`probe_readiness`通过只证明当前候选判据满足，不能排除判据不足、后续文档变化或打印设置/CSS冲突。
 
-不是打印设置的问题（已钉死 A4 与零边距 ✓），也不是就绪判据的问题（`probe_readiness` 已确认文档就绪 ✓）。
+确需定位时，可另做受控可见宿主对照，仅作诊断并标明形态变化，不纳入隐藏静默输出通过证据，不将临时可见配置留在产品代码。可见与隐藏的输出差异是进一步排查线索，不单独证明唯一根因。
 
-要试的话：把打印宿主改成可见再跑一次（**只作诊断用，不要留在代码里**），看 PDF 是否正常。若可见就正常 → 隐藏窗口是症结，接下来要么找 WebView2 对隐藏窗口的排版要求，要么改用"渲染到离屏位图再合成"的路线（那是新工作，不在 D1c 范围内）。
+后续只调查系统WebView原生HTML输出能力；明确排除截图、离屏位图合成PDF、封装Chromium和Puppeteer。若隐藏形态存在可复现限制，按探针方案记录当前形态不可行或未能确认，不转移到截图路线。
 
 ---
 
@@ -168,3 +178,21 @@ bun scripts/check-windows-com.ts
 - 只覆盖这两个文件；`probe.rs` 里的探针接线仍要靠真机。
 
 **注意**：PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库，而 clippy 用自己的 driver、按 PATH 上的 rustc 找 sysroot → 脚本已把工具链 bin 放在 PATH 前面 ✓。
+
+## 6. 本轮Windows实际验证（2026-11-03）
+
+基线`7f0dbe58906e6f286a24acb116ea3248431b7e76`加本轮未提交修复；由GPT-6 Luna执行定向检查。首次失败与修复后证据分别保留在`D:\codex\.codex\tmp\windows-build-check-20261103`，摘要为`summary.md`，不以复跑覆盖首次结果。
+
+| 范围 | 实际结果 |
+| --- | --- |
+| 环境 | Windows x86_64；本机Rust/Cargo 1.98.1，未验证文档要求的1.94.0，不将本机结果视作CI工具链结果 |
+| feature构建 | `cargo build --locked --features pdf-probe`成功；无Rust代码错误，但MSVC创建import library/.exp的stdout被Cargo `linker_messages`记为1条警告，未屏蔽，不称零警告 |
+| 正常退出修复 | 默认run_id `8b1a1543-6f58-4489-8a87-d67ef941adbb`及修复后探针运行均经精确PID请求正常关窗，run_end和shutdown健康摘要存在，计数全零；首次缺run_end的记录仍保留 |
+| 探针运行 | 主窗口读取允许、输出宿主拒绝、选择器机器部分及授权清理成立；错误角色读取是刻意负例，不与成功读取混为同请求 |
+| 就绪与PDF | 目标文档complete、fonts loaded、3个794×1123页面盒、图片1/1；原生输出ok、committed；`probe-output-r2.pdf`为208593字节、3页A4（594.96×841.92pt） |
+| 修复后机器校验 | 合并默认和feature日志：D1b-1至4、D1b-6、D1c-1/2通过；错误0、告警0、内容匹配来源提示1。退出码2，原因是D1b-5仍未能确认，不能称全项通过 |
+| 定向回归 | `pdf-probe-check.test.ts` 21项通过；tools和integration两个tsconfig类型检查通过；修改的TS脚本/测试定向oxlint通过 |
+
+首次默认权限构建因`.cargo-build-lock`访问被拒（OS error 5）失败；授权权限后继续构建，该环境失败保留，不归为代码失败。完整命令、日志及哈希见外部摘要。
+
+**待补门槛**：默认构建未实际触发受保护主窗口命令，D1b-5允许路径仍缺运行证据；全程无选择器/打印面板需人工观察；PDF正文、CJK、公式图表及首末页内容未独立验证；Rust 1.94.0及其他OS未验。PDF文件存在、页数正确与原生返回成功均不能替代这些项目。本轮未运行无关全量前端回归，不宣称D1c/D1d完整验收通过。

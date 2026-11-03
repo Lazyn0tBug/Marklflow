@@ -165,6 +165,24 @@ describe('pdf-probe 校验器',()=>{
   expect(verdictOf(report,'D1b-5')).toBe('fail');
  });
 
+ it('探针和退出的健康快照不是重复事件',()=>{
+  const records=healthyProbeRun().map(entry=>entry.event==='log_health'
+   ?{...entry,fields:{...entry.fields,observed_by:'probe'}}:entry);
+  const health=records.find(entry=>entry.event==='log_health');
+  if(!health)throw new Error('missing health fixture');
+  records.push({...health,fields:{...health.fields,observed_by:'shutdown'}});
+  expect(diagnosticsOf(evaluate(records,healthyDefaultRun()),'duplicate-event')).toHaveLength(0);
+ });
+
+ it('同一观察位置重复健康快照仍报重复事件',()=>{
+  const records=healthyProbeRun().map(entry=>entry.event==='log_health'
+   ?{...entry,fields:{...entry.fields,observed_by:'shutdown'}}:entry);
+  const health=records.find(entry=>entry.event==='log_health');
+  if(!health)throw new Error('missing health fixture');
+  records.push(health);
+  expect(diagnosticsOf(evaluate(records,healthyDefaultRun()),'duplicate-event').length).toBeGreaterThan(0);
+ });
+
  it('同一 span 内同名事件重复时报重复输出',()=>{
   const records=[...healthyProbeRun(),record({event:'source_decision',span:{name:'command',id:10,parent_id:1},fields:{decision:'allow',command:'read_native_text',window:'main',webview:'main'}})];
   const report=evaluate(records,healthyDefaultRun());

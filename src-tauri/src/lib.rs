@@ -66,9 +66,15 @@ pub fn run() {
         Ok(())
     });
     builder
-        .run(tauri::generate_context!())
-        .expect("error while running MarkFlow application");
-    logging::shutdown(feature_name());
+        .build(tauri::generate_context!())
+        .expect("error while building MarkFlow application")
+        .run(|_app, event| {
+            // Tauri exits the process after the event loop; code after run is not reached.
+            // Exit is final, unlike ExitRequested which may still be cancelled.
+            if matches!(event, tauri::RunEvent::Exit) {
+                logging::shutdown(feature_name());
+            }
+        });
 }
 
 /// 本次构建的探针特征名（记进运行标记）。

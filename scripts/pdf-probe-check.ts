@@ -117,6 +117,8 @@ const WEB_SPAN:Record<string,string>={
 
 /** 同一 span 内区分同名事件的自然键：没有则同名即重复。 */
 const DISCRIMINATOR:Record<string,string>={
+ // Probe and shutdown report distinct health snapshots in the shared log span.
+ log_health:'observed_by',
  page_report_observed:'host',
  host_state:'host_label',
  // 两个窗口各自读一次报告：同名事件按宿主区分，不是重复输出。
