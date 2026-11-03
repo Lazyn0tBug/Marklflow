@@ -1,10 +1,10 @@
 {
   "artifact": "local-macos-pdf-probe.jsonl",
   "kind": "D1b 本机流程验证日志（非交付宿主证据；探针源取自配置后的复跑）",
-  "sha256": "5158ef68fd831b0ed127cd321f5df81454f5aead6a7adf82f68b370f65de5de8",
+  "sha256": "2bf5c52d92df313dbe452cbecd152b43c6d3416c4414e9ede6e84f7243c75a09",
   "bytes": 16567,
   "records": 47,
-  "run_id": "119ad06b-a2ce-4ef6-ac8b-eb46a5de27c5",
+  "run_id": "9625124d-710e-4fdc-9a1c-d5b17ea05300",
   "build": {
     "feature": "pdf-probe",
     "command": "cargo run --no-default-features --features pdf-probe",

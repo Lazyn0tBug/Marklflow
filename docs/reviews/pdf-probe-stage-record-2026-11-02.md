@@ -366,7 +366,7 @@ L1 落地后（提交 `a8616ae`），本轮补上 L2 与**机器校验器**：D1
 
 ### 本机实跑（macOS，pdf-probe 构建）
 
-日志已归档：`docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl`（sha256 `5158ef68fd831b0ed127cd321f5df81454f5aead6a7adf82f68b370f65de5de8`，47 条记录，run_id `119ad06b-a2ce-4ef6-ac8b-eb46a5de27c5`，环境 macos/aarch64/0.9.1），元数据见同目录 `local-macos-pdf-probe.meta.json`。
+日志已归档：`docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl`（sha256 `2bf5c52d92df313dbe452cbecd152b43c6d3416c4414e9ede6e84f7243c75a09`，47 条记录，run_id `9625124d-710e-4fdc-9a1c-d5b17ea05300`，环境 macos/aarch64/0.9.1），元数据见同目录 `local-macos-pdf-probe.meta.json`。
 
 校验器结论：**错误 0、告警 1、提示 1**；D1b-1／2／3／4／6 通过，D1b-5 记「未能确认」（本机只跑了 pdf-probe 构建，未提供默认构建的运行记录）。告警是 `no-run-end`：本机结束时是强杀进程，非正常退出，故未宣称日志完整——交付宿主上从界面正常退出即有 `run_end`。
 
@@ -438,11 +438,21 @@ macOS 上没暴露：那时 `main.url()` 已经是 devUrl。**根因是"从窗�
 | 处 | 改法 | 理由 |
 | --- | --- | --- |
 | `probe.rs` 探针页 URL 的源 | 改从**配置**的 `build.devUrl` 取（新增纯函数 `probe_url_from`，配 3 项单测） | 配置是"应用自身的源"的稳定陈述；窗口 URL 是瞬时的（初载前是 about:blank） |
-| `probe.rs` 同源判定 | 生产构建（`tauri::is_dev()` 为假）直接不做探针；主窗口实际源与配置源不一致时中止 | 生产构建的页面由 tauri 协议提供，与 dev server 不同源，探针页既不在产物里、IPC 也不通，那样的证据是假的 |
+| `probe.rs` 同源判定 | 主窗口实际源与配置源不一致时中止（生产构建的页面走 tauri 协议，与配置里的源不是同一个，自然落在这条判定上） | 不同源时探针页既不在产物里、IPC 也不通，那样的证据是假的 |
 | `probe.rs` 导航时机 | 源可达性在**导航之前**判；不可达就不导航，把主窗口留在应用自己的页面上 | 探针不该把应用带到一个打不开的页面上 |
 | `probe.rs` 失败回退 | 试过导航却没成位时，把主窗口导回初始页 | 探针失败不该把应用留在坏页面上 |
 | `probe.rs` 报告读取 | 探针页没就位就不读报告 | 等满 60 秒超时也读不到，白等一分钟 |
 | `probe.rs` 装配失败 | 装配失败只记一条中止原因，**不拖住应用启动** | 探针是测试路径，不能让应用起不来 |
+
+### 审查查出的一处死代码（已修）
+
+修复本身在审查里被推翻了一处：**`tauri::is_dev()` 这道闸永远不会触发**。它读的是 `tauri` 构件自己的 `custom-protocol` 特性，而本仓库的 `src-tauri/Cargo.toml` **没有这个特性、也没有把它转发给 tauri**（`cargo build --features custom-protocol` 直接报 `the package 'markflow' does not contain this feature`），所以 `is_dev()` 恒为真。留着这道闸等于留了一句不会兑现的承诺。
+
+已删掉该闸，改由**运行期的同源判定**承担：主窗口实际所在的源与配置里的源不一致就中止。生产构建的页面走 tauri 协议（`origin_of` 记为 `none`），与配置里的 `127.0.0.1:3000` 不一致 → 中止。这道判定不依赖构建口味，删掉死闸没有丢任何保证。
+
+### 另一处工程事实（**不在本轮范围，待决**）
+
+Tauri v2 的标准模板要求 app 构件声明 `custom-protocol = ["tauri/custom-protocol"]`（`tauri build` 会以该特性调用 cargo），本仓库没有这一条。**未验**：本机没有 tauri CLI，无法确认发行构建现在是否因此失败；但若 `tauri build` 确实传该特性，cargo 会以 `the package 'markflow' does not contain this feature` 失败。补这一条会改变生产构建的加载方式（从 dev server 切到内嵌前端），属独立决策，本轮不动。
 
 ### 顺带修掉的两处凭据泄露
 

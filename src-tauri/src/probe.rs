@@ -37,10 +37,8 @@ const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
 /// 只记类别，不记异常原文：异常原文可能带本地路径，而契约禁止完整本地路径入日志。
 #[derive(Debug, Clone, Copy)]
 enum ProbeError {
-    /// 生产构建没有 devUrl：应用自身的源无从取得，探针页也不在打包产物里。
+    /// 配置里没有 devUrl：应用自身的源无从取得。
     NoAppOrigin,
-    /// 生产构建：页面由 tauri 协议提供，探针页既不在产物里，也不是同源。
-    NotADevBuild,
     /// 受控夹具或受控授权的建立失败。
     Fixture,
     /// 输出宿主创建失败。
@@ -52,7 +50,6 @@ impl ProbeError {
     fn category(self) -> &'static str {
         match self {
             ProbeError::NoAppOrigin => "no-app-origin",
-            ProbeError::NotADevBuild => "not-a-dev-build",
             ProbeError::Fixture => "fixture-failed",
             ProbeError::Host => "host-failed",
         }
@@ -116,9 +113,6 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         probe.in_scope(|| {
         let main_window = handle.get_webview_window("main");
         let output_window = handle.get_webview_window(&output_label);
-        let mut navigated = false;
-        let mut attempted = false;
-        let mut navigate_error = String::new();
         let mut initial_target: Option<Url> = None;
         let mut loaded = false;
         if let Some(window) = &main_window {
@@ -165,32 +159,13 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                 tracing::warn!(event = "probe_abort", reason = reason);
             });
         }
-        if abort_reason.is_none() {
-        if let Some(window) = &main_window {
-            // 只在探针页还没就位时导航：重复导航会让探针页跑第二遍，
-            // 而第一遍已经撤销了受控授权，第二遍的读取就会拿到 unknown-file-key。
-            if window.url().map(|current| current == url).unwrap_or(false) {
-                navigated = true;
-            } else {
-                attempted = true;
-                for _ in 0..5 {
-                    match window.navigate(url.clone()) {
-                        Ok(()) => {
-                            std::thread::sleep(Duration::from_millis(700));
-                            if window.url().map(|current| current == url).unwrap_or(false) {
-                                navigated = true;
-                                break;
-                            }
-                        }
-                        Err(error) => {
-                            navigate_error = error.to_string();
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        }
+        // 探针页没就位就不导航：把主窗口留在应用自己的页面上。
+        let navigation = match (&main_window, abort_reason) {
+            (Some(window), None) => Some(navigate_to_probe(window, &url)),
+            _ => None,
+        };
+        let (navigated, attempted, navigate_error) =
+            navigation.unwrap_or((false, false, String::new()));
         let page_path = url_path(&url);
         tracing::info!(
             event = "probe_navigation",
@@ -269,6 +244,28 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
     Ok(())
 }
 
+/// 把主窗口导航到探针页。返回（是否就位、是否试过、导航错误）。
+///
+/// 只在探针页还没就位时导航：重复导航会让探针页跑第二遍，
+/// 而第一遍已经撤销了受控授权，第二遍的读取就会拿到 unknown-file-key。
+fn navigate_to_probe(window: &tauri::WebviewWindow, url: &Url) -> (bool, bool, String) {
+    if window.url().map(|current| current == *url).unwrap_or(false) {
+        return (true, false, String::new());
+    }
+    for _ in 0..5 {
+        match window.navigate(url.clone()) {
+            Ok(()) => {
+                std::thread::sleep(Duration::from_millis(700));
+                if window.url().map(|current| current == *url).unwrap_or(false) {
+                    return (true, true, String::new());
+                }
+            }
+            Err(error) => return (false, true, error.to_string()),
+        }
+    }
+    (false, true, String::new())
+}
+
 /// 记下 Rust 侧对页面报告的读数。
 ///
 /// 这是 **native 侧对页面结果的读数**：内容仍是页面自述，不因此成为原生证实。
@@ -330,18 +327,13 @@ fn url_path(url: &Url) -> String {
 /// 源取自**配置里的 devUrl**（应用自身的源），不取自窗口的当前 URL：
 /// 窗口在初载落地前是 about:blank，据此算出来的源是错的——交付宿主上
 /// 就是这么把主窗口导航成 about:blank、屏幕全白的。
-/// 生产构建没有 devUrl（那时页面由 tauri 协议提供，探针页也不在产物里），
-/// 故这里返回失败，探针在生产构建上不做。
+/// 配置里没有 devUrl 时返回失败。生产构建的页面由 tauri 协议提供，与配置里的
+/// 源不是同一个——那种情况下运行期会由同源判定中止（见 assemble 里的来源比对）。
 fn probe_url(
     app: &tauri::AppHandle,
     read_key: &str,
     write_key: &str,
 ) -> Result<Url, ProbeError> {
-    // 生产构建里页面由 tauri 协议提供，与 dev server 不是同一个源，
-    // 探针页既不在产物里、IPC 也不通——那样的运行产出的证据是假的。
-    if !tauri::is_dev() {
-        return Err(ProbeError::NotADevBuild);
-    }
     let origin = app
         .config()
         .build
