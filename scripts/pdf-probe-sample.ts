@@ -21,7 +21,7 @@ import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {arch,platform,release} from 'node:os';
-import {resolve} from 'node:path';
+import {relative,resolve,sep} from 'node:path';
 
 const repo=resolve(import.meta.dirname,'..');
 const originArg=process.argv.indexOf('--origin');
@@ -34,6 +34,8 @@ const metaFile=resolve(outDir,'frozen-sample.meta.json');
 const HEAD_MARKER='MF-PROBE-HEAD-20261102-7f3dd5e';
 const TAIL_MARKER='MF-PROBE-TAIL-20261102-7f3dd5e';
 const VITE_ENTRY='node_modules/vite/bin/vite.js';
+/** 仓库相对路径（正斜杠）：meta 不记宿主绝对路径——归档要能被别人读懂。 */
+const repoRelative=(path:string):string=>relative(repo,path).split(sep).join('/');
 const PROBE_PAGE='/tests/fixtures/architecture/export-html-probe.html';
 // 逐族测宽用；MISSING_FAMILY 是故意不存在的族，作为"落到默认字体"的基线。
 const FONT_FAMILIES=['"Microsoft YaHei"','"Microsoft YaHei UI"','"PingFang SC"','system-ui','sans-serif'];
@@ -149,8 +151,8 @@ try{
   const locate=(marker:string)=>{for(let i=1;i<chunks.length;i++){if(chunks[i]!.includes(marker))return i;}return null;};
   const fontStacks=[...new Set([...html.matchAll(/font-family\s*:\s*([^;}\n]+)/g)].map(match=>match[1]!.trim()))];
   const meta={
-    file:outFile,
-    source:samplePath,
+    file:repoRelative(outFile),
+    source:repoRelative(samplePath),
     bytes:Buffer.byteLength(html,'utf8'),
     sha256:createHash('sha256').update(html).digest('hex'),
     mdHash,

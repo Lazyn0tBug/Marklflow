@@ -74,7 +74,29 @@ function resultOf(outcome:Outcome):{result:WebResult;error_category?:WebErrorCat
  return {result:'error',error_category:'unknown'};
 }
 
+/**
+ * 同一窗口里探针页只跑一次。
+ *
+ * 重载（dev server 热更新、手动刷新）会让页面再跑一遍，而受控授权在首轮读完后
+ * 已撤销，第二遍只会留下一串 unknown-file-key 的噪声——交付宿主上就是这样多了两轮。
+ *
+ * 两道标记，作用不同，不能混用：
+ * - `history.state` 带着**首轮报告**：重载后 DOM 是空的，靠它把报告放回去，
+ *   原生侧才读得到有效证据（首轮跑完即写入，重载时原样恢复）；
+ * - `window.name` 是窗口级的标记：页面被导航走又回来时不再重跑（此时原生侧早已读完）。
+ */
+const RAN_MARKER='mf-probe-ran';
+
 async function main():Promise<void>{
+ const restored=(history.state as {report?:Record<string,unknown>}|null)?.report;
+ if(restored){
+  // 重载后的这一页：不发任何调用，只把首轮报告放回 DOM。
+  Object.assign(report,restored);
+  publish();
+  return;
+ }
+ if(window.name===RAN_MARKER)return;
+ window.name=RAN_MARKER;
  await step('page_ready',{});
  const identityCall=newCallId();
  await step('call_started',{call_id:identityCall,command:'get_platform_info'});
@@ -120,6 +142,8 @@ async function main():Promise<void>{
  report.logStatus=lastLogStatus;
  report.done=true;
  publish();
+ // 报告存进历史状态：重载后 DOM 会清空，靠它把首轮报告放回去。
+ history.replaceState({report},'');
 }
 
 void main().catch(error=>{report.error=String(error);report.done=true;publish()});

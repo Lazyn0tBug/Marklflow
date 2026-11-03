@@ -212,6 +212,13 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             }
         }
 
+        // 探针跑完把主窗口导回应用自己的页面：探针是测试路径，不该把用户留在探针页上。
+        // 报告已在此之前读完，导回不影响证据。
+        let app_restored = match (&main_window, &initial_target) {
+            (Some(window), Some(target)) => window.navigate(target.clone()).is_ok(),
+            _ => false,
+        };
+
         // 探针专用回收：撤销两份受控授权。正常 release_native_file 的业务清理不受影响。
         // 不记 key 片段：契约禁止用凭据片段做关联，也禁止日志出现凭据的派生值。
         let access = handle.state::<FileAccess>();
@@ -224,6 +231,7 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             revoked = true,
             revoked_grants = 2,
             fixture_removed = true,
+            app_restored = app_restored,
         );
         // 受控验收入口直接读取健康状态，并把状态与观察来源抄进日志。
         let health = logging::health();

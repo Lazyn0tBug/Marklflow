@@ -1,6 +1,6 @@
 {
-  "file": "D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\frozen-sample.html",
-  "source": "D:\\code\\Marklflow\\tests\\fixtures\\export-source\\pdf-probe-sample.md",
+  "file": "frozen-sample.html",
+  "source": "tests/fixtures/export-source/pdf-probe-sample.md",
   "bytes": 129184,
   "sha256": "78aff00c92253b499fb400c72117348bdad7af8c1b0a9ace50812d0f553b50c0",
   "mdHash": "d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b",
@@ -54,5 +54,6 @@
     "fontFamily": "font-family:var(--mf-font,system-ui,\"Microsoft YaHei\",\"PingFang SC\",sans-serif)"
   },
   "pageProblems": [],
-  "note": "sha256 只锁定本文件；mdHash 与 renderConfigVersion 承担\"同一输入\"的稳定身份，沿用仓库既有产出身份模型。交付宿主字体环境须与本 environment 一致，否则固化分页的页面盒度量不匹配。platformFonts 与 fontWidths 记录宿主实际解析到的字体，用于核对字体环境。"
+  "note": "sha256 只锁定本文件；mdHash 与 renderConfigVersion 承担\"同一输入\"的稳定身份，沿用仓库既有产出身份模型。交付宿主字体环境须与本 environment 一致，否则固化分页的页面盒度量不匹配。platformFonts 与 fontWidths 记录宿主实际解析到的字体，用于核对字体环境。",
+  "pathsRelative": "路径已按仓库相对路径改写（取样脚本 2026-11-03 起如此输出）：文件内容与 sha256 未变，其余字段未动。"
 }
