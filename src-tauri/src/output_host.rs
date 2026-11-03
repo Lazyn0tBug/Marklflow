@@ -7,6 +7,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tauri::{WebviewUrl, WebviewWindow};
 
+use crate::logging;
+
 /// 输出宿主窗口 label 的基名。第一个实例就用它，与 `source_guard::OUTPUT_HOST` 逐字相同；
 /// 同进程内的后续实例追加序号，仍是独立实例，且同样不在允许范围内。
 #[allow(dead_code)]
@@ -38,15 +40,18 @@ pub fn create(
         .title("MarkFlow 输出宿主")
         .build()?;
     // 宿主创建是一条观测事件：身份、形态与实例数都留痕。
-    tracing::info_span!("host", host_kind = "output", host_label = label.as_str(), visible = false).in_scope(|| {
-        tracing::info!(
-            event = "host_state",
-            state = "created",
-            host_kind = "output",
-            host_label = label.as_str(),
-            visible = false,
-            instances = instance_count(),
-        );
+    // host span 挂在根 span 下：契约要求所有调用 span 都是根的直接子。
+    logging::run_span().in_scope(|| {
+        tracing::info_span!("host", host_kind = "output", host_label = label.as_str(), visible = false).in_scope(|| {
+            tracing::info!(
+                event = "host_state",
+                state = "created",
+                host_kind = "output",
+                host_label = label.as_str(),
+                visible = false,
+                instances = instance_count(),
+            );
+        });
     });
     Ok(window)
 }

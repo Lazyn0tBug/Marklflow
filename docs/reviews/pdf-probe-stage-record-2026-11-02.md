@@ -326,11 +326,94 @@ D1b 取证的前置，设计与契约见[日志基座设计](../design/log-base-
 
 **本轮未做（L2）**：`log_event` 命令与其写日志准入、web 侧结构化载荷（最小事件结构 + 允许字段白名单）、`page_call` span、`host`/`probe` span、`host_state`/`page_report_observed` 事件、健康状态被受控验收入口读取。
 
+## L2 web→Rust 回传与机器校验器（2026-11-03）
+
+L1 落地后（提交 `a8616ae`），本轮补上 L2 与**机器校验器**：D1b 的取证不再靠人读终端输出。
+
+### L2 落地内容
+
+| 件 | 位置 | 内容 |
+| --- | --- | --- |
+| 回传命令 | `src-tauri/src/lib.rs` | `log_event` 只写日志，不碰 `FileAccess`，**发不出任何能力**；返回稳定结果 accepted／dropped／rejected |
+| 准入与限流 | `src-tauri/src/logging.rs` | 写日志与敏感命令同一套身份判定：正常路径只允许主窗口，pdf-probe 构建额外接受由原生创建并登记的探针输出实例；单请求 ≤ 4 KiB、每身份对 20 条/秒、进程 100 条/秒 |
+| 载荷白名单 | `src-tauri/src/logging.rs` | `deny_unknown_fields` 的最小事件结构（event／call_id／command／result／error_category／bytes）；未知字段与未知事件**拒收**；外层 origin 与身份由原生生成，页面覆盖不了 |
+| 统一发送口 | `src-tauri/src/logging.rs` | 必填字段在一处装配；native 事件名即业务事件名，web 外层固定 `web_event`、业务事件在 `page_event`，健康摘要为 `log_health` |
+| 探针页回传 | `tests/fixtures/architecture/pdf-probe-client.ts` | 最小载荷 + `log_event` 转发 + 有界 DOM 步骤日志（64 条上限）；缺失元素不使脚本死掉 |
+
+### 机器校验器
+
+`scripts/pdf-probe-check.ts`：`bun scripts/pdf-probe-check.ts <日志文件或目录...> [--run <run_id>] [--json]`。
+
+- 按方案 §5.3 的证据矩阵逐条判定 D1b-1—D1b-6，三态结论（通过／未通过／未能确认），每条写明依据及其来源（native 观察／web 观察／页面自述）。
+- 另做契约体检（诊断项）：重复输出、调用 span 是否都是根的直接子、事件是否落在契约规定的 span 内、跨侧结果不一致、两侧记录数量不匹配、web 侧只记开始没有完成、`log_health` 计数、run_end 缺失、脱敏扫描（凭据片段／完整本地路径／带凭据 URL／夹具正文）。
+- 退出码：0 全部通过；1 有未通过或有错误级诊断；2 有未能确认。
+- 单元测试 `tests/unit/pdf-probe-check.test.ts`（12 项）覆盖：证据齐全即通过、缺 run_start 记未能确认、native 拒绝而 web 报成功判未通过（泄露不被 web 声明覆盖）、缺 operation_result 记未能确认、默认构建缺失时 D1b-5 记未能确认、重复输出、关联不匹配、span 归属、凭据片段、损坏 JSON 与未知 schema、调用中断。
+
+### 校验器查出的六处契约偏差（本机实跑，全部已修）
+
+校验器第一次跑在旧日志上就报了 4 个错误级诊断；补测后共 6 处：
+
+| # | 偏差 | 契约依据 | 处置 |
+| --- | --- | --- | --- |
+| 1 | `probe_source_check` 记在 span 外 | §5.1：事件落在规定的 span 内 | 该事件移进 probe span |
+| 2 | `host` span 的 parent 为 null | §5.1：调用 span 都是根的直接子 | 宿主创建改在 `run_span()` 作用域内开 span |
+| 3 | `probe_cleanup` 记 key 前 8 位 | §3／§5.3：不记凭据及其派生值，不用 key 片段做关联 | 删除该字段；`credential_prefix` 一并移除 |
+| 4 | 拒绝路径无 `operation_result` | §5.1：command span 的结果事件 | 守卫拒绝时由 span 层补 `result=denied` + `reason_code` |
+| 5 | 授权解析失败等早退路径无结果事件 | 同上 | 各命令改为先并出结果再记事件，早退也留痕 |
+| 6 | `release_native_file` 的结果事件缺 `elapsed_ms` | §5.1：结束事件带耗时 | 补计时；五个命令统一由 span 层计时 |
+
+另补两处契约补齐（不是偏差，是缺口）：`run_start` 事件上重复 os／arch／app_version（span 上的字段不进记录，校验器要按 §5.3 记环境）；`probe_cleanup` 改为**先删夹具再记事实**，不再提前宣称已删除。
+
+### 本机实跑（macOS，pdf-probe 构建）
+
+日志已归档：`docs/acceptance/pdf-probe/local-macos-pdf-probe.jsonl`（sha256 `aaa3866598b76b1d3821166e4443963a47374948ba1be44b51e9c5e3941e6072`，47 条记录，run_id `a976ef1f-e147-4641-a1ad-7da21e1699fa`，环境 macos/aarch64/0.9.1），元数据见同目录 `local-macos-pdf-probe.meta.json`。
+
+校验器结论：**错误 0、告警 1、提示 1**；D1b-1／2／3／4／6 通过，D1b-5 记「未能确认」（本机只跑了 pdf-probe 构建，未提供默认构建的运行记录）。告警是 `no-run-end`：本机结束时是强杀进程，非正常退出，故未宣称日志完整——交付宿主上从界面正常退出即有 `run_end`。
+
+依据摘要（两侧相符）：
+
+```
+source_decision allow read_native_text  win=main      operation_result ok bytes=25
+source_decision deny  read_native_text  win=pdf-output reason_code=native-source-denied
+source_decision deny  select_native_open win=pdf-output reason_code=native-source-denied
+source_decision allow release_native_file win=main    operation_result ok
+source_decision deny  release_native_file win=pdf-output reason_code=native-source-denied
+web_event call_finished read_native_text result=denied win=pdf-output
+page_report_observed host=main  role=main-window  read_ok=true  read_matches_fixture=true
+page_report_observed host=output role=output-host read_ok=false read_error=native-source-denied
+log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
+```
+
+### 交付宿主取证步骤（待执行）
+
+前置：分支尚未 push（未经明确要求不 push）；交付宿主需能跑 dev server（探针页必须与主窗口**同源**，否则 IPC 与 CSP 都不成立）。
+
+| 步 | 操作 | 要点 |
+| --- | --- | --- |
+| 1 | 取代码 | `git pull` 到 `D:\code\Marklflow` |
+| 2 | 起前端 dev server | `bun run dev:desktop`（127.0.0.1:3000）。探针页在 `tests/fixtures/architecture/pdf-probe-client.html`，dev server 直接从仓库根提供，**不打包进前端产物** |
+| 3 | 跑探针构建 | `cd src-tauri`；`set MARKFLOW_LOG=info`；`set MARKFLOW_LOG_FORMAT=json`；`cargo run --no-default-features --features pdf-probe`。**必须是 debug 构建**：生产构建加载的是内嵌前端（tauri://localhost），探针页就成了异源，IPC 与 CSP 都不成立 |
+| 4 | 等探针跑完 | 启动即自动装配；约 10 秒内完成，无需操作 |
+| 5 | 从界面正常退出 | 关闭窗口即触发 `run_end`；强杀进程则日志无 `run_end`，校验器会报"不得宣称日志完整" |
+| 6 | 取日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log`（按运行分文件；轮转时同一次运行会分散在多个文件里，一起取回） |
+| 7 | 补 D1b-5 的默认构建运行 | 另跑一次不带 feature 的 `cargo run`，在**主窗口界面里打开一个文档**（触发 `select_native_open` 的放行），再正常退出；取第二份日志 |
+| 8 | 机器核对 | 把两份日志放回仓库，在开发机执行 `bun scripts/pdf-probe-check.ts docs/acceptance/pdf-probe/<两份日志>`；期望 D1b-1—D1b-6 全通过、错误级诊断 0 |
+| 9 | 归档 | 归档日志原文与 SHA-256 到 `docs/acceptance/pdf-probe/`（**改名为 `.jsonl` 入库**：仓库忽略 `*.log`），并把校验器输出抄进本记录 |
+
+人工项：第 3 步运行期间，**输出宿主调用选择器命令时屏幕上不得弹出原生文件对话框**（D1b-4）。这一步机器只证"被拒"，弹框与否由人在机器前确认。
+
+### 已知边界（不掩盖）
+
+- **D1b-2 的"内容准确"只有页面自述依据**：原生不记正文，能证明的是"放行、读成功、返回 25 字节"；"与夹具逐字相符"来自页面的 `read_matches_fixture`，校验器据此标注来源并在诊断里提示，不写成原生证实。
+- **D1b-5 需要默认构建的运行记录**：机器可判的部分是"默认构建的日志里没有探针事件与探针身份"；"主窗口允许路径仍有效"要在默认构建中触发一次受保护命令（如从界面打开文档），否则该项记「未能确认」——它不是"默认构建通过"就算过。
+- **"未弹出原生对话框"是人工项**：机器只证"被拒"；弹框与否由人在交付宿主确认。
+- **本轮未取交付宿主证据**：以上均为本机 macOS 的流程验证。
+
 ## 待补
 
 - **D1a 已完成**（2026-11-03）：六条断言齐了，D1a-6 的运行期身份由交付宿主核对通过（("main","main") 与允许范围写入值一致）。
 - **D1b 实现完成、取证未完成**：探针在本机跑通并产出完整证据集；交付宿主首次复跑为装配缺陷（主窗口停在 `about:blank`，探针页未加载），成因已定位并已改（导航延到后台线程、先等初载落地、另加两处自述诊断），**待重跑取证**。
-- **日志基座 L1/L2 未实现**：设计已定（独立文档[日志基座设计](../design/log-base-plan-2026-11-03.md)），是 D1b 取证的前置——未落地前证据只能靠人读终端输出，不能机器校验。
+- **日志基座 L1/L2 已实现**（2026-11-03）：L1 见上节；L2 与机器校验器见本节。**待交付宿主复跑取日志**，用校验器核对六条断言并把日志与 SHA-256 归档到 `docs/acceptance/pdf-probe/`。
 - ~~样本的交付宿主重生成~~ **已完成（2026-11-03）**：交付宿主产出已替换归档，交接物表与宿主事实已更新。
 - **R3 尚未修**：meta 记宿主绝对路径。修了需在交付宿主重跑脚本换 meta（HTML 产物不变），故排在下次取样时一并做。
 - 全仓库评审的其余待修项（17 条确认项与 8 条可能项，含预览热路径与导出路径）记于[全仓库代码评审记录](codebase-review-2026-11-02.md)，本文件只记探针相关者。

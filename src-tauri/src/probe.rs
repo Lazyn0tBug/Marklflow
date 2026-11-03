@@ -51,16 +51,21 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     // 主窗口导航到探针页：身份仍是 ("main","main")，在允许范围内。
     let source_reachable = source_is_reachable(&url);
-    tracing::info!(
-        event = "probe_source_check",
-        page_origin = page_origin.as_str(),
-        reachable = source_reachable,
-    );
-    if !source_reachable {
-        tracing::warn!(
-            event = "probe_abort",
-            reason = "探针页源不可达：应用与探针页必须同源，且该源须在运行",
+    // 源检查记在探针 span 内：事件落在契约规定的 span 里，不悬空。
+    probe.in_scope(|| {
+        tracing::info!(
+            event = "probe_source_check",
+            page_origin = page_origin.as_str(),
+            reachable = source_reachable,
         );
+    });
+    if !source_reachable {
+        probe.in_scope(|| {
+            tracing::warn!(
+                event = "probe_abort",
+                reason = "探针页源不可达：应用与探针页必须同源，且该源须在运行",
+            );
+        });
     }
     // 主窗口的导航放到后台线程：先等它的初始页面落地，再导航到探针页。
     // 在 setup 钩子里抢先导航会与初次加载相撞，窗口会停在 about:blank。
@@ -148,17 +153,17 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // 探针专用回收：撤销两份受控授权。正常 release_native_file 的业务清理不受影响。
+        // 不记 key 片段：契约禁止用凭据片段做关联，也禁止日志出现凭据的派生值。
         let access = handle.state::<FileAccess>();
         access.revoke(&read_key);
         access.revoke(&write_key);
-        let read_prefix = logging::credential_prefix(&read_key);
-        let write_prefix = logging::credential_prefix(&write_key);
+        // 夹具目录随 TempDir 离开作用域而删除：先删，再记事实——不提前宣称已删除。
+        drop(fixture_dir);
         tracing::info!(
             event = "probe_cleanup",
-            read_key_prefix = read_prefix.as_str(),
-            write_key_prefix = write_prefix.as_str(),
             revoked = true,
-            fixture_removed_on_drop = true,
+            revoked_grants = 2,
+            fixture_removed = true,
         );
         // 受控验收入口直接读取健康状态，并把状态与观察来源抄进日志。
         let health = logging::health();
@@ -173,7 +178,6 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             file_unavailable = health.file_unavailable,
             stdout_failed = health.stdout_failed,
         ));
-        drop(fixture_dir);
         });
     });
 

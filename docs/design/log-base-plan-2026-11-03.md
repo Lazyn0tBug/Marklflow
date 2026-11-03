@@ -92,7 +92,13 @@
 | `page_call` | 页面侧每次调用 | call_id, command, window_label, webview_label | `call_started` / `call_finished` / `page_error` | result, error_category |
 | `host` | 每次原生宿主创建 | host_kind, host_label, visible | `host_state` | state, instances |
 | `probe` | 探针装配一次 | — | `probe_source_check` / `probe_initial_load` / `probe_navigation` / `probe_cleanup` | reachable, loaded, navigated, revoked |
+| | | | `page_report_observed` | host, role, read_ok, read_matches_fixture |
 | `log` | 日志基座自身 | — | `log_health` | dropped, rejected, write_failures, rotate_failures, stdout_failed |
+
+两条补充约束（实施时查出，写进契约免得再犯）：
+
+- **span 上的字段不进记录**。记录只带 span 名、id 与父 id，故 `run` span 上的 os／arch／app_version／feature 必须在 `run_start` 事件上重复一次——校验器要按 §5.3 记构建、feature 与环境，这些字段得真的在日志里。
+- **每个 command span 都要有 `operation_result`**。拒绝路径没有命令体，由 span 层补一条 `result=denied` 与 `reason_code`；授权解析失败等早退路径同样要记。否则"原生看见了失败却没落笔"，跨侧对照就成了单边叙述。
 
 两条实现约束（都会咬人，写在这里免得实现时再撞）：
 
@@ -115,6 +121,13 @@
 - 同一 span 内同名事件重复出现即视为重复输出，须报告；跨侧按 call_id 与 span 上下文配对，允许Web异步迟到。身份/命令冲突及结果不一致均须报告；无对应Rust观察的Web声明不能证明原生成功。只对该验收所需事件设完整性条件，不要求全部业务事件两侧双写。
 - 验收取证运行须显式启用覆盖所需事件的级别与JSON格式；release默认WARN不保证收集INFO证据。缺少过滤掉的事件仍属证据不足，不能认作未发生。
 - 日志不含文档正文、完整本地路径或任何授权凭据，包括查询串、异常与DOM报告的间接泄露。关联使用单独ID，不使用key片段作为常规关联办法。已有探针URL/cleanup打印原始key的路径须在接入基座时同步迁移，不能tee后继续泄露。
+
+**校验器的实现**：`scripts/pdf-probe-check.ts`（`bun scripts/pdf-probe-check.ts <日志文件或目录...> [--run <run_id>] [--json]`）。它做两件事：
+
+1. 按探针方案 §5.3 的证据矩阵逐条判定 D1b-1—D1b-6，三态结论（通过／未通过／未能确认），每条都写明判定依据及其来源（native 观察／web 观察／页面自述）。退出码：0 全部通过，1 有未通过或有错误级诊断，2 有未能确认。
+2. 做**契约体检**（诊断项，不混进断言）：重复输出、调用 span 是否都是根的直接子、事件是否落在契约规定的 span 内、跨侧结果不一致、两侧记录数量不匹配、web 侧只记开始没有完成、`log_health` 计数、run_end 缺失、脱敏扫描（凭据片段／完整本地路径／带凭据 URL／夹具正文）。
+
+**内容相符的依据边界**：原生不记正文（§3 凭据策略），故"读到的内容与夹具逐字相符"只有页面自述（`read_matches_fixture`）一个来源；原生能证明的是"放行、读成功、返回 N 字节"。校验器据此把该依据标为页面自述，并在诊断里显式提示，不把它写成原生证实。
 
 
 ## 6. 执行约定

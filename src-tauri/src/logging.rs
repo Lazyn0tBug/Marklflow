@@ -311,13 +311,6 @@ fn span_context(span: &tracing::Span) -> (String, Option<u64>, Option<u64>) {
     )
 }
 
-/// 凭据的可公开形态：前 8 位。用于关联，不足以兑现。
-/// 探针构建用它记清理事件；默认构建没有调用点。
-#[allow(dead_code)]
-pub fn credential_prefix(value: &str) -> String {
-    value.chars().take(8).collect()
-}
-
 /// 日志基座自身的 span（契约 span 表里的 `log`）：健康摘要记在其中。
 pub fn log_span() -> tracing::Span {
     LOG_SPAN
@@ -422,7 +415,17 @@ pub fn init(app: &tauri::AppHandle, feature: &str) {
     // 日志基座自身的 span：健康摘要记在其中（契约 span 表里的 `log`）。
     let log_span = span.in_scope(|| tracing::info_span!("log"));
     let _ = LOG_SPAN.set(log_span.clone());
-    span.in_scope(|| tracing::info!(event = "run_start", feature = feature));
+    // 环境随运行标记一起落笔：校验器要记构建、feature 与环境（契约 §5.3），
+    // 而 span 上的字段不进记录，故这里在事件上重复一次。
+    span.in_scope(|| {
+        tracing::info!(
+            event = "run_start",
+            feature = feature,
+            os = std::env::consts::OS,
+            arch = std::env::consts::ARCH,
+            app_version = env!("CARGO_PKG_VERSION"),
+        )
+    });
 }
 
 /// 结束本次运行：写 `run_end`，排空队列并刷新，最多等 `SHUTDOWN_TIMEOUT`。
