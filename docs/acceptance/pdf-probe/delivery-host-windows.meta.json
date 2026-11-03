@@ -22,6 +22,17 @@
       "bytes": 5047,
       "lines": 20,
       "covers": "d1b-5"
+    },
+    {
+      "file": "delivery-host-windows-dialog-positive-control.txt",
+      "kind": "原生对话框阳性对照（默认构建，devUrl 临时指向架构探针页；主窗口在允许范围内）",
+      "feature": "default",
+      "run_id": "365a2456-a472-4f0b-aee1-f22282901adf",
+      "sha256": "8e558c02cc08c5ff477841011bf7127ca3e36ef03d97591a9e8fde115250261d",
+      "bytes": 1066,
+      "lines": 5,
+      "covers": "D1b-4 人工项的阳性对照",
+      "observed": "两个原生对话框都弹出并被取消：select_native_open count=0 elapsed_ms=2686；select_native_save granted=false elapsed_ms=2724"
     }
   ],
   "checker": {
@@ -41,9 +52,9 @@
       "info": 1
     },
     "known_limits": [
-      "no-run-end：两次运行都是强杀进程退出，非正常退出，故不宣称日志完整",
+      "no-run-end：各次运行都是强杀进程退出，非正常退出，故不宣称日志完整",
       "D1b-2 的内容逐字相符只有页面自述依据（原生只证明成功与字节数 25）",
-      "D1b-4 的\"未弹框\"是人工项，由人在交付宿主确认，不在本归档内",
+      "D1b-4 的\"未弹框\"是人工项，已由人确认；阳性对照见 delivery-host-windows-dialog-positive-control.txt：该机器上的原生对话框确实会弹（主窗口放行时）",
       "探针页在运行中重载过三次：后两次的读取拿到 unknown-file-key（授权已在首轮后撤销），首轮证据完整，噪声不参与判定"
     ]
   }

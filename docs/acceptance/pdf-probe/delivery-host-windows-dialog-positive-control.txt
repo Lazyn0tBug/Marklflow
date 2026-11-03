@@ -1,0 +1,5 @@
+2026-11-03T12:43:20.295Z INFO  run_id=365a2456-a472-4f0b-aee1-f22282901adf event=run_start span=run{id=1,parent_id=null} app_version=0.9.1 arch=x86_64 feature=default origin=rust os=windows
+2026-11-03T12:43:23.066Z INFO  run_id=365a2456-a472-4f0b-aee1-f22282901adf event=source_decision span=command{id=274877906945,parent_id=1} command=select_native_open decision=allow origin=rust webview=main window=main
+2026-11-03T12:43:25.753Z INFO  run_id=365a2456-a472-4f0b-aee1-f22282901adf event=operation_result span=command{id=274877906945,parent_id=1} command=select_native_open count=0 elapsed_ms=2686 origin=rust result=ok
+2026-11-03T12:43:27.346Z INFO  run_id=365a2456-a472-4f0b-aee1-f22282901adf event=source_decision span=command{id=2252074691592193,parent_id=1} command=select_native_save decision=allow origin=rust webview=main window=main
+2026-11-03T12:43:30.070Z INFO  run_id=365a2456-a472-4f0b-aee1-f22282901adf event=operation_result span=command{id=2252074691592193,parent_id=1} command=select_native_save elapsed_ms=2724 granted=false origin=rust result=ok
