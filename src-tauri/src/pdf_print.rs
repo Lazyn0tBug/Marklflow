@@ -9,6 +9,7 @@
 //! - **同目录临时提交** ✓ —— 目标只在最后那一步被触及 ✓，失败时原文件保持不变 ✓。
 //! - **静默** ✓ —— 隐藏宿主 + 无打印面板 ✓；只有保存对话框是用户可见的 ✓。
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
@@ -198,6 +199,24 @@ pub fn print_html_to_pdf(
     result
 }
 
+/// 打开暂存文件写：**只给本人读** ✓。
+///
+/// 它装的是**用户的文档正文** ✓，而系统临时目录是共享的 ✓（1777 ✓）——
+/// 默认权限（同 umask 的 0644 ✓）会让**同机的别的用户读到** ✓。
+/// **权限在创建时就定** ✓：先写后 chmod 有一个窗口 ✓，那个窗口里文件已经是 0644 ✓。
+///
+/// Windows 上没有这个概念 ✓：临时目录是每用户的 ✓，权限由目录的 ACL 决定 ✓。
+fn open_staged(path: &Path) -> std::io::Result<std::fs::File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(path)
+}
+
 /// 把 HTML 暂存成文件。
 ///
 /// 不用 `tempfile::NamedTempFile` ✓：它在 Windows 上独占打开 ✓，
@@ -209,14 +228,16 @@ fn stage_html(html: &str) -> Result<PathBuf, PrintFailure> {
         std::process::id(),
         next_sequence()
     ));
-    std::fs::write(&path, html).map_err(|_| PrintFailure {
+    let failure = || PrintFailure {
         reason: "打印内容暂存失败".to_owned(),
         pdf_temp_exists: false,
         pdf_temp_bytes: 0,
         target_dir_exists: true,
         pdf_temp_removed: true,
         readiness: Box::new(Readiness::default()),
-    })?;
+    };
+    let mut file = open_staged(&path).map_err(|_| failure())?;
+    file.write_all(html.as_bytes()).map_err(|_| failure())?;
     Ok(path)
 }
 
@@ -463,6 +484,18 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&second).unwrap(), "<p>second</p>");
         let _ = std::fs::remove_file(&first);
         let _ = std::fs::remove_file(&second);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_staged_document_is_readable_by_its_owner_only() {
+        // 暂存文件装的是用户的文档正文 ✓，而系统临时目录是共享的 ✓——
+        // 默认的 0644 会让同机的别的用户读到 ✓。
+        use std::os::unix::fs::PermissionsExt;
+        let path = stage_html("<p>secret</p>").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "暂存的文档正文只有本人能读");
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
