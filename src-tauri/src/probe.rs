@@ -285,9 +285,27 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             // 只记路径：查询串里带受控授权的 key。
             url = page_path.as_str(),
         );
-        // 探针没就位时不读报告：等满超时也读不到，白等一分钟。
-        // 主窗口也要导回初始页——探针失败不该把应用留在坏页面上。
-        if !navigated {
+        // 页面报告由 Rust 读回：这是 **native 侧对页面结果的读数**，内容仍是页面自述。
+        //
+        // **不以导航的 URL 比较为前提**：那个比较是脆的（探针页的 URL 带查询串 ✓），
+        // 误判为"没导航"就会连报告一起丢掉。故一律读——页面真没起来的话，
+        // 读报告会等到超时，正好也是一条证据（"页面没就位" ✓）。
+        let mut main_report_read = false;
+        if let Some(window) = &main_window {
+            if let Some(report) = read_report(window, REPORT_TIMEOUT, "main") {
+                log_observed_report("main", &report);
+                main_report_read = true;
+            }
+        }
+        if let Some(window) = &output_window {
+            if let Some(report) = read_report(window, REPORT_TIMEOUT, "output") {
+                log_observed_report("output", &report);
+            }
+        }
+
+        // 探针没就位时把主窗口导回初始页——探针失败不该把应用留在坏页面上。
+        // 判据用"主窗口的报告读到没有" ✓，不用导航的 URL 比较 ✓。
+        if !main_report_read {
             // 试过导航却没成位：把主窗口导回初始页——探针失败不该把应用留在坏页面上。
             let restored = if attempted {
                 match (&main_window, &initial_target) {
@@ -308,19 +326,6 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             );
         }
 
-        // 页面报告由 Rust 读回：这是 **native 侧对页面结果的读数**，内容仍是页面自述。
-        if navigated {
-            if let Some(window) = &main_window {
-                if let Some(report) = read_report(window, REPORT_TIMEOUT, "main") {
-                    log_observed_report("main", &report);
-                }
-            }
-            if let Some(window) = &output_window {
-                if let Some(report) = read_report(window, REPORT_TIMEOUT, "output") {
-                    log_observed_report("output", &report);
-                }
-            }
-        }
 
         // 就绪探测：打印宿主载的就是**归档原件**，用原生 eval 读它的 DOM。
         // 这是 D1c-1 的就绪判据原型，也是 TBD-11 的决定性验证：
@@ -348,11 +353,19 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             );
                         }
                         Err(reason) => {
+                            // 失败要能诊断：临时文件写出来没有、有多大、目标目录在不在。
+                            // 只记布尔与计数，**不记路径**（契约禁止完整本地路径入日志 ✓）。
+                            let temp_exists = temp.is_file();
+                            let temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
+                            let target_dir_exists = target.parent().map(|dir| dir.is_dir()).unwrap_or(false);
                             let _ = std::fs::remove_file(&temp);
                             tracing::warn!(
                                 event = "probe_pdf",
                                 ok = false,
                                 reason = reason.as_str(),
+                                temp_exists = temp_exists,
+                                temp_bytes = temp_bytes,
+                                target_dir_exists = target_dir_exists,
                             );
                         }
                     }
@@ -654,12 +667,30 @@ fn wait_initial_load(window: &tauri::WebviewWindow, timeout: Duration) -> bool {
             .url()
             .map(|value| value.to_string())
             .unwrap_or_default();
-        if current != "about:blank" && !current.is_empty() {
+        // **URL 不是 about:blank 不等于页面加载完了**：初次加载还在进行时导航会被覆盖
+        // （交付宿主上就是这样丢了探针页）。故还要等文档真的完成。
+        if current != "about:blank" && !current.is_empty() && document_is_complete(window) {
             return true;
         }
         std::thread::sleep(Duration::from_millis(300));
     }
     false
+}
+
+/// 文档是否已加载完成（`document.readyState === 'complete'`）。
+///
+/// 宿主发起的求值不受页面 CSP 约束，故探针页与冻结样本都能这样读。
+fn document_is_complete(window: &tauri::WebviewWindow) -> bool {
+    let (sender, receiver) = mpsc::channel();
+    if window
+        .eval_with_callback("document.readyState", move |value| {
+            let _ = sender.send(value);
+        })
+        .is_err()
+    {
+        return false;
+    }
+    matches!(receiver.recv_timeout(Duration::from_millis(800)), Ok(value) if value.contains("complete"))
 }
 
 /// 读取探针页写在 DOM 里的报告，等到它标记完成或超时。

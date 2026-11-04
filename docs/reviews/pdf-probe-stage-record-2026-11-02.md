@@ -767,6 +767,27 @@ bun run tauri build   →  exit 0
 
 **教训**：这条待查项的依据是"Tauri v2 模板要求 app 声明 custom-protocol"这个**记忆** ✗，而项目自己的规矩是"不要猜 API 与版本行为 ✓"——版本一换，模板的做法就可能不同 ✓（CLI 直接启用依赖的特性 ✓）。**先查再记 ✓**。
 
+### 交付宿主第三次复跑（2026-11-04）：两个独立失败
+
+日志（`markflow.53880.log`）显示**两处失败**：
+
+| 现象 | 日志 | 判断 |
+| --- | --- | --- |
+| 主窗口没载上探针页 | `probe_navigation navigated=false`（5 次尝试全败 ✓）、`probe_report_unreadable` ✓、**整轮没有任何 `source_decision`** ✓ | 导航失败 → **本轮无 D1b 证据** ✓ |
+| 打印失败 | `probe_pdf ok=false reason="打印未成功：Ok(())，成功标志 false"` ✓ | HRESULT 无错 ✓ 但成功标志为 false ✓ → **没有 PDF** ✓ |
+
+**同时成立的部分** ✓：`probe_readiness` 全绿 ✓（`eval_ok=true` ✓、`is_target=true` ✓、`ready=true` ✓、`page_boxes=3` ✓、`794x1123` ✓、`fonts=loaded` ✓、`images 1/1` ✓）——**打印宿主把冻结样本好好地载起来了 ✓**，问题只出在打印那一步 ✓。
+
+**人在浏览器里验证过** ✓：`http://127.0.0.1:3000/tests/fixtures/architecture/pdf-probe-client.html` 返回 200 ✓，脚本正常跑（浏览器里没有 Tauri，故全是 `no-tauri-internals` ✓）——**dev server 与探针页都没问题 ✓**，导航失败发生在应用内部 ✓。
+
+**两处修法**（本机复验通过 ✓）：
+
+1. **初次加载的竞态** ✓：`wait_initial_load` 原先只等"URL 不是 about:blank" ✓——**URL 一设上就算加载完了** ✓，此时导航会被仍在进行中的首次加载覆盖 ✓（与此前那次白屏同类 ✓）。改为**还要等 `document.readyState === 'complete'`** ✓。
+2. **报告读取不再以 URL 比较为前提** ✓：探针页的 URL 带查询串 ✓，那个比较是脆的 ✓，误判"没导航"就会把证据一起丢掉 ✓。改为**一律读** ✓——页面真没起来的话，读到超时本身就是一条证据 ✓（"页面没就位" ✓）。
+3. **打印失败要可诊断** ✓：失败时记 `temp_exists` ✓、`temp_bytes` ✓、`target_dir_exists` ✓（都是布尔与计数 ✓，**不记路径** ✓），下次不用猜 ✓。
+
+**待重跑的对照**：去掉 `MARKFLOW_PROBE_PDF` ✓（用默认路径 ✓，那个目录必然存在 ✓）再跑一次 ✓——成功则说明是自定义路径的问题 ✓，仍失败则是打印机制本身（那正是文档里标着的"隐藏宿主能否被打印"那个风险 ✓）。
+
 ### 下一步
 
 **交付宿主编译并运行**（Windows 侧代码本机只能交叉编译验证类型，运行能力必须在真机上看）。要看的：`probe_pdf` 事件的 `ok`／`bytes`／`committed`，以及产出的 PDF 的页数与页面尺寸（D1d 的内容核验随后进行）。
