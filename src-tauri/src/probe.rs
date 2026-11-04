@@ -86,10 +86,78 @@ fn commit_pdf(temp: &Path, target: &Path) -> bool {
     }
 }
 
+/// 打印到目标的同目录临时文件，再 rename 提交；结果与失败诊断都记进日志。
+///
+/// 只记布尔与计数，**不记路径**（契约禁止完整本地路径入日志 ✓）。
+fn print_and_commit(window: &tauri::WebviewWindow, target: &Path) {
+    let temp = temp_path(target);
+    // 上一次运行的残留先清掉：打印要的是一个干净的临时文件。
+    let _ = std::fs::remove_file(&temp);
+    // 目标目录要先在：打印写的是同目录的临时文件。
+    if let Err(reason) = prepare_target(target) {
+        tracing::warn!(
+            event = "probe_pdf",
+            ok = false,
+            reason = reason.as_str(),
+            target_dir_exists = target.parent().map(|dir| dir.is_dir()).unwrap_or(false),
+            temp_exists = false,
+            temp_bytes = 0,
+        );
+        return;
+    }
+    match print_host::print_to_pdf(window, &temp) {
+        Ok(outcome) => {
+            let committed = commit_pdf(&temp, target);
+            tracing::info!(
+                event = "probe_pdf",
+                ok = outcome.ok,
+                bytes = outcome.bytes,
+                elapsed_ms = outcome.elapsed_ms,
+                committed = committed,
+            );
+        }
+        Err(reason) => {
+            // 失败要能诊断：临时文件写出来没有、有多大、目标目录在不在。
+            let temp_exists = temp.is_file();
+            let temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
+            let target_dir_exists = target.parent().map(|dir| dir.is_dir()).unwrap_or(false);
+            let _ = std::fs::remove_file(&temp);
+            tracing::warn!(
+                event = "probe_pdf",
+                ok = false,
+                reason = reason.as_str(),
+                temp_exists = temp_exists,
+                temp_bytes = temp_bytes,
+                target_dir_exists = target_dir_exists,
+            );
+        }
+    }
+}
+
+/// 确保输出目标的父目录存在，返回"是否是我们建的"。
+///
+/// 打印先写同目录的临时文件 ✓，目录不在就必然失败 ✓（交付宿主上就是这样：
+/// 目标父目录不存在 → HRESULT 无错 ✓ 但成功标志为 false ✓）。故先建出来 ✓。
+/// 相对路径没有父目录（用当前目录 ✓），不算缺目录 ✓。
+fn prepare_target(target: &Path) -> Result<bool, String> {
+    let Some(dir) = target.parent() else {
+        return Ok(false);
+    };
+    if dir.as_os_str().is_empty() || dir.is_dir() {
+        return Ok(false);
+    }
+    std::fs::create_dir_all(dir)
+        .map(|_| true)
+        .map_err(|_| "输出目录不存在且无法创建".to_owned())
+}
+
 /// 静默 PDF 的输出目标路径。
 fn pdf_output_path() -> Option<PathBuf> {
     if let Ok(value) = std::env::var(PDF_OUTPUT_ENV) {
-        return Some(PathBuf::from(value));
+        // 空串按未设置处理：空路径的父目录不存在，会让打印必然失败。
+        if !value.trim().is_empty() {
+            return Some(PathBuf::from(value));
+        }
     }
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent()?.to_path_buf();
     Some(repo.join("docs/acceptance/pdf-probe/probe-pdf-output.pdf"))
@@ -338,37 +406,7 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                 let expected = print_sample_name.clone();
                 let ready = probe_readiness(window, "print", &expected);
                 if ready {
-                    let temp = temp_path(&target);
-                    // 上一次运行的残留先清掉：打印要的是一个干净的临时文件。
-                    let _ = std::fs::remove_file(&temp);
-                    match print_host::print_to_pdf(window, &temp) {
-                        Ok(outcome) => {
-                            let committed = commit_pdf(&temp, &target);
-                            tracing::info!(
-                                event = "probe_pdf",
-                                ok = outcome.ok,
-                                bytes = outcome.bytes,
-                                elapsed_ms = outcome.elapsed_ms,
-                                committed = committed,
-                            );
-                        }
-                        Err(reason) => {
-                            // 失败要能诊断：临时文件写出来没有、有多大、目标目录在不在。
-                            // 只记布尔与计数，**不记路径**（契约禁止完整本地路径入日志 ✓）。
-                            let temp_exists = temp.is_file();
-                            let temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
-                            let target_dir_exists = target.parent().map(|dir| dir.is_dir()).unwrap_or(false);
-                            let _ = std::fs::remove_file(&temp);
-                            tracing::warn!(
-                                event = "probe_pdf",
-                                ok = false,
-                                reason = reason.as_str(),
-                                temp_exists = temp_exists,
-                                temp_bytes = temp_bytes,
-                                target_dir_exists = target_dir_exists,
-                            );
-                        }
-                    }
+                    print_and_commit(window, &target);
                 }
             }
             _ => {
