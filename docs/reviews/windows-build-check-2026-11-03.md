@@ -186,7 +186,7 @@ bun scripts/check-native-isolation.ts
 | --- | --- | --- | --- |
 | 1 | **命令名只有一处拼写** ✓：受保护命令的入口收 `WebCommand` 枚举 ✓，名字由 `command_name()` 给出 ✓ | `cargo test` 的 `the_log_name_of_a_command_is_the_name_the_page_sends` ✓——**日志里的命令名与页面发的名字必须是同一个字符串** ✓，否则跨侧配对配不上 ✓ | 跑 §2.6 那轮 ✓ → 日志里 `operation_result` 的 `command=print_native_pdf` ✓；页面侧的 `call_started`／`call_finished` 也是 `print_native_pdf` ✓；`bun scripts/pdf-probe-check.ts` 的跨侧配对**不报**"关联不匹配" ✓ |
 | 2 | **临时名按调用唯一** ✓：暂存文件与目标的临时文件都带序号 ✓ | `cargo test` 的 `every_staged_document_gets_its_own_file` ✓ 与 `every_call_gets_its_own_temporary_file_next_to_the_target` ✓——**两次调用拿到两个名字，两份内容互不覆盖** ✓ | 目标同目录的临时文件名叫 `*.tmp-<pid>-<序号>` ✓（不再是 `*.tmp-<pid>` ✓）；跑完后目录里**没有残留** ✓ |
-| 3 | **清理结果进证据** ✓：`temp_removed` 说删掉了没有 ✓ | `cargo test` 的 `a_locked_temp_file_cannot_be_cleaned_and_that_is_reported` ✓——**只有 Windows 上才跑** ✓（Windows 上被打开的文件删不掉 ✓，macOS 上锁不住 ✓） | 跑一轮失败（把目标目录改成不可写 ✓）→ 日志里 `probe_pdf` 带 `temp_removed` ✓；正常跑完的那轮是 `temp_removed=true` ✓ |
+| 3 | **清理结果进证据** ✓：`temp_removed` 说删掉了没有 ✓ | `cargo test` 的 `a_locked_temp_file_cannot_be_cleaned_and_that_is_reported` ✓——**只有 Windows 上才跑** ✓（Windows 上被打开的文件删不掉 ✓，macOS 上锁不住 ✓） | 跑一轮失败（把目标目录改成不可写 ✓）→ 日志里 `probe_pdf` 带 `temp_removed` ✓；正常跑完的那轮是 `temp_removed=true` ✓。**产品形态那条路径也有** ✓：`operation_result`（`command=print_native_pdf` ✓）带 `temp_removed` ✓——那是原生侧的观测 ✓，不是页面自述 ✓ |
 | 4 | **命令面有准入清单** ✓：六个受保护 ✓，两个刻意不受守卫但各有准入方式 ✓ | `bun scripts/check-command-admission.ts` ✓ + `cargo test` 之外的 `tests/unit/check-command-admission.test.ts` ✓ | 同上 ✓ |
 
 ### 2.7.3 第 3 条的"删不掉"怎么看

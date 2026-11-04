@@ -40,7 +40,7 @@ ExportService.run（src/application/exports/exportService.ts）
 - **命名**：**没有** ✓（文件名固定 ✓）。
 - **取消**：**没有** ✓（没有用户参与 ✓）。
 - **覆盖保护**：**有** ✓ —— 同目录临时文件 + rename ✓，失败时原文件保持不变 ✓。
-- **回执**：**有** ✓ —— `probe_pdf` 记 `ok`／`bytes`／`elapsed_ms`／`committed`／`sha256` ✓。
+- **回执**：**有** ✓ —— `probe_pdf` 记 `ok`／`bytes`／`elapsed_ms`／`committed`／`sha256`／`temp_removed` ✓。
 
 ### 1.3 两者差在哪（这就是 D7 要补的）
 

@@ -947,7 +947,7 @@ D7-1 交付后自查发现，**产品打印这条链上的证据从来没成立�
 | 层 | 缺陷 | 根因 | 修法 |
 | --- | --- | --- | --- |
 | 1 | **页面侧证据全丢** ✗ | `WebCommand` 枚举里没有 `PrintNativePdf` ✓ → 页面发的 `command:'print_native_pdf'` 反序列化失败 ✓ → 整条载荷被拒收丢弃 ✓ | 枚举补上 ✓ + `command_name` 补映射 ✓ |
-| 2 | **原生侧只记了放行，没有结果** ✗ | `print_native_pdf` 的命令体不记 `operation_result` ✓ —— 守卫放行只留 `source_decision=allow` ✓ | 命令体内记 `operation_result` ✓（result／bytes／elapsed_ms／committed ✓），失败用稳定码 `print-failed`／`print-not-committed` ✓ |
+| 2 | **原生侧只记了放行，没有结果** ✗ | `print_native_pdf` 的命令体不记 `operation_result` ✓ —— 守卫放行只留 `source_decision=allow` ✓ | 命令体内记 `operation_result` ✓（result／bytes／elapsed_ms／committed／temp_removed ✓），失败用稳定码 `print-failed`／`print-not-committed` ✓ |
 | 2 | **sha256 恒为空** ✗ | 提交是把临时文件 rename 成目标 ✓，哈希却在 rename 之后才取 ✓ —— 那时那个路径已经不存在了 ✓ | 哈希改到改名之前取 ✓ |
 | 3 | **60 秒的机器预算管到了人** ✗ | 读报告的 60 秒是给机器步定的 ✓，可报告要等人选完目标 ✓ —— 人用了 91 秒就被判超时 ✓，打印其实成功了 ✓ | 探针层改成两个界 ✓：启动护栏（页面须产出读数 ✓）+ 读报告总数上限 ✓；**机器步与人参与的那一步不再分预算** ✓ |
 | 4 | **输出宿主的噪声误导人** ✗ | 产品打印只看"要不要做" ✓，不看角色 ✓ → 输出宿主也跑 ✓，必然被来源守卫拒 ✓，报告写着"选择目标失败" ✓ —— 看着像产品打印失败 ✓ | 产品打印只在主窗口角色做 ✓；输出宿主明说"不适用" ✓ |

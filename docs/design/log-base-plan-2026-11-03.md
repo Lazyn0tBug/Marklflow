@@ -88,7 +88,7 @@
 | --- | --- | --- | --- | --- |
 | `run` | 进程启动 | run_id, os, arch, app_version, feature | `run_start` / `run_end` | — |
 | `command` | 每个受保护命令 | command, window_label, webview_label | `source_decision` | decision(allow/deny), reason_code |
-| | | | `operation_result` | result, bytes, elapsed_ms |
+| | | | `operation_result` | result, bytes, elapsed_ms, committed, temp_removed |
 | `page_call` | 页面侧每次调用 | call_id, command, window_label, webview_label | `call_started` / `call_finished` / `page_error` | result, error_category |
 | `host` | 每次原生宿主创建 | host_kind, host_label, visible | `host_state` | state, instances |
 | `probe` | 探针装配一次 | — | `probe_source_check` / `probe_initial_load` / `probe_navigation` / `probe_cleanup` | reachable, loaded, navigated, revoked |
@@ -99,6 +99,16 @@
 
 - **span 上的字段不进记录**。记录只带 span 名、id 与父 id，故 `run` span 上的 os／arch／app_version／feature 必须在 `run_start` 事件上重复一次——校验器要按 §5.3 记构建、feature 与环境，这些字段得真的在日志里。
 - **每个 command span 都要有 `operation_result`**。拒绝路径没有命令体，由 span 层补一条 `result=denied` 与 `reason_code`；授权解析失败等早退路径同样要记。否则"原生看见了失败却没落笔"，跨侧对照就成了单边叙述。
+
+**`operation_result` 上那两个布尔是什么**（2026-11-04 补记 ✓）：
+
+- `committed` ✓：**目标真的提交了吗** ✓。它是"提交成功才 saved"的**证据** ✓——
+  没有它 ✓，那条承诺只能靠页面自述 ✓，而页面自述证明不了 ✓。
+- `temp_removed` ✓：**临时文件清掉了没有** ✓。它是"超时 → 删除"的**证据** ✓——
+  删不掉是有可能的 ✓（Windows 上文件被占着 ✓），而没有它就证明不了 ✓。
+
+两者都是布尔 ✓（§5.2 的字段策略允许 ✓），都**必须实测** ✓：
+断言出来的字段不是证据 ✓，是谎报的前身 ✓。
 
 两条实现约束（都会咬人，写在这里免得实现时再撞）：
 

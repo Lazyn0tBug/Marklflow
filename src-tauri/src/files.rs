@@ -379,8 +379,8 @@ pub async fn write_native_bytes(
 /// 产品形态打印的回执与留证读数。
 ///
 /// **回执与证据是两回事** ✓：回执给调用方（页面）✓，证据进日志 ✓。
-/// 字节数与是否提交都是原生侧的观测 ✓——页面自述证明不了"提交成功才 saved" ✓，
-/// 原生侧能证明 ✓。
+/// 字节数、是否提交、临时文件清掉了没有，都是原生侧的观测 ✓——
+/// 页面自述证明不了"提交成功才 saved" ✓，原生侧能证明 ✓。
 struct PrintReceipt {
     /// 回执：**目标提交成功才是 `saved`** ✓；否则 `not-committed` ✓。
     receipt: &'static str,
@@ -388,6 +388,31 @@ struct PrintReceipt {
     bytes: u64,
     /// 目标是否已提交 ✓（rename 成功才是提交 ✓）。
     committed: bool,
+    /// **临时文件清掉了没有** ✓：提交要么把它改名成目标 ✓，要么删掉它 ✓，
+    /// 而删不掉是有可能的 ✓（文件被占着 ✓）——清理的结果也得留证 ✓。
+    temp_removed: bool,
+}
+
+/// 打印失败的读数：人读的原因 ✓ + 清理的结果 ✓。
+///
+/// 原因给页面 ✓（人读 ✓），日志用稳定码 ✓；
+/// 清理的结果两边都要 ✓——冻结清单要"超时 → 删除" ✓，
+/// 而日志证明不了删没删 ✓。
+struct PrintFailureReading {
+    /// 人读的原因短语 ✓。
+    reason: String,
+    /// 临时文件清掉了没有 ✓。
+    temp_removed: bool,
+}
+
+impl From<String> for PrintFailureReading {
+    fn from(reason: String) -> Self {
+        // 授权没解析出来 ✓：打印压根没开始 ✓，没有临时文件 ✓，也就没有可清的东西 ✓。
+        PrintFailureReading {
+            reason,
+            temp_removed: true,
+        }
+    }
 }
 
 /// 把一段 HTML 静默打印成 PDF，落到用户在原生保存对话框里选定的目标。
@@ -419,6 +444,7 @@ pub async fn print_native_pdf(
                         bytes = receipt.bytes,
                         elapsed_ms = elapsed,
                         committed = receipt.committed,
+                        temp_removed = receipt.temp_removed,
                     );
                 } else {
                     // 印出来了但没提交成功：原文件还在，**不是 saved** ✓。
@@ -431,11 +457,12 @@ pub async fn print_native_pdf(
                         bytes = receipt.bytes,
                         elapsed_ms = elapsed,
                         committed = receipt.committed,
+                        temp_removed = receipt.temp_removed,
                     );
                 }
                 Ok(receipt.receipt.to_owned())
             }
-            Err(reason) => {
+            Err(failure) => {
                 tracing::warn!(
                     event = "operation_result",
                     result = "error",
@@ -443,8 +470,10 @@ pub async fn print_native_pdf(
                     reason_code = "print-failed",
                     elapsed_ms = elapsed,
                     committed = false,
+                    // 清理的结果也留证 ✓：失败路径上的临时文件同样可能删不掉 ✓。
+                    temp_removed = failure.temp_removed,
                 );
-                Err(reason)
+                Err(failure.reason)
             }
         }
     })
@@ -478,17 +507,22 @@ fn print_native_pdf_impl(
     access: &FileAccess,
     html: &str,
     key: &str,
-) -> Result<PrintReceipt, String> {
+) -> Result<PrintReceipt, PrintFailureReading> {
     // 授权里的路径才是目标：前端只知道 key ✓。
     let target = consume_grant(access, key)?;
-    let outcome = crate::pdf_print::print_html_to_pdf(app, html, &target)
-        .map_err(|failure| failure.reason);
+    let outcome = crate::pdf_print::print_html_to_pdf(app, html, &target).map_err(|failure| {
+        PrintFailureReading {
+            reason: failure.reason,
+            temp_removed: failure.temp_removed,
+        }
+    });
     // 无论成败都释放授权：目标已定，继续留着没有意义 ✓。
     access.revoke(key);
     outcome.map(|outcome| PrintReceipt {
         receipt: if outcome.committed { "saved" } else { "not-committed" },
         bytes: outcome.bytes,
         committed: outcome.committed,
+        temp_removed: outcome.temp_removed,
     })
 }
 
@@ -499,8 +533,12 @@ fn print_native_pdf_impl(
     _access: &FileAccess,
     _html: &str,
     _key: &str,
-) -> Result<PrintReceipt, String> {
-    Err("此构建不含静默 PDF 打印（需 pdf-probe 特性）".to_owned())
+) -> Result<PrintReceipt, PrintFailureReading> {
+    Err(PrintFailureReading {
+        reason: "此构建不含静默 PDF 打印（需 pdf-probe 特性）".to_owned(),
+        // 没有临时文件，也没有可清的东西 ✓。
+        temp_removed: true,
+    })
 }
 
 #[tauri::command]
