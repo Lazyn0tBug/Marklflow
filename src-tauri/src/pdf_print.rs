@@ -64,6 +64,10 @@ pub struct PrintOutcome {
     pub committed: bool,
     /// 产出的 sha256（产物文件可不入库 ✓，hash 留证 ✓）。
     pub sha256: String,
+    /// **临时文件清掉了没有** ✓：提交之后量一次 ✓，不写死 ✓——
+    /// 提交要么把它改名成目标 ✓，要么删掉它 ✓，
+    /// 而删不掉是有可能的 ✓（文件被占着 ✓），所以证据得是实测的 ✓。
+    pub temp_removed: bool,
     /// 打印时的就绪读数。
     pub readiness: Readiness,
 }
@@ -240,12 +244,16 @@ fn print_ready_document(
     // rename 之后那个路径已经不存在了 ✓，那时再取只会得到空串 ✓。
     let sha256 = file_sha256(temp);
     let committed = commit_pdf(temp, target);
+    // 清理的结果也得留证 ✓：提交要么把它改名成目标 ✓，要么删掉它 ✓——
+    // 删不掉是有可能的 ✓（文件被占着 ✓），所以这里**量一次** ✓，不写死 ✓。
+    let temp_removed = !temp.exists();
     Ok(PrintOutcome {
         ok: printed.ok,
         bytes: printed.bytes,
         elapsed_ms: printed.elapsed_ms,
         committed,
         sha256,
+        temp_removed,
         readiness,
     })
 }

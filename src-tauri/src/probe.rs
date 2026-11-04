@@ -313,8 +313,9 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             elapsed_ms = outcome.elapsed_ms,
                             committed = outcome.committed,
                             sha256 = outcome.sha256.as_str(),
-                            // 成功路径没有临时文件可清 ✓：它已经改名成目标了 ✓。
-                            temp_removed = true,
+                            // 清理的结果也是**实测的** ✓：提交要么改名成目标 ✓，
+                            // 要么删掉它 ✓，删不掉是有可能的 ✓（文件被占着 ✓）。
+                            temp_removed = outcome.temp_removed,
                         );
                     }
                     Err(failure) => {

@@ -88,6 +88,11 @@ pub enum WebEventKind {
 }
 
 /// web 侧可回传的命令枚举。
+///
+/// **它也是受保护命令的入口参数** ✓（见 `files::in_command_span` ✓）：
+/// 于是"受保护的命令"与"页面可回传的命令"**不可能各说各话** ✓——
+/// 新加一个受保护命令而忘了进这里 ✓，**编译不过** ✓。
+/// 日志里的命令名由 `command_name` 统一给出 ✓，与这里的名字是同一个字符串 ✓。
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum WebCommand {

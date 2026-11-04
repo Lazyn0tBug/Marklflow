@@ -44,14 +44,34 @@ function bracketBlock(source:string,anchor:string):string{
  return source.slice(open+1,close);
 }
 
-/** 注册表里的命令名：去掉模块前缀 ✓，去掉行尾注释与逗号 ✓。 */
-function registeredCommands(source:string):string[]{
- return bracketBlock(source,'generate_handler!')
+/**
+ * 注册表里的命令名：去掉模块前缀 ✓，去掉行尾注释与逗号 ✓。
+ *
+ * **按逗号切，不按行切** ✓：一行写两个命令时 ✓，按行切只会取到最后一个 ✓，
+ * 其余的**静默丢掉** ✓ —— 而丢掉的那些命令就不参与"裸奔"判定 ✓，
+ * 检查会**照样通过** ✓。那正是这个检查要防的那件事 ✓。
+ *
+ * 解析不出像命令名的东西就**响着失败** ✓：宁可失败 ✓，不可静默放过 ✓。
+ */
+export function registeredCommands(source:string):string[]{
+ const names=bracketBlock(source,'generate_handler!')
   .split('\n')
-  .map(line=>line.replace(/\/\/.*$/,'').trim().replace(/,$/,'').trim())
-  .filter(line=>line.length>0)
-  .map(line=>line.replace(/::/g,' ').split(/\s+/).pop()??'')
+  .map(line=>line.replace(/\/\/.*$/,''))
+  .join(',')
+  .split(',')
+  .map(part=>part.trim())
+  .filter(part=>part.length>0)
+  .map(part=>part.replace(/::/g,' ').split(/\s+/).pop()??'')
   .filter(name=>name.length>0);
+ for(const name of names){
+  if(!/^[a-z_][a-z0-9_]*$/.test(name)){
+   throw new Error(
+    `解析不到命令清单：注册表里出现了不像命令名的东西「${name}」——invoke_handler 的写法变了 ✓`,
+   );
+  }
+ }
+ if(names.length===0)throw new Error('解析不到命令清单：注册表是空的 ✓');
+ return names;
 }
 
 /** 走守卫的命令：从 `in_command_span(WebCommand::X` 里取 ✓。 */
@@ -105,10 +125,23 @@ export function unreportableGuarded(surface:CommandSurface):string[]{
  return surface.guarded.filter(name=>!surface.reportable.includes(name));
 }
 
+/**
+ * 例外清单里已经过期的条目 ✓：命令其实走守卫了 ✓，或已经不在注册表里了 ✓。
+ *
+ * 清单是**单向**的么 ✓：不报过期 ✓，清单就会烂掉 ✓，
+ * 而烂掉的清单在"新增命令"那个方向上仍然有效 ✓ —— 于是缺口只剩一半 ✓。
+ */
+export function staleExceptions(surface:CommandSurface):string[]{
+ return Object.keys(UNGUARDED).filter(name=>
+  surface.guarded.includes(name)||!surface.registered.includes(name),
+ );
+}
+
 export default function checkCommandAdmission():void{
  const surface=readCommandSurface();
  const naked=nakedCommands(surface);
  const unreportable=unreportableGuarded(surface);
+ const stale=staleExceptions(surface);
  const problems:string[]=[];
  if(naked.length){
   problems.push(
@@ -121,6 +154,13 @@ export default function checkCommandAdmission():void{
   problems.push(
    '这些命令走了守卫，却不在页面可回传的 WebCommand 枚举里（页面的事件会被整条拒收）：',
    ...unreportable.map(name=>`  ${name}`),
+  );
+ }
+ if(stale.length){
+  problems.push(
+   '不受守卫清单里有过期条目（命令其实走守卫了，或已经不在注册表里）：',
+   ...stale.map(name=>`  ${name}`),
+   '把它从 UNGUARDED 里去掉，或更新它对应的准入方式。',
   );
  }
  if(problems.length){
