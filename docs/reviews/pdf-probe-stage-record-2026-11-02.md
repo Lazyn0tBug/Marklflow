@@ -767,6 +767,28 @@ bun run tauri build   →  exit 0
 
 **教训**：这条待查项的依据是"Tauri v2 模板要求 app 声明 custom-protocol"这个**记忆** ✗，而项目自己的规矩是"不要猜 API 与版本行为 ✓"——版本一换，模板的做法就可能不同 ✓（CLI 直接启用依赖的特性 ✓）。**先查再记 ✓**。
 
+### D1b-5 成立：默认构建的运行证据（2026-11-04）
+
+默认构建（不带 `pdf-probe` 特性）+ 临时把 devUrl 指向探针页 ✓（`scripts/pdf-probe-default-run.ts` 给出配置与命令 ✓）：
+
+```
+run_start feature=default
+web_event page_ready window_label=main
+source_decision allow read_native_text   window=main
+source_decision allow read_native_text   window=main
+source_decision allow release_native_file window=main
+source_decision allow release_native_file window=main
+run_end + log_health（计数全零）
+```
+
+**两半都在这一份日志里** ✓：**无任何探针事件与探针身份** ✓（"测试入口不进入正常构建" ✓）、**主窗口的受保护命令全部放行** ✓（"生产来源限制与主窗口允许路径仍有效" ✓）。
+
+`read` 报 `unknown-file-key` 是预期的 ✓（默认构建里没有受控授权 ✓）——**要看的是 allow ✓**。这一轮**没有 PDF 也是预期的** ✓（默认构建里没有探针 ✓ → 没有打印宿主 ✓ → 不打印 ✓；PDF 由探针构建产出 ✓）。
+
+**两份日志合并核对：退出码 0 ✓，错误 0、告警 0 ✓，八条断言全通过** ✓（D1b-1—D1b-6 ✓ + D1c-1 ✓ + D1c-2 ✓）。
+
+归档：`delivery-host-windows-default-with-probe-page-v2.jsonl` ✓ 与 `delivery-host-windows-pdf-probe-v2.jsonl` ✓。
+
 ### 交付宿主第五次复跑（2026-11-04）：**静默 PDF 产出成立**
 
 路径更正后重跑（`markflow.17736.log`，sha256 `f2c908ed62db4a815f29ad53a449a8133b334a0611f8ed516f1e4be1b7e6a89b`）：
