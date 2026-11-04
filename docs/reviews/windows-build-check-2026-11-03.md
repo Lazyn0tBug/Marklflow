@@ -116,7 +116,7 @@ cargo run --locked --no-default-features --features pdf-probe
 | 日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` |
 | PDF | 默认 `D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\probe-pdf-output.pdf`（可用 `set MARKFLOW_PROBE_PDF=<别的路径>` 改） |
 
-**若 PDF 旁边还留着 `*.tmp-<pid>`**：只能证明存在残留，不能直接推出打印成功或提交失败。结合本次运行的打印回调、字节数和提交日志判断；正常提交失败路径会尝试删除临时文件，残留也可能来自超时、迟到写入、清理失败或非正常退出。目标是否保留须检查，不能仅凭残留认定保护已验。
+**若 PDF 旁边还留着 `*.tmp-<pid>-*`**（临时名按调用唯一 ✓，带序号 ✓）：只能证明存在残留，不能直接推出打印成功或提交失败。结合本次运行的打印回调、字节数和提交日志判断；正常提交失败路径会尝试删除临时文件，残留也可能来自超时、迟到写入、清理失败或非正常退出。目标是否保留须检查，不能仅凭残留认定保护已验。
 
 ### 2.5 机器核对
 
@@ -155,6 +155,55 @@ cargo run --locked --no-default-features --features pdf-probe
 
 **不设这个变量时**探针页不做产品形态的打印 ✓（那轮只做 D1b／D1c 的证据 ✓）✓，已归档的证据不受影响 ✓。
 
+## 2.7 D7-1 返工的四项验证（2026-11-04 新增）
+
+原生侧评审查出四处，本节是**在交付宿主上怎么验它们** ✓。四条都是本机可跑的 ✓，只有第 3 条的"删不掉"那一半要 Windows 才跑得出来 ✓。
+
+### 2.7.1 机器检查（三条命令，全在仓库根跑）
+
+```bat
+:: ① Rust 单测：临时名唯一、清理留证、命令名一致
+cd src-tauri
+cargo test --locked --features pdf-probe
+cd ..
+
+:: ② 命令面准入：没有命令裸奔
+bun scripts/check-command-admission.ts
+
+:: ③ 隔离前提：没有应用级 ACL manifest
+bun scripts/check-native-isolation.ts
+```
+
+| 命令 | 期望输出 |
+| --- | --- |
+| ① | `test result: ok. 45 passed`（含下面点名的四条用例 ✓） |
+| ② | `命令面准入成立：注册 8 个，受保护 6 个，不受守卫 2 个（各有准入方式），页面可回传 7 个` |
+| ③ | 无输出即通过 ✓（有输出就是前提被破坏 ✓） |
+
+### 2.7.2 四条用例各自要证明什么
+
+| # | 改动 | 用例（机器） | 用例（跑一次看日志） |
+| --- | --- | --- | --- |
+| 1 | **命令名只有一处拼写** ✓：受保护命令的入口收 `WebCommand` 枚举 ✓，名字由 `command_name()` 给出 ✓ | `cargo test` 的 `the_log_name_of_a_command_is_the_name_the_page_sends` ✓——**日志里的命令名与页面发的名字必须是同一个字符串** ✓，否则跨侧配对配不上 ✓ | 跑 §2.6 那轮 ✓ → 日志里 `operation_result` 的 `command=print_native_pdf` ✓；页面侧的 `call_started`／`call_finished` 也是 `print_native_pdf` ✓；`bun scripts/pdf-probe-check.ts` 的跨侧配对**不报**"关联不匹配" ✓ |
+| 2 | **临时名按调用唯一** ✓：暂存文件与目标的临时文件都带序号 ✓ | `cargo test` 的 `every_staged_document_gets_its_own_file` ✓ 与 `every_call_gets_its_own_temporary_file_next_to_the_target` ✓——**两次调用拿到两个名字，两份内容互不覆盖** ✓ | 目标同目录的临时文件名叫 `*.tmp-<pid>-<序号>` ✓（不再是 `*.tmp-<pid>` ✓）；跑完后目录里**没有残留** ✓ |
+| 3 | **清理结果进证据** ✓：`temp_removed` 说删掉了没有 ✓ | `cargo test` 的 `a_locked_temp_file_cannot_be_cleaned_and_that_is_reported` ✓——**只有 Windows 上才跑** ✓（Windows 上被打开的文件删不掉 ✓，macOS 上锁不住 ✓） | 跑一轮失败（把目标目录改成不可写 ✓）→ 日志里 `probe_pdf` 带 `temp_removed` ✓；正常跑完的那轮是 `temp_removed=true` ✓ |
+| 4 | **命令面有准入清单** ✓：六个受保护 ✓，两个刻意不受守卫但各有准入方式 ✓ | `bun scripts/check-command-admission.ts` ✓ + `cargo test` 之外的 `tests/unit/check-command-admission.test.ts` ✓ | 同上 ✓ |
+
+### 2.7.3 第 3 条的"删不掉"怎么看
+
+`temp_removed=false` 只在**文件被占着**时出现 ✓（Windows 上被打开的文件不能删 ✓）。正常跑完一定是 `true` ✓。
+
+想亲眼看一次 `false` ✓：**跑 §2.6 那轮时故意在打印进行中占住目标目录里的临时文件** ✓（例如用记事本打开它 ✓），或者**让打印超时** ✓（COM 那边还在写 ✓，文件就被占着 ✓）。超时那次的日志会写 `probe_report_timeout` ✓（阶段完成但没标记完成 ✓），而 `probe_pdf` 的 `temp_removed` 会是 `false` ✓——**这就是"超时 → 删除"这一条第一次有了证据** ✓。
+
+### 2.7.4 跑完交回什么
+
+| 要交回的 | 在哪 |
+| --- | --- |
+| `cargo test` 的完整输出 ✓（含 45 passed ✓） | 终端 |
+| `bun scripts/check-command-admission.ts` 的输出 ✓ | 终端 |
+| §2.6 那轮的日志 ✓ | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` ✓ |
+| 目标目录的清空截图或 `dir` 输出 ✓（证明没有 `*.tmp-<pid>-*` 残留 ✓） | 手工 |
+
 ## 3. 逐项检查表
 
 | # | 检查项 | 怎么看 | 期望 |
@@ -164,7 +213,7 @@ cargo run --locked --no-default-features --features pdf-probe
 | 3 | 就绪成立 | `probe_readiness` | `eval_ok=true`、`is_target=true`、`ready=true`、`page_boxes=3`、`page_box_size=794x1123`、`images_loaded=images_total` |
 | 4 | 打印成功 | `probe_pdf` | `ok=true`、`bytes>0`、`committed=true`、`sha256` 非空 ✓ |
 | 5 | PDF 产出 | 目标文件存在 | 页数 3、页面尺寸 A4（210×297mm） |
-| 6 | 无残留临时文件 | 目标同目录 | 无 `*.tmp-<pid>` |
+| 6 | 无残留临时文件 | 目标同目录 | 无 `*.tmp-<pid>-*` |
 | 7 | 无弹框 | 跑探针期间盯着屏幕 | 无原生对话框、无打印面板（D1c-5，人工） |
 | 8 | 日志完整 | 日志末尾 | 有 `run_end` |
 | 9 | 健康计数 | `log_health` | `dropped=0`、`rejected=0`、`write_failures=0`、`file_unavailable=false` |

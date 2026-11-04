@@ -10,12 +10,25 @@
 //! - **静默** ✓ —— 隐藏宿主 + 无打印面板 ✓；只有保存对话框是用户可见的 ✓。
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Url, WebviewUrl};
 
 use crate::output_host;
+
+/// 临时文件的序号：同进程内每次调用一个 ✓。
+///
+/// 名字的作用域是**每次调用** ✓，取的却是**整个进程**的标识 ✗——
+/// 两次并发的打印会共用同一个暂存文件 ✓：后者覆盖前者的内容 ✓，
+/// 前者的清理又把后者的文件删掉 ✓。进程号只保证跨进程不撞 ✓，同进程内还得有序号 ✓。
+static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+/// 下一个序号。
+fn next_sequence() -> u64 {
+    SEQUENCE.fetch_add(1, Ordering::Relaxed)
+}
 
 /// 就绪探测的上限。文档加载、字体与图片就绪都在这个窗口内完成。
 const READINESS_TIMEOUT: Duration = Duration::from_secs(30);
@@ -66,6 +79,10 @@ pub struct PrintFailure {
     pub temp_bytes: u64,
     /// 目标的父目录在不在。
     pub target_dir_exists: bool,
+    /// **临时文件清掉了没有** ✓：清理的结果也得留证 ✓——
+    /// 冻结清单要"超时 → 删除" ✓，而日志证明不了这件事发生没发生 ✓。
+    /// 删不掉是有可能的 ✓（Windows 上文件被占着 ✓）。
+    pub temp_removed: bool,
     /// 打印时的就绪读数（失败时也要有：它说明"文档起来了没有" ✓）。
     /// 装箱是为了别让 Err 变体过大 ✓。
     pub readiness: Box<Readiness>,
@@ -95,10 +112,12 @@ pub fn print_document_to_pdf(
             temp_exists: false,
             temp_bytes: 0,
             target_dir_exists: target.parent().map(|dir| dir.is_dir()).unwrap_or(false),
+            temp_removed: true,
             readiness: Box::new(Readiness::default()),
         });
     }
-    // 上一次运行的残留先清掉：打印要的是一个干净的临时文件。
+    // 本次的临时文件按调用唯一 ✓，所以没有旧文件要清 ✓。
+    // 崩在打印里的那一次留下的残骸由人看 ✓（同目录的 `*.tmp-<pid>-*` ✓）。
     let _ = std::fs::remove_file(&temp);
     let url = match Url::from_file_path(document) {
         Ok(url) => url,
@@ -108,6 +127,7 @@ pub fn print_document_to_pdf(
                 temp_exists: false,
                 temp_bytes: 0,
                 target_dir_exists: true,
+                temp_removed: true,
                 readiness: Box::new(Readiness::default()),
             });
         }
@@ -126,6 +146,7 @@ pub fn print_document_to_pdf(
                 temp_exists: false,
                 temp_bytes: 0,
                 target_dir_exists: true,
+                temp_removed: true,
                 readiness: Box::new(Readiness::default()),
             });
         }
@@ -138,12 +159,13 @@ pub fn print_document_to_pdf(
         Err(PrintError{reason, readiness}) => {
             let temp_exists = temp.is_file();
             let temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
-            let _ = std::fs::remove_file(&temp);
             Err(PrintFailure {
                 reason,
                 temp_exists,
                 temp_bytes,
                 target_dir_exists: target.parent().map(|dir| dir.is_dir()).unwrap_or(false),
+                // 清理的结果也要留证 ✓：删不掉是有可能的 ✓（文件被占着 ✓）。
+                temp_removed: cleanup_temp(&temp),
                 readiness,
             })
         }
@@ -170,12 +192,18 @@ pub fn print_html_to_pdf(
 /// 不用 `tempfile::NamedTempFile` ✓：它在 Windows 上独占打开 ✓，
 /// WebView2 就读不到那个文件 ✓。故自己写、自己删 ✓。
 fn stage_html(html: &str) -> Result<PathBuf, PrintFailure> {
-    let path = std::env::temp_dir().join(format!("markflow-print-{}.html", std::process::id()));
+    // 名字按调用唯一 ✓：并发的两次打印不会共用一个暂存文件 ✓。
+    let path = std::env::temp_dir().join(format!(
+        "markflow-print-{}-{}.html",
+        std::process::id(),
+        next_sequence()
+    ));
     std::fs::write(&path, html).map_err(|_| PrintFailure {
         reason: "打印内容暂存失败".to_owned(),
         temp_exists: false,
         temp_bytes: 0,
         target_dir_exists: true,
+        temp_removed: true,
         readiness: Box::new(Readiness::default()),
     })?;
     Ok(path)
@@ -223,12 +251,14 @@ fn print_ready_document(
 }
 
 /// 目标同目录的临时文件：同卷，才能 rename 提交。
+///
+/// **名字按调用唯一** ✓：并发的两次打印（哪怕打到同一个目标 ✓）不会共用一个临时文件 ✓。
 fn temp_path(target: &Path) -> PathBuf {
     let mut name = target
         .file_name()
         .map(|value| value.to_os_string())
         .unwrap_or_default();
-    name.push(format!(".tmp-{}", std::process::id()));
+    name.push(format!(".tmp-{}-{}", std::process::id(), next_sequence()));
     target.with_file_name(name)
 }
 
@@ -243,6 +273,16 @@ fn prepare_target(target: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dir)
         .map(|_| ())
         .map_err(|_| "输出目录不存在且无法创建".to_owned())
+}
+
+/// 清掉临时文件，并报告**清掉了没有** ✓。
+///
+/// 删不掉是有可能的 ✓（Windows 上文件被占着 ✓）——
+/// 所以清理的结果也得留证 ✓（冻结清单要"超时 → 删除" ✓，
+/// 而日志证明不了这件事发生没发生 ✓）。
+fn cleanup_temp(temp: &Path) -> bool {
+    let _ = std::fs::remove_file(temp);
+    !temp.exists()
 }
 
 /// 提交：把临时文件 rename 到目标 ✓。目标只在这一步被触及 ✓。
@@ -396,6 +436,67 @@ fn print_com_print(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_staged_document_gets_its_own_file() {
+        // 名字按调用唯一 ✓：并发的两次打印不会共用一个暂存文件 ✓——
+        // 否则后写的覆盖先写的 ✓，先写的清理又把后写的删掉 ✓。
+        let first = stage_html("<p>first</p>").unwrap();
+        let second = stage_html("<p>second</p>").unwrap();
+        assert_ne!(first, second);
+        assert_eq!(std::fs::read_to_string(&first).unwrap(), "<p>first</p>");
+        assert_eq!(std::fs::read_to_string(&second).unwrap(), "<p>second</p>");
+        let _ = std::fs::remove_file(&first);
+        let _ = std::fs::remove_file(&second);
+    }
+
+    #[test]
+    fn every_call_gets_its_own_temporary_file_next_to_the_target() {
+        // 目标的临时文件同样按调用唯一 ✓：并发的两次打印（哪怕打到同一个目标 ✓）
+        // 不会共用一个临时文件 ✓。
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("out.pdf");
+        let first = temp_path(&target);
+        let second = temp_path(&target);
+        assert_ne!(first, second);
+        // 仍在目标的同目录 ✓：同卷才能 rename 提交 ✓。
+        assert_eq!(first.parent().unwrap(), dir.path());
+        assert_eq!(second.parent().unwrap(), dir.path());
+    }
+
+    #[test]
+    fn a_temp_file_is_cleaned_and_that_is_reported() {
+        let dir = tempfile::tempdir().unwrap();
+        let temp = dir.path().join("out.pdf.tmp");
+        std::fs::write(&temp, b"x").unwrap();
+        assert!(cleanup_temp(&temp));
+        assert!(!temp.exists());
+    }
+
+    #[test]
+    fn a_temp_file_that_was_never_there_counts_as_cleaned() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(cleanup_temp(&dir.path().join("never-existed.tmp")));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_locked_temp_file_cannot_be_cleaned_and_that_is_reported() {
+        // Windows 上被打开的文件不能删 ✓：所以清理的结果必须留证 ✓，
+        // 否则"超时 → 删除"这条永远证明不了 ✓。
+        use std::os::windows::fs::OpenOptionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let temp = dir.path().join("out.pdf.tmp");
+        std::fs::write(&temp, b"x").unwrap();
+        let locked = std::os::windows::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .share_mode(0x0000_0001 | 0x0000_0002) // deny FILE_SHARE_DELETE
+            .open(&temp)
+            .unwrap();
+        assert!(!cleanup_temp(&temp));
+        drop(locked);
+    }
 
     #[test]
     fn a_product_with_bytes_is_committed() {

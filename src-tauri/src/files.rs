@@ -11,6 +11,7 @@ use std::{
 use tauri_plugin_dialog::DialogExt;
 
 use crate::logging;
+use crate::logging::WebCommand;
 use crate::source_guard;
 
 /// 取调用方身份并按允许范围判定。拒绝时返回共享稳定拒绝码。
@@ -50,31 +51,37 @@ fn ensure_allowed(command: &str, identity: &source_guard::Identity) -> Result<()
 /// 守卫只在这里判定一次：放行记 `source_decision=allow`；拒绝时命令体不会执行，
 /// 故由本层补一条 `operation_result=denied`——每个命令 span 都有结果事件，
 /// 拒绝的最终结果不会只存在于守卫的返回值里。
+///
+/// **命令名由枚举给出** ✓：参数是 `WebCommand` ✓，名字由 `logging::command_name` 统一出 ✓——
+/// 于是"受保护的命令"与"页面可回传的命令"**不可能各说各话** ✓：
+/// 新加一个受保护命令而忘了进枚举 ✓，**编译不过** ✓。
+/// 命令体拿到的是同一个名字 ✓，所以日志里的命令名与页面回传的名字必然一致 ✓。
 fn in_command_span<T>(
-    command: &'static str,
+    command: WebCommand,
     webview: &tauri::Webview,
-    body: impl FnOnce(std::time::Instant) -> Result<T, String>,
+    body: impl FnOnce(std::time::Instant, &'static str) -> Result<T, String>,
 ) -> Result<T, String> {
+    let name = logging::command_name(command);
     let identity =
         source_guard::Identity::from_labels(webview.window().label(), webview.label());
     let span = logging::command_span(
-        command,
+        name,
         identity.window_label.as_ref(),
         identity.webview_label.as_ref(),
     );
     span.in_scope(|| {
         let started = std::time::Instant::now();
-        if let Err(code) = ensure_allowed(command, &identity) {
+        if let Err(code) = ensure_allowed(name, &identity) {
             tracing::warn!(
                 event = "operation_result",
                 result = "denied",
-                command = command,
+                command = name,
                 reason_code = code.as_str(),
                 elapsed_ms = started.elapsed().as_millis(),
             );
             return Err(code);
         }
-        body(started)
+        body(started, name)
     })
 }
 
@@ -188,7 +195,7 @@ pub async fn select_native_open(
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
 ) -> Result<Option<Vec<SelectedFile>>, String> {
-    in_command_span("select_native_open", &webview, |started| {
+    in_command_span(WebCommand::SelectNativeOpen, &webview, |started, cmd| {
         let outcome = paths_of(app, access);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -196,7 +203,7 @@ pub async fn select_native_open(
                 tracing::info!(
                     event = "operation_result",
                             result = "ok",
-                    command = "select_native_open",
+                    command = cmd,
                     count = files.as_ref().map(|items| items.len()).unwrap_or(0),
                     elapsed_ms = elapsed,
                 );
@@ -206,7 +213,7 @@ pub async fn select_native_open(
                 tracing::warn!(
                     event = "operation_result",
                             result = "error",
-                    command = "select_native_open",
+                    command = cmd,
                     reason_code = code,
                     elapsed_ms = elapsed,
                 );
@@ -256,12 +263,12 @@ pub async fn select_native_save(
     access: tauri::State<'_, FileAccess>,
     name: String,
 ) -> Result<Option<SelectedFile>, String> {
-    in_command_span("select_native_save", &webview, |started| {
+    in_command_span(WebCommand::SelectNativeSave, &webview, |started, cmd| {
         if name.is_empty() || name.contains(['/', '\\', '\0']) || name == "." || name == ".." {
             tracing::warn!(
                 event = "operation_result",
                         result = "error",
-                command = "select_native_save",
+                command = cmd,
                 reason_code = "invalid-file-name",
                 elapsed_ms = started.elapsed().as_millis(),
             );
@@ -280,7 +287,7 @@ pub async fn select_native_save(
                 tracing::info!(
                     event = "operation_result",
                             result = "ok",
-                    command = "select_native_save",
+                    command = cmd,
                     granted = file.is_some(),
                     elapsed_ms = elapsed,
                 );
@@ -290,7 +297,7 @@ pub async fn select_native_save(
                 tracing::warn!(
                     event = "operation_result",
                             result = "error",
-                    command = "select_native_save",
+                    command = cmd,
                     reason_code = code,
                     elapsed_ms = elapsed,
                 );
@@ -305,7 +312,7 @@ pub async fn read_native_text(
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<String, String> {
-    in_command_span("read_native_text", &webview, |started| {
+    in_command_span(WebCommand::ReadNativeText, &webview, |started, cmd| {
         // 授权解析失败也是命令结果：早退路径同样记 operation_result，不留空白。
         let outcome = access.path(&key, false).and_then(|path| read_text(&path));
         let elapsed = started.elapsed().as_millis();
@@ -314,7 +321,7 @@ pub async fn read_native_text(
                 tracing::info!(
                     event = "operation_result",
                             result = "ok",
-                    command = "read_native_text",
+                    command = cmd,
                     bytes = text.len(),
                     elapsed_ms = elapsed,
                 );
@@ -324,7 +331,7 @@ pub async fn read_native_text(
                 tracing::warn!(
                     event = "operation_result",
                             result = "error",
-                    command = "read_native_text",
+                    command = cmd,
                     reason_code = code,
                     elapsed_ms = elapsed,
                 );
@@ -340,7 +347,7 @@ pub async fn write_native_bytes(
     key: String,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
-    in_command_span("write_native_bytes", &webview, |started| {
+    in_command_span(WebCommand::WriteNativeBytes, &webview, |started, cmd| {
         let outcome = access
             .path(&key, true)
             .and_then(|path| commit_bytes(&path, &bytes));
@@ -350,7 +357,7 @@ pub async fn write_native_bytes(
                 tracing::info!(
                     event = "operation_result",
                             result = "ok",
-                    command = "write_native_bytes",
+                    command = cmd,
                     bytes = bytes.len(),
                     elapsed_ms = elapsed,
                 );
@@ -360,7 +367,7 @@ pub async fn write_native_bytes(
                 tracing::warn!(
                     event = "operation_result",
                             result = "error",
-                    command = "write_native_bytes",
+                    command = cmd,
                     reason_code = code,
                     elapsed_ms = elapsed,
                 );
@@ -399,7 +406,7 @@ pub async fn print_native_pdf(
     key: String,
 ) -> Result<String, String> {
     // **走来源守卫** ✓：这个命令写文件 ✓，守卫是本项目唯一的隔离层 ✓。
-    in_command_span("print_native_pdf", &webview, |started| {
+    in_command_span(WebCommand::PrintNativePdf, &webview, |started, cmd| {
         let outcome = print_native_pdf_impl(&app, &access, &html, &key);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -408,7 +415,7 @@ pub async fn print_native_pdf(
                     tracing::info!(
                         event = "operation_result",
                         result = "ok",
-                        command = "print_native_pdf",
+                        command = cmd,
                         bytes = receipt.bytes,
                         elapsed_ms = elapsed,
                         committed = receipt.committed,
@@ -419,7 +426,7 @@ pub async fn print_native_pdf(
                     tracing::warn!(
                         event = "operation_result",
                         result = "error",
-                        command = "print_native_pdf",
+                        command = cmd,
                         reason_code = "print-not-committed",
                         bytes = receipt.bytes,
                         elapsed_ms = elapsed,
@@ -432,7 +439,7 @@ pub async fn print_native_pdf(
                 tracing::warn!(
                     event = "operation_result",
                     result = "error",
-                    command = "print_native_pdf",
+                    command = cmd,
                     reason_code = "print-failed",
                     elapsed_ms = elapsed,
                     committed = false,
@@ -498,7 +505,7 @@ pub fn release_native_file(
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<(), String> {
-    in_command_span("release_native_file", &webview, |started| {
+    in_command_span(WebCommand::ReleaseNativeFile, &webview, |started, cmd| {
         let outcome = access
             .0
             .lock()
@@ -512,7 +519,7 @@ pub fn release_native_file(
                 tracing::info!(
                     event = "operation_result",
                     result = "ok",
-                    command = "release_native_file",
+                    command = cmd,
                     elapsed_ms = elapsed,
                 );
                 Ok(())
@@ -521,7 +528,7 @@ pub fn release_native_file(
                 tracing::warn!(
                     event = "operation_result",
                     result = "error",
-                    command = "release_native_file",
+                    command = cmd,
                     reason_code = code.as_str(),
                     elapsed_ms = elapsed,
                 );

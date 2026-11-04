@@ -313,6 +313,8 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             elapsed_ms = outcome.elapsed_ms,
                             committed = outcome.committed,
                             sha256 = outcome.sha256.as_str(),
+                            // 成功路径没有临时文件可清 ✓：它已经改名成目标了 ✓。
+                            temp_removed = true,
                         );
                     }
                     Err(failure) => {
@@ -337,6 +339,9 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             temp_exists = failure.temp_exists,
                             temp_bytes = failure.temp_bytes,
                             target_dir_exists = failure.target_dir_exists,
+                            // **清理的结果也留证** ✓：冻结清单要"超时 → 删除" ✓，
+                            // 而日志证明不了删没删掉 ✓（文件被占着就删不掉 ✓）。
+                            temp_removed = failure.temp_removed,
                         );
                     }
                 }

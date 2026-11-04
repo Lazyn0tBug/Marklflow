@@ -1199,7 +1199,13 @@ fn event_kind_name(event: WebEventKind) -> &'static str {
     }
 }
 
-fn command_name(command: WebCommand) -> &'static str {
+/// 命令枚举的日志名。
+///
+/// **唯一一处拼写** ✓：命令 span 的名字、`source_decision` 与 `operation_result`
+/// 里的 `command` 字段、页面回传的命令名，全部由这里给出 ✓。
+/// 受保护命令的入口 `in_command_span` 收的就是这个枚举 ✓，
+/// 所以命令名与允许清单**不可能各说各话** ✓。
+pub(crate) fn command_name(command: WebCommand) -> &'static str {
     match command {
         WebCommand::GetPlatformInfo => "get_platform_info",
         WebCommand::SelectNativeOpen => "select_native_open",
@@ -1537,6 +1543,28 @@ mod tests {
         let parsed: WebEventPayload = serde_json::from_str(&allowed.to_string()).unwrap();
         assert_eq!(parsed.event, WebEventKind::CallFinished);
         assert_eq!(parsed.command, Some(WebCommand::ReadNativeText));
+    }
+
+    #[test]
+    fn the_log_name_of_a_command_is_the_name_the_page_sends() {
+        // 页面回传的命令名（serde 的 snake_case ✓）与日志里的命令名（`command_name` ✓）
+        // 必须是**同一个字符串** ✓：不然跨侧配对就配不上 ✓，
+        // 而配对不上时两侧各说各话 ✓，没人看得出来 ✓。
+        let cases:[(WebCommand,&str);7]=[
+            (WebCommand::GetPlatformInfo,"get_platform_info"),
+            (WebCommand::SelectNativeOpen,"select_native_open"),
+            (WebCommand::SelectNativeSave,"select_native_save"),
+            (WebCommand::ReadNativeText,"read_native_text"),
+            (WebCommand::WriteNativeBytes,"write_native_bytes"),
+            (WebCommand::ReleaseNativeFile,"release_native_file"),
+            (WebCommand::PrintNativePdf,"print_native_pdf"),
+        ];
+        for (command,name) in cases{
+            assert_eq!(command_name(command),name,"日志名与页面发的名字不一致");
+            // 页面发的那个名字必须能解析回同一个变体 ✓。
+            let parsed:WebCommand=serde_json::from_str(&format!("\"{name}\"")).unwrap();
+            assert_eq!(parsed,command,"页面发的名字解析回了别的命令");
+        }
     }
 
     #[test]
