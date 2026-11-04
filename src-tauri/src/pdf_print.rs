@@ -42,12 +42,19 @@ pub struct Readiness {
     pub ready: bool,
     /// 读到的文档是不是目标文档（导航换文档时求值可能落在旧文档上 ✓）。
     pub is_expected_document: bool,
+    /// 读到的那个文档的加载状态 ✓（`complete`／`loading` ✓）。
     pub ready_state: String,
+    /// 读到的那个文档的标题 ✓（不是目标文件的标题 ✓——目标是文件 ✓，这里是文档 ✓）。
     pub title: String,
+    /// 读到的那个文档的字体加载状态 ✓（`loaded`／`loading` ✓）。
     pub fonts_status: String,
+    /// 读到的那个文档的**页面盒数量** ✓（不是尺寸 ✓——尺寸在下一项 ✓）。
     pub page_box_count: i64,
+    /// **第一个**页面盒的尺寸 ✓（形如 `794x1123` ✓；不是全部盒的 ✓）。
     pub first_page_box_size: String,
+    /// 读到的那个文档的图片总数 ✓。
     pub images_total: i64,
+    /// 读到的那个文档里已解码的图片数 ✓（`loaded === total` 才是就绪 ✓）。
     pub images_loaded: i64,
 }
 

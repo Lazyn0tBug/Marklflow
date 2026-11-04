@@ -96,8 +96,11 @@ struct Grant {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectedFile {
+    /// 授权的标识 ✓：**路径不在这里** ✓（前端只拿得到 key ✓）。
     pub(crate) key: String,
+    /// 选中的文件名 ✓（展示用 ✓；不是完整路径 ✓）。
     name: String,
+    /// 选中文件的字节数 ✓（打开时读的文件大小 ✓；新建的文件是 0 ✓）。
     size: u64,
 }
 fn error(_: impl std::fmt::Display) -> String {

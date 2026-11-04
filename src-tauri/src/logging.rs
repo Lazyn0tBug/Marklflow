@@ -168,9 +168,14 @@ const WEB_GLOBAL_PER_SECOND: u32 = 100;
 /// 进程内的日志健康状态。计数有界，不跨崩溃保留。
 #[derive(Default)]
 pub struct Health {
-    /// 队列满而丢弃的记录数。
+    /// 被丢弃的计数 ✓ —— **两处都记在这里** ✓：
+    /// web 事件因**超限**被丢弃 ✓（限流 ✓），日志记录因**队列满**被丢弃 ✓。
+    /// **两者的分母不同** ✓，所以这个数**不能**当成"丢了多少条日志" ✓。
     pub dropped: AtomicU64,
-    /// 超长而拒收的记录数。
+    /// 被拒收的计数 ✓ —— **两处都记在这里** ✓：
+    /// web 事件**不合规**被拒收 ✓（载荷超大 ✓、身份不在允许范围 ✓、
+    /// 载荷解析失败 ✓、`call_id` 超长 ✓），日志记录**超长**被拒收 ✓。
+    /// **两者的分母不同** ✓，所以这个数**不能**当成"拒了多少条日志" ✓。
     pub rejected: AtomicU64,
     /// 写入失败次数。
     pub write_failures: AtomicU64,
@@ -185,9 +190,13 @@ pub struct Health {
 }
 
 /// 健康状态的一次快照。
+///
+/// **字段与 `Health` 一一对应** ✓；`dropped` 与 `rejected` 的口径见那里的说明 ✓。
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HealthSnapshot {
+    /// 同 `Health::dropped` ✓：**web 事件与日志记录两处都记** ✓。
     pub dropped: u64,
+    /// 同 `Health::rejected` ✓：**web 事件与日志记录两处都记** ✓。
     pub rejected: u64,
     pub write_failures: u64,
     pub rotate_failures: u64,

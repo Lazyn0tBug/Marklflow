@@ -40,6 +40,9 @@ pub struct ComPrintOutcome {
 }
 
 /// 完成回调的结果：错误（已是 `Result<(), Error>`）与成功标志。
+///
+/// **这是回调的载荷** ✓，不是打印的结果 ✓ —— 打印的结果是 `ComPrintOutcome` ✓
+/// （多了提交与清理的读数 ✓）。名字短是因为它只在 COM 这一层用 ✓。
 pub type PrintResult = Result<(windows::core::Result<()>, bool), String>;
 
 /// **在 UI 线程发起**打印，返回完成结果的接收端。
