@@ -97,6 +97,12 @@ pub enum WebCommand {
     ReadNativeText,
     WriteNativeBytes,
     ReleaseNativeFile,
+    /// 产品形态的静默打印（D7 的入口）。
+    ///
+    /// **它必须在枚举里**：枚举是页面回传的允许清单，不在清单里的命令值
+    /// 整条载荷都反序列化失败、被拒收丢弃（`record_web_event_for` 的解析那一步）——
+    /// 页面侧的事件会连同命令名一起消失。
+    PrintNativePdf,
 }
 
 /// 结果枚举。
@@ -1201,6 +1207,7 @@ fn command_name(command: WebCommand) -> &'static str {
         WebCommand::ReadNativeText => "read_native_text",
         WebCommand::WriteNativeBytes => "write_native_bytes",
         WebCommand::ReleaseNativeFile => "release_native_file",
+        WebCommand::PrintNativePdf => "print_native_pdf",
     }
 }
 
@@ -1530,6 +1537,33 @@ mod tests {
         let parsed: WebEventPayload = serde_json::from_str(&allowed.to_string()).unwrap();
         assert_eq!(parsed.event, WebEventKind::CallFinished);
         assert_eq!(parsed.command, Some(WebCommand::ReadNativeText));
+    }
+
+    #[test]
+    fn the_product_print_command_is_admitted_with_its_own_name() {
+        // 产品形态的打印（D7）✓：页面回传的命令名必须在允许清单里 ✓。
+        // 不在清单里的命令值让**整条载荷**反序列化失败 ✓——
+        // 页面侧的事件会连同命令名一起消失 ✓（那条 `rejected` 就是这么来的 ✓）。
+        let payload = serde_json::json!({"event":"call_started","call_id":"c1","command":"print_native_pdf"});
+        let parsed: WebEventPayload = serde_json::from_str(&payload.to_string()).unwrap();
+        assert_eq!(parsed.command, Some(WebCommand::PrintNativePdf));
+        assert_eq!(command_name(WebCommand::PrintNativePdf), "print_native_pdf");
+    }
+
+    #[test]
+    fn a_page_event_carrying_the_product_print_is_not_rejected() {
+        let (emitter, _receiver, health) = test_emitter(8);
+        let before = health.rejected.load(Ordering::Relaxed);
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("main", "main"),
+                r#"{"event":"call_finished","call_id":"c1","command":"print_native_pdf","result":"ok"}"#
+                    .to_owned(),
+                &emitter
+            ),
+            WEB_ACCEPTED
+        );
+        assert_eq!(health.rejected.load(Ordering::Relaxed), before);
     }
 
     #[test]

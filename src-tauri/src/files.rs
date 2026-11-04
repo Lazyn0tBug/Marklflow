@@ -369,6 +369,20 @@ pub async fn write_native_bytes(
         }
     })
 }
+/// 产品形态打印的回执与留证读数。
+///
+/// **回执与证据是两回事** ✓：回执给调用方（页面）✓，证据进日志 ✓。
+/// 字节数与是否提交都是原生侧的观测 ✓——页面自述证明不了"提交成功才 saved" ✓，
+/// 原生侧能证明 ✓。
+struct PrintReceipt {
+    /// 回执：**目标提交成功才是 `saved`** ✓；否则 `not-committed` ✓。
+    receipt: &'static str,
+    /// 产出的字节数 ✓。
+    bytes: u64,
+    /// 目标是否已提交 ✓（rename 成功才是提交 ✓）。
+    committed: bool,
+}
+
 /// 把一段 HTML 静默打印成 PDF，落到用户在原生保存对话框里选定的目标。
 ///
 /// 目标由 `select_native_save` 的授权给出（key）——**路径只在原生侧可见** ✓（前端拿不到 ✓）。
@@ -385,8 +399,47 @@ pub async fn print_native_pdf(
     key: String,
 ) -> Result<String, String> {
     // **走来源守卫** ✓：这个命令写文件 ✓，守卫是本项目唯一的隔离层 ✓。
-    in_command_span("print_native_pdf", &webview, |_started| {
-        print_native_pdf_impl(&app, &access, &html, &key)
+    in_command_span("print_native_pdf", &webview, |started| {
+        let outcome = print_native_pdf_impl(&app, &access, &html, &key);
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(receipt) => {
+                if receipt.committed {
+                    tracing::info!(
+                        event = "operation_result",
+                        result = "ok",
+                        command = "print_native_pdf",
+                        bytes = receipt.bytes,
+                        elapsed_ms = elapsed,
+                        committed = receipt.committed,
+                    );
+                } else {
+                    // 印出来了但没提交成功：原文件还在，**不是 saved** ✓。
+                    // 稳定码给证据看 ✓（人读的原因在返回值里 ✓）。
+                    tracing::warn!(
+                        event = "operation_result",
+                        result = "error",
+                        command = "print_native_pdf",
+                        reason_code = "print-not-committed",
+                        bytes = receipt.bytes,
+                        elapsed_ms = elapsed,
+                        committed = receipt.committed,
+                    );
+                }
+                Ok(receipt.receipt.to_owned())
+            }
+            Err(reason) => {
+                tracing::warn!(
+                    event = "operation_result",
+                    result = "error",
+                    command = "print_native_pdf",
+                    reason_code = "print-failed",
+                    elapsed_ms = elapsed,
+                    committed = false,
+                );
+                Err(reason)
+            }
+        }
     })
 }
 
@@ -397,15 +450,17 @@ fn print_native_pdf_impl(
     access: &FileAccess,
     html: &str,
     key: &str,
-) -> Result<String, String> {
+) -> Result<PrintReceipt, String> {
     // 授权里的路径才是目标：前端只知道 key ✓。
     let target = access.path(key, true).map_err(|code| code.to_owned())?;
     let outcome = crate::pdf_print::print_html_to_pdf(app, html, &target)
         .map_err(|failure| failure.reason);
     // 无论成败都释放授权：目标已定，继续留着没有意义 ✓。
     access.revoke(key);
-    outcome.map(|outcome| {
-        if outcome.committed { "saved".to_owned() } else { "not-committed".to_owned() }
+    outcome.map(|outcome| PrintReceipt {
+        receipt: if outcome.committed { "saved" } else { "not-committed" },
+        bytes: outcome.bytes,
+        committed: outcome.committed,
     })
 }
 
@@ -416,7 +471,7 @@ fn print_native_pdf_impl(
     _access: &FileAccess,
     _html: &str,
     _key: &str,
-) -> Result<String, String> {
+) -> Result<PrintReceipt, String> {
     Err("此构建不含静默 PDF 打印（需 pdf-probe 特性）".to_owned())
 }
 

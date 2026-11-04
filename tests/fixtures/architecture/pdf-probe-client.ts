@@ -115,7 +115,12 @@ async function printInProductShape():Promise<ProductPrintOutcome>{
  const printCall=newCallId();
  await step('call_started',{call_id:printCall,command:'print_native_pdf'});
  const saved=await call('print_native_pdf',{html:sample,key:value.key});
- await step('call_finished',{call_id:printCall,command:'print_native_pdf',...resultOf(saved as Outcome)});
+ // 回执只有两种：**提交成功才是 saved** ✓；其余（没提交、报错）都算没成 ✓。
+ // 页面按回执归类，不按"调用有没有抛错"归类 ✓——两侧才说的是同一件事 ✓。
+ const receipt=saved.ok&&saved.value==='saved'
+  ?{result:'ok' as WebResult}
+  :{result:'error' as WebResult,error_category:'unknown' as WebErrorCategory};
+ await step('call_finished',{call_id:printCall,command:'print_native_pdf',...receipt});
  return saved.ok?{ok:true,value:saved.value}:{ok:false,error:saved.error??'打印失败'};
 }
 
@@ -131,7 +136,6 @@ async function main():Promise<void>{
  window.name=RAN_MARKER;
  await step('page_ready',{});
  const identityCall=newCallId();
- const productPrintCall=newCallId();
  await step('call_started',{call_id:identityCall,command:'get_platform_info'});
  const identity=await call('get_platform_info');
  report.identity=identity;
@@ -174,10 +178,17 @@ async function main():Promise<void>{
  }
  // 产品形态的打印（D7-1 的验收驱动）：用户在原生保存对话框里选目标 → 静默打印 → 提交。
  // 放在这一步而不是另开一页：探针跑完会把主窗口导回应用页，页面若被导航走，未完成的打印就夭折了。
+ //
+ // **只在主窗口做** ✓：输出宿主不在允许范围内 ✓，它去跑必然被来源守卫拒 ✓，
+ // 报告里会留下"选择目标失败"——看着像产品打印失败了 ✓，其实是那个角色压根没权限 ✓，
+ // 会误导读证据的人 ✓。这里明说"不适用"，不装作是失败 ✓。
  if(productPrintRequested){
-  productPrint=await printInProductShape();
-  report.productPrint=productPrint.error==='cancelled'?'cancelled':productPrint;
-  await step('call_finished',{call_id:productPrintCall,command:'print_native_pdf',...resultOf(report.productPrint as Outcome)});
+  if(role==='main-window'){
+   productPrint=await printInProductShape();
+   report.productPrint=productPrint.error==='cancelled'?'cancelled':productPrint;
+  }else{
+   report.productPrint={ok:false,error:'本角色不执行产品打印'};
+  }
  }
  report.logStatus=lastLogStatus;
  report.done=true;

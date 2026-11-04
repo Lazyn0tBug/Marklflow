@@ -99,6 +99,9 @@ const MAX_LOG_BYTES=256*1024*1024;
 /** 契约里的受保护命令集合：只有它们有 native 的守卫记录。 */
 const PROTECTED_COMMANDS=new Set([
  'select_native_open','select_native_save','read_native_text','write_native_bytes','release_native_file',
+ // 产品形态的静默打印（D7 的入口）✓：它写文件 ✓，走来源守卫 ✓，
+ // 故与其它受保护命令同级 ✓——两侧配对可查 ✓，且它的 operation_result 缺了会被看出来 ✓。
+ 'print_native_pdf',
 ]);
 
 /** 契约 §5.1 的 span 词汇表：事件名 → 应当所在 span。 */

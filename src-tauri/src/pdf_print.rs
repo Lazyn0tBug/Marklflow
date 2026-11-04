@@ -199,8 +199,10 @@ fn print_ready_document(
         reason,
         readiness:Box::new(readiness.clone()),
     })?;
-    let committed = commit_pdf(temp, target);
+    // 哈希要在**改名之前**取 ✓：提交就是把临时文件 rename 成目标 ✓，
+    // rename 之后那个路径已经不存在了 ✓，那时再取只会得到空串 ✓。
     let sha256 = file_sha256(temp);
+    let committed = commit_pdf(temp, target);
     Ok(PrintOutcome {
         ok: printed.ok,
         bytes: printed.bytes,
@@ -362,11 +364,11 @@ fn print_com_print(
     {
         // 宿主侧胶水：取控制器与环境 → 交给 COM 编排 ✓（见 `print_host.rs` ✓）。
         let outcome = crate::print_host::print_to_pdf(window, temp)?;
-        return Ok(NativePrint{
+        Ok(NativePrint{
             ok:outcome.ok,
             bytes:outcome.bytes,
             elapsed_ms:outcome.elapsed_ms,
-        });
+        })
     }
     #[cfg(not(target_os = "windows"))]
     {

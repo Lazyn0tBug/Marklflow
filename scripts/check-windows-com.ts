@@ -10,10 +10,16 @@
  *
  * **范围**：整条 Windows 打印链路都进这个夹具 ✓——
  * COM 核心（print_com）✓、tauri 胶水（print_host）✓、编排（pdf_print）✓、
- * 输出宿主（output_host）✓、日志基座（logging）✓、来源守卫（source_guard）✓。
+ * 输出宿主（output_host）✓、日志基座（logging）✓、来源守卫（source_guard）✓，
+ * 外加**产品形态的入口与探针装配**（files、probe）✓。
  * 编排那一层有 `#[cfg(target_os = "windows")]` 分支 ✓——本机（macOS）编不到它 ✓，
  * 出了错只有到 Windows 上才暴露 ✓（已经栽过一次 ✓：调用了不存在的
  * `print_com::print_to_pdf` ✓，本机 clippy 全绿 ✓，交付宿主编译才炸 ✓）。
+ *
+ * **lint 当错误处理**（`-D warnings` ✓）：只查类型会漏掉 lint ✓，
+ * 而本机编不到 Windows 那段代码 ✓，交叉检查是唯一能提前发现它们的地方 ✓。
+ * 漏掉的那条 `needless_return` 就是这么来的 ✓——它只在 Windows 分支里 ✓，
+ * 本机 clippy 看不见 ✓，而交付宿主上它是噪音 ✓。
  *
  * 用法：bun scripts/check-windows-com.ts
  * 需要：rustup 的 Windows 目标（`rustup target add x86_64-pc-windows-msvc`）。
@@ -36,6 +42,10 @@ const modules={
  output_host:join(repo,'src-tauri/src/output_host.rs'),
  logging:join(repo,'src-tauri/src/logging.rs'),
  source_guard:join(repo,'src-tauri/src/source_guard.rs'),
+ // 产品形态的入口（files）与探针装配（probe）✓：它们也带着 Windows 分支 ✓，
+ // 也带着只有 Windows 上才编得到的调用 ✓——不进夹具就等于没查 ✓。
+ files:join(repo,'src-tauri/src/files.rs'),
+ probe:join(repo,'src-tauri/src/probe.rs'),
 };
 
 /** 跑一条命令；失败时返回其输出，不抛。 */
@@ -113,6 +123,9 @@ function main():void{
   `tracing-subscriber = { version = "${dependencyVersion('tracing-subscriber')}", default-features = false, features = ["fmt", "ansi", "std", "json"] }`,
   // 日志基座的运行标识用 uuid。
   `uuid = { version = "${dependencyVersion('uuid')}", features = ["v4"] }`,
+  // 产品形态入口要对话框插件（原生保存对话框 ✓），探针装配要 tempfile（受控夹具 ✓）。
+  `tauri-plugin-dialog = "${dependencyVersion('tauri-plugin-dialog')}"`,
+  `tempfile = "${dependencyVersion('tempfile')}"`,
   '',
  ].join('\n'));
  writeFileSync(join(work,'src/main.rs'),[
@@ -136,18 +149,22 @@ function main():void{
   '    // 编排层的 Windows 分支就是本夹具存在的理由：macOS 上它被 cfg 掉了。',
   '    let _ = pdf_print::print_document_to_pdf;',
   '    let _ = pdf_print::print_html_to_pdf;',
+  '    // 产品形态的入口与探针装配也带着 Windows 分支：它们不进夹具就等于没查。',
+  '    let _ = files::print_native_pdf;',
+  '    let _ = probe::run;',
   '}',
   '',
  ].join('\n'));
 
  // 用 clippy 而不是 check：只查类型会漏掉 lint（如未使用的导入），
  // 而本机编不到 Windows 那段代码，交叉检查是唯一能提前发现它们的地方。
+ // `-D warnings`：lint 当错误——漏掉一条 needless_return 的代价是交付宿主上的一条噪音。
  // cargo 与 clippy-driver 都得来自 rustup 的 stable：PATH 上的 Homebrew 工具链
  // 没有 Windows 标准库，而 clippy 用的是它自己的 driver。
  // PATH 上工具链优先：clippy 用的是它自己的 driver，driver 又按 PATH 上的 rustc
  // 找 sysroot——PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库。
  const toolchainBin=dirname(rustcPath);
- const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe'],{
+ const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe','--','-D','warnings'],{
   cwd:work,
   env:{RUSTC:rustcPath,PATH:`${toolchainBin}:${process.env.PATH??''}`},
  });

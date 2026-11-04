@@ -137,8 +137,14 @@ set MARKFLOW_LOG=info
 set MARKFLOW_LOG_FORMAT=json
 :: 让探针页做一次产品形态的打印：会弹出**原生保存对话框** ✓，请选一个你知道的目录 ✓
 set MARKFLOW_PROBE_PRODUCT_PRINT=1
+:: 探针层的两个界（可选 ✓，覆盖默认值 ✓）：
+::   页面须在 60 秒内产出读数 ✓；读报告的总数上限 600 秒 ✓
+:: set MARKFLOW_PROBE_PAGE_READY_TIMEOUT=60
+:: set MARKFLOW_PROBE_REPORT_TIMEOUT=600
 cargo run --locked --no-default-features --features pdf-probe
 ```
+
+**慢慢选也没关系** ✓：读报告的总数上限默认 600 秒 ✓，覆盖得到 ✓；产品形态那一步本身**没有上限** ✓（原生保存对话框是阻塞调用 ✓，取消即止 ✓）—— 上限只存在于探针这一层 ✓。
 
 | 要验的 | 怎么看 |
 | --- | --- |
@@ -156,7 +162,7 @@ cargo run --locked --no-default-features --features pdf-probe
 | 1 | 编译 | `cargo build --locked --features pdf-probe` | 0 error 0 warning |
 | 2 | 探针跑完 | 日志里有 `probe_cleanup` | 有 |
 | 3 | 就绪成立 | `probe_readiness` | `eval_ok=true`、`is_target=true`、`ready=true`、`page_boxes=3`、`page_box_size=794x1123`、`images_loaded=images_total` |
-| 4 | 打印成功 | `probe_pdf` | `ok=true`、`bytes>0`、`committed=true` |
+| 4 | 打印成功 | `probe_pdf` | `ok=true`、`bytes>0`、`committed=true`、`sha256` 非空 ✓ |
 | 5 | PDF 产出 | 目标文件存在 | 页数 3、页面尺寸 A4（210×297mm） |
 | 6 | 无残留临时文件 | 目标同目录 | 无 `*.tmp-<pid>` |
 | 7 | 无弹框 | 跑探针期间盯着屏幕 | 无原生对话框、无打印面板（D1c-5，人工） |

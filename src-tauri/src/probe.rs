@@ -30,8 +30,27 @@ pub const FIXTURE_CONTENT: &str = "MF-PROBE-FIXTURE-20261103";
 /// 探针页在仓库中的路径。由开发服务器提供，与生产前端同源，不放宽生产 CSP。
 const PROBE_PAGE_PATH: &str = "/tests/fixtures/architecture/pdf-probe-client.html";
 
-/// 报告的读取超时。探针页要跑完通道阳性、受控读取与选择器尝试。
-const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
+/// 报告读取的**启动护栏**：探针页必须在它之内产出读数 ✓。
+///
+/// **它不是需求** ✓：没有任何要求给"读页面报告"定过界 ✓。
+/// 它是探针层的护栏 ✓——探针得有个结论 ✓，不能永远等下去 ✓。
+/// 没有读数就是"页面没就位" ✓，这条超时本身就是那条证据 ✓。
+const PAGE_READY_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// 报告读取的**总数上限**：从开始读到页面标记完成 ✓。
+///
+/// **它也不是需求** ✓：它是探针层的护栏 ✓——探针自己请了人来选目标 ✓，
+/// 所以它得容得下人的时间 ✓。产品形态那一步本身**没有上限** ✓（人有取消动作 ✓），
+/// 上限只存在于探针这一层 ✓。
+///
+/// **机器步与人参与的那一步之间不再分预算** ✓：探针不知道哪一步是哪一步 ✓，
+/// 分了也只是猜 ✓——那个 60 秒就是这么来的 ✓，它把"人在回路"这一步管死了 ✓。
+const REPORT_TIMEOUT: Duration = Duration::from_secs(600);
+
+/// 两个界都可由用例覆盖 ✓（环境变量 ✓）：交付宿主上人认真选目标的时间是可变的 ✓，
+/// 改用例比改代码快 ✓。给的不是正整数就按默认值走 ✓。
+const PAGE_READY_TIMEOUT_ENV: &str = "MARKFLOW_PROBE_PAGE_READY_TIMEOUT";
+const REPORT_TIMEOUT_ENV: &str = "MARKFLOW_PROBE_REPORT_TIMEOUT";
 
 /// 静默 PDF 的输出目标。默认落在归档目录；可用环境变量改到别处。
 const PDF_OUTPUT_ENV: &str = "MARKFLOW_PROBE_PDF";
@@ -226,14 +245,16 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         // 误判为"没导航"就会连报告一起丢掉。故一律读——页面真没起来的话，
         // 读报告会等到超时，正好也是一条证据（"页面没就位" ✓）。
         let mut main_report_read = false;
+        let ready_timeout = timeout_from_env(PAGE_READY_TIMEOUT_ENV, PAGE_READY_TIMEOUT);
+        let total_timeout = timeout_from_env(REPORT_TIMEOUT_ENV, REPORT_TIMEOUT);
         if let Some(window) = &main_window {
-            if let Some(report) = read_report(window, REPORT_TIMEOUT, "main") {
+            if let Some(report) = read_report(window, ready_timeout, total_timeout, "main") {
                 log_observed_report("main", &report);
                 main_report_read = true;
             }
         }
         if let Some(window) = &output_window {
-            if let Some(report) = read_report(window, REPORT_TIMEOUT, "output") {
+            if let Some(report) = read_report(window, ready_timeout, total_timeout, "output") {
                 log_observed_report("output", &report);
             }
         }
@@ -566,7 +587,18 @@ fn document_is_complete(window: &tauri::WebviewWindow) -> bool {
 }
 
 /// 读取探针页写在 DOM 里的报告，等到它标记完成或超时。
-fn read_report(window: &tauri::WebviewWindow, timeout: Duration, host: &str) -> Option<String> {
+///
+/// **两个界，都是探针层的护栏，不是需求** ✓：见 `PAGE_READY_TIMEOUT` 与 `REPORT_TIMEOUT` ✓。
+///
+/// 放弃时记的 `phase` 说明是哪个界先到的 ✓：
+/// `page_ready` = 页面压根没产出读数 ✓（页面没就位 ✓），
+/// `report` = 页面有读数但没标记完成 ✓。
+fn read_report(
+    window: &tauri::WebviewWindow,
+    ready_timeout: Duration,
+    total_timeout: Duration,
+    host: &str,
+) -> Option<String> {
     let current = window
         .url()
         .map(|value| value.to_string())
@@ -579,9 +611,25 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration, host: &str) -> 
         );
         return None;
     }
-    let deadline = Instant::now() + timeout;
+    let started = Instant::now();
+    let ready_deadline = started + ready_timeout;
+    let total_deadline = started + total_timeout;
     let mut printed = false;
-    while Instant::now() < deadline {
+    // 页面有没有产出读数 ✓：没有就是"页面没就位" ✓。
+    let mut spoke = false;
+    loop {
+        let now = Instant::now();
+        if now >= total_deadline {
+            tracing::warn!(
+                event = "probe_report_timeout",
+                host = host,
+                phase = if spoke { "report" } else { "page_ready" },
+                ready_timeout_ms = ready_timeout.as_millis(),
+                total_timeout_ms = total_timeout.as_millis(),
+                reason = "探针页未在期限内标记完成",
+            );
+            return None;
+        }
         let (sender, receiver) = mpsc::channel();
         let script = "(()=>{const el=document.querySelector('[data-probe-report]');if(!el)return '';try{return JSON.parse(el.textContent||'{}')}catch(error){return ''}})()";
         if window
@@ -600,17 +648,48 @@ fn read_report(window: &tauri::WebviewWindow, timeout: Duration, host: &str) -> 
             tracing::debug!(event = "probe_eval_raw", raw = raw.as_str());
             printed = true;
         }
+        if !spoke && has_reading(&raw) {
+            spoke = true;
+        }
+        // 启动护栏：页面在期限内一个字都没说，就是"页面没就位" ✓。
+        if !spoke && now >= ready_deadline {
+            tracing::warn!(
+                event = "probe_report_timeout",
+                host = host,
+                phase = "page_ready",
+                ready_timeout_ms = ready_timeout.as_millis(),
+                total_timeout_ms = total_timeout.as_millis(),
+                reason = "探针页未就位：期限内没有产出任何读数",
+            );
+            return None;
+        }
         if raw.contains("\"done\"") {
             return Some(raw);
         }
         std::thread::sleep(Duration::from_millis(200));
     }
-    tracing::warn!(
-        event = "probe_report_timeout",
-        host = host,
-        reason = "探针页未在超时内标记完成",
-    );
-    None
+}
+
+/// 页面有没有产出读数。
+///
+/// eval 的结果被序列化成 JSON 文本 ✓：报告元素不在时是 `""` ✓，
+/// 报告还是初始空壳时是 `{}` ✓——两者都算"还没产出读数" ✓。
+/// 有的平台给的是未经序列化的原样文本 ✓，故引号一并剥掉 ✓。
+fn has_reading(raw: &str) -> bool {
+    let trimmed = raw.trim();
+    let bare = trimmed.trim_matches('"');
+    !bare.is_empty() && bare != "{}"
+}
+
+/// 取一个秒数上限：环境变量给了正整数就用它，没给或给的不合法就用默认值。
+fn timeout_from_env(name: &str, fallback: Duration) -> Duration {
+    let Ok(raw) = std::env::var(name) else {
+        return fallback;
+    };
+    match raw.trim().parse::<u64>() {
+        Ok(seconds) if seconds > 0 => Duration::from_secs(seconds),
+        _ => fallback,
+    }
 }
 
 #[cfg(test)]
