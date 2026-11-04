@@ -20,8 +20,8 @@ use tauri::{Manager, Url, WebviewUrl};
 
 use crate::files::FileAccess;
 use crate::logging;
+use crate::pdf_print;
 use crate::output_host;
-use crate::print_host;
 use crate::source_guard;
 
 /// 受控夹具的内容。探针页从 URL 拿到期望值，与实际读到的内容逐字比对。
@@ -32,9 +32,6 @@ const PROBE_PAGE_PATH: &str = "/tests/fixtures/architecture/pdf-probe-client.htm
 
 /// 报告的读取超时。探针页要跑完通道阳性、受控读取与选择器尝试。
 const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
-
-/// 就绪探测的读取超时。冻结样本的加载与字体、图片就绪都在这个窗口内完成。
-const READINESS_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// 静默 PDF 的输出目标。默认落在归档目录；可用环境变量改到别处。
 const PDF_OUTPUT_ENV: &str = "MARKFLOW_PROBE_PDF";
@@ -64,103 +61,6 @@ fn frozen_sample_path() -> Option<PathBuf> {
     }
 }
 
-/// 目标同目录的临时文件：同卷，才能 rename 提交。
-fn temp_path(target: &Path) -> PathBuf {
-    let mut name = target
-        .file_name()
-        .map(|value| value.to_os_string())
-        .unwrap_or_default();
-    name.push(format!(".tmp-{}", std::process::id()));
-    target.with_file_name(name)
-}
-
-/// 提交：把临时文件 rename 到目标。目标只在这一步被触及，
-/// 故打印失败时原文件保持不变。
-fn commit_pdf(temp: &Path, target: &Path) -> bool {
-    match std::fs::rename(temp, target) {
-        Ok(()) => true,
-        Err(_) => {
-            let _ = std::fs::remove_file(temp);
-            false
-        }
-    }
-}
-
-/// 打印到目标的同目录临时文件，再 rename 提交；结果与失败诊断都记进日志。
-///
-/// 只记布尔与计数，**不记路径**（契约禁止完整本地路径入日志 ✓）。
-fn print_and_commit(window: &tauri::WebviewWindow, target: &Path) {
-    let temp = temp_path(target);
-    // 上一次运行的残留先清掉：打印要的是一个干净的临时文件。
-    let _ = std::fs::remove_file(&temp);
-    // 目标目录要先在：打印写的是同目录的临时文件。
-    if let Err(reason) = prepare_target(target) {
-        tracing::warn!(
-            event = "probe_pdf",
-            ok = false,
-            reason = reason.as_str(),
-            target_dir_exists = target.parent().map(|dir| dir.is_dir()).unwrap_or(false),
-            temp_exists = false,
-            temp_bytes = 0,
-        );
-        return;
-    }
-    match print_host::print_to_pdf(window, &temp) {
-        Ok(outcome) => {
-            let committed = commit_pdf(&temp, target);
-            // 产出的 sha256：产物文件不入库 ✓，但 hash 与环境记录在案 ✓（D1 退出条件 ✓）。
-            let sha256 = std::fs::read(&temp)
-                .ok()
-                .map(|bytes| {
-                    use sha2::{Digest, Sha256};
-                    let digest = Sha256::digest(&bytes);
-                    digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>()
-                })
-                .unwrap_or_default();
-            tracing::info!(
-                event = "probe_pdf",
-                ok = outcome.ok,
-                bytes = outcome.bytes,
-                elapsed_ms = outcome.elapsed_ms,
-                committed = committed,
-                sha256 = sha256.as_str(),
-            );
-        }
-        Err(reason) => {
-            // 失败要能诊断：临时文件写出来没有、有多大、目标目录在不在。
-            let temp_exists = temp.is_file();
-            let temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
-            let target_dir_exists = target.parent().map(|dir| dir.is_dir()).unwrap_or(false);
-            let _ = std::fs::remove_file(&temp);
-            tracing::warn!(
-                event = "probe_pdf",
-                ok = false,
-                reason = reason.as_str(),
-                temp_exists = temp_exists,
-                temp_bytes = temp_bytes,
-                target_dir_exists = target_dir_exists,
-            );
-        }
-    }
-}
-
-/// 确保输出目标的父目录存在，返回"是否是我们建的"。
-///
-/// 打印先写同目录的临时文件 ✓，目录不在就必然失败 ✓（交付宿主上就是这样：
-/// 目标父目录不存在 → HRESULT 无错 ✓ 但成功标志为 false ✓）。故先建出来 ✓。
-/// 相对路径没有父目录（用当前目录 ✓），不算缺目录 ✓。
-fn prepare_target(target: &Path) -> Result<bool, String> {
-    let Some(dir) = target.parent() else {
-        return Ok(false);
-    };
-    if dir.as_os_str().is_empty() || dir.is_dir() {
-        return Ok(false);
-    }
-    std::fs::create_dir_all(dir)
-        .map(|_| true)
-        .map_err(|_| "输出目录不存在且无法创建".to_owned())
-}
-
 /// 静默 PDF 的输出目标路径。
 fn pdf_output_path() -> Option<PathBuf> {
     if let Ok(value) = std::env::var(PDF_OUTPUT_ENV) {
@@ -172,28 +72,6 @@ fn pdf_output_path() -> Option<PathBuf> {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent()?.to_path_buf();
     Some(repo.join("docs/acceptance/pdf-probe/probe-pdf-output.pdf"))
 }
-
-/// 就绪探测脚本：读页面的加载状态、字体、图片与页面盒。
-///
-/// 只读不写：不执行作者脚本，不改页面。返回 JSON 字符串，判定由 Rust 做。
-/// 字体与图片的"就绪"用状态而非 Promise 查询，避免依赖求值是否等待 Promise。
-const READINESS_SCRIPT: &str = r#"(()=>{
-  const boxes=[...document.querySelectorAll('.pagedjs_page')];
-  const images=[...document.images];
-  const fonts=document.fonts?document.fonts.status:'unknown';
-  const loaded=images.filter(image=>image.complete&&image.naturalWidth>0).length;
-  return {
-    href:location.href,
-    ready_state:document.readyState,
-    title:document.title,
-    fonts_status:fonts,
-    page_boxes:boxes.length,
-    page_box_size:boxes.length?boxes[0].offsetWidth+'x'+boxes[0].offsetHeight:'',
-    images_total:images.length,
-    images_loaded:loaded,
-    ready:document.readyState==='complete'&&fonts==='loaded'&&loaded===images.length,
-  };
-})()"#;
 
 /// 探针装配的失败类别。
 ///
@@ -266,27 +144,6 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         output_label.as_str(),
     ));
 
-    // D1c 的打印宿主：**独立实例**（每次运行各自创建，不共用运行实例），
-    // 载受控样本的归档原件。建窗必须在主线程，故在 setup 里建。
-    let print_target = match frozen_sample_path().and_then(|path| Url::from_file_path(path).ok()) {
-        Some(url) => {
-            let name = url
-                .path_segments()
-                .and_then(|mut segments| segments.rfind(|part| !part.is_empty()))
-                .unwrap_or("frozen-sample.html")
-                .to_owned();
-            output_host::create(app, WebviewUrl::External(url)).ok().map(|window| {
-                let label = window.label().to_owned();
-                logging::register_probe_instance(&source_guard::Identity::from_labels(
-                    label.as_str(),
-                    label.as_str(),
-                ));
-                (window, name)
-            })
-        }
-        None => None,
-    };
-
     // 事件循环在 setup 钩子返回之后才启动：eval 的回调要经事件循环送达，
     // 因此报告读取必须放到后台线程，否则在 setup 里读会一直等到超时。
     let handle = app.clone();
@@ -297,10 +154,6 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         probe.in_scope(|| {
         let main_window = handle.get_webview_window("main");
         let output_window = handle.get_webview_window(&output_label);
-        let (print_window, print_sample_name) = match print_target {
-            Some((window, name)) => (Some(window), name),
-            None => (None, String::new()),
-        };
         let mut initial_target: Option<Url> = None;
         let mut loaded = false;
         if let Some(window) = &main_window {
@@ -404,33 +257,77 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
             );
         }
 
-
         // 就绪探测：打印宿主载的就是**归档原件**，用原生 eval 读它的 DOM。
         // 这是 D1c-1 的就绪判据原型，也是 TBD-11 的决定性验证：
         // 原生受控脚本执行若不受冻结样本的 CSP 约束，就能读到页面盒、字体与图片状态。
         // 探针页的证据已在此之前读完，导航走不影响。
         // D1c：就绪后静默打印，输出到目标同目录的临时文件，再 rename 提交。
         // 失败时原文件保持不变：目标只在最后那一步被 rename 触及。
-        match (&print_window, pdf_output_path()) {
-            (Some(window), Some(target)) => {
-                let expected = print_sample_name.clone();
-                let ready = probe_readiness(window, "print", &expected);
-                if ready {
-                    print_and_commit(window, &target);
+        match (frozen_sample_path(), pdf_output_path()) {
+            (Some(sample), Some(target)) => {
+                match pdf_print::print_document_to_pdf(&handle, &sample, &target) {
+                    Ok(outcome) => {
+                        tracing::info!(
+                            event = "probe_readiness",
+                            host = "print",
+                            eval_ok = outcome.readiness.eval_ok,
+                            is_target = outcome.readiness.is_target,
+                            ready = outcome.readiness.ready,
+                            ready_state = outcome.readiness.ready_state.as_str(),
+                            fonts_status = outcome.readiness.fonts_status.as_str(),
+                            page_boxes = outcome.readiness.page_boxes,
+                            page_box_size = outcome.readiness.page_box_size.as_str(),
+                            images_total = outcome.readiness.images_total,
+                            images_loaded = outcome.readiness.images_loaded,
+                            title = outcome.readiness.title.as_str(),
+                        );
+                        tracing::info!(
+                            event = "probe_pdf",
+                            ok = outcome.ok,
+                            bytes = outcome.bytes,
+                            elapsed_ms = outcome.elapsed_ms,
+                            committed = outcome.committed,
+                            sha256 = outcome.sha256.as_str(),
+                        );
+                    }
+                    Err(failure) => {
+                        tracing::info!(
+                            event = "probe_readiness",
+                            host = "print",
+                            eval_ok = failure.readiness.eval_ok,
+                            is_target = failure.readiness.is_target,
+                            ready = failure.readiness.ready,
+                            ready_state = failure.readiness.ready_state.as_str(),
+                            fonts_status = failure.readiness.fonts_status.as_str(),
+                            page_boxes = failure.readiness.page_boxes,
+                            page_box_size = failure.readiness.page_box_size.as_str(),
+                            images_total = failure.readiness.images_total,
+                            images_loaded = failure.readiness.images_loaded,
+                            title = failure.readiness.title.as_str(),
+                        );
+                        tracing::warn!(
+                            event = "probe_pdf",
+                            ok = false,
+                            reason = failure.reason.as_str(),
+                            temp_exists = failure.temp_exists,
+                            temp_bytes = failure.temp_bytes,
+                            target_dir_exists = failure.target_dir_exists,
+                        );
+                    }
                 }
             }
             _ => {
                 tracing::warn!(
                     event = "probe_pdf",
                     ok = false,
-                    reason = "打印宿主或输出目标不可用",
+                    reason = "受控样本或输出目标不可用",
                 );
             }
         }
 
         // 探针专用宿主用完即关：**丢掉 Rust 句柄不等于关窗**（窗口仍在应用的窗口表里），
         // 残留的隐藏宿主就是 D1c-4「无残留宿主」不成立的原因。主窗口是应用自己的，不关。
-        for host in [&output_window, &print_window].into_iter().flatten() {
+        for host in [&output_window].into_iter().flatten() {
             let _ = host.close();
         }
 
@@ -494,100 +391,6 @@ fn navigate_to_probe(window: &tauri::WebviewWindow, url: &Url) -> (bool, bool, S
         }
     }
     (false, true, String::new())
-}
-
-/// 就绪探测：反复求值直到就绪条件成立或超时，结果记进日志。
-///
-/// **不用固定睡眠**：轮询的是条件（文档加载完成、字体已加载、图片已解码），
-/// 条件成立即返回。求值失败（页面尚未加载、或 CSP 挡住了求值）与"未就绪"分开记：
-/// 前者是 eval_ok=false，后者是 ready=false——两者对 D1c 的含义完全不同。
-fn probe_readiness(window: &tauri::WebviewWindow, host: &str, expected: &str) -> bool {
-    let deadline = Instant::now() + READINESS_TIMEOUT;
-    let mut last: Option<serde_json::Value> = None;
-    let expected = expected.to_lowercase();
-    while Instant::now() < deadline {
-        let (sender, receiver) = mpsc::channel();
-        if window
-            .eval_with_callback(READINESS_SCRIPT, move |value| {
-                let _ = sender.send(value);
-            })
-            .is_err()
-        {
-            break;
-        }
-        let Ok(raw) = receiver.recv_timeout(Duration::from_millis(800)) else {
-            std::thread::sleep(Duration::from_millis(200));
-            continue;
-        };
-        let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
-            continue;
-        };
-        // 文档身份先于就绪：导航到新页面时求值可能落在**旧文档**上，
-        // 旧文档也可能"加载完成、字体已加载"——那就白读了。文档身份对不上就继续等。
-        let is_target = value
-            .get("href")
-            .and_then(|entry| entry.as_str())
-            .map(|href| href.to_lowercase().contains(&expected))
-            .unwrap_or(false);
-        let ready = is_target
-            && value
-                .get("ready")
-                .and_then(|entry| entry.as_bool())
-                .unwrap_or(false);
-        last = Some(value);
-        if ready {
-            break;
-        }
-    }
-    // 只记一次：轮询的中间态不进日志（一次探测不该刷出成百上千条记录）。
-    let Some(value) = last else {
-        tracing::warn!(
-            event = "probe_readiness",
-            host = host,
-            eval_ok = false,
-            ready = false,
-            reason = "原生求值拿不到内容",
-        );
-        return false;
-    };
-    let text = |key: &str| {
-        value
-            .get(key)
-            .and_then(|entry| entry.as_str())
-            .unwrap_or("")
-            .to_owned()
-    };
-    let number = |key: &str| {
-        value
-            .get(key)
-            .and_then(|entry| entry.as_i64())
-            .unwrap_or_default()
-    };
-    let is_target = value
-        .get("href")
-        .and_then(|entry| entry.as_str())
-        .map(|href| href.to_lowercase().contains(&expected))
-        .unwrap_or(false);
-    let ready = is_target
-        && value
-            .get("ready")
-            .and_then(|entry| entry.as_bool())
-            .unwrap_or(false);
-    tracing::info!(
-        event = "probe_readiness",
-        host = host,
-        eval_ok = true,
-        is_target = is_target,
-        ready = ready,
-        title = text("title").as_str(),
-        ready_state = text("ready_state").as_str(),
-        fonts_status = text("fonts_status").as_str(),
-        page_boxes = number("page_boxes"),
-        page_box_size = text("page_box_size").as_str(),
-        images_total = number("images_total"),
-        images_loaded = number("images_loaded"),
-    );
-    ready
 }
 
 /// 记下 Rust 侧对页面报告的读数。

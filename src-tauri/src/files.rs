@@ -369,6 +369,53 @@ pub async fn write_native_bytes(
         }
     })
 }
+/// 把一段 HTML 静默打印成 PDF，落到用户在原生保存对话框里选定的目标。
+///
+/// 目标由 `select_native_save` 的授权给出（key）——**路径只在原生侧可见** ✓（前端拿不到 ✓）。
+/// 打印完即释放该授权 ✓（成功失败都释放 ✓）。
+/// 回执：**目标提交成功才 saved** ✓；失败时原文件保持不变 ✓。
+///
+/// 这是 D7 的产品形态入口 ✓；**不接生产 UI** ✓（M9 才接 ✓）。
+#[tauri::command]
+pub async fn print_native_pdf(
+    app: tauri::AppHandle,
+    access: tauri::State<'_, FileAccess>,
+    html: String,
+    key: String,
+) -> Result<String, String> {
+    print_native_pdf_impl(&app, &access, &html, &key)
+}
+
+/// 静默打印的实现。带 `pdf-probe` 特性时才有这个能力 ✓。
+#[cfg(feature = "pdf-probe")]
+fn print_native_pdf_impl(
+    app: &tauri::AppHandle,
+    access: &FileAccess,
+    html: &str,
+    key: &str,
+) -> Result<String, String> {
+    // 授权里的路径才是目标：前端只知道 key ✓。
+    let target = access.path(key, true).map_err(|code| code.to_owned())?;
+    let outcome = crate::pdf_print::print_html_to_pdf(app, html, &target)
+        .map_err(|failure| failure.reason);
+    // 无论成败都释放授权：目标已定，继续留着没有意义 ✓。
+    access.revoke(key);
+    outcome.map(|outcome| {
+        if outcome.committed { "saved".to_owned() } else { "not-committed".to_owned() }
+    })
+}
+
+/// 不含静默打印能力的构建 ✓。
+#[cfg(not(feature = "pdf-probe"))]
+fn print_native_pdf_impl(
+    _app: &tauri::AppHandle,
+    _access: &FileAccess,
+    _html: &str,
+    _key: &str,
+) -> Result<String, String> {
+    Err("此构建不含静默 PDF 打印（需 pdf-probe 特性）".to_owned())
+}
+
 #[tauri::command]
 pub fn release_native_file(
     webview: tauri::Webview,

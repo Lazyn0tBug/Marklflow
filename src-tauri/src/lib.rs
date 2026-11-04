@@ -4,7 +4,7 @@ mod output_host;
 #[cfg(all(feature = "pdf-probe", target_os = "windows"))]
 mod print_com;
 #[cfg(feature = "pdf-probe")]
-mod print_host;
+mod pdf_print;
 mod source_guard;
 #[cfg(feature = "pdf-probe")]
 mod probe;
@@ -54,6 +54,7 @@ pub fn run() {
             files::select_native_open,
             files::select_native_save,
             files::read_native_text,
+            files::print_native_pdf,
             files::write_native_bytes,
             files::release_native_file
         ]);
