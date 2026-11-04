@@ -499,11 +499,13 @@ mod tests {
     fn a_locked_temp_file_cannot_be_cleaned_and_that_is_reported() {
         // Windows 上被打开的文件不能删 ✓：所以清理的结果必须留证 ✓，
         // 否则"超时 → 删除"这条永远证明不了 ✓。
+        // `share_mode` 来自这个扩展 trait ✓；打开文件的类型是 `std::fs::OpenOptions` ✓
+        // （`std::os::windows::fs::OpenOptions` 是私有的 ✓，写错了编不过 ✓）。
         use std::os::windows::fs::OpenOptionsExt;
         let dir = tempfile::tempdir().unwrap();
         let temp = dir.path().join("out.pdf.tmp");
         std::fs::write(&temp, b"x").unwrap();
-        let locked = std::os::windows::fs::OpenOptions::new()
+        let locked = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .share_mode(0x0000_0001 | 0x0000_0002) // deny FILE_SHARE_DELETE

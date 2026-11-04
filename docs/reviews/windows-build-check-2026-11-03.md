@@ -176,7 +176,7 @@ bun scripts/check-native-isolation.ts
 
 | 命令 | 期望输出 |
 | --- | --- |
-| ① | `test result: ok. 45 passed`（含下面点名的四条用例 ✓） |
+| ① | `test result: ok. 47 passed` —— **Windows 上比 macOS 多两条** `#[cfg(windows)]` 的用例 ✓（文件被占着就删不掉 ✓、提交失败保留旧文件 ✓）；macOS 上是 45 ✓ |
 | ② | `命令面准入成立：注册 8 个，受保护 6 个，不受守卫 2 个（各有准入方式），页面可回传 7 个` |
 | ③ | 无输出即通过 ✓（有输出就是前提被破坏 ✓） |
 

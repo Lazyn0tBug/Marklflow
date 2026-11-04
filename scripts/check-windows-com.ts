@@ -170,12 +170,15 @@ async function crossCheck(work:string,rustcPath:string):Promise<void>{
  // 用 clippy 而不是 check：只查类型会漏掉 lint（如未使用的导入），
  // 而本机编不到 Windows 那段代码，交叉检查是唯一能提前发现它们的地方。
  // `-D warnings`：lint 当错误——漏掉一条 needless_return 的代价是交付宿主上的一条噪音。
+ // `--all-targets`：**连测试代码一起编** ✓——`#[cfg(windows)]` 的用例只在
+ // Windows 目标下才存在 ✓，不编它们就等于没人检查过 ✓
+ // （交付宿主上就是这么撞出一个编不过的路径的 ✓）。
  // cargo 与 clippy-driver 都得来自 rustup 的 stable：PATH 上的 Homebrew 工具链
  // 没有 Windows 标准库，而 clippy 用的是它自己的 driver。
  // PATH 上工具链优先：clippy 用的是它自己的 driver，driver 又按 PATH 上的 rustc
  // 找 sysroot——PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库。
  const toolchainBin=dirname(rustcPath);
- const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe','--','-D','warnings'],{
+ const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe','--all-targets','--','-D','warnings'],{
   cwd:work,
   env:{RUSTC:rustcPath,PATH:`${toolchainBin}:${process.env.PATH??''}`},
  });
