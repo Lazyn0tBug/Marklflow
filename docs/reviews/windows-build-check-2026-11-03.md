@@ -58,6 +58,18 @@ warning: unused import: `crate::print_com::PrintOutcome`
 
 正常收尾生效后，同一log span包含`observed_by=probe`和`observed_by=shutdown`两条log_health。校验器此前只以span和事件名判重复，误报`duplicate-event`。现将observed_by纳入log_health自然键；不同位置快照可共存，同位置重复仍须报错。新增两项定向单测，结果见§6。
 
+### 1.6 本轮修复：抽模块时丢了宿主侧胶水（E0425，2026-11-04）
+
+**症状**：交付宿主编译报 `cannot find function print_to_pdf in module crate::print_com`（`src/pdf_print.rs:363`）。
+
+**根因**：D7-1 把打印抽成 `pdf_print.rs` 时删掉了 `print_host.rs`（**tauri 胶水**：从窗口取控制器与环境），编排层却仍按旧名去调 `crate::print_com::print_to_pdf` —— **那个函数从来不存在**（COM 核心里只有 `start_print`／`print_dispatch`／`finish_print` 三件）。
+
+**为什么本机没拦住**：那次调用在 `#[cfg(target_os = "windows")]` 分支里 → macOS 的 clippy **编不到那一段** → 本地全绿、Windows 上才炸。与 §1.1 同类：**出错的文件不在本地能编的范围里**。
+
+**修法**：
+1. 胶水恢复成独立模块 `print_host.rs` ✓；`print_com.rs` 保持**无 tauri 依赖** ✓（交叉验证要的就是这一点 ✓）。
+2. **交叉检查的覆盖面从"两个文件"扩到整条 Windows 链路** ✓：`print_com`／`print_host`／`pdf_print`／`output_host`／`logging`／`source_guard` ✓ —— 编排层的 Windows 分支从此在本机被真正类型检查 ✓（§5 ✓）。
+
 ---
 
 ## 2. 操作清单
@@ -186,7 +198,7 @@ cargo run --locked --no-default-features --features pdf-probe
 bun scripts/check-windows-com.ts
 ```
 
-**它做什么**：建一个临时小 crate，把仓库里的 `src-tauri/src/print_com.rs` 与 `src-tauri/src/print_host.rs` **真文件**编译成 `x86_64-pc-windows-msvc` 目标，并跑 clippy。依赖版本从仓库的 `Cargo.toml` 读 ✓（不会出现两套 windows-core）。
+**它做什么**：建一个临时小 crate，把仓库里的 `src-tauri/src/` 下**整条 Windows 打印链路的真文件**——`print_com.rs`、`print_host.rs`、`pdf_print.rs`、`output_host.rs`、`logging.rs`、`source_guard.rs`——编译成 `x86_64-pc-windows-msvc` 目标，并跑 clippy。依赖版本从仓库的 `Cargo.toml` 读 ✓（不会出现两套 windows-core）。
 
 **为什么需要**：macOS 上没有 llvm-rc，`cargo check --target x86_64-pc-windows-msvc` 会停在资源编译那步 → **整棵依赖树都过不去，Windows 侧代码一处也验不了**。这个办法绕开资源编译，只验代码本身。
 
@@ -194,7 +206,7 @@ bun scripts/check-windows-com.ts
 
 **它验不到什么**：
 - 只验**类型与 lint**，不验运行行为（COM 调用是否成功、隐藏窗口是否排版，都得上真机）。
-- 只覆盖这两个文件；`probe.rs` 里的探针接线仍要靠真机。
+- `pdf_print.rs` 里的 `#[cfg(target_os = "windows")]` 分支**现在在里面** ✓（§1.6 ✓）；但 `probe.rs` 的探针接线与 `files.rs` 的 Windows 专属测试仍要靠真机 ✓。
 
 **注意**：PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库，而 clippy 用自己的 driver、按 PATH 上的 rustc 找 sysroot → 脚本已把工具链 bin 放在 PATH 前面 ✓。
 

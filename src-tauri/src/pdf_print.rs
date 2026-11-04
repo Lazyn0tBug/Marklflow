@@ -360,7 +360,8 @@ fn print_com_print(
 ) -> Result<NativePrint, String> {
     #[cfg(target_os = "windows")]
     {
-        let outcome = crate::print_com::print_to_pdf(window, temp)?;
+        // 宿主侧胶水：取控制器与环境 → 交给 COM 编排 ✓（见 `print_host.rs` ✓）。
+        let outcome = crate::print_host::print_to_pdf(window, temp)?;
         return Ok(NativePrint{
             ok:outcome.ok,
             bytes:outcome.bytes,

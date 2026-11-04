@@ -3,6 +3,8 @@ mod logging;
 mod output_host;
 #[cfg(all(feature = "pdf-probe", target_os = "windows"))]
 mod print_com;
+#[cfg(all(feature = "pdf-probe", target_os = "windows"))]
+mod print_host;
 #[cfg(feature = "pdf-probe")]
 mod pdf_print;
 mod source_guard;

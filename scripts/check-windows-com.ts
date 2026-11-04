@@ -8,6 +8,13 @@
  * 这里用一个临时小 crate 直接把它编译成 Windows 目标——**编译的是仓库里的真文件，
  * 不是副本**，故不会与实际代码漂移。
  *
+ * **范围**：整条 Windows 打印链路都进这个夹具 ✓——
+ * COM 核心（print_com）✓、tauri 胶水（print_host）✓、编排（pdf_print）✓、
+ * 输出宿主（output_host）✓、日志基座（logging）✓、来源守卫（source_guard）✓。
+ * 编排那一层有 `#[cfg(target_os = "windows")]` 分支 ✓——本机（macOS）编不到它 ✓，
+ * 出了错只有到 Windows 上才暴露 ✓（已经栽过一次 ✓：调用了不存在的
+ * `print_com::print_to_pdf` ✓，本机 clippy 全绿 ✓，交付宿主编译才炸 ✓）。
+ *
  * 用法：bun scripts/check-windows-com.ts
  * 需要：rustup 的 Windows 目标（`rustup target add x86_64-pc-windows-msvc`）。
  * 目标不在时**跳过并说明**，不当作失败——这是环境缺件，不是代码问题。
@@ -21,10 +28,15 @@ import {dirname,join,resolve} from 'node:path';
 const TARGET='x86_64-pc-windows-msvc';
 /** 仓库根。 */
 const repo=resolve(import.meta.dirname,'..');
-/** 被检查的 COM 模块（真实文件）。 */
-const source=join(repo,'src-tauri/src/print_com.rs');
-/** 被检查的宿主侧模块（真实文件）：含 tauri 胶水与 with_webview 闭包。 */
-const hostSource=join(repo,'src-tauri/src/print_host.rs');
+/** 被检查的模块（都是仓库里的真文件 ✓）。 */
+const modules={
+ print_com:join(repo,'src-tauri/src/print_com.rs'),
+ print_host:join(repo,'src-tauri/src/print_host.rs'),
+ pdf_print:join(repo,'src-tauri/src/pdf_print.rs'),
+ output_host:join(repo,'src-tauri/src/output_host.rs'),
+ logging:join(repo,'src-tauri/src/logging.rs'),
+ source_guard:join(repo,'src-tauri/src/source_guard.rs'),
+};
 
 /** 跑一条命令；失败时返回其输出，不抛。 */
 function run(command:string,args:string[],options:{cwd?:string;env?:Record<string,string>}={}):{code:number;output:string}{
@@ -81,6 +93,10 @@ function main():void{
   'version = "0.0.0"',
   'edition = "2021"',
   '',
+  '[features]',
+  // 与应用同名：日志基座里有几处按这个特性取舍的分支，要一起编。
+  'pdf-probe = []',
+  '',
   '[dependencies]',
   // 版本串本身带精确锁定（如 "=0.39.1"），照抄即可。
   `webview2-com = "${dependencyVersion('webview2-com')}"`,
@@ -88,17 +104,25 @@ function main():void{
   // 宿主侧（print_host.rs）要用 tauri 的类型：只作依赖，不作构建依赖——
   // 构建依赖 tauri-build 会去编译 Windows 资源文件，那需要 llvm-rc。
   `tauri = "${dependencyVersion('tauri')}"`,
+  // 编排层要 sha2（产物的 sha256）与 serde_json（就绪读数）。
+  `sha2 = "${dependencyVersion('sha2')}"`,
+  `serde_json = "${dependencyVersion('serde_json')}"`,
+  // 日志基座要 serde（反序列化）与 tracing（埋点）。
+  `serde = { version = "${dependencyVersion('serde')}", features = ["derive"] }`,
+  `tracing = "${dependencyVersion('tracing')}"`,
+  `tracing-subscriber = { version = "${dependencyVersion('tracing-subscriber')}", default-features = false, features = ["fmt", "ansi", "std", "json"] }`,
+  // 日志基座的运行标识用 uuid。
+  `uuid = { version = "${dependencyVersion('uuid')}", features = ["v4"] }`,
   '',
  ].join('\n'));
  writeFileSync(join(work,'src/main.rs'),[
   '// 直接编译仓库里的真实模块，不是副本。',
   '// 夹具只引用其中一个符号，其余"未使用"是夹具造成的，不是代码问题。',
   '#![allow(dead_code)]',
-  `#[path = ${JSON.stringify(source)}]`,
-  'mod print_com;',
-  // 宿主侧也要编：它的 with_webview 闭包要求 Send + 'static，出过借用逃逸。
-  `#[path = ${JSON.stringify(hostSource)}]`,
-  'mod print_host;',
+  ...Object.entries(modules).map(([name,path])=>[
+   `#[path = ${JSON.stringify(path)}]`,
+   `mod ${name};`,
+  ].join('\n')),
   '',
   'use std::path::PathBuf;',
   'use std::sync::mpsc;',
@@ -109,6 +133,9 @@ function main():void{
   '    // 这里的 dispatch 不碰 WebView2（起不了真打印），只验证编排的类型与形状。',
   '    let _ = print_com::print_dispatch(std::path::Path::new("out.pdf"), |_path: PathBuf, _sender: mpsc::Sender<Result<mpsc::Receiver<print_com::PrintResult>, String>>| Ok(()));',
   '    let _ = print_host::print_to_pdf;',
+  '    // 编排层的 Windows 分支就是本夹具存在的理由：macOS 上它被 cfg 掉了。',
+  '    let _ = pdf_print::print_document_to_pdf;',
+  '    let _ = pdf_print::print_html_to_pdf;',
   '}',
   '',
  ].join('\n'));
@@ -120,7 +147,7 @@ function main():void{
  // PATH 上工具链优先：clippy 用的是它自己的 driver，driver 又按 PATH 上的 rustc
  // 找 sysroot——PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库。
  const toolchainBin=dirname(rustcPath);
- const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET],{
+ const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe'],{
   cwd:work,
   env:{RUSTC:rustcPath,PATH:`${toolchainBin}:${process.env.PATH??''}`},
  });
@@ -129,7 +156,7 @@ function main():void{
   process.exitCode=1;
   return;
  }
- console.log(`Windows 侧代码交叉检查通过（${TARGET}）：${source} 与 ${hostSource}`);
+ console.log(`Windows 侧代码交叉检查通过（${TARGET}）：${Object.keys(modules).join('、')}`);
 }
 
 main();
