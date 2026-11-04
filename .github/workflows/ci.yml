@@ -97,3 +97,41 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 14
+
+  # Windows 打印链的编译检查。
+  #
+  # **这条链在别处一个字节都没被编过** ✓：日常的 CI 不带 `pdf-probe` 特性 ✓，
+  # 打印链整条被 cfg 掉 ✓；而带这个特性的构建**只在打 tag 时跑** ✓。
+  # 于是 Windows 专属的代码（COM ✓、宿主胶水 ✓、编排 ✓）只在本机那条
+  # 交叉检查脚本里被检查 ✓ —— 而那要人记得跑 ✓。
+  # 交付宿主上撞出的那个错（`std::os::windows::fs::OpenOptions` 是私有的 ✓）
+  # 就是这么漏到宿主上的 ✓。
+  #
+  # 在 Windows 上跑 ✓：目标就是本机目标 ✓，不需要交叉编译 ✓，
+  # 夹具没有构建脚本 ✓（不需要前端产物 ✓），也不需要 Linux 的 webkit ✓。
+  windows-print-chain:
+    name: Windows print chain
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Install the validated Rust toolchain
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action, explicit toolchain
+        with:
+          toolchain: "1.94.0"
+
+      - name: Cross check the Windows print chain
+        run: bun scripts/check-windows-com.ts
+        env:
+          RUST_TOOLCHAIN: "1.94.0"

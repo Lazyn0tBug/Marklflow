@@ -32,6 +32,8 @@ import {dirname,join,resolve} from 'node:path';
 
 /** 交叉编译的目标。WebView2 是 Windows 专属，故取 MSVC 目标。 */
 const TARGET='x86_64-pc-windows-msvc';
+/** 用的工具链 ✓：默认 stable ✓，CI 用钉住的那个版本 ✓（环境变量覆盖 ✓）。 */
+const TOOLCHAIN=process.env.RUST_TOOLCHAIN??'stable';
 /** 仓库根。 */
 const repo=resolve(import.meta.dirname,'..');
 /** 被检查的模块（都是仓库里的真文件 ✓）。 */
@@ -81,7 +83,7 @@ function dependencyVersion(name:string):string{
 
 async function main():Promise<void>{
  // 目标是否可用。Homebrew 的 rustc 不带 Windows 标准库，须用 rustup 工具链的。
- const rustc=run('rustup',['which','--toolchain','stable','rustc']);
+ const rustc=run('rustup',['which','--toolchain',TOOLCHAIN,'rustc']);
  if(rustc.code!==0){
   console.log('跳过：本机没有 rustup 工具链，Windows 侧代码无法交叉编译验证');
   process.exitCode=0;
@@ -178,7 +180,7 @@ async function crossCheck(work:string,rustcPath:string):Promise<void>{
  // PATH 上工具链优先：clippy 用的是它自己的 driver，driver 又按 PATH 上的 rustc
  // 找 sysroot——PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库。
  const toolchainBin=dirname(rustcPath);
- const checked=run('rustup',['run','stable','cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe','--all-targets','--','-D','warnings'],{
+ const checked=run('rustup',['run',TOOLCHAIN,'cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe','--all-targets','--','-D','warnings'],{
   cwd:work,
   env:{RUSTC:rustcPath,PATH:`${toolchainBin}:${process.env.PATH??''}`},
  });
