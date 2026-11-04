@@ -9,7 +9,8 @@ rust-version = "1.94"
 # 默认关闭的探针 feature：只承载受控夹具、探针宿主与探针页装配。
 # 生产来源限制不受它控制（D8 生产接入复用 D1a 的实现）。
 [features]
-pdf-probe = []
+# 探针 feature 带上 sha2：产出 PDF 的 sha256 记进日志（产物不入库，hash 留证）。
+pdf-probe = ["dep:sha2"]
 
 # 静默 PDF 输出用 WebView2 的 COM 接口（Windows 专属）：
 # PrintToPdf 在 webview2-com-sys 的绑定里，手写包装层不暴露它，须走 sys 层。
@@ -33,3 +34,5 @@ uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi", "std", "json"] }
 serde_json = "1"
+# 只随探针 feature 引入：产出 PDF 的 sha256 留证（D1 退出条件）。
+sha2 = { version = "=0.10.9", optional = true }

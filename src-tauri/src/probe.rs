@@ -108,12 +108,22 @@ fn print_and_commit(window: &tauri::WebviewWindow, target: &Path) {
     match print_host::print_to_pdf(window, &temp) {
         Ok(outcome) => {
             let committed = commit_pdf(&temp, target);
+            // 产出的 sha256：产物文件不入库 ✓，但 hash 与环境记录在案 ✓（D1 退出条件 ✓）。
+            let sha256 = std::fs::read(&temp)
+                .ok()
+                .map(|bytes| {
+                    use sha2::{Digest, Sha256};
+                    let digest = Sha256::digest(&bytes);
+                    digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>()
+                })
+                .unwrap_or_default();
             tracing::info!(
                 event = "probe_pdf",
                 ok = outcome.ok,
                 bytes = outcome.bytes,
                 elapsed_ms = outcome.elapsed_ms,
                 committed = committed,
+                sha256 = sha256.as_str(),
             );
         }
         Err(reason) => {
