@@ -443,6 +443,23 @@ pub async fn print_native_pdf(
     })
 }
 
+/// 取授权里的目标路径。
+///
+/// **取不到也把授权用掉** ✓：这次尝试已经用过它了 ✓——
+/// 否则只读授权会活下来 ✓，"成败都释放"那句话就不成立 ✓。
+///
+/// 只有打印入口这么做 ✓：读入口的授权要活到正常清理 ✓（探针连着读两次 ✓）。
+#[allow(dead_code)]
+fn consume_grant(access: &FileAccess, key: &str) -> Result<PathBuf, String> {
+    match access.path(key, true) {
+        Ok(path) => Ok(path),
+        Err(code) => {
+            access.revoke(key);
+            Err(code)
+        }
+    }
+}
+
 /// 静默打印的实现。带 `pdf-probe` 特性时才有这个能力 ✓。
 #[cfg(feature = "pdf-probe")]
 fn print_native_pdf_impl(
@@ -452,7 +469,7 @@ fn print_native_pdf_impl(
     key: &str,
 ) -> Result<PrintReceipt, String> {
     // 授权里的路径才是目标：前端只知道 key ✓。
-    let target = access.path(key, true).map_err(|code| code.to_owned())?;
+    let target = consume_grant(access, key)?;
     let outcome = crate::pdf_print::print_html_to_pdf(app, html, &target)
         .map_err(|failure| failure.reason);
     // 无论成败都释放授权：目标已定，继续留着没有意义 ✓。
@@ -644,6 +661,36 @@ mod tests {
         let granted = access.grant(path.clone(), false).unwrap();
         assert!(granted.name.contains('\u{fffd}'));
         assert_eq!(access.path(&granted.key, false).unwrap(), path);
+    }
+
+    #[test]
+    fn a_grant_used_as_a_write_grant_is_consumed_too() {
+        // 只读授权被当成写授权用 → 这次尝试已经用过它了 → 授权不再活着。
+        // 否则"成败都释放"那句话在早退路径上不成立。
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("read-only.md");
+        std::fs::write(&path, b"x").unwrap();
+        let access = FileAccess::default();
+        let granted = access.grant(path.clone(), false).unwrap();
+        assert_eq!(
+            consume_grant(&access, &granted.key).unwrap_err(),
+            "file-capability-mismatch".to_owned()
+        );
+        // 授权已被用掉：再取就是 unknown-file-key。
+        assert_eq!(
+            access.path(&granted.key, false).unwrap_err(),
+            "unknown-file-key".to_owned()
+        );
+    }
+
+    #[test]
+    fn a_write_grant_is_still_usable_when_it_matches() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("writable.md");
+        std::fs::write(&path, b"x").unwrap();
+        let access = FileAccess::default();
+        let granted = access.grant(path.clone(), true).unwrap();
+        assert_eq!(consume_grant(&access, &granted.key).unwrap(), path);
     }
 
     #[cfg(windows)]

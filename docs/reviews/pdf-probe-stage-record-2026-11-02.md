@@ -32,6 +32,7 @@
 2. **ACL 不是本项目的隔离层，来源守卫是唯一隔离层。**
 3. **D1a 落地前输出宿主不存在任何 IPC 隔离**，因此不得在 D1a 之前创建输出宿主。
 4. 若将来引入应用级 ACL manifest（新增 `src-tauri/permissions/` 目录），`has_app_acl` 变 true，ACL 将开始检查应用自定义命令——D1b-3 的证据来源与放行行为都会变。**D1b 与 D7 的复用前提须包含「未引入应用级 ACL manifest」。**
+   - **该前提已由机器断言** ✓（2026-11-04 ✓）：`scripts/check-native-isolation.ts` 断言 `src-tauri/permissions/` 不存在 ✓，并接进 `bun run lint` ✓（CI 每次都跑 ✓）。真要引入那个目录时，这条断言会先红 ✓——那时才该改 D1b/D7 的取证前提 ✓。
 
 ### 交接物（五项）
 

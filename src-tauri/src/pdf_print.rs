@@ -199,6 +199,15 @@ fn print_ready_document(
         reason,
         readiness:Box::new(readiness.clone()),
     })?;
+    // 机制说成功不等于产物可用 ✓：**0 字节不进目标** ✓——
+    // 否则回执会说 saved ✓，而文件里什么都没有 ✓。
+    // 顺带把"哈希为空串的哈希"挡在外面 ✓（空串的 sha256 是个合法但无意义的值 ✓）。
+    if printed.bytes == 0 {
+        return Err(PrintError{
+            reason:"打印产出为空：没有字节可提交".to_owned(),
+            readiness:Box::new(readiness.clone()),
+        });
+    }
     // 哈希要在**改名之前**取 ✓：提交就是把临时文件 rename 成目标 ✓，
     // rename 之后那个路径已经不存在了 ✓，那时再取只会得到空串 ✓。
     let sha256 = file_sha256(temp);
@@ -238,6 +247,13 @@ fn prepare_target(target: &Path) -> Result<(), String> {
 
 /// 提交：把临时文件 rename 到目标 ✓。目标只在这一步被触及 ✓。
 fn commit_pdf(temp: &Path, target: &Path) -> bool {
+    // **0 字节不提交** ✓：机制说成功不等于产物可用 ✓——
+    // 空文件 rename 进目标，就是"回执说 saved 而文件里什么都没有" ✓。
+    // 这一步是唯一触及目标的地方 ✓，所以不变量放在这里 ✓。
+    if std::fs::metadata(temp).map(|meta| meta.len()).unwrap_or(0) == 0 {
+        let _ = std::fs::remove_file(temp);
+        return false;
+    }
     match std::fs::rename(temp, target) {
         Ok(()) => true,
         Err(_) => {
@@ -374,5 +390,43 @@ fn print_com_print(
     {
         let _ = (window, temp);
         Err("静默 PDF 输出只支持 Windows（依赖 WebView2 的 PrintToPdf）".to_owned())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_product_with_bytes_is_committed() {
+        let dir = tempfile::tempdir().unwrap();
+        let temp = dir.path().join("out.pdf.tmp");
+        let target = dir.path().join("out.pdf");
+        std::fs::write(&temp, b"%PDF-1.7\n").unwrap();
+        assert!(commit_pdf(&temp, &target));
+        assert_eq!(std::fs::read(&target).unwrap(), b"%PDF-1.7\n");
+        assert!(!temp.exists());
+    }
+
+    #[test]
+    fn an_empty_product_is_not_committed() {
+        // 机制说成功不等于产物可用：空文件不进目标。
+        let dir = tempfile::tempdir().unwrap();
+        let temp = dir.path().join("out.pdf.tmp");
+        let target = dir.path().join("out.pdf");
+        std::fs::write(&temp, b"").unwrap();
+        assert!(!commit_pdf(&temp, &target));
+        // 目标没被触及 ✓，临时文件被清掉 ✓（不留残骸 ✓）。
+        assert!(!target.exists());
+        assert!(!temp.exists());
+    }
+
+    #[test]
+    fn a_missing_product_is_not_committed() {
+        let dir = tempfile::tempdir().unwrap();
+        let temp = dir.path().join("out.pdf.tmp");
+        let target = dir.path().join("out.pdf");
+        assert!(!commit_pdf(&temp, &target));
+        assert!(!target.exists());
     }
 }

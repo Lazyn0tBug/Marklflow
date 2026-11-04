@@ -26,7 +26,7 @@
  * 目标不在时**跳过并说明**，不当作失败——这是环境缺件，不是代码问题。
  */
 import {execFileSync} from 'node:child_process';
-import {mkdirSync,mkdtempSync,readFileSync,writeFileSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 
@@ -79,7 +79,7 @@ function dependencyVersion(name:string):string{
  throw new Error(`Cargo.toml 里找不到依赖：${name}`);
 }
 
-function main():void{
+async function main():Promise<void>{
  // 目标是否可用。Homebrew 的 rustc 不带 Windows 标准库，须用 rustup 工具链的。
  const rustc=run('rustup',['which','--toolchain','stable','rustc']);
  if(rustc.code!==0){
@@ -96,6 +96,17 @@ function main():void{
  }
 
  const work=mkdtempSync(join(tmpdir(),'mf-windows-com-'));
+ // 夹具的 target 树有 1GB 上下 ✓：**跑完必须删** ✓——
+ // 留着就是每跑一次漏一次 ✓（实测漏到磁盘满 ✓）。
+ try{
+  await crossCheck(work,rustcPath);
+ }finally{
+  rmSync(work,{recursive:true,force:true});
+ }
+}
+
+/** 在临时夹具里做一次交叉编译检查。 */
+async function crossCheck(work:string,rustcPath:string):Promise<void>{
  mkdirSync(join(work,'src'),{recursive:true});
  writeFileSync(join(work,'Cargo.toml'),[
   '[package]',
@@ -176,4 +187,4 @@ function main():void{
  console.log(`Windows 侧代码交叉检查通过（${TARGET}）：${Object.keys(modules).join('、')}`);
 }
 
-main();
+await main();

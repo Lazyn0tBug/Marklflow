@@ -279,4 +279,27 @@ describe('pdf-probe 校验器',()=>{
   const report=evaluate(records,healthyDefaultRun());
   expect(diagnosticsOf(report,'call-without-finish').length).toBeGreaterThan(0);
  });
+
+ it('受保护命令不靠名单：原生守卫过而页面侧没回传的，照样报关联不匹配',()=>{
+  // 这正是刚修的那个形状：页面回传的命令名不在 Rust 的枚举里 ✓，
+  // 整条事件被拒收丢弃 ✓，原生那边却留下守卫记录 ✓。
+  // 校验器必须自己看出来 ✓，而不是靠一份"受保护命令名单"恰好列到了它 ✓——
+  // 那份名单曾与 Rust 的枚举同时漏掉同一个命令 ✓，于是两端都没有人看 ✓。
+  const records=[
+   ...healthyProbeRun(),
+   record({event:'source_decision',span:{name:'command',id:30,parent_id:1},fields:{decision:'allow',command:'select_native_html',window:'main',webview:'main'}}),
+   record({event:'operation_result',span:{name:'command',id:30,parent_id:1},fields:{result:'ok',command:'select_native_html',elapsed_ms:'0'}}),
+  ];
+  const report=evaluate(records,healthyDefaultRun());
+  expect(diagnosticsOf(report,'correlation-mismatch').length).toBeGreaterThan(0);
+ });
+
+ it('健康的运行没有关联不匹配，且受保护命令由原生守卫记录推出',()=>{
+  const report=evaluate(healthyProbeRun(),healthyDefaultRun());
+  expect(diagnosticsOf(report,'correlation-mismatch')).toHaveLength(0);
+  const probeRun=report.runs.find(entry=>entry.feature==='pdf-probe');
+  // 受保护命令从原生自己的守卫记录推出 ✓，不含没有守卫记录的 get_platform_info ✓。
+  expect(probeRun?.guarded_commands).toContain('read_native_text');
+  expect(probeRun?.guarded_commands).not.toContain('get_platform_info');
+ });
 });

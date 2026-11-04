@@ -78,7 +78,7 @@ export interface Diagnostic{
 
 export interface CheckReport{
  files:{path:string;sha256:string;bytes:number;records:number;format:'jsonl'|'text'}[];
- runs:{run_id:string;feature:string;records:number;os?:string;arch?:string;app_version?:string}[];
+ runs:{run_id:string;feature:string;records:number;os?:string;arch?:string;app_version?:string;guarded_commands?:string[]}[];
  assertions:AssertionResult[];
  diagnostics:Diagnostic[];
 }
@@ -96,13 +96,27 @@ const ASSERTION_TITLES:[string,string][]=[
 /** 输入日志的大小上限：文件会被逐行解析成对象，量级与文件同阶。 */
 const MAX_LOG_BYTES=256*1024*1024;
 
-/** 契约里的受保护命令集合：只有它们有 native 的守卫记录。 */
-const PROTECTED_COMMANDS=new Set([
- 'select_native_open','select_native_save','read_native_text','write_native_bytes','release_native_file',
- // 产品形态的静默打印（D7 的入口）✓：它写文件 ✓，走来源守卫 ✓，
- // 故与其它受保护命令同级 ✓——两侧配对可查 ✓，且它的 operation_result 缺了会被看出来 ✓。
- 'print_native_pdf',
-]);
+/**
+ * 原生侧实际守卫过的命令。
+ *
+ * **这里没有硬编码清单** ✓ —— 那份清单与 Rust 的命令枚举曾同时漏掉同一个命令 ✓，
+ * 于是页面回传的事件被整条拒收 ✓，而**两端都没有人看** ✓：
+ * 原生那边有守卫记录 ✓，校验器那边却不查这个命令 ✓。
+ *
+ * 现在从**原生自己的守卫记录**推出来 ✓：**有守卫记录的命令就是受保护的命令** ✓。
+ * 于是"页面说了、原生那边没有对应观察"这条诊断对每一个受保护命令都成立 ✓，
+ * 不依赖任何一份要人维护的名单 ✓。
+ *
+ * 页面声明了、原生却从头到尾没见过面的命令不在这个集合里 ✓（如 `get_platform_info` ✓，
+ * 它不受来源守卫管 ✓）——那种情况另有诊断管 ✓。
+ */
+function guardedCommands(run:RunView):Set<string>{
+ const commands=new Set<string>();
+ for(const span of commandSpans(run)){
+  if(span.command)commands.add(span.command);
+ }
+ return commands;
+}
 
 /** 契约 §5.1 的 span 词汇表：事件名 → 应当所在 span。 */
 const EXPECTED_SPAN:Record<string,string>={
@@ -440,9 +454,10 @@ interface Pairing{
  * 数量不等即关联不匹配——不宣称调用已对应。
  */
 export function pairSides(run:RunView):Pairing[]{
+ const guarded=guardedCommands(run);
  const nativeGroups=new Map<string,CommandSpan[]>();
  for(const span of commandSpans(run)){
-  if(!PROTECTED_COMMANDS.has(span.command))continue;
+  if(!guarded.has(span.command))continue;
   const key=pairKey(span.window,span.webview,span.command);
   const list=nativeGroups.get(key)??[];
   list.push(span);
@@ -450,7 +465,7 @@ export function pairSides(run:RunView):Pairing[]{
  }
  const webGroups=new Map<string,WebCall[]>();
  for(const call of webCalls(run).calls){
-  if(!PROTECTED_COMMANDS.has(call.command))continue;
+  if(!guarded.has(call.command))continue;
   const key=pairKey(call.window,call.webview,call.command);
   const list=webGroups.get(key)??[];
   list.push(call);
@@ -575,11 +590,15 @@ function unfinishedCallDiagnostics(run:RunView):Diagnostic[]{
   }));
 }
 
-/** 诊断：command span 的完整性——每个受保护命令的 span 都该有 operation_result 与 elapsed_ms。 */
+/**
+ * 诊断：command span 的完整性——每个受保护命令的 span 都该有 operation_result 与 elapsed_ms。
+ *
+ * **不再按命令名过滤** ✓：command span 只有走守卫的命令才会有 ✓，
+ * 所以"每个 command span 都得完整"就是契约那句话本身 ✓（§5.1 ✓）。
+ */
 function commandSpanDiagnostics(run:RunView):Diagnostic[]{
  const diagnostics:Diagnostic[]=[];
  for(const span of commandSpans(run)){
-  if(!PROTECTED_COMMANDS.has(span.command))continue;
   if(!span.events.includes('operation_result')){
    diagnostics.push({
     id:'command-span-without-result',
@@ -648,8 +667,9 @@ function crossSideDiagnostics(run:RunView):Diagnostic[]{
 function unobservedDiagnostics(run:RunView):Diagnostic[]{
  const diagnostics:Diagnostic[]=[];
  const spans=commandSpans(run);
+ const guarded=guardedCommands(run);
  for(const call of webCalls(run).calls){
-  if(!PROTECTED_COMMANDS.has(call.command))continue;
+  if(!guarded.has(call.command))continue;
   const observed=spans.some(span=>span.command===call.command&&span.window===call.window);
   if(!observed){
    diagnostics.push({
@@ -1099,14 +1119,19 @@ export function evaluateRuns(runs:RunView[],targetRunId?:string):CheckReport{
  }
  return {
   files:[],
-  runs:runs.map(run=>({
-   run_id:run.run_id,
-   feature:run.feature??'未记',
-   records:run.records.length,
-   ...(run.os?{os:run.os}:{}),
-   ...(run.arch?{arch:run.arch}:{}),
-   ...(run.app_version?{app_version:run.app_version}:{}),
-  })),
+  runs:runs.map(run=>{
+   // 受保护命令由原生自己的守卫记录推出 ✓：让人看见它推出来了什么 ✓。
+   const guarded=[...guardedCommands(run)].sort();
+   return {
+    run_id:run.run_id,
+    feature:run.feature??'未记',
+    records:run.records.length,
+    ...(run.os?{os:run.os}:{}),
+    ...(run.arch?{arch:run.arch}:{}),
+    ...(run.app_version?{app_version:run.app_version}:{}),
+    ...(guarded.length?{guarded_commands:guarded}:{}),
+   };
+  }),
   assertions,
   diagnostics,
  };
@@ -1178,6 +1203,9 @@ export function renderReport(report:CheckReport):string{
  for(const run of report.runs){
   const env=[run.os,run.arch,run.app_version].filter(Boolean).join(' ');
   lines.push(`run_id=${run.run_id} feature=${run.feature} 记录=${run.records}${env?` 环境=${env}`:''}`);
+  if(run.guarded_commands?.length){
+   lines.push(`  受保护命令（由原生守卫记录推出）：${run.guarded_commands.join('、')}`);
+  }
  }
  lines.push('== 断言 ==');
  for(const item of report.assertions){
