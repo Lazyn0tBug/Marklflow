@@ -40,7 +40,7 @@ ExportService.run（src/application/exports/exportService.ts）
 - **命名**：**没有** ✓（文件名固定 ✓）。
 - **取消**：**没有** ✓（没有用户参与 ✓）。
 - **覆盖保护**：**有** ✓ —— 同目录临时文件 + rename ✓，失败时原文件保持不变 ✓。
-- **回执**：**有** ✓ —— `probe_pdf` 记 `ok`／`bytes`／`elapsed_ms`／`committed`／`sha256`／`temp_removed` ✓。
+- **回执**：**有** ✓ —— `probe_pdf` 记 `ok`／`bytes`／`elapsed_ms`／`committed`／`pdf_sha256`／`pdf_temp_removed` ✓。
 
 ### 1.3 两者差在哪（这就是 D7 要补的）
 
@@ -103,7 +103,7 @@ ExportService.run（src/application/exports/exportService.ts）
 | --- | --- | --- |
 | 探针的输出宿主 | `pdf-output` ✓ | 用完显式关闭 ✓ |
 | 探针的打印宿主 | `pdf-output-1` ✓ | 用完显式关闭 ✓ |
-| 打印临时文件 | 目标同目录 `<名>.tmp-<pid>` ✓ | rename 或删除 ✓ |
+| 打印临时文件 | 目标同目录 `<名>.tmp-<pid>-<序号>` ✓（按调用唯一 ✓） | rename 或删除 ✓ |
 | 受控样本夹具 | 系统临时目录 ✓ | 离开作用域即删 ✓ |
 | 归档 | `docs/acceptance/pdf-probe/` ✓ | 样本 HTML + 日志 + meta ✓；**产出的 PDF 文件不入库** ✓（留 hash 与环境记录 ✓） |
 | `probe-output-r2.pdf` 一类手工命名产物 | 交付宿主本地 | 由操作者自行处置 ✓（不入库 ✓） |

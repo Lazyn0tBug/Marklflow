@@ -152,7 +152,7 @@ async function crossCheck(work:string,rustcPath:string):Promise<void>{
   'use std::sync::mpsc;',
   '',
   'fn main() {',
-  '    let _ = print_com::PrintOutcome { ok: true, bytes: 0, elapsed_ms: 0 };',
+  '    let _ = print_com::ComPrintOutcome { ok: true, bytes: 0, elapsed_ms: 0 };',
   '    // 编排也要编：它带着"路径得拥有一份"与通道形状，正是出过借用逃逸的地方。',
   '    // 这里的 dispatch 不碰 WebView2（起不了真打印），只验证编排的类型与形状。',
   '    let _ = print_com::print_dispatch(std::path::Path::new("out.pdf"), |_path: PathBuf, _sender: mpsc::Sender<Result<mpsc::Receiver<print_com::PrintResult>, String>>| Ok(()));',

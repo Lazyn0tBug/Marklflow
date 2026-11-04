@@ -296,12 +296,12 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             event = "probe_readiness",
                             host = "print",
                             eval_ok = outcome.readiness.eval_ok,
-                            is_target = outcome.readiness.is_target,
+                            is_expected_document = outcome.readiness.is_expected_document,
                             ready = outcome.readiness.ready,
                             ready_state = outcome.readiness.ready_state.as_str(),
                             fonts_status = outcome.readiness.fonts_status.as_str(),
-                            page_boxes = outcome.readiness.page_boxes,
-                            page_box_size = outcome.readiness.page_box_size.as_str(),
+                            page_box_count = outcome.readiness.page_box_count,
+                            first_page_box_size = outcome.readiness.first_page_box_size.as_str(),
                             images_total = outcome.readiness.images_total,
                             images_loaded = outcome.readiness.images_loaded,
                             title = outcome.readiness.title.as_str(),
@@ -312,10 +312,10 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             bytes = outcome.bytes,
                             elapsed_ms = outcome.elapsed_ms,
                             committed = outcome.committed,
-                            sha256 = outcome.sha256.as_str(),
+                            pdf_sha256 = outcome.pdf_sha256.as_str(),
                             // 清理的结果也是**实测的** ✓：提交要么改名成目标 ✓，
                             // 要么删掉它 ✓，删不掉是有可能的 ✓（文件被占着 ✓）。
-                            temp_removed = outcome.temp_removed,
+                            pdf_temp_removed = outcome.pdf_temp_removed,
                         );
                     }
                     Err(failure) => {
@@ -323,12 +323,12 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             event = "probe_readiness",
                             host = "print",
                             eval_ok = failure.readiness.eval_ok,
-                            is_target = failure.readiness.is_target,
+                            is_expected_document = failure.readiness.is_expected_document,
                             ready = failure.readiness.ready,
                             ready_state = failure.readiness.ready_state.as_str(),
                             fonts_status = failure.readiness.fonts_status.as_str(),
-                            page_boxes = failure.readiness.page_boxes,
-                            page_box_size = failure.readiness.page_box_size.as_str(),
+                            page_box_count = failure.readiness.page_box_count,
+                            first_page_box_size = failure.readiness.first_page_box_size.as_str(),
                             images_total = failure.readiness.images_total,
                             images_loaded = failure.readiness.images_loaded,
                             title = failure.readiness.title.as_str(),
@@ -337,12 +337,12 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                             event = "probe_pdf",
                             ok = false,
                             reason = failure.reason.as_str(),
-                            temp_exists = failure.temp_exists,
-                            temp_bytes = failure.temp_bytes,
+                            pdf_temp_exists = failure.pdf_temp_exists,
+                            pdf_temp_bytes = failure.pdf_temp_bytes,
                             target_dir_exists = failure.target_dir_exists,
                             // **清理的结果也留证** ✓：冻结清单要"超时 → 删除" ✓，
                             // 而日志证明不了删没删掉 ✓（文件被占着就删不掉 ✓）。
-                            temp_removed = failure.temp_removed,
+                            pdf_temp_removed = failure.pdf_temp_removed,
                         );
                     }
                 }

@@ -41,12 +41,12 @@ pub struct Readiness {
     /// 就绪条件是否全部成立。
     pub ready: bool,
     /// 读到的文档是不是目标文档（导航换文档时求值可能落在旧文档上 ✓）。
-    pub is_target: bool,
+    pub is_expected_document: bool,
     pub ready_state: String,
     pub title: String,
     pub fonts_status: String,
-    pub page_boxes: i64,
-    pub page_box_size: String,
+    pub page_box_count: i64,
+    pub first_page_box_size: String,
     pub images_total: i64,
     pub images_loaded: i64,
 }
@@ -63,11 +63,11 @@ pub struct PrintOutcome {
     /// 是否已 rename 提交到目标。
     pub committed: bool,
     /// 产出的 sha256（产物文件可不入库 ✓，hash 留证 ✓）。
-    pub sha256: String,
+    pub pdf_sha256: String,
     /// **临时文件清掉了没有** ✓：提交之后量一次 ✓，不写死 ✓——
     /// 提交要么把它改名成目标 ✓，要么删掉它 ✓，
     /// 而删不掉是有可能的 ✓（文件被占着 ✓），所以证据得是实测的 ✓。
-    pub temp_removed: bool,
+    pub pdf_temp_removed: bool,
     /// 打印时的就绪读数。
     pub readiness: Readiness,
 }
@@ -78,15 +78,15 @@ pub struct PrintFailure {
     /// 失败原因（稳定短语 ✓，不含路径 ✓）。
     pub reason: String,
     /// 临时文件是否写出来了。
-    pub temp_exists: bool,
+    pub pdf_temp_exists: bool,
     /// 临时文件多大。
-    pub temp_bytes: u64,
+    pub pdf_temp_bytes: u64,
     /// 目标的父目录在不在。
     pub target_dir_exists: bool,
     /// **临时文件清掉了没有** ✓：清理的结果也得留证 ✓——
     /// 冻结清单要"超时 → 删除" ✓，而日志证明不了这件事发生没发生 ✓。
     /// 删不掉是有可能的 ✓（Windows 上文件被占着 ✓）。
-    pub temp_removed: bool,
+    pub pdf_temp_removed: bool,
     /// 打印时的就绪读数（失败时也要有：它说明"文档起来了没有" ✓）。
     /// 装箱是为了别让 Err 变体过大 ✓。
     pub readiness: Box<Readiness>,
@@ -113,10 +113,10 @@ pub fn print_document_to_pdf(
     if let Err(reason) = prepare_target(target) {
         return Err(PrintFailure {
             reason,
-            temp_exists: false,
-            temp_bytes: 0,
+            pdf_temp_exists: false,
+            pdf_temp_bytes: 0,
             target_dir_exists: target.parent().map(|dir| dir.is_dir()).unwrap_or(false),
-            temp_removed: true,
+            pdf_temp_removed: true,
             readiness: Box::new(Readiness::default()),
         });
     }
@@ -128,10 +128,10 @@ pub fn print_document_to_pdf(
         Err(()) => {
             return Err(PrintFailure {
                 reason: "文档路径无法作为文件地址".to_owned(),
-                temp_exists: false,
-                temp_bytes: 0,
+                pdf_temp_exists: false,
+                pdf_temp_bytes: 0,
                 target_dir_exists: true,
-                temp_removed: true,
+                pdf_temp_removed: true,
                 readiness: Box::new(Readiness::default()),
             });
         }
@@ -147,10 +147,10 @@ pub fn print_document_to_pdf(
         Err(_) => {
             return Err(PrintFailure {
                 reason: "打印宿主创建失败".to_owned(),
-                temp_exists: false,
-                temp_bytes: 0,
+                pdf_temp_exists: false,
+                pdf_temp_bytes: 0,
                 target_dir_exists: true,
-                temp_removed: true,
+                pdf_temp_removed: true,
                 readiness: Box::new(Readiness::default()),
             });
         }
@@ -161,15 +161,15 @@ pub fn print_document_to_pdf(
     match outcome {
         Ok(outcome) => Ok(outcome),
         Err(PrintError{reason, readiness}) => {
-            let temp_exists = temp.is_file();
-            let temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
+            let pdf_temp_exists = temp.is_file();
+            let pdf_temp_bytes = std::fs::metadata(&temp).map(|meta| meta.len()).unwrap_or(0);
             Err(PrintFailure {
                 reason,
-                temp_exists,
-                temp_bytes,
+                pdf_temp_exists,
+                pdf_temp_bytes,
                 target_dir_exists: target.parent().map(|dir| dir.is_dir()).unwrap_or(false),
                 // 清理的结果也要留证 ✓：删不掉是有可能的 ✓（文件被占着 ✓）。
-                temp_removed: cleanup_temp(&temp),
+                pdf_temp_removed: cleanup_temp(&temp),
                 readiness,
             })
         }
@@ -204,10 +204,10 @@ fn stage_html(html: &str) -> Result<PathBuf, PrintFailure> {
     ));
     std::fs::write(&path, html).map_err(|_| PrintFailure {
         reason: "打印内容暂存失败".to_owned(),
-        temp_exists: false,
-        temp_bytes: 0,
+        pdf_temp_exists: false,
+        pdf_temp_bytes: 0,
         target_dir_exists: true,
-        temp_removed: true,
+        pdf_temp_removed: true,
         readiness: Box::new(Readiness::default()),
     })?;
     Ok(path)
@@ -242,18 +242,18 @@ fn print_ready_document(
     }
     // 哈希要在**改名之前**取 ✓：提交就是把临时文件 rename 成目标 ✓，
     // rename 之后那个路径已经不存在了 ✓，那时再取只会得到空串 ✓。
-    let sha256 = file_sha256(temp);
+    let pdf_sha256 = file_sha256(temp);
     let committed = commit_pdf(temp, target);
     // 清理的结果也得留证 ✓：提交要么把它改名成目标 ✓，要么删掉它 ✓——
     // 删不掉是有可能的 ✓（文件被占着 ✓），所以这里**量一次** ✓，不写死 ✓。
-    let temp_removed = !temp.exists();
+    let pdf_temp_removed = !temp.exists();
     Ok(PrintOutcome {
         ok: printed.ok,
         bytes: printed.bytes,
         elapsed_ms: printed.elapsed_ms,
         committed,
-        sha256,
-        temp_removed,
+        pdf_sha256,
+        pdf_temp_removed,
         readiness,
     })
 }
@@ -372,13 +372,13 @@ fn wait_ready(window: &tauri::WebviewWindow, expected: &str) -> (bool, Readiness
         };
         // 文档身份先于就绪：导航到新页时求值可能落在**旧文档**上，
         // 而旧文档也可能"看起来就绪"（加载完成、字体已加载）——那就白读了。
-        let is_target = text_of(&value, "href")
+        let matches_expected = text_of(&value, "href")
             .to_lowercase()
             .contains(&expected);
         last = Readiness {
             eval_ok: true,
-            is_target,
-            ready: is_target
+            is_expected_document: matches_expected,
+            ready: matches_expected
                 && value
                     .get("ready")
                     .and_then(|entry| entry.as_bool())
@@ -386,8 +386,8 @@ fn wait_ready(window: &tauri::WebviewWindow, expected: &str) -> (bool, Readiness
             ready_state: text_of(&value, "ready_state"),
             title: text_of(&value, "title"),
             fonts_status: text_of(&value, "fonts_status"),
-            page_boxes: number_of(&value, "page_boxes"),
-            page_box_size: text_of(&value, "page_box_size"),
+            page_box_count: number_of(&value, "page_boxes"),
+            first_page_box_size: text_of(&value, "page_box_size"),
             images_total: number_of(&value, "images_total"),
             images_loaded: number_of(&value, "images_loaded"),
         };
@@ -413,7 +413,7 @@ fn number_of(value: &serde_json::Value, key: &str) -> i64 {
 }
 
 /// 原生打印的结果（平台中立 ✓：Windows 走 COM ✓，其它平台没有这个能力 ✓）。
-struct NativePrint{
+struct NativePrintResult{
     ok:bool,
     bytes:u64,
     elapsed_ms:u128,
@@ -423,12 +423,12 @@ struct NativePrint{
 fn print_com_print(
     window: &tauri::WebviewWindow,
     temp: &Path,
-) -> Result<NativePrint, String> {
+) -> Result<NativePrintResult, String> {
     #[cfg(target_os = "windows")]
     {
         // 宿主侧胶水：取控制器与环境 → 交给 COM 编排 ✓（见 `print_host.rs` ✓）。
         let outcome = crate::print_host::print_to_pdf(window, temp)?;
-        Ok(NativePrint{
+        Ok(NativePrintResult{
             ok:outcome.ok,
             bytes:outcome.bytes,
             elapsed_ms:outcome.elapsed_ms,

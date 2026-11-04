@@ -390,7 +390,7 @@ struct PrintReceipt {
     committed: bool,
     /// **临时文件清掉了没有** ✓：提交要么把它改名成目标 ✓，要么删掉它 ✓，
     /// 而删不掉是有可能的 ✓（文件被占着 ✓）——清理的结果也得留证 ✓。
-    temp_removed: bool,
+    pdf_temp_removed: bool,
 }
 
 /// 打印失败的读数：人读的原因 ✓ + 清理的结果 ✓。
@@ -402,7 +402,7 @@ struct PrintFailureReading {
     /// 人读的原因短语 ✓。
     reason: String,
     /// 临时文件清掉了没有 ✓。
-    temp_removed: bool,
+    pdf_temp_removed: bool,
 }
 
 impl From<String> for PrintFailureReading {
@@ -410,7 +410,7 @@ impl From<String> for PrintFailureReading {
         // 授权没解析出来 ✓：打印压根没开始 ✓，没有临时文件 ✓，也就没有可清的东西 ✓。
         PrintFailureReading {
             reason,
-            temp_removed: true,
+            pdf_temp_removed: true,
         }
     }
 }
@@ -444,7 +444,7 @@ pub async fn print_native_pdf(
                         bytes = receipt.bytes,
                         elapsed_ms = elapsed,
                         committed = receipt.committed,
-                        temp_removed = receipt.temp_removed,
+                        pdf_temp_removed = receipt.pdf_temp_removed,
                     );
                 } else {
                     // 印出来了但没提交成功：原文件还在，**不是 saved** ✓。
@@ -457,7 +457,7 @@ pub async fn print_native_pdf(
                         bytes = receipt.bytes,
                         elapsed_ms = elapsed,
                         committed = receipt.committed,
-                        temp_removed = receipt.temp_removed,
+                        pdf_temp_removed = receipt.pdf_temp_removed,
                     );
                 }
                 Ok(receipt.receipt.to_owned())
@@ -471,7 +471,7 @@ pub async fn print_native_pdf(
                     elapsed_ms = elapsed,
                     committed = false,
                     // 清理的结果也留证 ✓：失败路径上的临时文件同样可能删不掉 ✓。
-                    temp_removed = failure.temp_removed,
+                    pdf_temp_removed = failure.pdf_temp_removed,
                 );
                 Err(failure.reason)
             }
@@ -513,7 +513,7 @@ fn print_native_pdf_impl(
     let outcome = crate::pdf_print::print_html_to_pdf(app, html, &target).map_err(|failure| {
         PrintFailureReading {
             reason: failure.reason,
-            temp_removed: failure.temp_removed,
+            pdf_temp_removed: failure.pdf_temp_removed,
         }
     });
     // 无论成败都释放授权：目标已定，继续留着没有意义 ✓。
@@ -522,7 +522,7 @@ fn print_native_pdf_impl(
         receipt: if outcome.committed { "saved" } else { "not-committed" },
         bytes: outcome.bytes,
         committed: outcome.committed,
-        temp_removed: outcome.temp_removed,
+        pdf_temp_removed: outcome.pdf_temp_removed,
     })
 }
 
@@ -537,7 +537,7 @@ fn print_native_pdf_impl(
     Err(PrintFailureReading {
         reason: "此构建不含静默 PDF 打印（需 pdf-probe 特性）".to_owned(),
         // 没有临时文件，也没有可清的东西 ✓。
-        temp_removed: true,
+        pdf_temp_removed: true,
     })
 }
 

@@ -88,7 +88,7 @@
 | --- | --- | --- | --- | --- |
 | `run` | 进程启动 | run_id, os, arch, app_version, feature | `run_start` / `run_end` | — |
 | `command` | 每个受保护命令 | command, window_label, webview_label | `source_decision` | decision(allow/deny), reason_code |
-| | | | `operation_result` | result, bytes, elapsed_ms, committed, temp_removed |
+| | | | `operation_result` | result, bytes, elapsed_ms, committed, pdf_temp_removed |
 | `page_call` | 页面侧每次调用 | call_id, command, window_label, webview_label | `call_started` / `call_finished` / `page_error` | result, error_category |
 | `host` | 每次原生宿主创建 | host_kind, host_label, visible | `host_state` | state, instances |
 | `probe` | 探针装配一次 | — | `probe_source_check` / `probe_initial_load` / `probe_navigation` / `probe_cleanup` | reachable, loaded, navigated, revoked |
@@ -104,7 +104,7 @@
 
 - `committed` ✓：**目标真的提交了吗** ✓。它是"提交成功才 saved"的**证据** ✓——
   没有它 ✓，那条承诺只能靠页面自述 ✓，而页面自述证明不了 ✓。
-- `temp_removed` ✓：**临时文件清掉了没有** ✓。它是"超时 → 删除"的**证据** ✓——
+- `pdf_temp_removed` ✓：**产物的临时文件清掉了没有** ✓。它是"超时 → 删除"的**证据** ✓——
   删不掉是有可能的 ✓（Windows 上文件被占着 ✓），而没有它就证明不了 ✓。
 
 两者都是布尔 ✓（§5.2 的字段策略允许 ✓），都**必须实测** ✓：

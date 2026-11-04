@@ -147,6 +147,21 @@ const DISCRIMINATOR:Record<string,string>={
 };
 
 const text=(value:string|undefined):string=>value??'';
+
+/**
+ * 读一个可能改过名的字段 ✓。
+ *
+ * **历史验收记录保留当时实际执行的字段名** ✓（见审查与测试规范 ✓），
+ * 所以改名之前的证据也得读得出来 ✓——新旧两个名字都认 ✓。
+ * 改名窗口过去之后，这里可以收掉旧名字 ✓。
+ */
+const fieldOf=(record:LogRecord,names:readonly string[]):string|undefined=>{
+ for(const name of names){
+  const value=record.fields[name];
+  if(value!==undefined)return value;
+ }
+ return undefined;
+};
 const number=(value:string|undefined):number|undefined=>{
  if(value===undefined||value==='')return undefined;
  const parsed=Number(value);
@@ -1037,7 +1052,7 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
  // D1c-1 就绪判据：原生求值读到目标文档，且就绪条件成立。
  {
   const readiness=run.native.filter(record=>record.event==='probe_readiness');
-  const target=readiness.find(record=>record.fields.is_target==='true');
+  const target=readiness.find(record=>fieldOf(record,['is_expected_document','is_target'])==='true');
   const basis:string[]=[];
   const issues:string[]=[];
   let verdict:Verdict='unconfirmed';
@@ -1056,7 +1071,7 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
   }else{
    verdict='pass';
    basis.push(`native 观察：目标文档就绪（ready_state=${target.fields.ready_state}，fonts=${target.fields.fonts_status}）`);
-   basis.push(`页面盒 ${target.fields.page_boxes} 个，尺寸 ${target.fields.page_box_size||'未记'}；图片 ${target.fields.images_loaded}/${target.fields.images_total} 已解码`);
+   basis.push(`页面盒 ${fieldOf(target,['page_box_count','page_boxes'])??'未记'} 个，尺寸 ${fieldOf(target,['first_page_box_size','page_box_size'])||'未记'}；图片 ${target.fields.images_loaded}/${target.fields.images_total} 已解码`);
   }
   assertions.push(assertion('D1c-1','就绪判据成立',verdict,basis,issues));
  }

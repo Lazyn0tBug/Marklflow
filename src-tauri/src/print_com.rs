@@ -33,7 +33,7 @@ const A4_HEIGHT_IN: f64 = 297.0 / 25.4;
 
 /// 打印结果：是否成功、产出字节数、耗时。
 #[derive(Debug, Clone, Copy)]
-pub struct PrintOutcome {
+pub struct ComPrintOutcome {
     pub ok: bool,
     pub bytes: u64,
     pub elapsed_ms: u128,
@@ -126,7 +126,7 @@ pub fn print_dispatch(
         ) -> Result<(), String>
         + Send
         + 'static,
-) -> Result<PrintOutcome, String> {
+) -> Result<ComPrintOutcome, String> {
     let started = Instant::now();
     let owned = target.to_path_buf();
     let (setup_sender, setup_receiver) =
@@ -145,12 +145,12 @@ pub fn finish_print(
     receiver: mpsc::Receiver<PrintResult>,
     target: &Path,
     started: Instant,
-) -> Result<PrintOutcome, String> {
+) -> Result<ComPrintOutcome, String> {
     match receiver.recv_timeout(PRINT_TIMEOUT) {
         Ok(Ok((code, ok))) => {
             if code.is_ok() && ok {
                 let bytes = std::fs::metadata(target).map(|meta| meta.len()).unwrap_or(0);
-                Ok(PrintOutcome {
+                Ok(ComPrintOutcome {
                     ok: true,
                     bytes,
                     elapsed_ms: started.elapsed().as_millis(),

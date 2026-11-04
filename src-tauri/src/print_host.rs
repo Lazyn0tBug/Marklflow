@@ -15,7 +15,7 @@ use std::path::Path;
 pub fn print_to_pdf(
     window: &tauri::WebviewWindow,
     target: &Path,
-) -> Result<crate::print_com::PrintOutcome, String> {
+) -> Result<crate::print_com::ComPrintOutcome, String> {
     // 窗口句柄得**拥有**一份 ✓：`with_webview` 的闭包是 `'static` 的 ✓（借用会逃逸 ✓）。
     let window = window.clone();
     crate::print_com::print_dispatch(target, move |path, setup_sender| {
