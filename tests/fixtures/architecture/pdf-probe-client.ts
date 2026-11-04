@@ -16,21 +16,28 @@ declare global{
 }
 
 type WebEventKind='page_ready'|'call_started'|'call_finished'|'page_error';
-type WebCommand='get_platform_info'|'select_native_open'|'select_native_save'|'read_native_text'|'write_native_bytes'|'release_native_file';
+type WebCommand='get_platform_info'|'select_native_open'|'select_native_save'|'read_native_text'|'write_native_bytes'|'release_native_file'|'print_native_pdf';
 type WebResult='ok'|'denied'|'error'|'cancelled';
 type WebErrorCategory='no_tauri_internals'|'invoke_rejected'|'invalid_payload'|'rate_limited'|'timeout'|'unknown';
 
 interface Outcome{ok:boolean;value?:unknown;error?:string}
+/** 产品形态打印的结果：回执（saved／not-committed）或取消标记。 */
+interface ProductPrintOutcome{ok:boolean;value?:unknown;error?:string}
 interface PageEvent{event:WebEventKind;call_id?:string;command?:WebCommand;result?:WebResult;error_category?:WebErrorCategory;bytes?:number}
 
 const params=new URLSearchParams(location.search);
 const readKey=params.get('readKey')??'';
+/** 产品形态的打印要不要做 ✓：默认不做 ✓（它要人参与保存对话框 ✓，
+ *  会打断探针页其余步骤 ✓）；做的时候由探针用查询串打开 ✓。 */
+const productPrintRequested=params.get('productPrint')==='1';
 const writeKey=params.get('writeKey')??'';
 const expected=params.get('expect')??'';
 // 元素缺失不应让探针脚本死掉：报告与步骤日志都是可选的观察面。
 const output=document.querySelector<HTMLPreElement>('[data-probe-report]');
 const stepsOutput=document.querySelector<HTMLPreElement>('[data-probe-steps]');
 const report:Record<string,unknown>={};
+/** 产品形态打印的结果（'cancelled' 表示用户取消 ✓）。 */
+let productPrint:ProductPrintOutcome={ok:false,error:'未执行'};
 const steps:string[]=[];
 let role='unknown';
 /** 回传的最后状态：accepted／dropped／rejected。失败不重试，只留这一份。 */
@@ -87,6 +94,31 @@ function resultOf(outcome:Outcome):{result:WebResult;error_category?:WebErrorCat
  */
 const RAN_MARKER='mf-probe-ran';
 
+/**
+ * 产品形态的静默打印：选目标（原生保存对话框）→ 打印 → 提交。
+ *
+ * 走的是生产的两个命令 ✓（`select_native_save` 与 `print_native_pdf` ✓），
+ * 但**不接生产 UI** ✓——这里只是验收驱动 ✓（D7 的边界 ✓）。
+ * 打印的 HTML 取自归档的冻结样本 ✓（与 Web 路径印的是同一份文档 ✓）。
+ */
+async function printInProductShape():Promise<ProductPrintOutcome>{
+ const sample=await fetch('/docs/acceptance/pdf-probe/frozen-sample.html').then(response=>response.text());
+ // 两个命令各自记一步：原生侧也会记 source_decision，两边要能对上。
+ const pickCall=newCallId();
+ await step('call_started',{call_id:pickCall,command:'select_native_save'});
+ const picked=await call('select_native_save',{name:'probe-product-shape.pdf'});
+ await step('call_finished',{call_id:pickCall,command:'select_native_save',...resultOf(picked as Outcome)});
+ // 用户取消：没有目标，什么都不该写。
+ if(!picked.ok)return {ok:false,error:'选择目标失败'};
+ const value=picked.value as {key?:string}|null|undefined;
+ if(!value?.key)return {ok:false,error:'cancelled'};
+ const printCall=newCallId();
+ await step('call_started',{call_id:printCall,command:'print_native_pdf'});
+ const saved=await call('print_native_pdf',{html:sample,key:value.key});
+ await step('call_finished',{call_id:printCall,command:'print_native_pdf',...resultOf(saved as Outcome)});
+ return saved.ok?{ok:true,value:saved.value}:{ok:false,error:saved.error??'打印失败'};
+}
+
 async function main():Promise<void>{
  const restored=(history.state as {report?:Record<string,unknown>}|null)?.report;
  if(restored){
@@ -99,6 +131,7 @@ async function main():Promise<void>{
  window.name=RAN_MARKER;
  await step('page_ready',{});
  const identityCall=newCallId();
+ const productPrintCall=newCallId();
  await step('call_started',{call_id:identityCall,command:'get_platform_info'});
  const identity=await call('get_platform_info');
  report.identity=identity;
@@ -138,6 +171,13 @@ async function main():Promise<void>{
   await step('call_started',{call_id:releaseAttemptCall,command:'release_native_file'});
   report.releaseAttempt=await call('release_native_file',{key:readKey});
   await step('call_finished',{call_id:releaseAttemptCall,command:'release_native_file',...resultOf(report.releaseAttempt as Outcome)});
+ }
+ // 产品形态的打印（D7-1 的验收驱动）：用户在原生保存对话框里选目标 → 静默打印 → 提交。
+ // 放在这一步而不是另开一页：探针跑完会把主窗口导回应用页，页面若被导航走，未完成的打印就夭折了。
+ if(productPrintRequested){
+  productPrint=await printInProductShape();
+  report.productPrint=productPrint.error==='cancelled'?'cancelled':productPrint;
+  await step('call_finished',{call_id:productPrintCall,command:'print_native_pdf',...resultOf(report.productPrint as Outcome)});
  }
  report.logStatus=lastLogStatus;
  report.done=true;

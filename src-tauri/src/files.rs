@@ -378,12 +378,16 @@ pub async fn write_native_bytes(
 /// 这是 D7 的产品形态入口 ✓；**不接生产 UI** ✓（M9 才接 ✓）。
 #[tauri::command]
 pub async fn print_native_pdf(
+    webview: tauri::Webview,
     app: tauri::AppHandle,
     access: tauri::State<'_, FileAccess>,
     html: String,
     key: String,
 ) -> Result<String, String> {
-    print_native_pdf_impl(&app, &access, &html, &key)
+    // **走来源守卫** ✓：这个命令写文件 ✓，守卫是本项目唯一的隔离层 ✓。
+    in_command_span("print_native_pdf", &webview, |_started| {
+        print_native_pdf_impl(&app, &access, &html, &key)
+    })
 }
 
 /// 静默打印的实现。带 `pdf-probe` 特性时才有这个能力 ✓。

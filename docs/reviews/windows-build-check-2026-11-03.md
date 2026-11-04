@@ -118,6 +118,25 @@ bun scripts/pdf-probe-check.ts <日志>
 
 ---
 
+## 2.6 D7-1 产品形态的打印（2026-11-04 新增）
+
+```bat
+set MARKFLOW_LOG=info
+set MARKFLOW_LOG_FORMAT=json
+:: 让探针页做一次产品形态的打印：会弹出**原生保存对话框** ✓，请选一个你知道的目录 ✓
+set MARKFLOW_PROBE_PRODUCT_PRINT=1
+cargo run --locked --no-default-features --features pdf-probe
+```
+
+| 要验的 | 怎么看 |
+| --- | --- |
+| **命名** | 保存对话框里的默认名是 `probe-product-shape.pdf` ✓；保存后目标文件名就是它 ✓ |
+| **取消** | 在对话框里按**取消** ✓ → 日志里 `page_report_observed` 的 `product_print=cancelled` ✓，且**没有新文件** ✓ |
+| **打印成功** | 保存后日志里 `product_print=saved` ✓，目标目录里出现那个 PDF ✓ |
+| **失败保留旧文件** | 先在目标放一个同名旧文件 ✓ → 制造失败（把目标目录改成不可写 ✓）→ 旧文件内容不变 ✓ |
+
+**不设这个变量时**探针页不做产品形态的打印 ✓（那轮只做 D1b／D1c 的证据 ✓）✓，已归档的证据不受影响 ✓。
+
 ## 3. 逐项检查表
 
 | # | 检查项 | 怎么看 | 期望 |

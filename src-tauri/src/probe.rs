@@ -36,6 +36,10 @@ const REPORT_TIMEOUT: Duration = Duration::from_secs(60);
 /// 静默 PDF 的输出目标。默认落在归档目录；可用环境变量改到别处。
 const PDF_OUTPUT_ENV: &str = "MARKFLOW_PROBE_PDF";
 
+/// 是否让探针页做一次产品形态的打印（D7-1 的验收驱动 ✓）。
+/// 它的目标由人在原生保存对话框里选 ✓，所以默认不做 ✓。
+const PRODUCT_PRINT_ENV: &str = "MARKFLOW_PROBE_PRODUCT_PRINT";
+
 /// 受控样本归档原件的位置。优先环境变量（交付宿主上的路径可能不同），
 /// 退回编译期的仓库路径（交付宿主从仓库构建，可用）。两者都没有就跳过就绪探测。
 const SAMPLE_ENV: &str = "MARKFLOW_PROBE_SAMPLE";
@@ -428,9 +432,18 @@ fn log_observed_report(host: &str, raw: &str) {
     let read_error = outcome_text("read", "error");
     let select_error = outcome_text("select", "error");
     let release_error = outcome_text("releaseAttempt", "error");
+    // 产品形态打印的结果（D7-1 的验收证据 ✓）：回执或取消标记 ✓。
+    let product_print = value
+        .get("productPrint")
+        .map(|entry| match entry {
+            serde_json::Value::String(text) => text.clone(),
+            other => other.to_string(),
+        })
+        .unwrap_or_default();
     tracing::info!(
         event = "page_report_observed",
         host,
+        product_print = product_print.as_str(),
         role = role.as_str(),
         read_ok = outcome_ok("read"),
         read_error = read_error.as_str(),
@@ -475,11 +488,19 @@ fn probe_url(
 /// 纯函数：源的路径与查询串一律被替换，不从源里继承任何内容。
 fn probe_url_from(mut origin: Url, read_key: &str, write_key: &str) -> Url {
     origin.set_path(PROBE_PAGE_PATH);
+    // 产品形态的打印（D7-1 的验收驱动）默认不做 ✓：它要人在原生保存对话框里选目标 ✓，
+    // 会打断探针页其余步骤 ✓。要用就设 MARKFLOW_PROBE_PRODUCT_PRINT=1 ✓。
+    let product_print = if std::env::var(PRODUCT_PRINT_ENV).is_ok() {
+        "&productPrint=1"
+    } else {
+        ""
+    };
     origin.set_query(Some(&format!(
-        "readKey={}&writeKey={}&expect={}",
+        "readKey={}&writeKey={}&expect={}{}",
         read_key,
         write_key,
-        FIXTURE_CONTENT
+        FIXTURE_CONTENT,
+        product_print
     )));
     origin
 }

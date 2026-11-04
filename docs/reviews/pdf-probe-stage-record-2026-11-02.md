@@ -927,7 +927,17 @@ D7（= 迁移计划 M8 ✓）的验收依据先冻结成清单 ✓：[导出路�
 
 **本机复验** ✓：clippy 两状态 0 警告 ✓；Rust 30／33 通过 ✓；本机探针实跑 → `is_target=true` ✓、`ready=true` ✓、页面盒 3 个 794×1123 ✓、图片 1/1 ✓、D1c-1 通过 ✓、错误 0 ✓（打印在 macOS 上如实报"只支持 Windows" ✓）。
 
-**下一步**：D7-1 的另一半还没做 ✓ —— 夹具/探针页驱动"选目标 → 打印 → 取消"的产品形态 ✓（探针页要加一个动作 ✓，调 `select_native_save` + `print_native_pdf` ✓），以及 D7-2 的验收取证 ✓。
+### D7-1 的另一半：产品形态的验收驱动（2026-11-04）
+
+探针页多一个动作 ✓：**用户在原生保存对话框里选目标 → 静默打印 → 提交** ✓。走生产的两个命令 ✓（`select_native_save` ✓ 与 `print_native_pdf` ✓），但**不接生产 UI** ✓（只是验收驱动 ✓）。
+
+**新命令必须过来源守卫** ✓ —— 它写文件 ✓，守卫是本项目唯一的隔离层 ✓（`print_native_pdf` 已包进 `in_command_span` ✓，于是 `source_decision` 与 `operation_result` 都进日志 ✓，两侧能对上 ✓）。
+
+**默认不做** ✓（`MARKFLOW_PROBE_PRODUCT_PRINT=1` 才做 ✓）：它要人参与保存对话框 ✓，会打断探针页其余步骤 ✓。默认那轮（本地与交付宿主已归档的那轮）**完全不受影响** ✓（本机复验：0 错误 ✓、D1c-1 通过 ✓、无对话框 ✓）。
+
+**取消怎么记** ✓：用户在对话框里取消 → `select_native_save` 返回空 ✓ → 页面记 `productPrint=cancelled` ✓ → **不写任何文件** ✓。该字段进 `page_report_observed` ✓（`product_print` ✓）。
+
+**下一步**：D7-2 的验收取证 ✓ —— 交付宿主上设 `MARKFLOW_PROBE_PRODUCT_PRINT=1` 跑一轮 ✓，验命名 ✓、取消不写文件 ✓、失败保留旧文件 ✓、清理证据 ✓。
 
 ## 待补
 
