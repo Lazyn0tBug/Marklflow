@@ -10,6 +10,7 @@
 //! - **完成是异步回调**：错误与成功标志经 `ICoreWebView2PrintToPdfCompletedHandler`
 //!   送达。**超时即失败**：迟到回调不得改写回执。
 
+use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -59,9 +60,16 @@ pub fn start_print(
     // 错误与成功标志一起到手。
     let (sender, receiver) = mpsc::channel::<PrintResult>();
     // 路径转宽字符串：必须活过 PrintToPdf 调用。
+    //
+    // **用 `encode_wide`，不用 `to_string_lossy` + `encode_utf16`** ✓：
+    // Windows 的路径本来就是 UTF-16 ✓，而 `to_string_lossy` 会把**不配对的代理对**
+    // 换成 U+FFFD ✓ —— 那是**合法但罕见**的 Windows 路径 ✓，
+    // 转过去就成了**另一个路径** ✓（COM 会写到别处去 ✓）。
+    // 这一层是 Windows 专属的 ✓（本模块只编在 Windows 上 ✓）✓，
+    // 所以直接用 Windows 那套 API ✓，不必绕一圈 UTF-8 ✓。
     let wide: Vec<u16> = target
-        .to_string_lossy()
-        .encode_utf16()
+        .as_os_str()
+        .encode_wide()
         .chain(std::iter::once(0))
         .collect();
 
