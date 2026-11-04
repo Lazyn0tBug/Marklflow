@@ -4,16 +4,6 @@
   "format": "人读文本（交付宿主运行时未设 MARKFLOW_LOG_FORMAT=json；校验器两种形态都读）",
   "files": [
     {
-      "file": "delivery-host-windows-pdf-probe.txt",
-      "kind": "探针构建运行",
-      "feature": "pdf-probe",
-      "run_id": "8623a522-1013-4dfb-953b-fb44cf6fb52d",
-      "sha256": "afd3fa8ee1b8e7967ad02ab4b7d390f97a582a735630e0f3928d71d6868422b8",
-      "bytes": 32812,
-      "lines": 123,
-      "covers": "d1b-1-4-6"
-    },
-    {
       "file": "delivery-host-windows-default-with-probe-page.txt",
       "kind": "默认构建运行（devUrl 临时指向探针页）",
       "feature": "default",
@@ -33,6 +23,17 @@
       "lines": 5,
       "covers": "D1b-4 人工项的阳性对照",
       "observed": "两个原生对话框都弹出并被取消：select_native_open count=0 elapsed_ms=2686；select_native_save granted=false elapsed_ms=2724"
+    },
+    {
+      "file": "delivery-host-windows-pdf-probe-v2.jsonl",
+      "kind": "探针构建运行（导航竞态修好、输出目录修好后）——D1b 与 D1c 的正式取证",
+      "feature": "pdf-probe",
+      "run_id": "3b853257-3efe-443a-b3b6-0745d7c88a09",
+      "sha256": "f2c908ed62db4a815f29ad53a449a8133b334a0611f8ed516f1e4be1b7e6a89b",
+      "bytes": 18220,
+      "records": 52,
+      "covers": "D1b-1/2/3/4/6、D1c-1、D1c-2",
+      "observed": "打印成功：205821 字节、committed=true、284 ms；错误 0、告警 0"
     }
   ],
   "checker": {
@@ -43,7 +44,9 @@
       "D1b-3",
       "D1b-4",
       "D1b-5",
-      "D1b-6"
+      "D1b-6",
+      "D1c-1",
+      "D1c-2"
     ],
     "assertions_unconfirmed": [],
     "diagnostics": {
@@ -52,10 +55,10 @@
       "info": 1
     },
     "known_limits": [
-      "no-run-end：各次运行都是强杀进程退出，非正常退出，故不宣称日志完整",
+      "D1b-5 需要默认构建的运行记录（本次是探针构建）；默认构建那次尚未取",
       "D1b-2 的内容逐字相符只有页面自述依据（原生只证明成功与字节数 25）",
-      "D1b-4 的\"未弹框\"是人工项，已由人确认；阳性对照见 delivery-host-windows-dialog-positive-control.txt：该机器上的原生对话框确实会弹（主窗口放行时）",
-      "探针页在运行中重载过三次：后两次的读取拿到 unknown-file-key（授权已在首轮后撤销），首轮证据完整，噪声不参与判定"
+      "D1b-4 的\"未弹框\"是人工项，由人在交付宿主确认；阳性对照见 delivery-host-windows-dialog-positive-control.txt",
+      "D1d 的 PDF 内容核对为人工项：正文逐字、字体报告、公式与图表渲染"
     ]
   }
 }

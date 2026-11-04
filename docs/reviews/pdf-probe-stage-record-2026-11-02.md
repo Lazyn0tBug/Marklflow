@@ -767,6 +767,27 @@ bun run tauri build   →  exit 0
 
 **教训**：这条待查项的依据是"Tauri v2 模板要求 app 声明 custom-protocol"这个**记忆** ✗，而项目自己的规矩是"不要猜 API 与版本行为 ✓"——版本一换，模板的做法就可能不同 ✓（CLI 直接启用依赖的特性 ✓）。**先查再记 ✓**。
 
+### 交付宿主第五次复跑（2026-11-04）：**静默 PDF 产出成立**
+
+路径更正后重跑（`markflow.17736.log`，sha256 `f2c908ed62db4a815f29ad53a449a8133b334a0611f8ed516f1e4be1b7e6a89b`）：
+
+```
+probe_pdf ok=true bytes=205821 committed=true elapsed_ms=284
+```
+
+**原生静默 PDF 的产出路径全程成立** ✓：就绪 ✓（`ready_state=complete` ✓、`fonts=loaded` ✓、页面盒 3 个 794×1123 ✓、图片 1/1 ✓）→ 打印 ✓（205821 字节 ✓、284 ms ✓）→ 提交 ✓（rename 过了 ✓）→ 清理 ✓（撤销 ✓、夹具删除 ✓、主窗口导回 ✓）→ 正常退出 ✓（`run_end` ✓、健康摘要 ✓、计数全零 ✓）。
+
+机器核对：**错误 0、告警 0** ✓
+
+| 断言 | 结论 |
+| --- | --- |
+| D1b-1 / D1b-2 / D1b-3 / D1b-4（机器部分）/ D1b-6 | **全部通过** ✓ |
+| D1c-1 就绪判据 | 通过 ✓ |
+| D1c-2 取得 PDF | 通过 ✓（打印成功 ✓、已提交 ✓） |
+| D1b-5 | 未能确认（待默认构建那次 ✓） |
+
+归档：`delivery-host-windows-pdf-probe-v2.jsonl` ✓（元数据已更新 ✓）。
+
 ### 交付宿主第四次复跑（2026-11-04）：D1b 证据齐了，打印败在输出目录
 
 日志（`markflow.27720.log`，sha256 `eb78650e966b163b42e4e3fd928ae99221ac8ae0ddae4ec77e102a0a61c343f5`）：**导航修好了 ✓**（`probe_navigation navigated=true` ✓），两份页面报告都读到 ✓，机器核对 **错误 0、告警 0** ✓：
