@@ -144,13 +144,8 @@ pub fn print_document_to_pdf(
             });
         }
     };
-    // 文档的文件名：就绪探测要确认"读到的是这份文档" ✓。
-    let document_name = document
-        .file_name()
-        .map(|value| value.to_string_lossy().to_lowercase())
-        .unwrap_or_default();
     // 隐藏宿主：打印期间不可见（D1c-5 的"无窗口闪现" ✓）。
-    let window = match output_host::create(app, WebviewUrl::External(url)) {
+    let window = match output_host::create(app, WebviewUrl::External(url.clone())) {
         Ok(window) => window,
         Err(_) => {
             return Err(PrintFailure {
@@ -163,7 +158,8 @@ pub fn print_document_to_pdf(
             });
         }
     };
-    let outcome = print_ready_document(&window, &temp, target, &document_name);
+    // 期望的文档地址：就绪探测要确认"读到的是这份文档" ✓（比路径最后一段 ✓）。
+    let outcome = print_ready_document(&window, &temp, target, &url);
     // 丢句柄不等于关窗：窗口仍在应用的窗口表里（D7 清理项 ✓）。
     let _ = window.close();
     match outcome {
@@ -246,9 +242,9 @@ fn print_ready_document(
     window: &tauri::WebviewWindow,
     temp: &Path,
     target: &Path,
-    expected_name: &str,
+    expected_url: &Url,
 ) -> Result<PrintOutcome, PrintError> {
-    let (ready, readiness) = wait_ready(window, expected_name);
+    let (ready, readiness) = wait_ready(window, expected_url);
     if !ready {
         return Err(PrintError{
             reason:"文档未在期限内达到就绪条件".to_owned(),
@@ -374,13 +370,40 @@ const READINESS_SCRIPT: &str = r#"(()=>{
   };
 })()"#;
 
+/// href 指向的文档是不是期望的那一份。
+///
+/// **比路径的最后一段** ✓，不是"包含文件名" ✓：
+/// 一个文件名是另一个的后缀时（`out.pdf` ⊂ `myout.pdf` ✓）包含会误判 ✓，
+/// 而这个判据守的正是"求值落在旧文档上" ✓，它得够严 ✓。
+///
+/// 两边都取自 `Url` ✓，所以是**同样编码**的段 ✓（路径是百分号编码的 ✓）——
+/// 拿原始文件名去比编码后的 href 会对不上 ✓（含非 ASCII 的文件名尤其会 ✓）。
+/// 比较**不区分大小写** ✓：Windows 的路径不区分 ✓。
+fn href_points_at(href: &str, expected_url: &Url) -> bool {
+    let Some(expected) = expected_url
+        .path_segments()
+        .and_then(|mut segments| segments.next_back())
+    else {
+        return false;
+    };
+    let Ok(url) = Url::parse(href) else {
+        return false;
+    };
+    let Some(actual) = url
+        .path_segments()
+        .and_then(|mut segments| segments.next_back())
+    else {
+        return false;
+    };
+    actual.to_lowercase() == expected.to_lowercase()
+}
+
 /// 等文档就绪：文档完成 + 字体已加载 + 图片已解码 + 页面盒在。
 ///
 /// **不用固定睡眠** ✓：轮询的是条件 ✓，条件成立即返回 ✓。
-fn wait_ready(window: &tauri::WebviewWindow, expected: &str) -> (bool, Readiness) {
+fn wait_ready(window: &tauri::WebviewWindow, expected: &Url) -> (bool, Readiness) {
     let deadline = Instant::now() + READINESS_TIMEOUT;
     let mut last = Readiness::default();
-    let expected = expected.to_lowercase();
     while Instant::now() < deadline {
         let (sender, receiver) = mpsc::channel();
         if window
@@ -400,9 +423,7 @@ fn wait_ready(window: &tauri::WebviewWindow, expected: &str) -> (bool, Readiness
         };
         // 文档身份先于就绪：导航到新页时求值可能落在**旧文档**上，
         // 而旧文档也可能"看起来就绪"（加载完成、字体已加载）——那就白读了。
-        let matches_expected = text_of(&value, "href")
-            .to_lowercase()
-            .contains(&expected);
+        let matches_expected = href_points_at(&text_of(&value, "href"), expected);
         last = Readiness {
             eval_ok: true,
             is_expected_document: matches_expected,
@@ -484,6 +505,24 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&second).unwrap(), "<p>second</p>");
         let _ = std::fs::remove_file(&first);
         let _ = std::fs::remove_file(&second);
+    }
+
+    #[test]
+    fn the_document_identity_is_the_last_path_segment() {
+        let expected = Url::from_file_path(Path::new("/docs/out.pdf")).unwrap();
+        // 包含会误判 ✓：myout.pdf 包含 out.pdf ✓。
+        assert!(!href_points_at("file:///docs/myout.pdf", &expected));
+        assert!(href_points_at("file:///docs/out.pdf", &expected));
+        // 目录里的同名不算 ✓：要比的是**最后一段** ✓。
+        assert!(!href_points_at("file:///out.pdf/docs/other.html", &expected));
+        // 百分号编码的名字要对得上 ✓（两边都取自 Url ✓，编码方式一致 ✓）。
+        let cjk = Url::from_file_path(Path::new("/docs/铺设.pdf")).unwrap();
+        // 浏览器给的就是这个编码形态 ✓（路径是百分号编码的 ✓）。
+        assert!(href_points_at("file:///docs/%E9%93%BA%E8%AE%BE.pdf", &cjk));
+        // 大小写不敏感 ✓（Windows 的路径如此 ✓）。
+        assert!(href_points_at("file:///docs/OUT.PDF", &expected));
+        // 不是文档地址就当不是 ✓。
+        assert!(!href_points_at("about:blank", &expected));
     }
 
     #[cfg(unix)]
