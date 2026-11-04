@@ -509,18 +509,28 @@ mod tests {
 
     #[test]
     fn the_document_identity_is_the_last_path_segment() {
-        let expected = Url::from_file_path(Path::new("/docs/out.pdf")).unwrap();
+        // 路径要按**本机**的规矩来 ✓：`Url::from_file_path` 要绝对路径 ✓，
+        // 而 Windows 上 "/docs/out.pdf" 不是合法的文件路径 ✓（会返回 Err ✓）。
+        // 临时目录由 `tempfile` 给 ✓（本就在依赖里 ✓，且保证是绝对路径 ✓）。
+        let holder = tempfile::tempdir().unwrap();
+        let dir = holder.path().join("docs");
+        let expected = Url::from_file_path(dir.join("out.pdf")).unwrap();
         // 包含会误判 ✓：myout.pdf 包含 out.pdf ✓。
-        assert!(!href_points_at("file:///docs/myout.pdf", &expected));
-        assert!(href_points_at("file:///docs/out.pdf", &expected));
+        let other = Url::from_file_path(dir.join("myout.pdf")).unwrap();
+        assert!(!href_points_at(other.as_str(), &expected));
+        // 自己认自己 ✓。
+        assert!(href_points_at(expected.as_str(), &expected));
         // 目录里的同名不算 ✓：要比的是**最后一段** ✓。
-        assert!(!href_points_at("file:///out.pdf/docs/other.html", &expected));
-        // 百分号编码的名字要对得上 ✓（两边都取自 Url ✓，编码方式一致 ✓）。
-        let cjk = Url::from_file_path(Path::new("/docs/铺设.pdf")).unwrap();
-        // 浏览器给的就是这个编码形态 ✓（路径是百分号编码的 ✓）。
-        assert!(href_points_at("file:///docs/%E9%93%BA%E8%AE%BE.pdf", &cjk));
+        let mut nested = expected.clone();
+        nested.set_path(&format!("{}/other.html", expected.path()));
+        assert!(!href_points_at(nested.as_str(), &expected));
+        // 百分号编码的名字要对得上 ✓（两边都取自 Url ✓，编码方式一致 ✓）：
+        // 原始名是"铺设.pdf" ✓，地址里是编码形态 ✓。
+        let cjk = Url::from_file_path(dir.join("铺设.pdf")).unwrap();
+        assert!(href_points_at(cjk.as_str(), &cjk));
+        assert!(cjk.as_str().contains("%E9%93%BA%E8%AE%BE.pdf"));
         // 大小写不敏感 ✓（Windows 的路径如此 ✓）。
-        assert!(href_points_at("file:///docs/OUT.PDF", &expected));
+        assert!(href_points_at(&expected.as_str().to_uppercase(), &expected));
         // 不是文档地址就当不是 ✓。
         assert!(!href_points_at("about:blank", &expected));
     }
