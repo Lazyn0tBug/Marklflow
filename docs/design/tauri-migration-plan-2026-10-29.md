@@ -126,7 +126,7 @@ M0已完成冻结、Luna独立审查与验证；M1已完成独立审查/本机Wi
 | 前置D1技术探索（非新M阶段） | D0固定产物/环境、入口/依赖、首选宿主及IPC边界核对；无需完整EX-W3/M4—M7或D2 | 首选独立visible(false) WebviewWindow及控制器，原生接口/回调/COM生命周期和IPC负向验证，不接生产UI | 按主方案§8.1分D1a—D1d提交；D1d完成内容核验与通过/当前形态不可行/未能确认结论，后两者暂停D7/D8，D1c生成文件不算整体通过 |
 | M7 EX-T0差异冻结 | M6、完整EX-W3及原EX-T0启动条件 | 映射当前端口与已完成准备工作，列出各OS导出能力和占位清理范围 | 复用准备成果不重复提交；禁止把临时HTML命令当PDF成功 |
 | M8 EX-T1 Windows产品化验收 | M7、前置D1与D2契约 | 映射D7，复用技术PoC验收目标选择/同目录临时提交/覆盖失败保护/超时迟到及清理，不重建PoC | 完整PDF与真实文件证据、命名取消准确、失败保留原文件，不接生产UI |
-| M9 EX-T2a Windows统一导出接入 | Windows M8通过 | 启动选择Web/Tauri双组合根，共用ExportService；Tauri selectSave/deliverPdf、独立PDF回执及目标finally释放，沿用同一生成/确认 | 六格式同命名/源快照/单次prepare/busy；真实保存/取消/覆盖/失败，错误不降级不覆盖源 |
+| M9 EX-T2a Windows统一导出接入 | Windows M8通过（2026-11-05 ✓） | 启动选择Web/Tauri双组合根（选择归配置文件 ✓），共用ExportService；Tauri selectSave/deliverPdf、独立PDF回执及目标finally释放，沿用同一生成/确认（打印的就是同一份导出HTML ✓）；**隔离只有一道闸** ✓（能力清单文件已删 ✓，不加第二道 ✓）；非Windows只有Web根且**不许回落** ✓ | 六格式同命名/源快照/单次prepare/busy；真实保存/取消/覆盖/失败，错误不降级不覆盖源；**并排对照** ✓（同一份真实文档 ✓，Web 一份 ✓ vs 原生一份 ✓：字体嵌入 ✓、文本层 ✓ —— 差别即价值证明 ✓）。规划见[本文](export-outputs-d8-m9-plan-2026-11-05.md) ✓ |
 | M10 EX-T2b多平台包与发布配置 | M2、M9、E2及所声明OS验收 | 核对bundle、离线资源/系统WebView条件，完成tag发布控制，保持默认不发布 | 对每个实际支持OS验证安装包/ZIP启动与文件操作；Web回归通过，未验OS明确标记 |
 | M11 最终审查与收口 | 已授权阶段完成 | Luna独立代码/文档审查、自动回归、系统/产物证据核对及支持表；修复按小步提交 | 自动通过与完整发布分开；EX-W0/原生保存/WordWPS/跨OS缺项不标通过；不自动推送/创建release |
 

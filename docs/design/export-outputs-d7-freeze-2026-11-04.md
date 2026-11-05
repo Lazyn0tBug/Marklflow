@@ -145,7 +145,7 @@ ExportService.run（src/application/exports/exportService.ts）
 | 阶段 | 内容 | 与 D7 的关系 |
 | --- | --- | --- |
 | **D7 / M8** | 本清单的验收 ✓ | — |
-| **D8 / M9** | Windows 统一导出接入 ✓（`selectSave`/`deliverPdf` 共用 ExportService ✓、独立 PDF 回执 ✓、目标 finally 释放 ✓） | 消费 D7 的机制 ✓ |
+| **D8 / M9** | Windows 统一导出接入 ✓（`selectSave`/`deliverPdf` 共用 ExportService ✓、独立 PDF 回执 ✓、目标 finally 释放 ✓） | 消费 D7 的机制 ✓；规划见[统一导出接入规划](export-outputs-d8-m9-plan-2026-11-05.md) ✓ |
 | D9 / M10 | 多平台包与发布 ✓ | 消费 D7/D8 的能力声明 ✓ |
 | D8（基座侧） | 日志轮转归档与生产监控 ✓ | 与 D7 的日志契约同源 ✓ |
 
