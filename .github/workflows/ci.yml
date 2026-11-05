@@ -130,6 +130,9 @@ jobs:
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable action, explicit toolchain
         with:
           toolchain: "1.94.0"
+          # **clippy 组件必须显式装** ✓：那个 action 默认只装工具链本身 ✓，
+          # 而交叉检查与默认构建的 lint 都跑 clippy ✓（缺它 ⇒ `cargo-clippy.exe is not installed` ✓）。
+          components: clippy
 
       - name: Cross check the Windows print chain
         run: bun scripts/check-windows-com.ts

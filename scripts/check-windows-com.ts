@@ -26,7 +26,7 @@
  * 目标不在时**跳过并说明**，不当作失败——这是环境缺件，不是代码问题。
  */
 import {execFileSync} from 'node:child_process';
-import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
 
@@ -112,6 +112,9 @@ async function main():Promise<void>{
 /** 在临时夹具里做一次交叉编译检查。 */
 async function crossCheck(work:string,rustcPath:string):Promise<void>{
  mkdirSync(join(work,'src'),{recursive:true});
+ // **锁文件从应用那份抄过来** ✓：夹具的依赖与应用的是同一批 ✓，
+ // 版本就此钉住 ✓ —— 否则每次解析都是"当下最新的" ✓，CI 会随上游漂移 ✓。
+ copyFileSync(join(repo,'src-tauri','Cargo.lock'),join(work,'Cargo.lock'));
  writeFileSync(join(work,'Cargo.toml'),[
   '[package]',
   'name = "mf-windows-com-check"',
@@ -184,6 +187,21 @@ async function crossCheck(work:string,rustcPath:string):Promise<void>{
  // PATH 上工具链优先：clippy 用的是它自己的 driver，driver 又按 PATH 上的 rustc
  // 找 sysroot——PATH 上若是 Homebrew 的工具链，它没有 Windows 标准库。
  const toolchainBin=dirname(rustcPath);
+ // **先取依赖** ✓：夹具是临时目录 ✓，runner 上什么都没有 ✓，
+ // 而下面那次 clippy 走 `--offline` ✓（构建要可复现 ✓）——
+ // 没有先取过，`--offline` 就会以"没有这些 crate"失败 ✓。
+ // **不加 `--locked`** ✓：夹具的包名与应用那份锁文件里的根包不同 ✓，
+ // 加了它会因"锁文件需要更新"而失败 ✓；不加则只是补上根条目 ✓，
+ // 依赖版本仍按抄来的那份锁走 ✓ ✓。
+ const fetched=run('rustup',['run',TOOLCHAIN,'cargo','fetch'],{
+  cwd:work,
+  env:{RUSTC:rustcPath,PATH:`${toolchainBin}:${process.env.PATH??''}`},
+ });
+ if(fetched.code!==0){
+  console.error('夹具依赖取不到：\n'+fetched.output);
+  process.exitCode=1;
+  return;
+ }
  const checked=run('rustup',['run',TOOLCHAIN,'cargo','clippy','--offline','--target',TARGET,'--features','pdf-probe','--all-targets','--','-D','warnings'],{
   cwd:work,
   env:{RUSTC:rustcPath,PATH:`${toolchainBin}:${process.env.PATH??''}`},
