@@ -503,8 +503,8 @@ fn consume_grant(access: &FileAccess, key: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// 静默打印的实现。带 `pdf-probe` 特性时才有这个能力 ✓。
-#[cfg(feature = "pdf-probe")]
+/// 静默打印的实现。**生产构建的一部分** ✓（M9 接入 ✓）：Windows 走 COM ✓。
+#[cfg(target_os = "windows")]
 fn print_native_pdf_impl(
     app: &tauri::AppHandle,
     access: &FileAccess,
@@ -529,8 +529,8 @@ fn print_native_pdf_impl(
     })
 }
 
-/// 不含静默打印能力的构建 ✓。
-#[cfg(not(feature = "pdf-probe"))]
+/// **没有静默打印能力的平台** ✓（Windows 之外 ✓ —— 依赖 WebView2 的 PrintToPdf ✓）。
+#[cfg(not(target_os = "windows"))]
 fn print_native_pdf_impl(
     _app: &tauri::AppHandle,
     _access: &FileAccess,
@@ -538,7 +538,7 @@ fn print_native_pdf_impl(
     _key: &str,
 ) -> Result<PrintReceipt, PrintFailureReading> {
     Err(PrintFailureReading {
-        reason: "此构建不含静默 PDF 打印（需 pdf-probe 特性）".to_owned(),
+        reason: "静默 PDF 打印只支持 Windows（依赖 WebView2 的 PrintToPdf）".to_owned(),
         // 没有临时文件，也没有可清的东西 ✓。
         pdf_temp_removed: true,
     })

@@ -2,11 +2,17 @@ mod config;
 mod files;
 mod logging;
 mod output_host;
-#[cfg(all(feature = "pdf-probe", target_os = "windows"))]
+// 静默打印：**生产构建的一部分** ✓（M9 接入 ✓）—— Windows 走 COM ✓，
+// 其它平台在 `files.rs` 那侧明说没有这个能力 ✓ ✓。
+// 探针复用同一份实现 ✓ —— 不再另建一份 ✓。
+#[cfg(target_os = "windows")]
 mod print_com;
-#[cfg(all(feature = "pdf-probe", target_os = "windows"))]
+#[cfg(target_os = "windows")]
 mod print_host;
-#[cfg(feature = "pdf-probe")]
+// 非 Windows 上这份实现只被探针用（Windows 之外没有静默打印 ✓）——
+// 默认构建里没人调它 ✓，故在那一边放过死代码告警 ✓（模块本身保留 ✓：
+// 暂存与清理那些跨平台的部分 ✓，以及它们在 unix 上的用例 ✓）。
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 mod pdf_print;
 mod source_guard;
 #[cfg(feature = "pdf-probe")]
