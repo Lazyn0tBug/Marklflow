@@ -41,10 +41,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   // 导出服务：**启动时定下走哪个根** ✓（配置说了算 ✓）。
   const [service,setService]=useState<ExportService>(webExportService);
   const [root,setRoot]=useState<ExportRootChoice>({root:'web',nativePdfAvailable:false});
+  // 根的解析结果也留一份**可等**的 ✓：导出时必须用**解析出来的那一个** ✓ ——
+  // 否则解析还没回来就点导出的话 ✓，会悄悄走 Web 根 ✓（那正是"不许回落"要防的 ✓）。
+  const rootPromise=useRef<Promise<{choice:ExportRootChoice;service:ExportService}>>(Promise.resolve({choice:{root:'web',nativePdfAvailable:false},service:webExportService}));
 
   const docxGroups=useMemo(()=>groupDocxIssues(docxIssues),[docxIssues]);
   const docxBlocked=docxIssues.some(issue=>issue.adaptation==='unsupported');
-  useEffect(()=>{let cancelled=false;void resolveExportRoot().then(choice=>{if(cancelled)return;setRoot(choice);setService(choice.root==='native'?nativeExportService:webExportService)});return()=>{cancelled=true}},[]);
+  useEffect(()=>{let cancelled=false;
+   rootPromise.current=resolveExportRoot().then(choice=>({choice,service:choice.root==='native'?nativeExportService:webExportService}));
+   void rootPromise.current.then(resolved=>{if(cancelled)return;setRoot(resolved.choice);setService(resolved.service)});
+   return()=>{cancelled=true}},[]);
   useEffect(()=>{if(!service.busy){setAllowSourceFallback(false);setDocxIssues([])}},[doc.id,doc.markdown,selectedFormat,service]);
   useEffect(()=>{if(isOpen&&!service.busy){setFileName(doc.meta.title||'MarkFlow-Document');setAllowSourceFallback(false);setAllowRemoteAssets(false);setDocxIssues([])}},[isOpen,doc.id,service]);
   useEffect(()=>{if(!isOpen){reviewDismissed.current=true;if(reviewResolver.current)finishReview(false)}},[isOpen]);
@@ -70,14 +76,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
   const handleExport = async () => {
     if(reviewing){if(allowSourceFallback&&!docxBlocked)finishReview(true);return}
-    if(service.busy){onNotice?.({message:'正在导出，请稍候',tone:'info'});return}
+    // **先等根解析完** ✓：用解析出来的那一个 ✓ —— 不拿"还没定"的那份去导出 ✓ ✓。
+    const resolved=await rootPromise.current;
+    const chosen=resolved.service;
+    if(chosen.busy){onNotice?.({message:'正在导出，请稍候',tone:'info'});return}
     // 选了原生而平台没有静默 PDF：**明说不做** ✓（不回落 ✓ —— 回落就是降级 ✓）。
-    if(selectedFormat==='print-pdf'&&root.root==='native'&&!root.nativePdfAvailable){
-     onNotice?.({message:root.blockedReason??'此平台不支持静默 PDF 打印',tone:'error'});return;
+    if(selectedFormat==='print-pdf'&&resolved.choice.root==='native'&&!resolved.choice.nativePdfAvailable){
+     onNotice?.({message:resolved.choice.blockedReason??'此平台不支持静默 PDF 打印',tone:'error'});return;
     }
     reviewDismissed.current=false;setIsExporting(true);setDocxIssues([]);
     try{
-      const result=await service.run({document:doc,format:selectedFormat,fileName,mathMode,allowRemoteAssets},{confirmDocx:(issues)=>{
+      const result=await chosen.run({document:doc,format:selectedFormat,fileName,mathMode,allowRemoteAssets},{confirmDocx:(issues)=>{
         if(!openRef.current||reviewDismissed.current)return Promise.resolve(false);
         setDocxIssues(issues);setAllowSourceFallback(false);setReviewing(true);
         return new Promise<boolean>(resolve=>{reviewResolver.current=resolve});
