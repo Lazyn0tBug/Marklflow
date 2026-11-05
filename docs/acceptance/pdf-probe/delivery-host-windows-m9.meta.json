@@ -1,0 +1,130 @@
+{
+  "kind": "M9 生产接入的取证日志（Windows 11, x86_64, WebView2 156.0.4314.58）",
+  "collected": "2026-11-05",
+  "mechanism": "运行期输入走配置文件（<当前目录>\\conf\\markflow.toml ✓）；导出的根由 [export] root 定 ✓；静默打印随产品构建走 ✓（feature=default ✓）",
+  "files": [
+    {
+      "file": "delivery-host-windows-m9-native.jsonl",
+      "sha256": "e2214120a20487ef30e66dd74472eb96c1ecb5b1d81b94e11e88d0aae363461a",
+      "bytes": 3094,
+      "records": 10,
+      "kind": "原生根：导出成功（目标由人在原生保存对话框里选 ✓）",
+      "feature": "default",
+      "covers": "M9 的原生成功轮",
+      "observed": "select_native_save granted=true；print_native_pdf result=ok committed=true pdf_temp_removed=true bytes=477094；release_native_file ok（finally 释放 ✓）"
+    },
+    {
+      "file": "delivery-host-windows-m9-native-cancelled.jsonl",
+      "sha256": "4e9f11a166279d079e8b039f2ef873ddfe9a4748bf5bded08e24d0ddb44a7e88",
+      "bytes": 1549,
+      "records": 5,
+      "kind": "原生根：用户在原生保存对话框里取消",
+      "feature": "default",
+      "covers": "M9 的取消轮",
+      "observed": "select_native_save granted=false；**没有打印命令** ✓ —— 一个字节都没写 ✓"
+    },
+    {
+      "file": "delivery-host-windows-m9-native-not-committed.jsonl",
+      "sha256": "22b8f2cd5623addfc9a6c38b10406e3fe37dbfa8e6c59cbb4ea128e30b968b23",
+      "bytes": 3134,
+      "records": 10,
+      "kind": "原生根：目标被占住 → 印出来了但提交失败",
+      "feature": "default",
+      "covers": "M9 的失败轮",
+      "observed": "select_native_save granted=true；print_native_pdf result=error reason_code=print-not-committed committed=false pdf_temp_removed=true bytes=477094；release_native_file ok"
+    },
+    {
+      "file": "delivery-host-windows-m9-web.jsonl",
+      "sha256": "0c37dc7fdeac5b9d4cdde7cdd75b51deeb5e82027ca8695c0d5061094b8938ab",
+      "bytes": 936,
+      "records": 3,
+      "kind": "Web 根：导出成功（浏览器打印对话框 ✓）",
+      "feature": "default",
+      "covers": "M9 的 Web 对照轮",
+      "observed": "**只有 run_start／run_end／log_health 三条** ✓ —— 我们一个原生命令都没调 ✓ ✓（对话框全是系统窗口 ✓）"
+    },
+    {
+      "file": "delivery-host-windows-m9-web-cancelled.jsonl",
+      "sha256": "18b6d7879bb809432f061b6408f05269801a48bdda7ffe850ce3a477f31a8ab3",
+      "bytes": 936,
+      "records": 3,
+      "kind": "Web 根：取消",
+      "feature": "default",
+      "covers": "M9 的 Web 对照轮（取消）",
+      "observed": "三条记录 ✓；我们侧没有任何记录 ✓（取消发生在浏览器那边 ✓）"
+    },
+    {
+      "file": "delivery-host-windows-m9-web-failed.jsonl",
+      "sha256": "40e531d0ed85419e0323d97c04899bdf59120b57d8e8a87ed2d6cbec5d322748",
+      "bytes": 936,
+      "records": 3,
+      "kind": "Web 根：失败",
+      "feature": "default",
+      "covers": "M9 的 Web 对照轮（失败）",
+      "observed": "三条记录 ✓；**失败在我们的日志里看不见** ✓ —— 浏览器写不进去目标时会**再问一次位置** ✓（操作者观察到 ✓），第二次才报错 ✓ ✓"
+    }
+  ],
+  "pdf_inspection": {
+    "in_repo": false,
+    "why": "产出的 PDF 文件不入库（冻结文档 §6）；只留事实与哈希",
+    "native": {
+      "file": "quantum.pdf",
+      "bytes": 477094,
+      "sha256": "bd90a3706a9ee5b136e271e6…（见归档外）",
+      "pages": 4,
+      "media_box_pt": [
+        0,
+        0,
+        594.95996,
+        841.91998
+      ],
+      "paper": "A4",
+      "producer": "Skia/PDF m156 —— WebView2 自己的 PDF 写出器 ✓",
+      "fonts": "六个字体全部嵌入 ✓（/FontFile2 六处 ✓）：MicrosoftYaHeiUI ✓、MicrosoftYaHeiUI-Bold ✓、CambriaMath ✓、Consolas ✓",
+      "text_layer": "有 ✓（五个带文本的内容流 ✓ + 四十九处 /ToUnicode ✓）—— 正文、公式与 CJK 都可提取 ✓",
+      "images": "二十六个图像对象 ✓，无 JPEG ✓（矢量为主 ✓）"
+    },
+    "web": {
+      "file": "quantum_web.pdf",
+      "bytes": 562487,
+      "sha256": "ef944e476cd567249fe2fa5f…",
+      "pages": 4,
+      "media_box_pt": [
+        0,
+        0,
+        595.32001,
+        841.92004
+      ],
+      "paper": "A4",
+      "producer": "Microsoft: Print To PDF —— Windows 的**打印驱动** ✓",
+      "fonts": "**一个都没有** ✓（/Type /Font 零处 ✓）",
+      "text_layer": "**没有** ✓（零个带文本的内容流 ✓）",
+      "images": "十九个图像对象 ✓，**全是 JPEG** ✓（DCTDecode 十九处 ✓）—— 整页是照片 ✓"
+    },
+    "meaning": "同一份文档 ✓：原生那份是**文档** ✓（有字 ✓ 有文本层 ✓ 矢量 ✓），Web 那份是**文档的照片** ✓（无字 ✓ 无文本层 ✓ 栅格 ✓）"
+  },
+  "human_items": [
+    {
+      "item": "失败那轮目标上旧文件未被触碰",
+      "observed": "操作者核对：**前后哈希相同** ✓"
+    },
+    {
+      "item": "Web 路径的失败表现",
+      "observed": "第一次保存时浏览器**又弹了一次文件保存对话框** ✓，第二次才报错 ✓ —— 那是浏览器自己的行为 ✓（我们的日志里没有它 ✓）"
+    }
+  ],
+  "not_archived": [
+    {
+      "files": [
+        "两份 PDF"
+      ],
+      "reason": "产出的 PDF 不入库 ✓；事实与哈希在上面 ✓"
+    },
+    {
+      "files": [
+        "原生那份之外的失败产物"
+      ],
+      "reason": "失败轮没有提交任何东西 ✓（committed=false ✓）—— 目标上仍是旧文件 ✓"
+    }
+  ]
+}
