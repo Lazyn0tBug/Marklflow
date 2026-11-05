@@ -82,6 +82,8 @@ warning: unused import: `crate::print_com::PrintOutcome`
 | 工具链 | Rust 1.94.0（MSVC），与 CI 一致 |
 | WebView2 | 运行时 156.0.4314.58（已装） |
 | dev server | **必须在跑**（探针页要与应用同源）：另开终端 `bun run dev:desktop` |
+| 当前目录 | **恒为仓库根** ✓：`cd /d D:\code\Marklflow` ✓。配置在 `<仓库>\conf\markflow.toml` ✓，日志在 `<仓库>\log\` ✓ —— 站错地方就两样都找不到 ✓ |
+| 配置 | **改行为改这个文件** ✓（2026-11-05 起不再设环境变量 ✓）：`conf\markflow.toml` ✓ |
 
 ### 2.2 编译
 
@@ -95,11 +97,13 @@ cargo build --locked --features pdf-probe
 ### 2.3 跑探针
 
 ```bat
-cd D:\code\Marklflow\src-tauri
-set MARKFLOW_LOG=info
-set MARKFLOW_LOG_FORMAT=json
-cargo run --locked --no-default-features --features pdf-probe
+cd /d D:\code\Marklflow
+cargo run --manifest-path src-tauri\Cargo.toml --locked --no-default-features --features pdf-probe
 ```
+
+**不设任何环境变量** ✓（2026-11-05 起输入面只有配置文件 ✓）：级别与形态在
+`conf\markflow.toml` 里 ✓（仓库里的默认值就是 `level=info` ✓、`format=json` ✓）。
+**当前目录必须是仓库根** ✓ —— 配置与日志都按当前目录找 ✓。
 
 **必须是 debug 构建**（`cargo run`，不是 release 产物）：debug 加载 `http://127.0.0.1:3000`（dev server），探针页与主窗口同源 ✓；release 加载内嵌前端（`tauri://localhost`），探针页成了异源，IPC 与 CSP 都不成立，**跑出来的是假证据**。
 
@@ -113,8 +117,8 @@ cargo run --locked --no-default-features --features pdf-probe
 
 | 产物 | 位置 |
 | --- | --- |
-| 日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` |
-| PDF | 默认 `D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\probe-pdf-output.pdf`（可用 `set MARKFLOW_PROBE_PDF=<别的路径>` 改） |
+| 日志 | `<仓库>\log\markflow.<pid>.log` ✓（当前目录下的 log 子目录 ✓；2026-11-05 起不再是 `%LOCALAPPDATA%` ✓） |
+| PDF | 默认 `D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\probe-pdf-output.pdf`（可用配置 `probe.pdf_output` 改 ✓） |
 
 **若 PDF 旁边还留着 `*.tmp-<pid>-*`**（临时名按调用唯一 ✓，带序号 ✓）：只能证明存在残留，不能直接推出打印成功或提交失败。结合本次运行的打印回调、字节数和提交日志判断；正常提交失败路径会尝试删除临时文件，残留也可能来自超时、迟到写入、清理失败或非正常退出。目标是否保留须检查，不能仅凭残留认定保护已验。
 
@@ -132,17 +136,24 @@ bun scripts/pdf-probe-check.ts <日志>
 
 ## 2.6 D7-1 产品形态的打印（2026-11-04 新增）
 
-```bat
-set MARKFLOW_LOG=info
-set MARKFLOW_LOG_FORMAT=json
-:: 让探针页做一次产品形态的打印：会弹出**原生保存对话框** ✓，请选一个你知道的目录 ✓
-set MARKFLOW_PROBE_PRODUCT_PRINT=1
-:: 探针层的两个界（可选 ✓，覆盖默认值 ✓）：
-::   页面须在 60 秒内产出读数 ✓；读报告的总数上限 600 秒 ✓
-:: set MARKFLOW_PROBE_PAGE_READY_TIMEOUT=60
-:: set MARKFLOW_PROBE_REPORT_TIMEOUT=600
-cargo run --locked --no-default-features --features pdf-probe
+**改配置** ✓（2026-11-05 起不再设环境变量 ✓）—— 编辑 `D:\code\Marklflow\conf\markflow.toml` ✓：
+
+```toml
+[probe]
+product_print = true          # 让探针页做一次产品形态的打印 ✓
+# 探针层的两个界（可选 ✓，覆盖默认值 ✓）：
+#   页面须在 60 秒内产出读数 ✓；读报告的总数上限 600 秒 ✓
+# page_ready_timeout_seconds = 60
+# report_timeout_seconds = 600
 ```
+
+```bat
+cd /d D:\code\Marklflow
+cargo run --manifest-path src-tauri\Cargo.toml --locked --no-default-features --features pdf-probe
+```
+
+**跑完把 `product_print` 改回 `false`** ✓ —— 不改的话下一轮（§2.3 那轮 ✓）也会弹对话框 ✓，
+而那会打断探针页其余步骤 ✓（那一轮的证据就不一样了 ✓）。
 
 **慢慢选也没关系** ✓：读报告的总数上限默认 600 秒 ✓，覆盖得到 ✓；产品形态那一步本身**没有上限** ✓（原生保存对话框是阻塞调用 ✓，取消即止 ✓）—— 上限只存在于探针这一层 ✓。
 
@@ -153,7 +164,7 @@ cargo run --locked --no-default-features --features pdf-probe
 | **打印成功** | 保存后日志里 `product_print=saved` ✓，目标目录里出现那个 PDF ✓ |
 | **失败保留旧文件** | 先在目标放一个同名旧文件 ✓ → 制造失败（把目标目录改成不可写 ✓）→ 旧文件内容不变 ✓ |
 
-**不设这个变量时**探针页不做产品形态的打印 ✓（那轮只做 D1b／D1c 的证据 ✓）✓，已归档的证据不受影响 ✓。
+**不设这个开关时**探针页不做产品形态的打印 ✓（那轮只做 D1b／D1c 的证据 ✓）✓，已归档的证据不受影响 ✓。
 
 ## 2.7 D7-1 返工的四项验证（2026-11-04 新增）
 
@@ -176,7 +187,7 @@ bun scripts/check-native-isolation.ts
 
 | 命令 | 期望输出 |
 | --- | --- |
-| ① | `test result: ok. 46 passed` —— 全仓 49 条 ✓，其中 3 条是 `#[cfg(unix)]` 的 ✓、2 条是 `#[cfg(windows)]` 的 ✓ → **Windows 上 46** ✓（macOS 上 47 ✓）。用例数会随改动变 ✓，红了以输出为准 ✓ |
+| ① | `test result: ok. 56 passed` —— 全仓 59 条 ✓，其中 3 条是 `#[cfg(unix)]` 的 ✓、2 条是 `#[cfg(windows)]` 的 ✓ → **Windows 上 56** ✓（macOS 上 57 ✓）。用例数会随改动变 ✓，红了以输出为准 ✓ |
 | ② | `命令面准入成立：注册 8 个，受保护 6 个，不受守卫 2 个（各有准入方式），页面可回传 7 个` |
 | ③ | 无输出即通过 ✓（有输出就是前提被破坏 ✓） |
 

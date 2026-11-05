@@ -29,12 +29,12 @@
 | 项 | 决定 |
 | --- | --- |
 | 框架 | `tracing` 做门面、`tracing-subscriber` 做输出（`default-features = false`，开 `fmt`/`ansi`/`std`/`json`）。不引 `env-filter`（正则）与 `tracing-log` 桥 |
-| 过滤 | `MARKFLOW_LOG` 解析全局级别；默认 debug 构建 INFO、release 构建 WARN |
-| 形态 | 人读一行式为主（时间 级别 目标 字段=值）；`MARKFLOW_LOG_FORMAT=json` 切 JSON 行 |
-| 主 sink | **文件**：日志目录 `app_log_dir()` 下**按运行分文件**（`markflow.<pid>.log`）；单文件 8 MiB 或 UTC 跨日轮转，归档 `markflow.<pid>.log.YYYY-MM-DD.NNN`，只保留最新 10 份归档，规则见§3.2 |
+| 过滤 | 配置文件 `log.level` 解析全局级别（**2026-11-05 改** ✓：原为环境变量 `MARKFLOW_LOG` ✓）；默认 debug 构建 INFO、release 构建 WARN |
+| 形态 | 人读一行式为主（时间 级别 目标 字段=值）；配置文件 `log.format=json` 切 JSON 行（**2026-11-05 改** ✓：原为环境变量 `MARKFLOW_LOG_FORMAT` ✓） |
+| 主 sink | **文件**：日志目录 **`<当前目录>\log\`** 下**按运行分文件**（`markflow.<pid>.log`）；单文件 8 MiB 或 UTC 跨日轮转，归档 `markflow.<pid>.log.YYYY-MM-DD.NNN`，只保留最新 10 份归档，规则见§3.2。**目录原为平台约定的 `app_log_dir()`** ✓（**2026-11-05 改** ✓：日志埋在用户配置目录里 ✓，跑一次要找一次 ✓；现在它与配置同一个根 ✓，见[运行期配置契约](runtime-config-2026-11-05.md)§2 ✓） |
 | 次 sink | stdout（tee）。开发期的快反馈回路 |
 | 写入 | 专用写线程；最多 1024 条待写记录，每条编码后最多 16 KiB。生产者不等待队列空间或文件I/O，队列满则丢弃新记录并计数；超长记录拒收，不截断成无效JSON。**UI 线程不得被日志阻塞**。**同一日志文件只有一个写者**——按运行分文件后结构上成立，无需跨进程协调 |
-| 运行标记 | 每次进程启动写一行 `event=run_start run_id=… os=… arch=… app_version=… feature=…`。`run_id` 同时是本次运行的**根 span**；轮转后一个文件含多次运行，靠它圈出本次 |
+| 运行标记 | 每次进程启动写一行 `event=run_start run_id=… os=… arch=… app_version=… feature=… config_source=… log_level=… log_format=…`。`run_id` 同时是本次运行的**根 span**；轮转后一个文件含多次运行，靠它圈出本次。**后三个字段是 2026-11-05 补的** ✓：配置的**来源**与**有效级别、有效形态** ✓ ——「配置没生效」与「配置生效了但值不对」是两回事 ✓，只记值就分不开 ✓ |
 | 凭据策略 | 所有构建均不记录完整授权key、文档正文、完整本地路径或带凭据URL；以不具授权能力的关联ID替代。字段按允许清单输出，异常文本及Web载荷同样受限，见§5 |
 
 ### 3.1 故障、退出与丢失边界
@@ -114,7 +114,7 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 
 两条补充约束（实施时查出，写进契约免得再犯）：
 
-- **span 上的字段不进记录**。记录只带 span 名、id 与父 id，故 `run` span 上的 os／arch／app_version／feature 必须在 `run_start` 事件上重复一次——校验器要按 §5.3 记构建、feature 与环境，这些字段得真的在日志里。
+- **span 上的字段不进记录**。记录只带 span 名、id 与父 id，故 `run` span 上的 os／arch／app_version／feature 必须在 `run_start` 事件上重复一次——校验器要按 §5.3 记构建、feature 与环境，这些字段得真的在日志里。**配置的来源与有效级别、有效形态同样如此** ✓（2026-11-05 补 ✓）：它们是"这轮跑的是哪份配置"的证据 ✓，只在日志里留一份配置文件不算数 ✓。
 - **每个 command span 都要有 `operation_result`**。拒绝路径没有命令体，由 span 层补一条 `result=denied` 与 `reason_code`；授权解析失败等早退路径同样要记。否则"原生看见了失败却没落笔"，跨侧对照就成了单边叙述。
 
 **`operation_result` 上那两个布尔是什么**（2026-11-04 补记 ✓）：
@@ -148,7 +148,7 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 
 ### 5.2 最小记录契约
 
-- **机器验收以 JSONL 为准**；人读格式同样可被校验器解析——两者由**同一个写出器**从同一批记录生成，字段与脱敏规则相同，不是人工转述。**修订（2026-11-03）**：原条款是"人读格式只供诊断，不解析其文字作机器证据"，理由是怕把转述当证据；实测该顾虑不成立（人读形态由写出器生成，不是人抄的），而交付宿主上因为漏设 `MARKFLOW_LOG_FORMAT=json` 产出的正是人读形态，硬性拒绝它等于作废已取得的证据。故改为两形态皆可解析，人读形态的值含空格时按"续写上一个字段"还原。归档仍以 JSONL 为准。
+- **机器验收以 JSONL 为准**；人读格式同样可被校验器解析——两者由**同一个写出器**从同一批记录生成，字段与脱敏规则相同，不是人工转述。**修订（2026-11-03）**：原条款是"人读格式只供诊断，不解析其文字作机器证据"，理由是怕把转述当证据；实测该顾虑不成立（人读形态由写出器生成，不是人抄的），而交付宿主上因为漏设 `MARKFLOW_LOG_FORMAT=json` 产出的正是人读形态，硬性拒绝它等于作废已取得的证据。故改为两形态皆可解析，人读形态的值含空格时按"续写上一个字段"还原。归档仍以 JSONL 为准。**2026-11-05 补记** ✓：形态不再由环境变量决定 ✓，改由配置文件 `log.format` 决定 ✓ —— 那一类"漏设 → 证据作废"的事故从此不会发生 ✓（配置就在仓库里 ✓，看得见 ✓）。
 - 每条必填 `schema_version=1`、`run_id`（Rust每次启动生成，即本次运行的根 span）、`timestamp`（Rust记录UTC时间）、`level`、`origin`、`event`，以及**所在 span 的上下文**（span 名、span id、父 span）。span 的划分与字段按 §5.1 的词汇表。**不设全局序号**：区分记录靠时间戳与 span 上下文，同一时间戳涌入多个事件是正常现象；真正要防的是**同一事件被重复输出**。Web外层事件固定 `web_event`，附原生取出的 `window_label` / `webview_label`；业务事件在受校验的 `page_event` 字段内，不能变成原生事件名。
 - 最小稳定原生事件：`run_start`、`run_end`、`source_decision`、`operation_result`、`host_state`、`page_report_observed`、`log_health`；Web事件枚举先限 `page_ready`、`call_started`、`call_finished`、`page_error`。具体阶段只能按需增加枚举，不开放任意结构化字段。
 - **观测单位是 span，不是单条记录**：一次调用开一个 span，调用内的守卫判定与操作结果是该 span 内的事件，span 携带起止与耗时。原生侧每个受保护命令一个 span（`command` 为 span 名）；Web侧每次调用一个 span，`call_id` 即其 span id。调用类记录带不具授权能力的 `call_id`、命令枚举、结果枚举；原生守卫记录allow/deny及稳定原因码。Web应用层调用ID只用于关联，不是身份或权限；Rust限制其长度和字符集，绑定run_id、原生身份、命令。每个探针请求使用唯一ID；若需传入生产命令，仅作为可选诊断关联字段，不改变返回值和业务判定，也不允许关联字段控制身份。未落实同请求贯通时，不能只按时间近似配对后宣称调用已对应。

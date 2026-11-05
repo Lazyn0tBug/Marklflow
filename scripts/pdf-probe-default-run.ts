@@ -54,25 +54,23 @@ async function main():Promise<void>{
  // --config 是 tauri CLI 的参数（cargo 没有）→ 用 tauri dev；
  // 它会自己起 dev server，所以**不要**另起一个（端口 3000 是 strictPort，会撞）。
  console.log('cmd.exe：');
- console.log(`  set MARKFLOW_LOG=info`);
- console.log(`  set MARKFLOW_LOG_FORMAT=json`);
- console.log(`  cd ${repo}`);
+ console.log(`  cd /d ${repo}`);
  console.log(`  bun run tauri dev --config "${configPath}"`);
  console.log('');
  console.log('PowerShell：');
- console.log(`  $env:MARKFLOW_LOG='info'`);
- console.log(`  $env:MARKFLOW_LOG_FORMAT='json'`);
  console.log(`  cd ${repo}`);
  console.log(`  bun run tauri dev --config "${configPath}"`);
  console.log('');
  console.log('要点：');
  console.log('  · --config 是 tauri CLI 的参数；cargo run 不认它');
  console.log('  · tauri dev 自己会起 dev server → **不要**另起一个（端口 3000 是 strictPort，会撞）');
+ console.log('  · **不设任何环境变量**（2026-11-05 起输入面只有配置文件）：级别与形态在 conf\\markflow.toml 里');
+ console.log('  · **当前目录必须是仓库根**：配置在 <当前目录>\\conf\\，日志在 <当前目录>\\log\\');
  console.log('  · 默认构建（不带 pdf-probe 特性）：没有探针装配、没有输出宿主、没有探针身份');
  console.log('  · 主窗口身份仍是 ("main","main")，在允许范围内 → 会记下 source_decision=allow');
  console.log('  · 探针页会调用受保护命令并读回结果；授权在首轮后即撤销，第二轮起是 unknown-file-key');
  console.log('  · 跑完从界面正常退出（关窗口）→ 才有 run_end');
- console.log(`  · 取日志：%LOCALAPPDATA%\\com.markflow.desktop\\logs\\markflow.<pid>.log`);
+ console.log(`  · 取日志：${repo}\\log\\markflow.<pid>.log`);
  console.log('  · 与探针构建那份日志一起交给校验器：D1b-5 需要默认构建里有主窗口放行记录');
  console.log('');
  console.log(`配置内容（供手工核对）：${existsSync(configPath)?'已在上面给出的路径':''}`);
