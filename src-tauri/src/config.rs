@@ -187,6 +187,10 @@ pub fn load(cwd: &Path) -> (Config, Source) {
 /// 相对路径按当前目录解析。
 ///
 /// 绝对路径原样用 ✓；相对路径挂在当前目录下 ✓。
+///
+/// **只有探针用得到** ✓（受控样本与打印目标 ✓）—— 默认构建里没人调 ✓，
+/// 故此处标 `allow(dead_code)` ✓（否则默认构建会带一条死代码告警 ✓）。
+#[allow(dead_code)]
 pub fn resolve(cwd: &Path, value: &str) -> PathBuf {
     let path = Path::new(value);
     if path.is_absolute() {

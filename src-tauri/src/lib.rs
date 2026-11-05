@@ -63,14 +63,15 @@ pub fn run() {
         ]);
     // 日志基座在业务事件之前就位：守卫判定属安全事件，任何构建都该留痕。
     // 受控探针只在 pdf-probe feature 下装配；默认构建里没有这条路径。
-    let builder = builder.setup(|app| {
+    let builder = builder.setup(|_app| {
         // **当前目录是运行期的根** ✓：配置从这儿读 ✓，日志落在这儿 ✓，
         // 配置里的相对路径也按这儿解析 ✓ —— 一个根 ✓，不留第二个答案 ✓。
         let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
         let (config, source) = config::load(&cwd);
         logging::init(&config.log, source, feature_name());
+        // 探针要用应用句柄 ✓；默认构建里没有探针 ✓，句柄也就没人要 ✓。
         #[cfg(feature = "pdf-probe")]
-        probe::run(app.handle(), &config, &cwd)?;
+        probe::run(_app.handle(), &config, &cwd)?;
         Ok(())
     });
     builder

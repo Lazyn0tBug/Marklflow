@@ -70,7 +70,8 @@ async function main():Promise<void>{
  console.log('  · 主窗口身份仍是 ("main","main")，在允许范围内 → 会记下 source_decision=allow');
  console.log('  · 探针页会调用受保护命令并读回结果；授权在首轮后即撤销，第二轮起是 unknown-file-key');
  console.log('  · 跑完从界面正常退出（关窗口）→ 才有 run_end');
- console.log(`  · 取日志：${repo}\\log\\markflow.<pid>.log`);
+ console.log('  · 取日志：**<应用当前目录>\\log\\markflow.<pid>.log** ✓（当前目录不是仓库根时就在别处 ✓：');
+ console.log('    `tauri dev` 把 cargo 跑在 src-tauri 下 ✓ → 日志落在 src-tauri\\log\\ ✓；找不到就 `dir /s /b <仓库>\\markflow.*.log` ✓');
  console.log('  · 与探针构建那份日志一起交给校验器：D1b-5 需要默认构建里有主窗口放行记录');
  console.log('');
  console.log(`配置内容（供手工核对）：${existsSync(configPath)?'已在上面给出的路径':''}`);
