@@ -48,6 +48,8 @@ const modules={
  // 也带着只有 Windows 上才编得到的调用 ✓——不进夹具就等于没查 ✓。
  files:join(repo,'src-tauri/src/files.rs'),
  probe:join(repo,'src-tauri/src/probe.rs'),
+ // 运行期配置：日志基座与探针装配都从它取值 ✓，它自己也要编 ✓。
+ config:join(repo,'src-tauri/src/config.rs'),
 };
 
 /** 跑一条命令；失败时返回其输出，不抛。 */
@@ -139,6 +141,8 @@ async function crossCheck(work:string,rustcPath:string):Promise<void>{
   // 产品形态入口要对话框插件（原生保存对话框 ✓），探针装配要 tempfile（受控夹具 ✓）。
   `tauri-plugin-dialog = "${dependencyVersion('tauri-plugin-dialog')}"`,
   `tempfile = "${dependencyVersion('tempfile')}"`,
+  // 运行期配置要 TOML 解析 ✓。
+  `toml = "${dependencyVersion('toml')}"`,
   '',
  ].join('\n'));
  writeFileSync(join(work,'src/main.rs'),[

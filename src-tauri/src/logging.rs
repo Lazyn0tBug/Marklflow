@@ -27,6 +27,8 @@ use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 
+use crate::config::{LogConfig, Source as ConfigSource};
+
 /// 单文件字节上限。
 pub const MAX_FILE_BYTES: u64 = 8 * 1024 * 1024;
 /// 归档保留份数。
@@ -364,7 +366,10 @@ pub fn run_id() -> &'static str {
 /// 初始化日志基座。目录不可用时应用继续运行，只把文件 sink 标为不可用。
 ///
 /// 调用时机：应用的 setup 钩子里（此时才有平台约定的日志目录），且必须早于任何业务事件。
-pub fn init(app: &tauri::AppHandle, feature: &str) {
+///
+/// 级别与形态来自**运行期配置** ✓（不再是环境变量 ✓）：配置是显式输入 ✓，
+/// 环境是隐式输入 ✓ —— 它跨进程继承 ✓，单测会因它而红 ✓。
+pub fn init(app: &tauri::AppHandle, config: &LogConfig, source: ConfigSource, feature: &str) {
     let run_id = uuid::Uuid::new_v4().to_string();
     let _ = RUN_ID.set(run_id.clone());
     // 健康状态先建好并登记：目录不可用、写失败、丢弃都要落到它上面。
@@ -385,10 +390,8 @@ pub fn init(app: &tauri::AppHandle, feature: &str) {
             None
         }
     };
-    let json = std::env::var("MARKFLOW_LOG_FORMAT")
-        .map(|value| value.eq_ignore_ascii_case("json"))
-        .unwrap_or(false);
-    let level = level_from_env();
+    let json = config.format.eq_ignore_ascii_case("json");
+    let level = level_from_config(&config.level);
     let (sender, receiver) = sync_channel::<QueuedRecord>(QUEUE_CAPACITY);
     let _ = SENDER.set(sender.clone());
     let writer_format = RecordFormat {
@@ -437,6 +440,10 @@ pub fn init(app: &tauri::AppHandle, feature: &str) {
     let _ = LOG_SPAN.set(log_span.clone());
     // 环境随运行标记一起落笔：校验器要记构建、feature 与环境（契约 §5.3），
     // 而 span 上的字段不进记录，故这里在事件上重复一次。
+    //
+    // **配置也随运行标记落笔** ✓：级别与形态是**有效值** ✓（不是配置文件里的原文 ✓），
+    // 配置的来源也要记 ✓ —— 「配置没生效」与「配置生效了但值不对」是两回事 ✓，
+    // 只记值就分不开 ✓。
     span.in_scope(|| {
         tracing::info!(
             event = "run_start",
@@ -444,8 +451,24 @@ pub fn init(app: &tauri::AppHandle, feature: &str) {
             os = std::env::consts::OS,
             arch = std::env::consts::ARCH,
             app_version = env!("CARGO_PKG_VERSION"),
+            config_source = source.as_str(),
+            log_level = level_name(level),
+            log_format = if json { "json" } else { "text" },
         )
     });
+}
+
+/// 级别的记法：与契约里的枚举风格一致（小写）✓。
+fn level_name(level: tracing::level_filters::LevelFilter) -> &'static str {
+    use tracing::level_filters::LevelFilter;
+    match level {
+        LevelFilter::ERROR => "error",
+        LevelFilter::WARN => "warn",
+        LevelFilter::INFO => "info",
+        LevelFilter::DEBUG => "debug",
+        LevelFilter::TRACE => "trace",
+        LevelFilter::OFF => "off",
+    }
 }
 
 /// 结束本次运行：写 `run_end`，排空队列并刷新，最多等 `SHUTDOWN_TIMEOUT`。
@@ -487,16 +510,16 @@ pub fn shutdown(feature: &str) {
 /// 写线程存活标记。
 static WRITER_ALIVE: AtomicBool = AtomicBool::new(false);
 
-/// 级别来自环境变量；默认 debug 构建 INFO、发布构建 WARN。
-fn level_from_env() -> tracing::level_filters::LevelFilter {
+/// 级别来自配置；默认 debug 构建 INFO、发布构建 WARN。
+fn level_from_config(value: &str) -> tracing::level_filters::LevelFilter {
     use tracing::level_filters::LevelFilter;
-    match std::env::var("MARKFLOW_LOG").ok().as_deref().map(str::trim) {
-        Some("error") => LevelFilter::ERROR,
-        Some("warn") => LevelFilter::WARN,
-        Some("info") => LevelFilter::INFO,
-        Some("debug") => LevelFilter::DEBUG,
-        Some("trace") => LevelFilter::TRACE,
-        Some("off") => LevelFilter::OFF,
+    match value.trim() {
+        "error" => LevelFilter::ERROR,
+        "warn" => LevelFilter::WARN,
+        "info" => LevelFilter::INFO,
+        "debug" => LevelFilter::DEBUG,
+        "trace" => LevelFilter::TRACE,
+        "off" => LevelFilter::OFF,
         _ => {
             if cfg!(debug_assertions) {
                 LevelFilter::INFO

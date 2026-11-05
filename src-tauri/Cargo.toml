@@ -28,6 +28,9 @@ tauri-build = { version = "=2.7.4", features = [] }
 [dependencies]
 tauri = { version = "=2.12.4", features = [] }
 serde = { version = "1", features = ["derive"] }
+# 运行期配置（<当前目录>\conf\markflow.toml）：TOML 解析。
+# 版本与锁文件里已有的 0.8.2 对齐，不新增下载源。
+toml = "0.8"
 tauri-plugin-dialog = "2"
 tempfile = "3"
 uuid = { version = "1", features = ["v4"] }

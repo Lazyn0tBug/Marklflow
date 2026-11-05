@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{Manager, Url, WebviewUrl};
 
+use crate::config::{self, Config};
 use crate::files::FileAccess;
 use crate::logging;
 use crate::pdf_print;
@@ -30,53 +31,16 @@ pub const FIXTURE_CONTENT: &str = "MF-PROBE-FIXTURE-20261103";
 /// 探针页在仓库中的路径。由开发服务器提供，与生产前端同源，不放宽生产 CSP。
 const PROBE_PAGE_PATH: &str = "/tests/fixtures/architecture/pdf-probe-client.html";
 
-/// 报告读取的**启动护栏**：探针页必须在它之内产出读数 ✓。
-///
-/// **它不是需求** ✓：没有任何要求给"读页面报告"定过界 ✓。
-/// 它是探针层的护栏 ✓——探针得有个结论 ✓，不能永远等下去 ✓。
-/// 没有读数就是"页面没就位" ✓，这条超时本身就是那条证据 ✓。
-const PAGE_READY_TIMEOUT: Duration = Duration::from_secs(60);
-
-/// 报告读取的**总数上限**：从开始读到页面标记完成 ✓。
-///
-/// **它也不是需求** ✓：它是探针层的护栏 ✓——探针自己请了人来选目标 ✓，
-/// 所以它得容得下人的时间 ✓。产品形态那一步本身**没有上限** ✓（人有取消动作 ✓），
-/// 上限只存在于探针这一层 ✓。
-///
-/// **机器步与人参与的那一步之间不再分预算** ✓：探针不知道哪一步是哪一步 ✓，
-/// 分了也只是猜 ✓——那个 60 秒就是这么来的 ✓，它把"人在回路"这一步管死了 ✓。
-const REPORT_TIMEOUT: Duration = Duration::from_secs(600);
-
-/// 两个界都可由用例覆盖 ✓（环境变量 ✓）：交付宿主上人认真选目标的时间是可变的 ✓，
-/// 改用例比改代码快 ✓。给的不是正整数就按默认值走 ✓。
-const PAGE_READY_TIMEOUT_ENV: &str = "MARKFLOW_PROBE_PAGE_READY_TIMEOUT";
-const REPORT_TIMEOUT_ENV: &str = "MARKFLOW_PROBE_REPORT_TIMEOUT";
-
-/// 静默 PDF 的输出目标。默认落在归档目录；可用环境变量改到别处。
-const PDF_OUTPUT_ENV: &str = "MARKFLOW_PROBE_PDF";
-
-/// 是否让探针页做一次产品形态的打印（D7-1 的验收驱动 ✓）。
-/// 它的目标由人在原生保存对话框里选 ✓，所以默认不做 ✓。
-const PRODUCT_PRINT_ENV: &str = "MARKFLOW_PROBE_PRODUCT_PRINT";
-
-/// 受控样本归档原件的位置。优先环境变量（交付宿主上的路径可能不同），
-/// 退回编译期的仓库路径（交付宿主从仓库构建，可用）。两者都没有就跳过就绪探测。
-const SAMPLE_ENV: &str = "MARKFLOW_PROBE_SAMPLE";
-
-/// 冻结样本的归档原件路径。
+/// 冻结样本的归档原件路径（按配置给的相对路径，按当前目录解析）。
 ///
 /// **必须加载归档原件，不能走 dev server**：dev server 会往 HTML 里注入
 /// react-refresh 前导与 vite client，注入后的字节与被记录了 SHA-256 的原件不是同一份
 /// （实测 d09bc77b… vs 78aff00c…），打印出来的就不是那个被登记的产物。
-fn frozen_sample_path() -> Option<PathBuf> {
-    if let Ok(value) = std::env::var(SAMPLE_ENV) {
-        let path = PathBuf::from(value);
-        if path.is_file() {
-            return Some(path);
-        }
-    }
-    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent()?.to_path_buf();
-    let path = repo.join("docs/acceptance/pdf-probe/frozen-sample.html");
+///
+/// 找不到原件就跳过就绪探测 ✓：没有原件就没有那份产物 ✓，探测出来的分页度量
+/// 不是被登记的那份的 ✓ —— 那样的数字是假的 ✓。
+fn frozen_sample_path(config: &Config, cwd: &Path) -> Option<PathBuf> {
+    let path = config::resolve(cwd, &config.probe.sample);
     if path.is_file() {
         Some(path)
     } else {
@@ -84,16 +48,9 @@ fn frozen_sample_path() -> Option<PathBuf> {
     }
 }
 
-/// 静默 PDF 的输出目标路径。
-fn pdf_output_path() -> Option<PathBuf> {
-    if let Ok(value) = std::env::var(PDF_OUTPUT_ENV) {
-        // 空串按未设置处理：空路径的父目录不存在，会让打印必然失败。
-        if !value.trim().is_empty() {
-            return Some(PathBuf::from(value));
-        }
-    }
-    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).parent()?.to_path_buf();
-    Some(repo.join("docs/acceptance/pdf-probe/probe-pdf-output.pdf"))
+/// 静默 PDF 的输出目标路径（按配置给的相对路径，按当前目录解析）。
+fn pdf_output_path(config: &Config, cwd: &Path) -> PathBuf {
+    config::resolve(cwd, &config.probe.pdf_output)
 }
 
 /// 探针装配的失败类别。
@@ -123,8 +80,12 @@ impl ProbeError {
 /// 装配探针并留下运行证据。调用方负责把日志作为阶段证据。
 ///
 /// **装配失败不拖住应用启动**：探针是测试路径，失败只记一条中止原因。
-pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    match assemble(app) {
+pub fn run(
+    app: &tauri::AppHandle,
+    config: &Config,
+    cwd: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match assemble(app, config, cwd) {
         Ok(()) => Ok(()),
         Err(error) => {
             logging::probe_span().in_scope(|| {
@@ -136,7 +97,7 @@ pub fn run(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// 探针装配。失败时给出失败类别，不给异常原文。
-fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
+fn assemble(app: &tauri::AppHandle, config: &Config, cwd: &Path) -> Result<(), ProbeError> {
     let fixture_dir = tempfile::tempdir().map_err(|_| ProbeError::Fixture)?;
     let fixture: PathBuf = fixture_dir.path().join("probe-fixture.md");
     fs::write(&fixture, FIXTURE_CONTENT).map_err(|_| ProbeError::Fixture)?;
@@ -152,7 +113,12 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
 
     // 探针页 URL 的源取自**配置**，不取自窗口的当前 URL：窗口在初载落地前是
     // about:blank，据此算出来的源是错的——交付宿主上就是这么变成白屏的。
-    let url = probe_url(app, &read_grant.key, &write_grant.key)?;
+    let url = probe_url(
+        app,
+        &read_grant.key,
+        &write_grant.key,
+        config.probe.product_print,
+    )?;
 
     // 探针装配的 span：根 span 的直接子。
     let probe = logging::probe_span();
@@ -173,6 +139,9 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
     let read_key = read_grant.key.clone();
     let write_key = write_grant.key.clone();
     let fixture_dir = fixture_dir;
+    // 配置与当前目录进线程：线程要活过 setup ✓，借用活不到那里 ✓ —— 各带一份 ✓。
+    let config = config.clone();
+    let cwd = cwd.to_path_buf();
     std::thread::spawn(move || {
         probe.in_scope(|| {
         let main_window = handle.get_webview_window("main");
@@ -245,8 +214,9 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         // 误判为"没导航"就会连报告一起丢掉。故一律读——页面真没起来的话，
         // 读报告会等到超时，正好也是一条证据（"页面没就位" ✓）。
         let mut main_report_read = false;
-        let ready_timeout = timeout_from_env(PAGE_READY_TIMEOUT_ENV, PAGE_READY_TIMEOUT);
-        let total_timeout = timeout_from_env(REPORT_TIMEOUT_ENV, REPORT_TIMEOUT);
+        // 两个护栏都来自配置 ✓（不再是环境变量 ✓）：给的不是正整数就按默认值走 ✓。
+        let ready_timeout = Duration::from_secs(config.probe.page_ready_timeout_seconds);
+        let total_timeout = Duration::from_secs(config.probe.report_timeout_seconds);
         if let Some(window) = &main_window {
             if let Some(report) = read_report(window, ready_timeout, total_timeout, "main") {
                 log_observed_report("main", &report);
@@ -288,8 +258,9 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
         // 探针页的证据已在此之前读完，导航走不影响。
         // D1c：就绪后静默打印，输出到目标同目录的临时文件，再 rename 提交。
         // 失败时原文件保持不变：目标只在最后那一步被 rename 触及。
-        match (frozen_sample_path(), pdf_output_path()) {
-            (Some(sample), Some(target)) => {
+        match frozen_sample_path(&config, &cwd) {
+            Some(sample) => {
+                let target = pdf_output_path(&config, &cwd);
                 match pdf_print::print_document_to_pdf(&handle, &sample, &target) {
                     Ok(outcome) => {
                         tracing::info!(
@@ -351,7 +322,7 @@ fn assemble(app: &tauri::AppHandle) -> Result<(), ProbeError> {
                 tracing::warn!(
                     event = "probe_pdf",
                     ok = false,
-                    reason = "受控样本或输出目标不可用",
+                    reason = "受控样本不可用",
                 );
             }
         }
@@ -500,6 +471,7 @@ fn probe_url(
     app: &tauri::AppHandle,
     read_key: &str,
     write_key: &str,
+    product_print: bool,
 ) -> Result<Url, ProbeError> {
     let origin = app
         .config()
@@ -507,21 +479,24 @@ fn probe_url(
         .dev_url
         .clone()
         .ok_or(ProbeError::NoAppOrigin)?;
-    Ok(probe_url_from(origin, read_key, write_key))
+    Ok(probe_url_from(origin, read_key, write_key, product_print))
 }
 
 /// 由应用源构造探针页 URL：路径换成探针页，查询串带两份 key 与期望内容。
 ///
-/// 纯函数：源的路径与查询串一律被替换，不从源里继承任何内容。
-fn probe_url_from(mut origin: Url, read_key: &str, write_key: &str) -> Url {
+/// 纯函数：源的路径与查询串一律被替换，不从源里继承任何内容 ✓；
+/// **产品形态打印这个开关是参数** ✓，不是读环境得来的 ✓ —— 环境是隐式输入 ✓，
+/// 读它的地方一旦被别处的环境污染 ✓，单测就红 ✓（交付宿主上就红过一次 ✓）。
+fn probe_url_from(
+    mut origin: Url,
+    read_key: &str,
+    write_key: &str,
+    product_print: bool,
+) -> Url {
     origin.set_path(PROBE_PAGE_PATH);
     // 产品形态的打印（D7-1 的验收驱动）默认不做 ✓：它要人在原生保存对话框里选目标 ✓，
-    // 会打断探针页其余步骤 ✓。要用就设 MARKFLOW_PROBE_PRODUCT_PRINT=1 ✓。
-    let product_print = if std::env::var(PRODUCT_PRINT_ENV).is_ok() {
-        "&productPrint=1"
-    } else {
-        ""
-    };
+    // 会打断探针页其余步骤 ✓。要不要做由配置说了算 ✓。
+    let product_print = if product_print { "&productPrint=1" } else { "" };
     origin.set_query(Some(&format!(
         "readKey={}&writeKey={}&expect={}{}",
         read_key,
@@ -687,17 +662,6 @@ fn has_reading(raw: &str) -> bool {
     !bare.is_empty() && bare != "{}"
 }
 
-/// 取一个秒数上限：环境变量给了正整数就用它，没给或给的不合法就用默认值。
-fn timeout_from_env(name: &str, fallback: Duration) -> Duration {
-    let Ok(raw) = std::env::var(name) else {
-        return fallback;
-    };
-    match raw.trim().parse::<u64>() {
-        Ok(seconds) if seconds > 0 => Duration::from_secs(seconds),
-        _ => fallback,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -705,13 +669,25 @@ mod tests {
     #[test]
     fn the_probe_url_replaces_the_path_and_the_query_of_the_origin() {
         let origin = Url::parse("http://127.0.0.1:3000/app/index.html?stale=1").unwrap();
-        let url = probe_url_from(origin, "read-key", "write-key");
+        let url = probe_url_from(origin, "read-key", "write-key", false);
         assert_eq!(url.path(), PROBE_PAGE_PATH);
         assert_eq!(url.host_str(), Some("127.0.0.1"));
         assert_eq!(url.port(), Some(3000));
         assert_eq!(
             url.query(),
             Some("readKey=read-key&writeKey=write-key&expect=MF-PROBE-FIXTURE-20261103")
+        );
+    }
+
+    #[test]
+    fn the_product_print_switch_is_a_parameter_and_not_an_ambient_one() {
+        // 开关是参数 ✓：环境里有没有那个变量都一样 ✓。
+        // 交付宿主上就因为环境里留着上一轮的值而红过一次 ✓。
+        let origin = Url::parse("http://127.0.0.1:3000/app/index.html").unwrap();
+        let url = probe_url_from(origin, "read-key", "write-key", true);
+        assert_eq!(
+            url.query(),
+            Some("readKey=read-key&writeKey=write-key&expect=MF-PROBE-FIXTURE-20261103&productPrint=1")
         );
     }
 

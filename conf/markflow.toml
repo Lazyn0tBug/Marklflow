@@ -1,0 +1,29 @@
+# MarkFlow 运行期配置。
+#
+# 位置：<当前目录>\conf\markflow.toml —— 当前目录是运行期的根 ✓：
+# 日志落在 <当前目录>\log\ ✓，这里的相对路径也按当前目录解析 ✓。
+#
+# 开发期当前目录恒为仓库根，故这份文件随仓库管理 ✓（改用例就是改文件 ✓）。
+# 发布时这份文件改名成 markflow.toml.example ✓ —— 发布出去的是形状 ✓，
+# 不是某台机器上的取值 ✓。
+#
+# 缺失或写坏了都走默认值 ✓，应用照常启动 ✓；来源记进 run_start 的 config_source ✓。
+
+[log]
+# 全局级别：error / warn / info / debug / trace / off。
+# 空或别的值按构建形态取默认（debug 构建 info，发布构建 warn）。
+level = "info"
+# 记录形态：json / text。机器验收以 json 为准。
+format = "json"
+
+[probe]
+# 受控样本的归档原件。必须加载归档原件，不能走 dev server ✓。
+sample = "docs/acceptance/pdf-probe/frozen-sample.html"
+# 静默 PDF 的输出目标。
+pdf_output = "docs/acceptance/pdf-probe/probe-pdf-output.pdf"
+# 是否让探针页做一次产品形态的打印（会弹原生保存对话框）。
+product_print = false
+# 页面就绪的护栏（秒）：探针得有个结论，不能永远等下去。
+page_ready_timeout_seconds = 60
+# 读报告的总数上限（秒）：探针请了人来选目标，得容得下人的时间。
+report_timeout_seconds = 600
