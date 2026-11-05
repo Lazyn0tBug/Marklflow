@@ -55,7 +55,7 @@
 | --- | --- | --- |
 | `saved` ✓ | 目标提交成功 ✓ | `completed` ✓ |
 | `cancelled` ✓ | 用户取消 ✓（**没写任何文件** ✓） | `cancelled` ✓ |
-| `failed` ✓ | 打印或提交失败 ✓（**原文件未动** ✓） | `completed` + 明说失败 ✓ ✓ |
+| `failed` ✓ | 打印或提交失败 ✓（**原文件未动** ✓） | **`failed`** ✓（**独立状态** ✓ —— 失败不是完成 ✓） |
 
 **不与字节格式那四态混用** ✓（`saved`／`download-started`／`recovered-download`／`activation-expired` ✓）—— PDF 没有"浏览器接管"这一说 ✓ ✓。
 
