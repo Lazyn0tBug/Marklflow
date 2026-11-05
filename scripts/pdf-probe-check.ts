@@ -553,6 +553,39 @@ function duplicateDiagnostics(run:RunView):Diagnostic[]{
  return diagnostics;
 }
 
+/**
+ * 诊断：同一次页面调用的事件被报了两次。
+ *
+ * **按 `call_id` + 页面事件名去重** ✓，不看 span ✓ —— 页面侧每个 web 事件各开一个 span ✓
+ * （契约写的是"每次调用一个 span" ✓，实现是每事件一个 ✓），
+ * 所以同一个 `call_id` 的同名事件落在不同 span 里 ✓，
+ * **上面那条"同一 span 内重复"抓不到它** ✓。交付宿主上就漏过一次 ✓：
+ * 同一份 `call_finished` 被提交了两遍 ✓，日志里长得不一样 ✓（时间戳与 span id 不同 ✓），
+ * 而契约说的是"同一事件不得重复输出" ✓。
+ *
+ * 一次调用有 `call_started` 与 `call_finished` ✓ —— 事件名不同 ✓，不算重复 ✓。
+ */
+function duplicateWebEventDiagnostics(run:RunView):Diagnostic[]{
+ const seen=new Map<string,LogRecord>();
+ const diagnostics:Diagnostic[]=[];
+ for(const record of run.records){
+  if(record.event!=='web_event')continue;
+  const callId=text(record.fields.call_id);
+  const pageEvent=text(record.fields.page_event);
+  if(!callId||!pageEvent)continue;
+  const key=`${callId}|${pageEvent}`;
+  const previous=seen.get(key);
+  if(previous){
+   diagnostics.push({
+    id:'duplicate-web-event',
+    severity:'error',
+    message:`同一次页面调用的事件重复：call_id=${callId} page_event=${pageEvent}（${previous.timestamp} 与 ${record.timestamp}）`,
+   });
+  }else seen.set(key,record);
+ }
+ return diagnostics;
+}
+
 /** 诊断：span 结构是否合契约（调用 span 都是根的直接子；事件落在规定的 span 内）。 */
 function spanDiagnostics(run:RunView):Diagnostic[]{
  const diagnostics:Diagnostic[]=[];
@@ -798,6 +831,7 @@ export function evaluateProbeRun(run:RunView,defaultRuns:RunView[]):{assertions:
  const assertions:AssertionResult[]=[];
  const diagnostics:Diagnostic[]=[
   ...duplicateDiagnostics(run),
+  ...duplicateWebEventDiagnostics(run),
   ...spanDiagnostics(run),
   ...commandSpanDiagnostics(run),
   ...vocabularyDiagnostics(run),

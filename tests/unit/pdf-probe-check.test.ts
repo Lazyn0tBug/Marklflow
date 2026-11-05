@@ -109,7 +109,30 @@ describe('pdf-probe 校验器',()=>{
   expect(verdictOf(report,'D1b-6')).toBe('pass');
   expect(diagnosticsOf(report,'credential-fragment')).toHaveLength(0);
   expect(diagnosticsOf(report,'duplicate-event')).toHaveLength(0);
+  expect(diagnosticsOf(report,'duplicate-web-event')).toHaveLength(0);
   expect(diagnosticsOf(report,'cross-side-mismatch')).toHaveLength(0);
+ });
+
+ it('同一次页面调用的事件被报了两遍时报重复，不看 span',()=>{
+  // 页面侧每个 web 事件各开一个 span ✓：同一份 call_finished 落在两个 span 里 ✓，
+  // "同一 span 内重复"抓不到 ✓ —— 交付宿主上就漏过一次 ✓。
+  const duplicated=[
+   record({event:'web_event',origin:'web',span:{name:'page_call',id:30,parent_id:1},fields:{page_event:'call_finished',command:'read_native_text',result:'ok',call_id:'call-1',window_label:'main',webview_label:'main'}}),
+   record({event:'web_event',origin:'web',span:{name:'page_call',id:31,parent_id:1},fields:{page_event:'call_finished',command:'read_native_text',result:'ok',call_id:'call-1',window_label:'main',webview_label:'main'}}),
+  ];
+  const report=evaluate([...healthyProbeRun(),...duplicated],healthyDefaultRun());
+  expect(diagnosticsOf(report,'duplicate-web-event').length).toBeGreaterThan(0);
+  // 两个 span 不同 ✓：那条按 span 去重的诊断不该报 ✓。
+  expect(diagnosticsOf(report,'duplicate-event')).toHaveLength(0);
+ });
+
+ it('一次调用有 started 与 finished 两件事，不算重复',()=>{
+  const call=[
+   record({event:'web_event',origin:'web',span:{name:'page_call',id:30,parent_id:1},fields:{page_event:'call_started',command:'read_native_text',call_id:'call-2',window_label:'main',webview_label:'main'}}),
+   record({event:'web_event',origin:'web',span:{name:'page_call',id:31,parent_id:1},fields:{page_event:'call_finished',command:'read_native_text',result:'ok',call_id:'call-2',window_label:'main',webview_label:'main'}}),
+  ];
+  const report=evaluate([...healthyProbeRun(),...call],healthyDefaultRun());
+  expect(diagnosticsOf(report,'duplicate-web-event')).toHaveLength(0);
  });
 
  it('缺 run_start 时全部记未能确认，不按缺证当作失败也不当作通过',()=>{
