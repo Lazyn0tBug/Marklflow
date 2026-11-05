@@ -112,7 +112,7 @@ jobs:
   windows-print-chain:
     name: Windows print chain
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       CI: "true"
     steps:
@@ -135,3 +135,15 @@ jobs:
         run: bun scripts/check-windows-com.ts
         env:
           RUST_TOOLCHAIN: "1.94.0"
+
+      # **默认构建也要被 lint** ✓。
+      #
+      # 之前只有带 `pdf-probe` 特性的那一份被检查过 ✓ → 默认构建里的两条告警
+      # （未被使用的应用句柄 ✓、只有探针用得到的路径解析 ✓）谁都没看见 ✓，
+      # 直到交付宿主上跑默认构建才露出来 ✓。
+      #
+      # 这一步编的是应用自己 ✓（不是夹具 ✓）→ 依赖要现编 ✓，
+      # 所以时间预算比交叉检查宽 ✓。
+      - name: Lint the default build
+        working-directory: src-tauri
+        run: cargo clippy --locked --all-targets -- -D warnings
