@@ -1061,7 +1061,7 @@ D1b／D1c 的那些断言、那些日志、那些 PDF 都还在 ✓，它们证�
 | **命名** ✓ | 默认名 `probe-product-shape.pdf` ✓ 落在目标文件名上 ✓ |
 | **取消** ✓ | **机器证据** ✓：`select_native_save granted=false` ✓（授权没发出去 ✓）+ `product_print=cancelled` ✓（回执区分了取消 ✓）+ **日志里没有打印命令** ✓ → 一个字节都没写 ✓ |
 | **同目录临时提交** ✓ | `committed=true` ✓ + `pdf_temp_removed=true` ✓ |
-| **覆盖失败保护** ✓ | **人工项** ✓：操作者在宿主上确认失败时旧文件内容未变 ✓；机器那半（`print-not-committed` ✓）**未取** ✓，以后补 ✓ |
+| **覆盖失败保护** ✓ | **机器那半** ✓：`select_native_save granted=true` ✓ → 打印出 205821 字节 ✓ → **提交失败** ✓（`result=error reason_code=print-not-committed committed=false` ✓）→ 临时文件已清 ✓（`pdf_temp_removed=true` ✓）；页面回执 `not-committed` ✓（**不是 saved** ✓）。**旧文件未被触碰** ✓ 这一条是**人工项** ✓（日志不记路径与正文 ✓，契约如此 ✓）—— 操作者在宿主上核对：**前后哈希相同** ✓ |
 | **资源／超时／迟到清理** ✓ | `probe_cleanup revoked=true` ✓、`log_health` 全 0 ✓ |
 | **清理证据** ✓ | `pdf_temp_removed=true` ✓ |
 | **完整 PDF** ✓ | 源文档度量 ✓（页面盒 3 个 ✓、794×1123 ✓）；**PDF 自身的页数与尺寸未取** ✓（要 PDF 工具 ✓，poppler 未授权 ✓） |
