@@ -1,4 +1,5 @@
 import {withDeadline,waitForLayout} from '../../export/documentPrint';
+import type {PdfDeliveryReceipt} from '../../../application/exports/exportService';
 /** Web-only native PDF handoff. Input is complete frozen HTML, never source or PDF bytes. */
 /** The system spooler keeps reading after the print dialog closes; destroying the frame too early truncates the output. */
 export const FRAME_RELEASE_DELAY=1500;
@@ -35,7 +36,7 @@ async function preparePrintFrame(html:string):Promise<HTMLIFrameElement>{
  }catch(error){removeFrame(frame);throw error}
  finally{window.removeEventListener('pagehide',leave);frame.onload=null;frame.onerror=null}
 }
-export async function deliverPdfHtml(html:string):Promise<void>{
+export async function deliverPdfHtml(html:string):Promise<PdfDeliveryReceipt>{
  const frame=await preparePrintFrame(html);
  const view=frame.contentWindow;if(!view){removeFrame(frame);throw new Error('PDF导出窗口不可读取')}
  const cleanup=()=>{view.removeEventListener('afterprint',cleanup);window.removeEventListener('pagehide',cleanup);removeFrame(frame)};
@@ -46,4 +47,7 @@ export async function deliverPdfHtml(html:string):Promise<void>{
   window.addEventListener('pagehide',cleanup,{once:true});
   view.focus();view.print();
  }catch(error){cleanup();throw error}
+ // 交给浏览器之后**说不准** ✓：打印对话框是系统窗口 ✓，它自己那边发生了什么
+ // 这里看不到 ✓ —— 所以只说"已交由浏览器处理" ✓，不冒充 saved ✓。
+ return 'handed-off';
 }
