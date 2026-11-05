@@ -28,6 +28,9 @@
 level = "info"        # error / warn / info / debug / trace / off
 format = "json"       # json / text
 
+[export]
+root = "web"          # web（浏览器打印对话框）或 native（Windows 静默路径）
+
 [probe]
 sample = "docs/acceptance/pdf-probe/frozen-sample.html"
 pdf_output = "docs/acceptance/pdf-probe/probe-pdf-output.pdf"
@@ -46,6 +49,7 @@ report_timeout_seconds = 600
 | `log.format` | 字符串 | `text` | 记录形态 ✓：`json` 是机器验收用的形态 ✓ |
 | `probe.sample` | 字符串 | `docs/acceptance/pdf-probe/frozen-sample.html` | 受控样本的归档原件 ✓（相对路径按当前目录解析 ✓） |
 | `probe.pdf_output` | 字符串 | `docs/acceptance/pdf-probe/probe-pdf-output.pdf` | 静默 PDF 的输出目标 ✓ |
+| `export.root` | 字符串 | `web` | 导出的根 ✓：`web`（浏览器打印对话框 ✓）或 `native`（Windows 的静默路径 ✓）。**平台没有静默 PDF 而选了它 ⇒ 不回落 ✓**，导出明说 ✓ ✓ |
 | `probe.product_print` | 布尔 | `false` | 探针页是否做一次产品形态的打印 ✓（会弹原生保存对话框 ✓） |
 | `probe.page_ready_timeout_seconds` | 整数 | `60` | 页面就绪的护栏 ✓（**护栏不是需求** ✓） |
 | `probe.report_timeout_seconds` | 整数 | `600` | 读报告的总数上限 ✓（探针请了人来选目标 ✓，得容得下人的时间 ✓） |
@@ -97,12 +101,12 @@ report_timeout_seconds = 600
 
 | 项 | 怎么验 | 结果 |
 | --- | --- | --- |
-| 配置解析 | `cargo test`（`config::tests` 7 条 ✓） | 缺失／损坏／覆盖／归一／相对路径各一条 ✓ |
+| 配置解析 | `cargo test`（`config::tests` 8 条 ✓） | 缺失／损坏／覆盖／归一／相对路径／导出的根各一条 ✓ |
 | 探针 URL | `cargo test`（`the_product_print_switch_is_a_parameter_and_not_an_ambient_one` ✓） | 开关是参数 ✓，环境里有没有那个变量都一样 ✓ |
-| 用例总数 | `cargo test --features pdf-probe` | 全仓 59 条 ✓：macOS 57 条 ✓（3 条 unix only 除外 ✓），Windows 56 条 ✓（2 条 windows only 除外 ✓） |
+| 用例总数 | `cargo test --features pdf-probe` | 全仓 62 条 ✓：macOS 60 条 ✓（3 条 unix only 除外 ✓），Windows 59 条 ✓（2 条 windows only 除外 ✓） |
 | 静态检查 | `cargo clippy --all-targets --features pdf-probe -- -D warnings` | 无告警 ✓ |
 | Windows 分支 | `bun scripts/check-windows-com.ts` | 配置模块也进夹具 ✓ —— 它在 Windows 上一样要编 ✓ |
-| 前端 | `bun run lint` ✓ `bun run typecheck` ✓ `bun run test:unit`（534 条 ✓） | 全绿 ✓ |
+| 前端 | `bun run lint` ✓ `bun run typecheck` ✓ `bun run test:unit`（542 条 ✓） `bun run test:e2e`（143 通过 ✓） | 全绿 ✓ |
 
 ## 10. 关联文档
 

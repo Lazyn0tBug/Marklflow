@@ -1,6 +1,6 @@
 # D8/M9 Windows 统一导出接入（规划）
 
-日期：2026-11-05。基线：architecture-refactor / `968a426`。状态：**规划已更新，尚未实施** ✓。
+日期：2026-11-05。基线：architecture-refactor / `968a426`。状态：**第一版已实施** ✓（接线 ✓、根的选择 ✓、独立 PDF 回执 ✓）；**待交付宿主取证** ✓（§6 的并排对照 ✓）。
 
 本文是 [D7 差异冻结清单](export-outputs-d7-freeze-2026-11-04.md) 之后的那一步 ✓：把验过的机制接到**产品的导出链**上 ✓。对应迁移计划的 **M8 / EX-T2a** ✓（见[迁移计划](../design/tauri-migration-plan-2026-10-29.md) 与[公式与打印方案](export-outputs-formula-and-print-plan-2026-10-30.md) §8 D8 行 ✓）。
 
@@ -65,17 +65,25 @@
 - 由此**守卫仍是双保险** ✓ ✓：那份 HTML 带 CSP `default-src 'none'` ✓ + DOMPurify ✓ + 零脚本 ✓ ✓ → 它本来就作不了恶 ✓ ✓。
 - **不因 M9 而变** ✓ —— 若将来打印的不再只是那份被清洗过的导出 ✓，那时守卫才成为唯一一道 ✓（见 `source_guard.rs` 的模块文档 ✓ ✓）。
 
-## 5. 形状
+## 5. 形状（已实施 ✓）
 
 ```
 ExportService（不变 ✓：prepare 一次 ✓ / busy ✓ / exportFile 命名 ✓ / 源快照 ✓）
   └─ ExportPorts
-       ├─ deliverPdf(html)                → Promise<void>            （今天 ✓）
-       ├─ deliverPdfNative(html, file)    → {saved|cancelled|failed}  （M9 新增 ✓）
-       └─ selectSave(file)                → 字节路径 ✓（Web 下载 ✓ ／ 原生对话框 ✓）
+       ├─ selectSave(file)   → 字节路径 ✓（Web 下载 ✓ ／ 原生对话框 ✓）
+       └─ deliverPdf(html, file) → PdfDeliveryReceipt ✓
+                                 {handed-off | saved | cancelled | failed} ✓
 ```
 
-原生实现 ✓（命令**已注册** ✓，主窗口在允许范围内 ✓ —— 8 个命令 ✓ ✓）：
+**两个根各有一套 ports ✓**，共用同一个 ExportService 类 ✓ ✓（"共用 ExportService"✓ ✓）。
+
+| | Web 根 ✓ | 原生根 ✓ |
+| --- | --- | --- |
+| 字节格式 ✓ | 浏览器下载 ✓（四态回执 ✓） | 原生保存对话框 ✓ → `write_native_bytes` ✓（`saved` ✓） |
+| PDF ✓ | 浏览器打印对话框 ✓ → **`handed-off`** ✓（它自己说不准 ✓） | 原生保存对话框 ✓ → `print_native_pdf` ✓ → **`saved`/`cancelled`/`failed`** ✓ |
+| 目标释放 ✓ | 无授权可撤 ✓ | **finally 释放** ✓（成败都撤 ✓ ✓） |
+
+原生实现 ✓（命令**已注册** ✓，主窗口在允许范围内 ✓ —— 9 个命令 ✓ ✓）：
 
 ```
 select_native_save（拿 key ✓）→ write_native_bytes / print_native_pdf（按 key 换路径 ✓）
@@ -83,6 +91,8 @@ select_native_save（拿 key ✓）→ write_native_bytes / print_native_pdf（�
 ```
 
 **注意** ✓：原生侧拿到的只是 **key** ✓ —— 路径只在原生侧可见 ✓ ✓（前端只拿到 key 与文件名 ✓ ✓）。
+
+**静默打印随产品构建走** ✓ ✓（原先在探针特性后面 ✓，产品够不着 ✓ —— 已移出 ✓ ✓）。
 
 ## 6. 验收项与证据形态
 
@@ -109,10 +119,23 @@ select_native_save（拿 key ✓）→ write_native_bytes / print_native_pdf（�
 
 ## 8. 顺序
 
-1. **页面调用的 span 模型改对** ✓ —— 契约写的是「每次调用一个 span，`call_id` 即其 span id」✓ ✓，实现是每事件一个 ✓ ✓。改正后 M9 的证据「一次调用 = 一个 span」✓ ✓，跨侧配对更好读 ✓ ✓。
-2. **本文的三个待定问题定下来** ✓ ✓（① 根怎么选 ✓ ② 回执形状 ✓ ③ 同一份 HTML ✓ —— 后两个其实已由本轮证据定死 ✓ ✓，只差落成代码 ✓ ✓）。
-3. **接线** ✓ —— 先字节根 ✓，再 PDF 根 ✓ ✓（PDF 根的回执要新东西 ✓ ✓）。
-4. **取证** ✓ —— 生产 UI 上同一份真实文档 ✓，两个根并排 ✓ ✓；失败与取消各一轮 ✓ ✓。
+1. ✅ **页面调用的 span 模型改对** ✓ —— 契约写的是「每次调用一个 span，`call_id` 即其 span id」✓ ✓，实现是每事件一个 ✓ ✓。已改 ✓ ✓（`6d9692f` ✓）。
+2. ✅ **三个待定问题定下来并落成代码** ✓ ✓（① 根怎么选 ✓ —— 配置里的 `export.root` ✓；② 回执形状 ✓ —— `PdfDeliveryReceipt` ✓ 四态 ✓；③ 同一份 HTML ✓ —— 两个根共用 prepare 与 generatePdfHtml ✓ ✓）。
+3. ✅ **接线** ✓ ✓ —— 静默打印搬进产品构建 ✓（`081b6bb` ✓）；根的选择与上报 ✓（`0d0ef7a` ✓）；PDF 回执 ✓（`9ba0072` ✓）；两个根接进导出 ✓（`05cfa1e` ✓）。
+4. ⏳ **取证** ✓ —— 生产 UI 上同一份真实文档 ✓，两个根并排 ✓ ✓；失败与取消各一轮 ✓ ✓。**待交付宿主** ✓。
+
+**宿主要做的** ✓：
+
+```bat
+cd /d E:\code\AI\Marklflow
+git pull --ff-only origin architecture-refactor
+:: ① 把 conf\markflow.toml 的 export.root 改成 native ✓
+cargo build --manifest-path src-tauri\Cargo.toml --locked      :: 默认构建即可 ✓（静默打印随产品走 ✓ ✓）
+:: ② 起 dev server ✓，跑应用 ✓，在导出面板里导一份 PDF ✓ → 原生保存对话框 ✓ → 选一个目录 ✓
+:: ③ 改回 root = "web" ✓，同样导一份 ✓ → 浏览器打印对话框 ✓ → 另存为 PDF ✓
+:: ④ 交回：两份 PDF ✓、两份日志 ✓（<仓库>\log\ ✓）、目标目录的 dir ✓
+```
+**比对** ✓：原生那份**有字体 ✓、有文本层 ✓**；Web 那份**没有** ✓ —— 那就是 M9 的价值证明 ✓ ✓。
 
 ## 9. 关联文档
 
