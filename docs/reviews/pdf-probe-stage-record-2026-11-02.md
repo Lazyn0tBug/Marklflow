@@ -1064,8 +1064,8 @@ D1b／D1c 的那些断言、那些日志、那些 PDF 都还在 ✓，它们证�
 | **覆盖失败保护** ✓ | **机器那半** ✓：`select_native_save granted=true` ✓ → 打印出 205821 字节 ✓ → **提交失败** ✓（`result=error reason_code=print-not-committed committed=false` ✓）→ 临时文件已清 ✓（`pdf_temp_removed=true` ✓）；页面回执 `not-committed` ✓（**不是 saved** ✓）。**旧文件未被触碰** ✓ 这一条是**人工项** ✓（日志不记路径与正文 ✓，契约如此 ✓）—— 操作者在宿主上核对：**前后哈希相同** ✓ |
 | **资源／超时／迟到清理** ✓ | `probe_cleanup revoked=true` ✓、`log_health` 全 0 ✓ |
 | **清理证据** ✓ | `pdf_temp_removed=true` ✓ |
-| **完整 PDF** ✓ | 源文档度量 ✓（页面盒 3 个 ✓、794×1123 ✓）；**PDF 自身的页数与尺寸未取** ✓（要 PDF 工具 ✓，poppler 未授权 ✓） |
-| **字体与文本** ✓ | **未取** ✓（同上 ✓） |
+| **完整 PDF** ✓ | **已取** ✓：页数 **3** ✓（`/Type /Page` 三个 ✓、`/Count 3` ✓、三个带文本的内容流 ✓）= 源文档的 3 个页面盒 ✓；纸张 **A4** ✓（MediaBox `0 0 594.96 841.92` pt ✓ = 210×297 mm ✓）；**缩放 1:1** ✓（源侧 794×1123 px@96dpi = 595×842 pt ✓）；**零边距** ✓（MediaBox 从 0 0 起 ✓）。PDF 本身不入库 ✓（只留事实与哈希 ✓，见归档 meta 的 `pdf_inspection` ✓） |
+| **字体与文本** ✓ | **已取** ✓：三个字体**全部嵌入** ✓（`/FontFile2` 三处 ✓、无 `/FontFile3` ✓）且全是子集 ✓（`BAAAAA+MicrosoftYaHeiUI` ✓、`CAAAAA+MicrosoftYaHeiUI-Bold` ✓、`DAAAAA+Consolas` ✓）；正文与 CJK **可提取** ✓（三个内容流都带文本算子 ✓ + 四处 `/ToUnicode` ✓ → 抽出 679 个 CJK 字 ✓）；第一页目视 ✓（标题 ✓ 行内公式 ✓ 表格 ✓ 页码 ✓ 首标记 ✓ —— 操作者确认 ✓） |
 
 **两份 PDF 大小相同、hash 不同** ✓ —— 这是预期的 ✓：同一份冻结样本 ✓、同一套打印设置 ✓ → 版面度量一样 ✓ → 字节数相同 ✓（五次打印都是 205821 ✓）；差的是 PDF 内嵌的**创建时间与文档 ID** ✓（每次打印都新生成 ✓，长度固定 ✓）→ hash 必然不同 ✓。**sha256 的用途是标识这一份产物 ✓，不是复现同一份产物** ✓（登记的是冻结样本 HTML 的 hash ✓）。
 
