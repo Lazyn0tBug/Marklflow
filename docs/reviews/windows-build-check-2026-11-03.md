@@ -362,7 +362,26 @@ cargo run --manifest-path src-tauri\Cargo.toml --locked
 
 读法 ✓：`/Producer` ✓、`/BaseFont` ✓、`/FontFile2` ✓、`/Type /Page` 的个数 ✓、`/MediaBox` ✓、`/ToUnicode` ✓ ✓ —— 都是读字节就能定的事实 ✓ ✓（不需要装任何工具 ✓ ✓）。
 
-### 2.9.6 交回
+### 2.9.6 校验器在宿主上跑一遍
+
+```bat
+cd /d E:\code\AI\Marklflow
+git pull --ff-only origin architecture-refactor
+
+:: ① 归档里的全部证据 ✓（目录 ✓ —— 校验器认目录 ✓，不认通配符 ✓：cmd 不展开它 ✓）
+bun scripts\pdf-probe-check.ts docs\acceptance\pdf-probe
+:: ② M9 那六份 ✓（你拷到哪就写哪 ✓）
+bun scripts\pdf-probe-check.ts <六个日志的目录>
+```
+**期望** ✓：① D1b-1—D1b-6 ✓ 与 D1c-1 ✓、D1c-2 全通过 ✓，诊断 **错误 0 ✓、告警 0 ✓、提示 1 ✓** ✓；
+② 诊断 **错误 0 ✓、告警 0 ✓、提示 0 ✓** ✓（D1b-5 通过 ✓，其余判「未能确认」✓ —— 它们不是探针轮 ✓ ✓）。
+
+**只想看其中几份** ✓ ⇒ 用 cmd 的循环 ✓ ✓（cmd 的 `for` 会展开通配符 ✓ ✓）：
+```bat
+for %f in (<目录>\*.log) do bun scripts\pdf-probe-check.ts %f
+```
+
+### 2.9.7 交回
 
 | 交回 | 在哪 |
 | --- | --- |
