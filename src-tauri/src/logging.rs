@@ -629,6 +629,12 @@ fn record_web_event_for(
     // 外层事件名固定为 web_event；业务事件在 page_event 字段内，不能变成原生事件名。
     // 外层字段（origin、身份）由发送口生成，页面不能覆盖。
     emitter.emit_web(level, "web_event", fields, span.as_ref().map(span_context), identity);
+    // 调用结束：它的 span 从表里拿掉 ✓（表里只留还没结束的调用 ✓）。
+    if matches!(event.event, WebEventKind::CallFinished | WebEventKind::PageError) {
+        if let Some(call_id) = event.call_id.as_ref() {
+            close_page_call_span(call_id);
+        }
+    }
     WEB_ACCEPTED
 }
 
@@ -1358,14 +1364,27 @@ pub fn probe_span() -> tracing::Span {
     run_span().in_scope(|| tracing::info_span!("probe"))
 }
 
-/// 页面侧调用的 span。
-pub fn page_call_span(
+/// 页面侧调用的 span：**每次调用一个** ✓（契约 §5.1 ✓）。
+///
+/// **按 `call_id` 复用** ✓ —— 契约写的是「页面侧每次调用一个 span ✓，
+/// `call_id` 即其 span id ✓」✓；此前是**每个事件各开一个** ✓，
+/// 于是同一次调用的 started 与 finished 落在两个 span 里 ✓，
+/// 「同一事件被重复输出」这条也就抓不到 ✓ —— 交付宿主上就漏过一次 ✓。
+///
+/// 表里只留**还没结束**的调用 ✓（结束即移除 ✓）✓，
+/// 未结束的调用有上限 ✓（满了丢最早的一个 ✓）—— 长跑的应用不会把表撑大 ✓。
+fn page_call_span(
     call_id: &str,
     command: &'static str,
     window_label: &str,
     webview_label: &str,
 ) -> tracing::Span {
-    run_span().in_scope(|| {
+    let table = PAGE_CALL_SPANS.get_or_init(|| Mutex::new(PageCallSpans::default()));
+    let mut guard = table.lock().unwrap_or_else(|error| error.into_inner());
+    if let Some(span) = guard.open.get(call_id) {
+        return span.clone();
+    }
+    let span = run_span().in_scope(|| {
         tracing::info_span!(
             "page_call",
             call_id = call_id,
@@ -1373,8 +1392,39 @@ pub fn page_call_span(
             window_label = window_label,
             webview_label = webview_label,
         )
-    })
+    });
+    if guard.open.len() >= MAX_OPEN_PAGE_CALLS {
+        if let Some(oldest) = guard.order.pop_front() {
+            guard.open.remove(&oldest);
+        }
+    }
+    guard.order.push_back(call_id.to_owned());
+    guard.open.insert(call_id.to_owned(), span.clone());
+    span
 }
+
+/// 调用结束：把它的 span 从表里拿掉 ✓。
+fn close_page_call_span(call_id: &str) {
+    let Some(table) = PAGE_CALL_SPANS.get() else {
+        return;
+    };
+    let mut guard = table.lock().unwrap_or_else(|error| error.into_inner());
+    guard.open.remove(call_id);
+    guard.order.retain(|key| key != call_id);
+}
+
+/// 同时进行的页面调用数上限 ✓。
+const MAX_OPEN_PAGE_CALLS: usize = 256;
+
+/// 页面调用的 span 表：按 `call_id` 存 ✓，并记着插入顺序 ✓（满了丢最早的 ✓）。
+#[derive(Default)]
+struct PageCallSpans {
+    open: HashMap<String, tracing::Span>,
+    order: std::collections::VecDeque<String>,
+}
+
+/// 页面调用的 span 表：跨线程共享 ✓（页面在别的线程上回传 ✓）。
+static PAGE_CALL_SPANS: OnceLock<Mutex<PageCallSpans>> = OnceLock::new();
 
 #[cfg(test)]
 mod tests {
@@ -1388,6 +1438,41 @@ mod tests {
             directory.file_name().and_then(|name| name.to_str()),
             Some(LOG_DIR_NAME)
         );
+    }
+
+    #[test]
+    fn a_page_call_keeps_one_span_for_all_of_its_events() {
+        // 契约：页面侧**每次调用一个 span** ✓ —— 同一次调用的 started 与 finished
+        // 落在同一个 span 里 ✓。此前是每事件一个 ✓，于是"同一事件被重复输出"
+        // 这条抓不到 ✓（交付宿主上漏过一次 ✓）。
+        // 同一个订阅下比较 ✓：每个订阅的 span 计数各起各的 ✓，跨订阅比 id 没有意义 ✓。
+        let (first, second, other) =
+            tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+                let opened = page_call_span("call-reuse", "read_native_text", "main", "main");
+                let opened_id = opened.id();
+                let again = page_call_span("call-reuse", "read_native_text", "main", "main");
+                let another = page_call_span("call-other", "read_native_text", "main", "main");
+                (opened_id, again.id(), another.id())
+            });
+        assert!(first.is_some(), "装了订阅才有真实 span id");
+        assert_eq!(first, second, "同一次调用应当复用同一个 span");
+        assert_ne!(first, other, "不同的调用不许共用 span");
+    }
+
+    #[test]
+    fn a_finished_call_is_taken_out_of_the_table() {
+        // 用自己的键断言 ✓：表是全局的 ✓，别的用例可能同时往里放 ✓。
+        let key = "call-done-for-this-test";
+        page_call_span(key, "read_native_text", "main", "main");
+        page_call_span(key, "read_native_text", "main", "main");
+        let table = PAGE_CALL_SPANS.get().expect("表已建");
+        {
+            let guard = table.lock().unwrap();
+            assert!(guard.open.contains_key(key), "两次取同一个调用，表里只应有一条");
+        }
+        close_page_call_span(key);
+        let guard = table.lock().unwrap();
+        assert!(!guard.open.contains_key(key), "调用结束即从表里拿掉");
     }
 
     #[test]
