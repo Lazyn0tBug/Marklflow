@@ -290,6 +290,88 @@ del D:\code\Marklflow\src-tauri\capabilities\default.json
 **删文件本身是一个单独的提交** ✓，**在两轮日志回来之前不动它** ✓ ——
 文档已经写了它该被删 ✓，但删它的前提是宿主上证明它不管事 ✓。
 
+## 2.9 M9 生产接入的取证（2026-11-05 新增）
+
+**这一轮验的是接线 ✓**，不是机制 ✓ —— 机制那一侧 D7-1 已经证过 ✓ ✓。
+要证的是：**同一份真实文档 ✓，两个根各印一次 ✓，并排摆着 ✓** ✓。
+
+规划见[统一导出接入规划](../design/export-outputs-d8-m9-plan-2026-11-05.md) ✓。
+
+### 2.9.1 前置
+
+```bat
+cd /d D:\code\AI\Marklflow
+git pull --ff-only origin architecture-refactor
+git log --oneline -1
+```
+期望最新提交含 `feat: the native root is wired into the export` ✓。
+
+**当前目录必须是仓库根** ✓ —— 配置在 `<仓库>\conf\markflow.toml` ✓，日志在 `<仓库>\log\` ✓ ✓。
+**dev server 另开一个终端** ✓（`bun run dev:desktop` ✓ —— 应用要从 dev server 取前端 ✓，而它自己不起 ✓）。
+
+### 2.9.2 编默认构建（不带特性）
+
+```bat
+cd /d E:\code\AI\Marklflow
+cargo build --manifest-path src-tauri\Cargo.toml --locked
+```
+**默认构建即可** ✓ —— 静默打印随产品构建走 ✓（原先在 `pdf-probe` 特性后面 ✓，产品够不着 ✓）✓ ✓。
+
+### 2.9.3 三轮导出
+
+```bat
+:: ① 原生根：conf\markflow.toml 里 export.root = "native" ✓
+cargo run --manifest-path src-tauri\Cargo.toml --locked
+```
+在应用的**导出面板**里选「浏览器打印 A4 PDF」✓ → 弹**原生保存对话框** ✓ → 选一个你知道的目录 ✓ → 记下文件名 ✓（应是文档标题 ✓）✓ → **正常退出应用** ✓（关窗口 ✓ —— 不正常退出就没有 `run_end` ✓）✓。
+
+```bat
+:: ② Web 根：把 export.root 改回 "web" ✓
+cargo run --manifest-path src-tauri\Cargo.toml --locked
+```
+同样导一份 ✓ → 这次弹**浏览器打印对话框** ✓ → 目标选「另存为 PDF」✓ → 存到**同一个目录** ✓ ✓。
+
+```bat
+:: ③ 原生根的取消与失败（各一轮 ✓）
+::    取消：在原生保存对话框按取消 ✓ → 不写任何文件 ✓
+::    失败：先在目标目录放一个同名旧文件 ✓ 并记下哈希 ✓，
+::          再占住它（另开终端）：
+::          powershell -NoProfile -Command "$f=[System.IO.File]::Open('D:\probe-out\<那个文件名>','Open','ReadWrite','None'); Write-Host 'locked'; while($true){Start-Sleep 60}"
+::          然后照 ① 再导一次 ✓（保存到同一目录同一名 ✓，问是否替换点"是" ✓）
+```
+**注意** ✓：原生根下**字节格式也走原生保存对话框** ✓（名字落在用户选的位置上 ✓）—— 那是设计如此 ✓ ✓。
+
+### 2.9.4 期望
+
+| 轮次 | 期望 |
+| --- | --- |
+| 原生根 ✓ | 弹**原生**保存对话框 ✓（不是浏览器那个 ✓）；日志里有 `select_native_save` ✓ 与 `print_native_pdf` ✓（`result=ok` ✓ `committed=true` ✓ `pdf_temp_removed=true` ✓）；**没有**任何打印对话框 ✓ ✓ |
+| Web 根 ✓ | 弹**浏览器**打印对话框 ✓；日志里**没有** `print_native_pdf` ✓ ✓ |
+| 取消 ✓ | 目录里**没有新文件** ✓ ✓ |
+| 失败 ✓ | 日志里 `result=error` ✓ + `reason_code=print-not-committed` ✓ + `committed=false` ✓；**旧文件哈希不变** ✓ ✓ |
+
+### 2.9.5 两份 PDF 的并排比对
+
+**这是 M9 的价值证明 ✓** —— 同一份文档 ✓，两个根 ✓：
+
+| | 原生那份 ✓ | Web 那份 ✓ |
+| --- | --- | --- |
+| 写出器（`/Producer`） | `Skia/PDF` ✓（WebView2 自己的 ✓） | `Microsoft: Print To PDF` ✓（打印驱动 ✓） |
+| 字体（`/BaseFont`） | 有 ✓ 且 `/FontFile2` 嵌入 ✓ | **无** ✓ |
+| 文本层 | **有** ✓（正文可提取 ✓） | **无** ✓ |
+
+读法 ✓：`/Producer` ✓、`/BaseFont` ✓、`/FontFile2` ✓、`/Type /Page` 的个数 ✓、`/MediaBox` ✓、`/ToUnicode` ✓ ✓ —— 都是读字节就能定的事实 ✓ ✓（不需要装任何工具 ✓ ✓）。
+
+### 2.9.6 交回
+
+| 交回 | 在哪 |
+| --- | --- |
+| 两份 PDF ✓（原生一份 ✓、Web 一份 ✓） | 目标目录 ✓ |
+| 各轮日志 ✓ | `<仓库>\log\markflow.<pid>.log` ✓ |
+| 目标目录的 `dir` ✓ | 终端 ✓ |
+| 失败那轮旧文件的前后哈希 ✓ | 手工 ✓ |
+
+
 ## 3. 逐项检查表
 
 | # | 检查项 | 怎么看 | 期望 |
