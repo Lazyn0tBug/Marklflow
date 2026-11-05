@@ -176,7 +176,7 @@ bun scripts/check-native-isolation.ts
 
 | 命令 | 期望输出 |
 | --- | --- |
-| ① | `test result: ok. 47 passed` —— **Windows 上比 macOS 多两条** `#[cfg(windows)]` 的用例 ✓（文件被占着就删不掉 ✓、提交失败保留旧文件 ✓）；macOS 上是 45 ✓ |
+| ① | `test result: ok. 46 passed` —— 全仓 49 条 ✓，其中 3 条是 `#[cfg(unix)]` 的 ✓、2 条是 `#[cfg(windows)]` 的 ✓ → **Windows 上 46** ✓（macOS 上 47 ✓）。用例数会随改动变 ✓，红了以输出为准 ✓ |
 | ② | `命令面准入成立：注册 8 个，受保护 6 个，不受守卫 2 个（各有准入方式），页面可回传 7 个` |
 | ③ | 无输出即通过 ✓（有输出就是前提被破坏 ✓） |
 
@@ -199,7 +199,7 @@ bun scripts/check-native-isolation.ts
 
 | 要交回的 | 在哪 |
 | --- | --- |
-| `cargo test` 的完整输出 ✓（含 45 passed ✓） | 终端 |
+| `cargo test` 的完整输出 ✓（含 46 passed ✓） | 终端 |
 | `bun scripts/check-command-admission.ts` 的输出 ✓ | 终端 |
 | §2.6 那轮的日志 ✓ | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` ✓ |
 | 目标目录的清空截图或 `dir` 输出 ✓（证明没有 `*.tmp-<pid>-*` 残留 ✓） | 手工 |
