@@ -255,6 +255,29 @@ del D:\code\Marklflow\src-tauri\capabilities\default.json
 **那它就不是误导物 ✓，是隔离层的一部分 ✓**，隔离就不是一道闸 ✓，
 上面那些结论都要跟着改 ✓。**先别改结论 ✓，先说清楚它到底管着什么** ✓。
 
+### 2.8.3 结果（2026-11-05 ✓）
+
+**宿主上跑完了四步 ✓**：删前两轮 ✓（`markflow.22696.log` 探针轮 ✓、`markflow.12032.log` 产品形态轮 ✓），
+删后两轮 ✓（`markflow.28600.log`、`markflow.27996.log` ✓）。
+
+| 比什么 | 探针轮 | 产品形态轮 |
+| --- | --- | --- |
+| 记录条数 | 52 = 52 ✓ | 61 = 61 ✓ |
+| 页面侧 web 事件条数 | 22 = 22 ✓ | 26 = 26 ✓ |
+| **整份日志逐条**（去掉时间、run/span/call id、sha256、耗时）✓ | **完全一致 ✓** | **完全一致 ✓** |
+| 守卫判定 | 主窗口 allow ✓、输出宿主 deny ✓ | 同 ✓ |
+| `log_health` | `dropped=0` ✓、`rejected=0` ✓ | 同 ✓ |
+| 校验器判定 | D1b-1/2/3/4/6 ✓、D1c-1/2 ✓ | 同 ✓ |
+
+**原生保存对话框在删后照常弹** ✓（`select_native_save granted=true elapsed_ms=10941` ✓）✓ →
+删掉 capability 没有影响 Rust 侧调对话框 ✓。
+
+**结论** ✓：它**什么都不管** ✓ → 它是误导物 ✓ → **删掉它** ✓（提交自带 ✓）。
+
+**中途的一次中止跑** ✓（`markflow.25012.log` ✓）：dev server 当时没在服务 ✓
+（`probe_source_check reachable=false` ✓ → `probe_abort` ✓ → `navigated=false` ✓），
+进程也不是正常退出 ✓（无 `run_end` ✓）→ **不作证据** ✓，丢掉 ✓。
+
 ### 2.8.4 交回什么
 
 | 要交回的 | 在哪 |
