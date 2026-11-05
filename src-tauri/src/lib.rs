@@ -68,7 +68,7 @@ pub fn run() {
         // 配置里的相对路径也按这儿解析 ✓ —— 一个根 ✓，不留第二个答案 ✓。
         let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
         let (config, source) = config::load(&cwd);
-        logging::init(app.handle(), &config.log, source, feature_name());
+        logging::init(&config.log, source, feature_name());
         #[cfg(feature = "pdf-probe")]
         probe::run(app.handle(), &config, &cwd)?;
         Ok(())

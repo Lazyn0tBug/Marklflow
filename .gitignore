@@ -12,6 +12,9 @@ playwright-report/
 test-results/
 .aistudio/
 
+# 运行期日志：当前目录下的 log 子目录，不入库。
+log/
+
 # Tauri generated build output; Cargo.lock remains tracked.
 src-tauri/target/
 src-tauri/gen/

@@ -20,7 +20,6 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::Deserialize;
-use tauri::Manager;
 use tracing::field::{Field, Visit};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
@@ -31,6 +30,8 @@ use crate::config::{LogConfig, Source as ConfigSource};
 
 /// 单文件字节上限。
 pub const MAX_FILE_BYTES: u64 = 8 * 1024 * 1024;
+/// 日志目录名（相对当前目录）。
+pub const LOG_DIR_NAME: &str = "log";
 /// 归档保留份数。
 pub const KEEP_ARCHIVES: usize = 10;
 /// 有界队列容量。满则丢弃新记录并计数。
@@ -365,19 +366,26 @@ pub fn run_id() -> &'static str {
 
 /// 初始化日志基座。目录不可用时应用继续运行，只把文件 sink 标为不可用。
 ///
-/// 调用时机：应用的 setup 钩子里（此时才有平台约定的日志目录），且必须早于任何业务事件。
+/// 调用时机：应用的 setup 钩子里，且必须早于任何业务事件。
 ///
 /// 级别与形态来自**运行期配置** ✓（不再是环境变量 ✓）：配置是显式输入 ✓，
 /// 环境是隐式输入 ✓ —— 它跨进程继承 ✓，单测会因它而红 ✓。
-pub fn init(app: &tauri::AppHandle, config: &LogConfig, source: ConfigSource, feature: &str) {
+pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
     let run_id = uuid::Uuid::new_v4().to_string();
     let _ = RUN_ID.set(run_id.clone());
     // 健康状态先建好并登记：目录不可用、写失败、丢弃都要落到它上面。
     let health = Arc::new(Health::new());
     let _ = HEALTH.set(health.clone());
-    // 目录不可用时也要装订阅并起写线程：文件 sink 停用，stdout 仍尽力输出。
-    let path = match app.path().app_log_dir() {
-        Ok(directory) => {
+    // 日志目录：**当前目录下的 log 子目录** ✓。
+    //
+    // 不再走平台约定的 app_log_dir() ✓ —— 那把日志埋进用户配置目录里 ✓，
+    // 跑一次要找一次 ✓，交付宿主上取日志尤其别扭 ✓。
+    // 现在它与配置同一个根 ✓：当前目录下 `conf\` 是配置 ✓、`log\` 是日志 ✓。
+    //
+    // **目录不可用时应用照常运行** ✓：只把文件 sink 标为不可用 ✓，
+    // stdout 仍尽力输出 ✓ —— 日志落不下去不该让应用起不来 ✓。
+    let path = match log_directory() {
+        Some(directory) => {
             if fs::create_dir_all(&directory).is_err() {
                 health.file_unavailable.store(true, Ordering::Relaxed);
                 None
@@ -385,7 +393,7 @@ pub fn init(app: &tauri::AppHandle, config: &LogConfig, source: ConfigSource, fe
                 Some(directory.join(format!("markflow.{}.log", std::process::id())))
             }
         }
-        Err(_) => {
+        None => {
             health.file_unavailable.store(true, Ordering::Relaxed);
             None
         }
@@ -456,6 +464,15 @@ pub fn init(app: &tauri::AppHandle, config: &LogConfig, source: ConfigSource, fe
             log_format = if json { "json" } else { "text" },
         )
     });
+}
+
+/// 日志目录：当前目录下的 `log` 子目录。
+///
+/// 取不到当前目录就没有文件 sink ✓ —— 那是一条降级路径 ✓，
+/// 不是应用的启动条件 ✓。
+fn log_directory() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    Some(cwd.join(LOG_DIR_NAME))
 }
 
 /// 级别的记法：与契约里的枚举风格一致（小写）✓。
@@ -1362,6 +1379,16 @@ pub fn page_call_span(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_log_directory_is_the_log_subdirectory_of_the_current_directory() {
+        // 日志落在跑它的地方底下 ✓：不是用户配置目录 ✓，是当前目录下的 log ✓。
+        let directory = log_directory().expect("当前目录可取");
+        assert_eq!(
+            directory.file_name().and_then(|name| name.to_str()),
+            Some(LOG_DIR_NAME)
+        );
+    }
 
     #[test]
     fn converts_epoch_days_to_calendar_dates() {
