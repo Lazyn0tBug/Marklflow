@@ -139,5 +139,27 @@
     "fonts": "三个字体全部嵌入：/FontFile2 三处、/FontFile3 零处；全是子集：BAAAAA+MicrosoftYaHeiUI、CAAAAA+MicrosoftYaHeiUI-Bold、DAAAAA+Consolas",
     "text_layer": "三个内容流都带文本算子，另有四处 /ToUnicode；抽出 679 个 CJK 字 —— 正文与 CJK 可提取",
     "rendered": "第一页目视：标题、行内公式、表格、页码、首标记均在位（操作者确认）"
+  },
+  "pdf_inspection_web_path": {
+    "object": "probe-product-shape2.pdf（生产 UI 手动导出；走的是 Web 路径：浏览器打印对话框 → Microsoft Print to PDF）",
+    "in_repo": false,
+    "why": "产出的 PDF 文件不入库（冻结文档 §6）；只留事实与哈希",
+    "bytes": 562487,
+    "sha256": "a506df8caf031a443a9cdf6ef52b75a1d32b99110d473a519576cc4ec4c24858",
+    "pages": 4,
+    "pages_basis": "真实文档的导出，不是冻结样本",
+    "media_box_pt": [
+      0,
+      0,
+      595.32001,
+      841.92004
+    ],
+    "paper": "A4",
+    "producer": "Microsoft: Print To PDF —— Windows 的打印驱动，不是浏览器自己的 PDF 写出器",
+    "fonts": "一个都没有：/BaseFont 为空、/FontFile 零处 —— 正文不可提取",
+    "text_layer": "没有：零个带文本的内容流；整页是栅格图（19 个图像对象，含 DCTDecode 即 JPEG）",
+    "size_note": "549 KB，对比原生路径同一份冻结样本的 205 KB",
+    "contrast": "原生那份的 Producer 是 Skia/PDF m156（WebView2/Chromium 自己的写出器）：三个字体全嵌入、有文本层、205 KB",
+    "meaning": "接线前的现状：生产 UI 的 PDF 导出仍是浏览器打印对话框，产出的是打印驱动的照片，不是文档"
   }
 }

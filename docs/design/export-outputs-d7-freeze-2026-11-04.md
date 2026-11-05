@@ -52,6 +52,7 @@ ExportService.run（src/application/exports/exportService.ts）
 | 覆盖失败保护 | 无 | 有 | 保持 ✓（失败保留旧文件 ✓） |
 | 静默性 | **不静默**（有打印对话框 ✓） | 静默 ✓ | 保持 ✓（只有保存对话框 ✓，无打印面板 ✓） |
 | 回执 | `SaveReceipt` 四态 ✓ | `probe_pdf` ✓ | 统一到"目标提交成功才 saved" ✓ |
+| **产出的 PDF 是什么** ✓ | **浏览器打印对话框 → Windows 的打印驱动** ✓（`Producer: Microsoft: Print To PDF` ✓）→ 产出的是**整页栅格图** ✓（JPEG ✓）：**没有字体 ✓、没有文本层 ✓、正文不可提取** ✓（实测 ✓ 2026-11-05 ✓，见阶段记录 ✓） | **WebView2/Chromium 自己的 PDF 写出器** ✓（`Producer: Skia/PDF` ✓）→ **真文档** ✓：字体全嵌入 ✓、有文本层 ✓、正文可提取 ✓ |
 
 ---
 
