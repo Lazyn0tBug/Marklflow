@@ -80,6 +80,17 @@
       "run_id": "c0573e48-11f5-4bad-8dfc-f82b1700aca2",
       "covers": "D7-1 的取消（重复）",
       "observed": "granted=false、product_print=cancelled、无打印命令"
+    },
+    {
+      "file": "delivery-host-windows-product-print-not-committed.jsonl",
+      "sha256": "358a76a10f7931e87775f96efa0a3cd06a97f2abf732f3d3e2438c34adab7af5",
+      "bytes": 21740,
+      "records": 61,
+      "kind": "产品形态轮：目标被占住 → 打印做了但提交失败（旧文件未被触碰）",
+      "feature": "pdf-probe",
+      "run_id": "0f35e925-f001-470f-ae5c-09992fbeb132",
+      "covers": "D7-1 的覆盖失败保护",
+      "observed": "select_native_save granted=true（3543 ms）；print_native_pdf 打印出 205821 字节但提交失败：result=error reason_code=print-not-committed committed=false，临时文件已清（pdf_temp_removed=true）；页面回执 product_print=not-committed（不是 saved）"
     }
   ],
   "not_archived": [
@@ -98,9 +109,10 @@
     },
     {
       "files": [
-        "失败保留旧文件那一轮"
+        "旧文件内容未变这一条"
       ],
-      "reason=": "机器那半未取：native 的 print-not-committed 记录没有跑到。该项记为人工项（操作者在宿主上确认失败时旧文件内容未变）"
+      "reason=": "机器那半未取：native 的 print-not-committed 记录没有跑到。该项记为人工项（操作者在宿主上确认失败时旧文件内容未变）",
+      "reason": "目标上旧文件的内容与哈希：日志里不记路径与正文（契约），由操作者在宿主上核对（人工项）；机器那半（print-not-committed）已取，见 not-committed 那份归档"
     }
   ],
   "checker": {

@@ -1047,6 +1047,7 @@ D1b／D1c 的那些断言、那些日志、那些 PDF 都还在 ✓，它们证�
 | 默认构建轮 ✓ | `delivery-host-windows-configured-default-build-round.txt` ✓ ✓（人读文本形态 ✓） | **D1b-5 补上** ✓ |
 | 删掉能力清单文件后的两轮 ✓ | `delivery-host-windows-capability-removed-probe-round.jsonl` ✓、`delivery-host-windows-capability-removed-product-round.jsonl` ✓ ✓ | 与基线**逐条一致** ✓ |
 | 取消轮 ×2 ✓ | `delivery-host-windows-product-print-cancelled.jsonl` ✓、`delivery-host-windows-product-print-cancelled-repeat.jsonl` ✓ ✓ | `product_print=cancelled` ✓ |
+| 失败轮 ✓ | `delivery-host-windows-product-print-not-committed.jsonl` ✓ | `print-not-committed` ✓、`committed=false` ✓ |
 | 中止跑 ×2 ✓ | 未归档 ✓（文件名与原因记在 meta 的 `not_archived` ✓） | dev server 未在服务 ✓ → **不作证据** ✓ |
 
 **机器判定** ✓：D1b-1—D1b-6 与 D1c-1、D1c-2 **全通过** ✓，错误 0 ✓、告警 0 ✓、提示 1 ✓（已知的「内容准确只有页面自述依据」✓）。
