@@ -455,6 +455,23 @@ const isOutputHost=(window:string):boolean=>window==='pdf-output'||window.starts
 
 /** 关联键：身份对 + 命令。native 与 web 的身份字段名不同，先归一。 */
 const pairKey=(window:string,webview:string,command:string):string=>`${window}|${webview}|${command}`;
+const identityKey=(window:string,webview:string):string=>`${window}|${webview}`;
+
+/**
+ * **有页面侧事件的身份** ✓：只有这些身份上的原生调用才是页面驱动的 ✓。
+ *
+ * 一个身份**根本没有页面侧事件** ✓ ⇒ 那条原生调用**不经过页面** ✓
+ * （生产轮的导出由界面发起 ✓）—— 那不是"页面调了而原生没记" ✓，
+ * 而是"这条路径本来就不走页面" ✓ ✓。
+ */
+function pageDrivenIdentities(run:RunView):Set<string>{
+ const identities=new Set<string>();
+ for(const record of run.records){
+  if(record.origin!=='web')continue;
+  identities.add(identityKey(text(record.fields.window_label),text(record.fields.webview_label)));
+ }
+ return identities;
+}
 
 /** 跨侧配对结果。 */
 interface Pairing{
@@ -487,11 +504,15 @@ export function pairSides(run:RunView):Pairing[]{
   webGroups.set(key,list);
  }
  const keys=new Set([...nativeGroups.keys(),...webGroups.keys()]);
+ const pageDriven=pageDrivenIdentities(run);
  return [...keys].map(key=>{
   const native=nativeGroups.get(key)??[];
   const web=webGroups.get(key)??[];
   const pairing:Pairing={key,native,web};
-  if(native.length!==web.length){
+  // **只对页面驱动的身份判不匹配** ✓：生产轮的调用来自界面 ✓，页面侧没有对应记录 ✓，
+  // 那不是失配 ✓ —— 是那条路径不走页面 ✓ ✓。
+  const [window,webview]=key.split('|');
+  if(native.length!==web.length&&pageDriven.has(identityKey(window??'',webview??''))){
    pairing.mismatch=`native ${native.length} 条 vs web ${web.length} 条`;
   }
   return pairing;

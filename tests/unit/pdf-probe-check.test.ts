@@ -317,7 +317,19 @@ describe('pdf-probe 校验器',()=>{
   expect(diagnosticsOf(report,'correlation-mismatch').length).toBeGreaterThan(0);
  });
 
- it('健康的运行没有关联不匹配，且受保护命令由原生守卫记录推出',()=>{
+ it('页面侧没有事件的身份不做关联判定：那条路径本来就不走页面',()=>{
+ // 生产轮的导出由界面发起 ✓：只有原生侧有记录 ✓，页面侧一条也没有 ✓ ——
+ // 那不是"页面调了而原生没记" ✓，是"这条路不经过页面" ✓ ✓。
+ const records=[
+  record({event:'run_start',span:{name:'run',id:1,parent_id:null},fields:{feature:'default',os:'windows',arch:'x86_64',app_version:'0.9.1'}}),
+  record({event:'source_decision',span:{name:'command',id:10,parent_id:1},fields:{decision:'allow',command:'select_native_save',window:'main',webview:'main'}}),
+  record({event:'operation_result',span:{name:'command',id:10,parent_id:1},fields:{result:'ok',command:'select_native_save',granted:'true',elapsed_ms:'0'}}),
+ ];
+ const report=evaluate(records,[]);
+ expect(diagnosticsOf(report,'correlation-mismatch')).toHaveLength(0);
+});
+
+it('健康的运行没有关联不匹配，且受保护命令由原生守卫记录推出',()=>{
   const report=evaluate(healthyProbeRun(),healthyDefaultRun());
   expect(diagnosticsOf(report,'correlation-mismatch')).toHaveLength(0);
   const probeRun=report.runs.find(entry=>entry.feature==='pdf-probe');
