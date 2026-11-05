@@ -23,13 +23,30 @@ export async function selectNativeOpen():Promise<NativeSelection[]|undefined>{
 }
 export async function releaseNativeFile(key:string):Promise<void>{await invoke('release_native_file',{key})}
 export async function readNativeText(file:NativeSelection):Promise<string>{return z.string().parse(await invoke('read_native_text',{key:file.key}))}
-export async function selectNativeSave(name:string):Promise<(ByteSaveTarget&{release():Promise<void>})|undefined>{
+export interface NativeSaveTarget extends ByteSaveTarget {
+ /** 授权的 key ✓ —— 路径只在原生侧可见 ✓，前端只拿得到它 ✓。 */
+ key:string;
+ release():Promise<void>;
+}
+export async function selectNativeSave(name:string):Promise<NativeSaveTarget|undefined>{
  const value=await invoke('select_native_save',{name});
  if(value===null)return undefined;
  const file=selectedSchema.parse(value);
  return {
+  key:file.key,
   async save(blob){if(blob.size>100*1024*1024)throw new Error('导出文件超过100MiB原生写入限制');await invoke('write_native_bytes',{key:file.key,bytes:Array.from(new Uint8Array(await blob.arrayBuffer()))});return 'saved'},
   release:()=>releaseNativeFile(file.key),
  };
+}
+
+/**
+ * 静默 PDF：原生路径的打印 ✓。
+ *
+ * 回执只有两种 ✓：**提交成功才是 saved** ✓；其余（没提交、报错）都算没成 ✓。
+ * 目标由人在原生保存对话框里选 ✓；取消 ⇒ 没有 key ⇒ 什么都不写 ✓。
+ */
+export async function printNativePdf(key:string,html:string):Promise<'saved'|'not-committed'>{
+ const value=await invoke('print_native_pdf',{key,html});
+ return value==='saved'?'saved':'not-committed';
 }
 

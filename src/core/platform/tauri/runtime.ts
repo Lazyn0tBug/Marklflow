@@ -9,6 +9,25 @@ const platformInfoSchema=z.object({
 }).strict();
 export type TauriPlatformInfo=z.infer<typeof platformInfoSchema>;
 
+const runtimePrefsSchema=z.object({
+ exportRoot:z.enum(['web','native']),
+ nativePdfAvailable:z.boolean(),
+}).strict();
+export type RuntimePrefs=z.infer<typeof runtimePrefsSchema>;
+
+/**
+ * 运行期配置里前端要知道的那些 ✓（当前只有导出的根 ✓）。
+ *
+ * 非桌面应用（纯网页 ✓）没有这个能力 ✓ ⇒ 返回 undefined ✓ ✓。
+ */
+export async function readRuntimePrefs():Promise<RuntimePrefs|undefined>{
+ if(typeof window==='undefined')return undefined;
+ const {isTauri,invoke}=await import('@tauri-apps/api/core');
+ if(!isTauri())return undefined;
+ const value:unknown=await invoke('get_runtime_prefs');
+ return runtimePrefsSchema.parse(value);
+}
+
 /** Optional shell capability only; no application state, filesystem, or export ownership.
     The label pair is the caller's identity as the native side reports it (D1a-6). */
 export async function readTauriPlatformInfo():Promise<TauriPlatformInfo|undefined>{

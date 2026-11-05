@@ -1,5 +1,7 @@
 import { webExportService } from '../../core/platform/web/exportService';
-import type {ExportFormat} from '../../application/exports/exportService';
+import { nativeExportService } from '../../core/platform/tauri/exportService';
+import { resolveExportRoot,type ExportRootChoice } from '../../core/platform/exportRoot';
+import type {ExportFormat,ExportService} from '../../application/exports/exportService';
 import {exportFile} from '../../application/exports/exportFile';
 import { groupDocxIssues,type OutputIssue } from '../../core/export/outputCapabilities';
 /**
@@ -36,11 +38,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
   const [allowSourceFallback, setAllowSourceFallback] = useState(false);
   const [allowRemoteAssets, setAllowRemoteAssets] = useState(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  // 导出服务：**启动时定下走哪个根** ✓（配置说了算 ✓）。
+  const [service,setService]=useState<ExportService>(webExportService);
+  const [root,setRoot]=useState<ExportRootChoice>({root:'web',nativePdfAvailable:false});
 
   const docxGroups=useMemo(()=>groupDocxIssues(docxIssues),[docxIssues]);
   const docxBlocked=docxIssues.some(issue=>issue.adaptation==='unsupported');
-  useEffect(()=>{if(!webExportService.busy){setAllowSourceFallback(false);setDocxIssues([])}},[doc.id,doc.markdown,selectedFormat]);
-  useEffect(()=>{if(isOpen&&!webExportService.busy){setFileName(doc.meta.title||'MarkFlow-Document');setAllowSourceFallback(false);setAllowRemoteAssets(false);setDocxIssues([])}},[isOpen,doc.id]);
+  useEffect(()=>{let cancelled=false;void resolveExportRoot().then(choice=>{if(cancelled)return;setRoot(choice);setService(choice.root==='native'?nativeExportService:webExportService)});return()=>{cancelled=true}},[]);
+  useEffect(()=>{if(!service.busy){setAllowSourceFallback(false);setDocxIssues([])}},[doc.id,doc.markdown,selectedFormat,service]);
+  useEffect(()=>{if(isOpen&&!service.busy){setFileName(doc.meta.title||'MarkFlow-Document');setAllowSourceFallback(false);setAllowRemoteAssets(false);setDocxIssues([])}},[isOpen,doc.id,service]);
   useEffect(()=>{if(!isOpen){reviewDismissed.current=true;if(reviewResolver.current)finishReview(false)}},[isOpen]);
   useEffect(()=>{openRef.current=isOpen;return()=>{openRef.current=false;reviewDismissed.current=true;reviewResolver.current?.(false);reviewResolver.current=null}},[]);
   useEffect(()=>{if(reviewing)dialogRef.current?.querySelector<HTMLInputElement>('#export-docx-consent')?.focus()},[reviewing]);
@@ -64,17 +70,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
 
   const handleExport = async () => {
     if(reviewing){if(allowSourceFallback&&!docxBlocked)finishReview(true);return}
-    if(webExportService.busy){onNotice?.({message:'正在导出，请稍候',tone:'info'});return}
+    if(service.busy){onNotice?.({message:'正在导出，请稍候',tone:'info'});return}
+    // 选了原生而平台没有静默 PDF：**明说不做** ✓（不回落 ✓ —— 回落就是降级 ✓）。
+    if(selectedFormat==='print-pdf'&&root.root==='native'&&!root.nativePdfAvailable){
+     onNotice?.({message:root.blockedReason??'此平台不支持静默 PDF 打印',tone:'error'});return;
+    }
     reviewDismissed.current=false;setIsExporting(true);setDocxIssues([]);
     try{
-      const result=await webExportService.run({document:doc,format:selectedFormat,fileName,mathMode,allowRemoteAssets},{confirmDocx:(issues)=>{
+      const result=await service.run({document:doc,format:selectedFormat,fileName,mathMode,allowRemoteAssets},{confirmDocx:(issues)=>{
         if(!openRef.current||reviewDismissed.current)return Promise.resolve(false);
         setDocxIssues(issues);setAllowSourceFallback(false);setReviewing(true);
         return new Promise<boolean>(resolve=>{reviewResolver.current=resolve});
       }});
       if(result.status!=='busy'&&result.issues)setDocxIssues(result.issues);
       // The print dialog and the save picker are system windows: the outcome is reported outside this dialog.
-      if(result.status!=='busy')onNotice?.({message:result.message,tone:result.status==='completed'?'success':result.status==='blocked'?'warning':'info'});
+      if(result.status!=='busy')onNotice?.({message:result.message,tone:result.status==='completed'?'success':result.status==='failed'?'error':result.status==='blocked'?'warning':'info'});
     }catch(err){console.error('Export error:',err);alert('导出过程出错: '+String(err));onNotice?.({message:'导出失败：'+String(err),tone:'error'})}
     finally{setIsExporting(false)}
   };
@@ -93,7 +103,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
             <div>
               <h2 id="export-dialog-title" className="text-base font-semibold text-neutral-100">导出与发布文档</h2>
               <p className="text-xs text-neutral-400 mt-0.5">
-                {isExporting&&webExportService.sourceLabel?(reviewing?'等待确认：':'正在导出：')+webExportService.sourceLabel:'基于冻结修订快照 (Rev '+doc.revision+') 输出自包含成品'}
+                {isExporting&&service.sourceLabel?(reviewing?'等待确认：':'正在导出：')+service.sourceLabel:'基于冻结修订快照 (Rev '+doc.revision+') 输出自包含成品'}
               </p>
             </div>
           </div>
