@@ -26,6 +26,7 @@ const repo=resolve(import.meta.dirname,'..');
 /** 刻意不受来源守卫管的命令，以及各自的准入方式。 */
 export const UNGUARDED:Record<string,string>={
  get_platform_info:'只报平台信息与调用方自己的身份，不碰文件、不弹框',
+ get_runtime_prefs:'只报应用自己的运行期配置（导出的根、平台有没有静默 PDF 能力），不碰文件、不铸授权',
  log_event:'只写日志；准入看 logging::log_writer_allowed（主窗口与已登记的探针实例）',
 };
 

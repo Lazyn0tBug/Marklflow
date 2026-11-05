@@ -43,6 +43,28 @@ fn get_platform_info(webview: tauri::Webview) -> PlatformInfo {
     }
 }
 
+/// 运行期配置里前端要知道的那些 ✓。
+///
+/// **只报应用自己的配置** ✓（不碰文件 ✓、不碰授权 ✓）✓，所以不受来源守卫管 ✓ ——
+/// 与 `get_platform_info` 同类 ✓ ✓。
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimePrefs {
+    /// 导出的根：`web` 或 `native` ✓。
+    export_root: &'static str,
+    /// 这个平台有没有静默 PDF 的能力 ✓（Windows 之外没有 ✓）。
+    native_pdf_available: bool,
+}
+
+/// 取运行期配置里前端要知道的那些 ✓。
+#[tauri::command]
+fn get_runtime_prefs() -> RuntimePrefs {
+    RuntimePrefs {
+        export_root: config::config().export.effective_root(),
+        native_pdf_available: cfg!(target_os = "windows"),
+    }
+}
+
 /// web 侧日志回传：**只写日志，不铸任何授权**。
 ///
 /// 这是方案 §4 的 L2：命令只把事件写进日志，不碰 `FileAccess`，发不出任何能力。
@@ -60,6 +82,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_platform_info,
             log_event,
+            get_runtime_prefs,
             files::select_native_open,
             files::select_native_save,
             files::read_native_text,
@@ -73,11 +96,13 @@ pub fn run() {
         // **当前目录是运行期的根** ✓：配置从这儿读 ✓，日志落在这儿 ✓，
         // 配置里的相对路径也按这儿解析 ✓ —— 一个根 ✓，不留第二个答案 ✓。
         let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        let (config, source) = config::load(&cwd);
+        let (loaded, source) = config::load(&cwd);
+        config::set_config(loaded);
+        let config = config::config();
         logging::init(&config.log, source, feature_name());
         // 探针要用应用句柄 ✓；默认构建里没有探针 ✓，句柄也就没人要 ✓。
         #[cfg(feature = "pdf-probe")]
-        probe::run(_app.handle(), &config, &cwd)?;
+        probe::run(_app.handle(), config, &cwd)?;
         Ok(())
     });
     builder

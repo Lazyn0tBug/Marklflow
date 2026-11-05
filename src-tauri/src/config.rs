@@ -29,6 +29,7 @@
 //! 不引入第二个"相对谁"的答案 ✓。
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use serde::Deserialize;
 
@@ -96,6 +97,41 @@ impl Default for ProbeConfig {
     }
 }
 
+/// 导出的根：浏览器打印对话框 ✓。
+pub const EXPORT_ROOT_WEB: &str = "web";
+/// 导出的根：Windows 的静默路径 ✓。
+pub const EXPORT_ROOT_NATIVE: &str = "native";
+
+/// 导出配置：走哪个根。
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct ExportConfig {
+    /// 导出的根：`web`（浏览器打印对话框 ✓）或 `native`（Windows 的静默路径 ✓）。
+    pub root: String,
+}
+
+impl Default for ExportConfig {
+    fn default() -> Self {
+        Self {
+            root: EXPORT_ROOT_WEB.to_owned(),
+        }
+    }
+}
+
+impl ExportConfig {
+    /// 有效的根：**只认两个固定取值** ✓，别的按 `web` 走 ✓（默认 ✓）。
+    ///
+    /// **这不是"回落"** ✓ —— 回落是"平台没有原生根却悄悄改走 Web" ✓；
+    /// 这里是把**写错的配置值**拉回默认 ✓。
+    /// 平台没有原生根而配置选了 native ✓ ⇒ **不改走 Web** ✓（前端要明说 ✓ ✓）。
+    pub fn effective_root(&self) -> &'static str {
+        match self.root.trim() {
+            EXPORT_ROOT_NATIVE => EXPORT_ROOT_NATIVE,
+            _ => EXPORT_ROOT_WEB,
+        }
+    }
+}
+
 /// 整份配置。
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
@@ -104,6 +140,8 @@ pub struct Config {
     pub log: LogConfig,
     /// 探针配置。
     pub probe: ProbeConfig,
+    /// 导出配置。
+    pub export: ExportConfig,
 }
 
 impl Config {
@@ -184,6 +222,19 @@ pub fn load(cwd: &Path) -> (Config, Source) {
     }
 }
 
+/// 本次运行的配置 ✓（启动时读一次 ✓，之后只读 ✓）。
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
+/// 记下本次运行的配置 ✓。
+pub fn set_config(config: Config) {
+    let _ = CONFIG.set(config);
+}
+
+/// 本次运行的配置 ✓；没记过就用默认值 ✓（单元测试里直接调它 ✓）。
+pub fn config() -> &'static Config {
+    CONFIG.get_or_init(Config::default)
+}
+
 /// 相对路径按当前目录解析。
 ///
 /// 绝对路径原样用 ✓；相对路径挂在当前目录下 ✓。
@@ -235,6 +286,16 @@ mod tests {
         // 没写的字段仍走默认值。
         assert_eq!(config.probe.page_ready_timeout_seconds, 60);
         assert_eq!(config.probe.sample, ProbeConfig::default().sample);
+    }
+
+    #[test]
+    fn the_export_root_is_web_unless_the_file_says_native() {
+        assert_eq!(parse("").expect("应解析成功").export.effective_root(), EXPORT_ROOT_WEB);
+        let native = parse("[export]\nroot = \"native\"").expect("应解析成功");
+        assert_eq!(native.export.effective_root(), EXPORT_ROOT_NATIVE);
+        // 写错的值按默认走 ✓ —— 那是"配置写错了" ✓，不是"平台没有原生根" ✓。
+        let typo = parse("[export]\nroot = \"nativ\"").expect("应解析成功");
+        assert_eq!(typo.export.effective_root(), EXPORT_ROOT_WEB);
     }
 
     #[test]

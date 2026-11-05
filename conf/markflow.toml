@@ -16,6 +16,11 @@ level = "info"
 # 记录形态：json / text。机器验收以 json 为准。
 format = "json"
 
+[export]
+# 导出的根：web（浏览器打印对话框 ✓）或 native（Windows 的静默路径 ✓）。
+# 选了 native 而平台没有这个能力时**不回落** ✓ —— 前端要明说 ✓。
+root = "web"
+
 [probe]
 # 受控样本的归档原件。必须加载归档原件，不能走 dev server ✓。
 sample = "docs/acceptance/pdf-probe/frozen-sample.html"
