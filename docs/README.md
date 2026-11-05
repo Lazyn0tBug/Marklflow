@@ -15,6 +15,7 @@
 - [统一输出与桌面交付完整方案](design/export-outputs-formula-and-print-plan-2026-10-30.md)：当前代码事实、独立PDF回执、授权释放及剩余D0—D8范围。
 - [Tauri迁移路线](design/tauri-migration-plan-2026-10-29.md)与[平台接口契约](design/tauri-migration-m0-contract-2026-10-29.md)：会话绑定、双平台组合及已有阶段/待验边界。
 - [本地文档支持设计](design/local-document-support-2026-11-05.md)：M4/M5/M6 的语义、授权与绑定模型、UI规格与验收条目；设计稿，未实施。
+- [大纲折叠设计](design/outline-collapse-2026-11-06.md)：侧栏大纲树的展开与收起、稳定键、默认深度与验收条目；设计稿，未实施。
 - [CM6 + Vim可行性与代价](design/cm6-vim-feasibility-and-cost-2026-11-01.md)：独立讨论稿，无实施步骤、排期或迁移决定。
 - [审查与测试规范](development/review-and-testing.md)：增量审查、风险选测、证据复用和全量触发；[项目指导](../AGENTS.md)。
 
