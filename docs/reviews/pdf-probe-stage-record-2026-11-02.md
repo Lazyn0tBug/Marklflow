@@ -1042,12 +1042,12 @@ D1b／D1c 的那些断言、那些日志、那些 PDF 都还在 ✓，它们证�
 
 | 轮次 | 日志 | 结果 |
 | --- | --- | --- |
-| 探针轮 ✓ | `markflow.22696.log` ✓ | D1b／D1c 的证据 ✓ |
-| 产品形态轮 ✓ | `markflow.12032.log` ✓ | `product_print=saved` ✓ |
-| 默认构建轮 ✓ | `markflow.32336.log` ✓（人读文本形态 ✓） | **D1b-5 补上** ✓ |
-| 删掉能力清单文件后的两轮 ✓ | `markflow.28600.log`、`markflow.27996.log` ✓ | 与基线**逐条一致** ✓ |
-| 取消轮 ×2 ✓ | `markflow.8588.log`、`markflow.31392.log` ✓ | `product_print=cancelled` ✓ |
-| 中止跑 ×2 ✓ | `markflow.25012.log`、`markflow.33180.log` ✓ | dev server 未在服务 ✓ → **不作证据** ✓ |
+| 探针轮 ✓ | `delivery-host-windows-configured-probe-round.jsonl` ✓ ✓ | D1b／D1c 的证据 ✓ |
+| 产品形态轮 ✓ | `delivery-host-windows-configured-product-print-round.jsonl` ✓ ✓ | `product_print=saved` ✓ |
+| 默认构建轮 ✓ | `delivery-host-windows-configured-default-build-round.txt` ✓ ✓（人读文本形态 ✓） | **D1b-5 补上** ✓ |
+| 删掉能力清单文件后的两轮 ✓ | `delivery-host-windows-capability-removed-probe-round.jsonl` ✓、`delivery-host-windows-capability-removed-product-round.jsonl` ✓ ✓ | 与基线**逐条一致** ✓ |
+| 取消轮 ×2 ✓ | `delivery-host-windows-product-print-cancelled.jsonl` ✓、`delivery-host-windows-product-print-cancelled-repeat.jsonl` ✓ ✓ | `product_print=cancelled` ✓ |
+| 中止跑 ×2 ✓ | 未归档 ✓（文件名与原因记在 meta 的 `not_archived` ✓） | dev server 未在服务 ✓ → **不作证据** ✓ |
 
 **机器判定** ✓：D1b-1—D1b-6 与 D1c-1、D1c-2 **全通过** ✓，错误 0 ✓、告警 0 ✓、提示 1 ✓（已知的「内容准确只有页面自述依据」✓）。
 

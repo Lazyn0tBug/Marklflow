@@ -1,0 +1,110 @@
+{
+  "kind": "D1b/D1c 与 D7-1 交付宿主取证日志（Windows 11, x86_64, WebView2 156.0.4314.58）",
+  "collected": "2026-11-05",
+  "mechanism": "运行期输入改成配置文件（<当前目录>\\conf\\markflow.toml）后的复验；日志落在 <当前目录>\\log\\ 下",
+  "format": "六份 JSONL（形态=json，config_source=file）+ 一份人读文本（默认构建那轮 config_source=missing）",
+  "files": [
+    {
+      "file": "delivery-host-windows-configured-probe-round.jsonl",
+      "sha256": "ad35a8a23c0c32296e6c5272970a0ec2edc0f18691924ff0849221a86c72543d",
+      "bytes": 18450,
+      "records": 52,
+      "kind": "探针轮（配置化之后）：输出宿主同命令被拒、主窗口同命令放行、探针自己那轮静默打印成功",
+      "feature": "pdf-probe",
+      "run_id": "49d1dabe-5999-4915-b69d-f3f7d070b479",
+      "covers": "D1b-1/2/3/4/6、D1c-1、D1c-2",
+      "observed": "打印成功：205821 字节、committed=true、pdf_temp_removed=true；错误 0、告警 0"
+    },
+    {
+      "file": "delivery-host-windows-configured-product-print-round.jsonl",
+      "sha256": "9680b7e19f48202ac6ba2a6c1a42167c760a9fbd80d8da18aed03e36462a682c",
+      "bytes": 21662,
+      "records": 61,
+      "kind": "产品形态轮（配置化之后）：主窗口走 select_native_save + print_native_pdf",
+      "feature": "pdf-probe",
+      "run_id": "a8b21d34-531f-40f8-8df8-4f3fdf373f1c",
+      "covers": "D7-1 的命名与保存",
+      "observed": "save 对话框 6153 ms；print ok、bytes=205821、committed=true、pdf_temp_removed=true；页面回执 product_print=saved"
+    },
+    {
+      "file": "delivery-host-windows-configured-default-build-round.txt",
+      "sha256": "9531cfe9241bcf587c1515b0b079b03f5cdc0a676cbac27616d91853ab6bac2a",
+      "bytes": 5516,
+      "records": 22,
+      "kind": "默认构建轮（不带 pdf-probe 特性）：D1b-5 的运行证据",
+      "feature": "default",
+      "run_id": "98b08313-6cb7-4a87-aa89-db7d5ff16739",
+      "covers": "D1b-5",
+      "observed": "主窗口受保护命令全部 allow；无探针事件、无探针身份。config_source=missing：tauri dev 的当前目录不是仓库根"
+    },
+    {
+      "file": "delivery-host-windows-capability-removed-probe-round.jsonl",
+      "sha256": "f49b238dd0c7b7aa70ced5cec00a16069ad1735c577c6be73280394ac4e981bc",
+      "bytes": 18450,
+      "records": 52,
+      "kind": "删掉 src-tauri/capabilities/default.json 之后的探针轮",
+      "feature": "pdf-probe",
+      "run_id": "e1d5338e-74ab-4840-9648-e77ed802127a",
+      "covers": "能力清单删除前后的逐条对比（探针轮）",
+      "observed": "与 configured-probe-round 逐条一致（52 条；去掉时间、run/span/call id、sha256、耗时后完全相同）"
+    },
+    {
+      "file": "delivery-host-windows-capability-removed-product-round.jsonl",
+      "sha256": "340271042c47f14b9ba9a3844a2d4d1f7d74c1b6932958fc857bb0f647d9e73a",
+      "bytes": 21663,
+      "records": 61,
+      "kind": "删掉 src-tauri/capabilities/default.json 之后的产品形态轮",
+      "feature": "pdf-probe",
+      "run_id": "cc16b682-4fb8-4c15-a42e-167df9fac90c",
+      "covers": "能力清单删除前后的逐条对比（产品形态轮）",
+      "observed": "与 configured-product-print-round 逐条一致（61 条）；原生保存对话框在删后照常弹：granted=true、10941 ms"
+    },
+    {
+      "file": "delivery-host-windows-product-print-cancelled.jsonl",
+      "sha256": "bfec1fd8d1b1592574074727353f7f9502e96a17f350339eff1736249717a4d2",
+      "bytes": 19898,
+      "records": 56,
+      "kind": "产品形态轮：人在原生保存对话框里取消",
+      "feature": "pdf-probe",
+      "run_id": "8542cb4c-ac58-41ca-81e1-bbe92c833864",
+      "covers": "D7-1 的取消",
+      "observed": "select_native_save granted=false（授权没发出去）；页面回执 product_print=cancelled；日志里没有 print_native_pdf —— 一个字节都没写"
+    },
+    {
+      "file": "delivery-host-windows-product-print-cancelled-repeat.jsonl",
+      "sha256": "863238338026724925a40a9d58633490bd25a87c8b813636b64e8afec8baa693",
+      "bytes": 19898,
+      "records": 56,
+      "kind": "同上形状的重复轮（另一台机器的第二次）",
+      "feature": "pdf-probe",
+      "run_id": "c0573e48-11f5-4bad-8dfc-f82b1700aca2",
+      "covers": "D7-1 的取消（重复）",
+      "observed": "granted=false、product_print=cancelled、无打印命令"
+    }
+  ],
+  "not_archived": [
+    {
+      "files": [
+        "markflow.25012.log",
+        "markflow.33180.log"
+      ],
+      "reason": "dev server 当时未在服务：probe_source_check reachable=false → probe_abort → 未产出证据；进程非正常退出，无 run_end。不作证据。"
+    },
+    {
+      "files": [
+        "产物 PDF"
+      ],
+      "reason": "PDF 不入库：只留 hash 与字节数（每次打印的 sha256 不同，因 PDF 内嵌创建时间与文档 ID；版面度量相同：205821 字节、页面盒 3 个、794×1123）"
+    },
+    {
+      "files": [
+        "失败保留旧文件那一轮"
+      ],
+      "reason=": "机器那半未取：native 的 print-not-committed 记录没有跑到。该项记为人工项（操作者在宿主上确认失败时旧文件内容未变）"
+    }
+  ],
+  "checker": {
+    "command": "bun scripts/pdf-probe-check.ts <这些文件>",
+    "verdict": "D1b-1/2/3/4/5/6 与 D1c-1、D1c-2 全通过；错误 0、告警 0、提示 1（内容准确只有页面自述依据，已知边界）"
+  }
+}
