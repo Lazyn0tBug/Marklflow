@@ -9,10 +9,12 @@ mod output_host;
 mod print_com;
 #[cfg(target_os = "windows")]
 mod print_host;
-// 非 Windows 上这份实现只被探针用（Windows 之外没有静默打印 ✓）——
-// 默认构建里没人调它 ✓，故在那一边放过死代码告警 ✓（模块本身保留 ✓：
-// 暂存与清理那些跨平台的部分 ✓，以及它们在 unix 上的用例 ✓）。
-#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+// **死代码随平台与特性各占一半** ✓：
+// - 探针读的那部分（就绪读数 ✓、产物的读数 ✓、受控打印 ✓）在**默认构建**里没人读 ✓；
+// - 生产读的那部分（静默打印 ✓、HTML 暂存 ✓）在**非 Windows** 上没人读 ✓（静默打印是 Windows 专属 ✓）。
+// 只有「Windows + 带探针特性」这一种形状里两边都在用 ✓ —— 其余三种各有一半是死的 ✓。
+// 故除那一种之外放过死代码告警 ✓；那一种照常被 lint ✓ ✓（它才是真正全用上的形状 ✓ ✓）。
+#[cfg_attr(not(all(target_os = "windows", feature = "pdf-probe")), allow(dead_code))]
 mod pdf_print;
 mod source_guard;
 #[cfg(feature = "pdf-probe")]
