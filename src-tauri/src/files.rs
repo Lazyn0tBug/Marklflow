@@ -128,10 +128,13 @@ impl FileAccess {
             .insert(key.clone(), Grant { path, writable });
         Ok(SelectedFile { key, name, size })
     }
+    /// 取授权里的路径。**写必须可写；读时可写蕴含可读** ✓：
+    /// 打开用户选中的文件时签发的授权读、写都有 ✓，写回原文件走同一次打开的 key ✓；
+    /// 反过来，只读授权不能被当写授权用 ✓（"用错了"不是"没碰它" ✓）。
     fn path(&self, key: &str, writable: bool) -> Result<PathBuf, String> {
         let grants = self.0.lock().map_err(error)?;
         let grant = grants.get(key).ok_or("unknown-file-key")?;
-        if grant.writable != writable {
+        if writable && !grant.writable {
             return Err("file-capability-mismatch".into());
         }
         Ok(grant.path.clone())
@@ -226,7 +229,8 @@ pub async fn select_native_open(
     })
 }
 
-/// 打开文件对话框并为选中的文件签发只读授权。
+/// 打开文件对话框并为选中的文件签发**读 + 写**授权 ✓：写能力只在用户显式触发保存时使用 ✓，
+/// 建立授权本身不写任何字节 ✓。写回原文件不必再选一次 ✓。
 fn paths_of(
     app: tauri::AppHandle,
     access: tauri::State<'_, FileAccess>,
@@ -243,7 +247,7 @@ fn paths_of(
                 match item
                     .into_path()
                     .map_err(error)
-                    .and_then(|path| access.grant(path, false))
+                    .and_then(|path| access.grant(path, true))
                 {
                     Ok(file) => selected.push(file),
                     Err(failure) => {
@@ -669,18 +673,17 @@ mod tests {
         let write_path = dir.path().join("write.md");
         std::fs::write(&read_path, b"source").unwrap();
         let access = FileAccess::default();
+        // 只读授权：能读，不能写。
         let read = access.grant(read_path.clone(), false).unwrap();
         assert_eq!(access.path(&read.key, false).unwrap(), read_path);
         assert_eq!(
             access.path(&read.key, true).unwrap_err(),
             "file-capability-mismatch"
         );
+        // 可写授权：能写，也能读——写回原文件走同一次打开的 key，不必再选一次。
         let write = access.grant(write_path.clone(), true).unwrap();
         assert_eq!(access.path(&write.key, true).unwrap(), write_path);
-        assert_eq!(
-            access.path(&write.key, false).unwrap_err(),
-            "file-capability-mismatch"
-        );
+        assert_eq!(access.path(&write.key, false).unwrap(), write_path);
         access.0.lock().unwrap().remove(&read.key);
         assert_eq!(
             access.path(&read.key, false).unwrap_err(),
