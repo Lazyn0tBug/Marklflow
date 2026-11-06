@@ -8,11 +8,11 @@ import {
   FileText,
   ListTree,
   Plus,
+  SquarePlus,
+  SquareMinus,
   Upload,
   Trash2,
   ChevronLeft,
-  ChevronRight,
-  ChevronDown,
   ChevronsUpDown,
   FileCode,
   Search,
@@ -99,6 +99,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
           return (
             <div
               key={row.key}
+              style={{ paddingLeft: `${indent}px` }}
               className={`flex items-center rounded transition-colors ${
                 isActive
                   ? 'bg-teal-950/80 border border-teal-500/60 shadow-sm ring-1 ring-teal-500/30'
@@ -117,9 +118,9 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                   }`}
                 >
                   {isCollapsed ? (
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <SquarePlus className="w-3.5 h-3.5" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
+                    <SquareMinus className="w-3.5 h-3.5" />
                   )}
                 </button>
               ) : (
@@ -129,7 +130,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                 aria-current={isActive ? 'location' : undefined}
                 ref={isActive ? activeItemRef : row.entry ? entryItemRef : null}
                 onClick={() => onJump(item.id, item.line)}
-                style={{ paddingLeft: `${indent + 8}px` }}
+                style={{ paddingLeft: '8px' }}
                 className={`flex-1 min-w-0 text-left py-1.5 pr-2 rounded text-xs truncate transition-all flex items-center gap-1.5 ${
                   isActive
                     ? 'text-teal-200 font-semibold'
