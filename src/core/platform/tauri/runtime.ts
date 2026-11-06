@@ -28,6 +28,16 @@ export async function readRuntimePrefs():Promise<RuntimePrefs|undefined>{
  return runtimePrefsSchema.parse(value);
 }
 
+/**
+ * 是不是桌面外壳 ✓（浏览器里没有原生能力 ✓ ⇒ 返回 false ✓）。
+ * 平台层的组合点靠它选实现 ✓ ⇒ ⇒ 原生 SDK 只留在这一层 ✓。
+ */
+export async function isDesktopRuntime():Promise<boolean>{
+ if(typeof window==='undefined')return false;
+ const {isTauri}=await import('@tauri-apps/api/core');
+ return isTauri();
+}
+
 /** Optional shell capability only; no application state, filesystem, or export ownership.
     The label pair is the caller's identity as the native side reports it (D1a-6). */
 export async function readTauriPlatformInfo():Promise<TauriPlatformInfo|undefined>{

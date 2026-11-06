@@ -336,7 +336,13 @@ React 19 的根可以带选项：`createRoot(container, {onUncaughtError, onCaug
   - **已验（P-6 的形态）**：一条故意失败的用例，输出里直接带 `[pageerror] Error: …`（含栈）⇒ 归档里有 `page-errors` 附件 ✓。
   - **回归闸**：一条永久用例断言"页面错误被捕获"且"该用例仍然通过" ✓。
   - 门禁：端到端 155 通过 / 1 跳过 / 0 失败；typecheck / lint / build 通过 ✓。
-- N2 消息端口、N3 捕获与分类、N4 通知面与应用自身的失败、N5 与基座对齐：未开始。
+- **N2 消息端口** ✓（分三小步）：
+  - **N2-1 词汇与形状** ✓：`src/application/messages.ts` ⇒ **封闭的类别词表**（原生侧的码 ＋ 应用自身的码，同一张表 ✓）、报告的形状（`category` ＋ 只进控制台的 `detail` ✓）、**用户文案表**（只收"用户可行动或可理解"的那些 ✓）、`messageText` / `hasOwnText` / 端口接口 ✓ ⇒ ⇒ **一处事实** ✓（原生侧的码由 Rust 给出、与这里必须同步 ✓）。
+  - **N2-2 两个出口与组合点** ✓：`core/platform/web/messages.ts`（**原始文本进控制台** ✓）、`core/platform/tauri/messages.ts`（经 `log_event` ⇒ **只发类别** ✓）、`core/platform/messages.ts`（按 `isDesktopRuntime()` 选实现 ✓ ⇒ 原生 SDK 只留在 tauri 层 ✓）。单测断言了**两个实现的差别** ✓ ⇒ 尤其"原始文本不进日志" ✓（基座 §5.2 的硬约束 ✓）。
+  - **N2-3 规则落进检查** ✓：`check-module-boundaries.ts` 增加 AST 规则 ⇒ **应用层不得直连 `console` 或 `log_event`** ✓（按 AST 判定 ⇒ 注释与字符串里的同名字样不算 ✓）。**牙齿已验** ✓：临时插一行 `console.error` ⇒ 检查报错并退出码 1 ✓ ⇒ 撤掉后通过 ✓。
+  - **规则的范围目前只到应用层** ✓：`components/export/ExportModal.tsx` 的 `console.error` 与 `core/storage/storage.ts` 的 `console.warn` **随 N4 一起改** ✓ ⇒ ⇒ 那时把规则的适用范围扩大到组件层 ✓。
+  - **依赖**：桌面出口发的 `error_category` 是本仓的类别 ✓ ⇒ 原生侧的 `WebErrorCategory` 还没有这些类别 ⇒ ⇒ **载荷会被原生侧拒收** ⇒ ⇒ ⇒ **N5（与基座对齐）是这条链的前提** ⇒ ⇒ ⇒ ⇒⇒⇒
+- N3 捕获与分类、N4 通知面与应用自身的失败、N5 与基座对齐：未开始。
 
 **顺序说明**：N1 独立且立刻有用 ⇒ 可以先做；N2→N3→N4 是一条链 ⇒ 属于日志基座那条线（生产接入与可监测性）⇒ 建议排在那里，不混进大纲或文档资产。
 

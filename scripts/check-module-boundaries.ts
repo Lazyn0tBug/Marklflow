@@ -9,6 +9,7 @@ const taskRoot='src/application/tasks/';
 const exportRoot='src/application/exports/';
 const sessionRoot='src/application/sessions/';
 const workspaceRoot='src/application/workspace/';
+const applicationLayerRoot='src/application/';
 const cacheRoot='src/application/previewcache/';
 const builtins=new Set(builtinModules.map(name=>name.replace(/^node:/,'')));
 const hostGlobals=new Set(['process','Buffer','NodeJS','Bun','require']);
@@ -16,7 +17,7 @@ const domGlobals=new Set(['window','document','HTMLElement','DOMParser','localSt
 const allowed=new Set(['zod','css-tree','unified','remark-parse','remark-gfm','remark-math','unist-util-visit']);
 function portable(file:string){return file.replaceAll('\\','/')}
 export function checkModuleSource(file:string,source:string,root=process.cwd()):string[]{
- const failures:string[]=[],path=portable(relative(root,resolve(root,file))).toLowerCase(),corePure=pureRoots.some(p=>path.startsWith(p)),taskPure=path.startsWith(taskRoot),exportPure=path.startsWith(exportRoot),sessionPure=path.startsWith(sessionRoot),workspacePure=path.startsWith(workspaceRoot),cachePure=path.startsWith(cacheRoot),applicationPure=taskPure||exportPure||sessionPure||workspacePure||cachePure,pure=corePure||applicationPure;
+ const failures:string[]=[],path=portable(relative(root,resolve(root,file))).toLowerCase(),corePure=pureRoots.some(p=>path.startsWith(p)),taskPure=path.startsWith(taskRoot),exportPure=path.startsWith(exportRoot),sessionPure=path.startsWith(sessionRoot),workspacePure=path.startsWith(workspaceRoot),cachePure=path.startsWith(cacheRoot),applicationPure=taskPure||exportPure||sessionPure||workspacePure||cachePure,pure=corePure||applicationPure,applicationLayer=path.startsWith(applicationLayerRoot);
  const tree=parse(source,{sourceType:'module',plugins:['typescript',...(file.endsWith('tsx')?['jsx' as const]:[])],createImportExpressions:true});
  const htmlFormat=htmlFormats.has(path);
  function dependency(name:string,typeOnly=false){
@@ -51,6 +52,10 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
    const parentType=parent&&'type'in parent?parent.type:undefined,computed=parent&&'computed'in parent?parent.computed:false;
    const dataKey=(position==='key'&&['ObjectProperty','ObjectMethod','TSPropertySignature'].includes(String(parentType))&&!computed)||(position==='property'&&['MemberExpression','OptionalMemberExpression'].includes(String(parentType))&&!computed);
    if(node.type==='Identifier'&&'name'in node&&(hostGlobals.has(String(node.name))||applicationPure&&domGlobals.has(String(node.name)))&&!dataKey)failures.push('browser/core cannot use host global '+String(node.name));
+   // 应用层不直连 console / log_event ⇒ ⇒ 一律走消息端口 ✓（设计 §3.4 ✓）。
+   // 按 AST 判定 ⇒ 注释与字符串里的同名字样不算 ✓。
+   if(applicationLayer&&['MemberExpression','OptionalMemberExpression'].includes(String(node.type))&&'object'in node&&node.object&&typeof node.object==='object'&&'type'in node.object&&node.object.type==='Identifier'&&'name'in node.object&&String(node.object.name)==='console')failures.push('application layer must report through the message port, not console');
+   if(applicationLayer&&node.type==='StringLiteral'&&'value'in node&&node.value==='log_event')failures.push('application layer must report through the message port, not log_event');
   }
   for(const [key,value]of Object.entries(node))if(!['loc','extra','comments','tokens'].includes(key))visit(value,node,key);
  }
