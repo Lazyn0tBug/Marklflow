@@ -18,7 +18,7 @@ import {
 } from '../../core/parse/outlineTree';
 
 /** 深度 ≥ 3 的分支默认收起（根的深度是 0）。 */
-export const DEFAULT_COLLAPSED_DEPTH=3;
+const DEFAULT_COLLAPSED_DEPTH=3;
 
 const EMPTY_SET:ReadonlySet<string>=new Set();
 const EMPTY_MAP:ReadonlyMap<string,boolean>=new Map();

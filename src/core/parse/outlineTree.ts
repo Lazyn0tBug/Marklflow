@@ -5,7 +5,7 @@ import type {HeadingItem} from './markdown';
  */
 export interface OutlineNode {item:HeadingItem;children:OutlineNode[];key:string}
 /** 可见的一行。收起状态的节点只隐藏后代，自身仍然可见。 */
-export interface OutlineRow {item:HeadingItem;key:string;hasChildren:boolean;collapsed:boolean}
+interface OutlineRow {item:HeadingItem;key:string;hasChildren:boolean;collapsed:boolean}
 
 /** 稳定键里的分隔符。标题文本不含 NUL（导入时已拒），所以它不会与文本混淆。 */
 const SEP='\u0000';

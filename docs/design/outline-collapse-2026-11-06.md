@@ -1,6 +1,6 @@
 # 大纲折叠设计：侧栏大纲树的展开与收起
 
-日期：2026-11-06；状态：**折叠功能已实施**（分支 `outline-collapse`，提交 `5a0c7df`，记录见 §12）；**结构重构已设计、未实施**（§3 与 §11）。
+日期：2026-11-06；状态：**折叠功能与结构重构均已实施**（分支 `outline-collapse`；折叠功能提交 `5a0c7df`，结构重构 R1–R4 见 §11 与 §12）。
 关联：[Tauri 迁移路线](tauri-migration-plan-2026-10-29.md) §4.4（大纲点击逻辑章节**居顶**；编辑器视口中心章节高亮）、[本地文档支持设计](local-document-support-2026-11-05.md)。
 本文件记录设计要求；验收条目见 §9；结构迁移步骤见 §11。
 
@@ -235,8 +235,10 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 | 文件 | 改动 |
 | --- | --- |
 | `src/core/parse/outlineTree.ts`（新增） | 纯模块（`src/core/parse/` 是仓库的 pure root）：叠树、算稳定键、算可见行、算生效收起集合、算"包含高亮的收起祖先"。只能依赖 `src/core/parse|model|policy` 内的模块与白名单依赖 |
+| `src/application/workspace/outlineState.ts`（新增） | 纯模块：状态机（动作 → 状态）与视图模型（状态 → 行）。`src/application/workspace/` 是仓库的 pure root |
 | `src/components/workspace/Sidebar.tsx` | 折叠状态、行结构调整、折叠按钮、工具区按钮、高亮祖先标记、跳转时展开祖先 |
-| `tests/unit/outline-tree.test.ts`（新增） | 纯逻辑断言 |
+| `tests/unit/outline-tree.test.ts`（新增） | 树运算的纯逻辑断言 |
+| `tests/unit/outline-state.test.ts`（新增） | 状态机与视图模型的断言 |
 | `tests/e2e/outline-collapse.spec.ts`（新增） | 交互断言 |
 | `src/application/workspace/outlineState.ts`（新增，§11 的重构） | reducer（状态机）与视图模型 |
 | `tests/unit/outline-state.test.ts`（新增，§11 的重构） | 状态机与视图的单元断言 |
@@ -303,7 +305,7 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 | R1 | 新建 `src/application/workspace/outlineState.ts`，先只搬**纯函数**（视图模型），组件不动 | 视图模型的单元断言覆盖不变量 1、2、4、5、8（O-23）；组件未动，端到端全绿 | ✓ `outlineView` + `tests/unit/outline-state.test.ts`（7 项）；组件未动 |
 | R2 | 加 reducer 与动作，用单元测试把 §2.3 与 §3.4 的规则钉住 | reducer 单元断言全过（O-19~O-21）；组件仍未动 | ✓ `outlineReducer` + 五个动作；`tests/unit/outline-state.test.ts` 12 项；组件未动 |
 | R3 | 组件切到 `useReducer` + `useMemo`：删掉 `fold` 状态、`previousDuplicates` ref、清理 effect 与 `displayTree` 第二棵树；事件改为 dispatch | §9 的端到端全绿；§3.7 八条逐条对应到具体用例 | ✓ 组件净减 75 行；只剩滚动到高亮项那一个 DOM 效果 |
-| R4 | 收尾：删掉不再需要的旧路径与导入；同步本文档的落点表 | lint / typecheck / 单元 / 端到端全绿；模块边界与纯度检查通过 | 待做 |
+| R4 | 收尾：删掉不再需要的旧路径与导入；同步本文档的落点表 | lint / typecheck / 单元 / 端到端全绿；模块边界与纯度检查通过 | ✓ 清掉两个无人引用的导出；落点表同步 |
 
 ### 11.1 八条不变量对应到哪些用例
 
@@ -334,7 +336,7 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 | 换文档时第一帧闪出旧文档的折叠 | O-22 直接断言"状态文档 ID 不符 ⇒ 覆盖视为空" |
 | 迁移中顺手改了行为 | 每步的退出条件都只提结构；行为差异由端到端全绿把关 |
 
-## 12. 实施步骤与验证记录（折叠功能）
+## 12. 实施步骤与验证记录（折叠功能与结构重构）
 
 大纲折叠可独立于 M4–M6 实施。下表是当时的推进顺序，三步**已全部执行完毕**；O-1 至 O-18 沿用 §9 编号。
 
@@ -350,7 +352,8 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 - 新增：`src/core/parse/outlineTree.ts`、`tests/unit/outline-tree.test.ts`（9 项）、`tests/e2e/outline-collapse.spec.ts`（8 项）
 - 修改：`src/components/workspace/Sidebar.tsx`、`docs/design/outline-collapse-2026-11-06.md`
 - 门禁：lint ✓；typecheck ✓（247 个受管源）；单元 553/553 ✓；大纲端到端 8/8 ✓；大纲相关的既有端到端（review-workbench / workbench-tabs / workbench-source-scroll）✓
-- **未决**：完整套件里 `workbench-source-scroll.spec.ts` 间歇失败（改动后 12 次红 6 次；原代码 4 次全绿）。根因是侧栏把 `extractOutline` 改成 memo 后渲染变快，暴露了应用里既有的竞态——自己触发的滚动被判成用户滚动（`src/App.tsx:90` 的 `isProgrammatic` 用 ±2px 判定，且无论匹配与否都清掉期望值）。按安排归入同步滚动那一组最后处理；**合进主线前必须修**。
+- **结构重构**（R1–R4，§11）：新增 `src/application/workspace/outlineState.ts`（状态机 + 视图模型）与 `tests/unit/outline-state.test.ts`；`Sidebar.tsx` 改为 `useReducer` + `useMemo`，净减 75 行，只剩"滚动到高亮项"那一个 DOM 效果。单元 565/565；大纲相关的端到端 29/29。
+- **未决**：完整套件里 `workbench-source-scroll.spec.ts` 间歇失败（改动后多次出现，原代码 4 次全绿）。根因是侧栏把 `extractOutline` 改成 memo 后渲染变快，暴露了应用里既有的竞态——自己触发的滚动被判成用户滚动（`src/App.tsx:90` 的 `isProgrammatic` 用 ±2px 判定，且无论匹配与否都清掉期望值）。按安排归入同步滚动那一组最后处理；**合进主线前必须修**。
 
 ---
 
