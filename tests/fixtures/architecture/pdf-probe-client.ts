@@ -18,7 +18,7 @@ declare global{
 type WebEventKind='page_ready'|'call_started'|'call_finished'|'page_error';
 type WebCommand='get_platform_info'|'select_native_open'|'select_native_save'|'read_native_text'|'write_native_bytes'|'release_native_file'|'print_native_pdf';
 type WebResult='ok'|'denied'|'error'|'cancelled';
-type WebErrorCategory='no_tauri_internals'|'invoke_rejected'|'invalid_payload'|'rate_limited'|'timeout'|'unknown';
+type WebErrorCategory='no-tauri-internals'|'invoke-rejected'|'invalid-payload'|'rate-limited'|'timeout'|'unknown';
 
 interface Outcome{ok:boolean;value?:unknown;error?:string}
 /** 产品形态打印的结果：回执（saved／not-committed）或取消标记。 */
@@ -76,8 +76,8 @@ function newCallId():string{
 function resultOf(outcome:Outcome):{result:WebResult;error_category?:WebErrorCategory}{
  if(outcome.ok)return {result:'ok'};
  const error=outcome.error??'';
- if(error.includes('native-source-denied'))return {result:'denied',error_category:'invoke_rejected'};
- if(error.includes('no-tauri-internals'))return {result:'error',error_category:'no_tauri_internals'};
+ if(error.includes('native-source-denied'))return {result:'denied',error_category:'invoke-rejected'};
+ if(error.includes('no-tauri-internals'))return {result:'error',error_category:'no-tauri-internals'};
  return {result:'error',error_category:'unknown'};
 }
 

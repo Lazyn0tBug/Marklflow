@@ -2,6 +2,8 @@
 
 日期：2026-11-03。基线：architecture-refactor / `2754167`。状态：**设计修订，尚未实施**。本次补充日志记录边界、脱敏、故障及验收契约；不改变产品业务流程。
 
+**2026-11-07 补记** ✓：§5.2.1 的类别词表**扩到页面侧与应用侧共用的一份** ✓ ⇒ ⇒ 载荷形状不变 ✓ ⇒ ⇒ 两侧同步由 `scripts/check-message-vocabulary.ts` 兜底 ✓ ⇒ ⇒ 详见[应用消息方案](app-messaging-plan-2026-11-07.md) §8 的 N5 ✓。
+
 本文定义 MarkFlow 的日志基座：Rust 侧的文件 sink（L1）、web→Rust 的回传通道（L2），以及由它支撑的**证据形态**（怎么记、怎么取信、怎么被机器校验）。
 
 术语：本应用以Tauri为桌面宿主，Web应用层与Rust原生层共同构成同一个应用，不采用远端客户端—服务端模型。`origin=web` / `origin=rust`仅区分应用内记录来源和观察位置，不表示Web应用层不是应用端。应用内正常日志均用于诊断；涉及原生权限、副作用或隔离验收时，仍需区分页面报告与原生直接观察，不因同属一个应用就互相替代。
@@ -156,6 +158,23 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 - 最小稳定原生事件：`run_start`、`run_end`、`source_decision`、`operation_result`、`host_state`、`page_report_observed`、`log_health`；Web事件枚举先限 `page_ready`、`call_started`、`call_finished`、`page_error`。具体阶段只能按需增加枚举，不开放任意结构化字段。
 - **观测单位是 span，不是单条记录**：一次调用开一个 span，调用内的守卫判定与操作结果是该 span 内的事件，span 携带起止与耗时。原生侧每个受保护命令一个 span（`command` 为 span 名）；Web侧每次调用一个 span，`call_id` 即其 span id。调用类记录带不具授权能力的 `call_id`、命令枚举、结果枚举；原生守卫记录allow/deny及稳定原因码。Web应用层调用ID只用于关联，不是身份或权限；Rust限制其长度和字符集，绑定run_id、原生身份、命令。每个探针请求使用唯一ID；若需传入生产命令，仅作为可选诊断关联字段，不改变返回值和业务判定，也不允许关联字段控制身份。未落实同请求贯通时，不能只按时间近似配对后宣称调用已对应。
 - 其他字段只允许固定枚举、计数、布尔值或有界诊断ID；`page_error`只传错误类别，不传原始异常message。日志入口和底层sink均不输出原始授权key，不以secret=true作为泄露许可。字段白名单的作用是**记录的内容受控**，不承担防伪职责。
+
+### 5.2.1 类别词表（封闭，页面侧与应用侧共用一份）
+
+`page_error` 的 `error_category` 取自**一份封闭词表** ✓。它在两侧各有一份代码：前端那份在 `src/application/messages.ts` ✓，Rust 那份在 `src-tauri/src/logging.rs` 的 `web_error_categories!` 宏 ✓ ⇒ ⇒ **两侧必须同步改** ⇒ ⇒ **`scripts/check-message-vocabulary.ts` 把它们对起来** ✓ ⇒ ⇒ 两侧对不上就红 ✓ ⇒ ⇒ 词表不会烂掉 ✓。
+
+**一族一种拼写** ✓：全是 kebab ✓（`export-failed` ✓、`native-io-failed` ✓）⇒ ⇒ 同一个字段里不会混着两种写法 ✓ ⇒ ⇒ 读日志的人不用记两套规则 ✓。
+
+| 族 | 类别 | 谁报 |
+| --- | --- | --- |
+| **通道类** | `no-tauri-internals` / `invoke-rejected` / `invalid-payload` / `rate-limited` / `timeout` / `unknown` | 探针页 ✓（基座原有 ✓） |
+| **原生文件类** | `native-source-denied` / `native-target-missing` / `native-permission-denied` / `native-io-failed` / `native-dialog-failed` / `file-too-large` / `invalid-utf8` / `not-a-file` / `not-a-regular-target` / `unknown-file-key` / `print-failed` / `file-capability-mismatch` / `native-internal-failed` / `invalid-file-name` / `invalid-target` | 原生侧 ✓（`files.rs` 与 `source_guard.rs` ✓） |
+| **应用自身类** | `export-failed` / `export-blocked` / `save-failed` / `storage-corrupted` / `preview-unavailable` / `import-rejected` | 应用层 ✓ |
+| **捕获类** | `render` / `unhandled` / `rejection` / `startup` / `worker` | 前端捕获未捕获错误时 ✓ |
+
+⇒ **类别是码，不是文案** ✓：文案在应用侧那张表里 ✓（`src/application/messages.ts` ✓）⇒ ⇒ 日志里只有码 ✓。
+⇒ **类别只在失败时出现** ✓（成功不另造码 ✓，见[应用消息方案](app-messaging-plan-2026-11-07.md) §2.1 ✓）。
+⇒ **不在表里的类别让整条载荷被拒收** ✓（封闭枚举 ✓）⇒ ⇒ 页面不能自造类别 ✓ ⇒ ⇒ 那条记录连同类别一起消失 ✓（只留一个 `rejected` 计数 ✓）。
 
 ### 5.3 校验与归档
 

@@ -1,5 +1,6 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
+import {messageText} from '../../../application/messages';
 const selectedSchema=z.object({
  key:z.string().uuid(),
  name:z.string().min(1),
@@ -13,30 +14,18 @@ const nativeFailureSchema=z.object({code:z.string().min(1)}).strict();
 /**
  * 机器码 → 用户可见的文案。
  *
- * 原生侧只给码 ✓：文案在这里统一 ✓（跨平台要一致 ✓，不露裸码、调用方身份或允许名单 ✓）。
- *
- * **这张表只收"用户可行动或可理解"的失败** ✓。其余的码——应用自己用错了授权、
+ * 原生侧只给码 ✓：文案**在应用层那一份词表里** ✓（跨平台要一致 ✓，
+ * 不露裸码、调用方身份或允许名单 ✓）⇒ ⇒ **这里不再存一份** ✓
+ * ⇒ ⇒ 那份表只收"用户可行动或可理解"的失败 ✓；其余的码——应用自己用错了授权、
  * 授权已失效、内部状态不可用、路径或名字不可用——**不是用户的错** ✓ ⇒ 用户看到
  * 通用的一句话即可 ✓；机器码仍留在错误对象上 ✓，给日志与诊断用 ✓。
- * 机器码的完整清单与分类见[本地文档支持设计](../../../docs/design/local-document-support-2026-11-05.md) §9 ✓。
+ * 机器码的完整清单与分类见[日志基座设计](../../../docs/design/log-base-plan-2026-11-03.md) §5.2 ✓
+ * 与[本地文档支持设计](../../../docs/design/local-document-support-2026-11-05.md) §9 ✓。
  */
-const NATIVE_FAILURE_MESSAGES:Record<string,string>={
- 'native-source-denied':'当前窗口无权使用原生文件能力',
- 'native-target-missing':'文件已被移走或重命名',
- 'native-permission-denied':'没有权限访问这个文件',
- 'native-io-failed':'文件读写失败',
- 'native-dialog-failed':'系统文件对话框打不开',
- 'file-too-large':'文件超过可处理的大小上限',
- 'invalid-utf8':'文件不是合法的 UTF-8 文本',
- 'not-a-file':'目标不是一个普通文件',
- 'not-a-regular-target':'目标不是一个普通文件',
- 'unknown-file-key':'这个文件的授权已经失效',
- 'print-failed':'打印失败',
-};
 
 /** 码 → 文案。认不出的码给一句通用的话 ✓：不猜它意味着什么 ✓。 */
 export function nativeFailureMessage(code:string):string{
- return NATIVE_FAILURE_MESSAGES[code]??'文件操作失败';
+ return messageText(code);
 }
 
 /** 原生失败：机器码留着分流 ✓，用户看到的是文案 ✓。 */

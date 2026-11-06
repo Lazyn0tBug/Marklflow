@@ -80,10 +80,10 @@ const healthyProbeRun=():LogRecord[]=>[
  record({event:'log_health',span:{name:'log',id:2,parent_id:1},fields:{dropped:'0',rejected:'0',write_failures:'0',rotate_failures:'0',delete_failures:'0',file_unavailable:'false',stdout_failed:'false'}}),
  record({event:'web_event',origin:'web',span:{name:'page_call',id:20,parent_id:1},fields:{page_event:'call_finished',command:'get_platform_info',result:'ok',window_label:'main',webview_label:'main'}}),
  record({event:'web_event',origin:'web',span:{name:'page_call',id:21,parent_id:1},fields:{page_event:'call_finished',command:'read_native_text',result:'ok',bytes:'25',window_label:'main',webview_label:'main'}}),
- record({event:'web_event',origin:'web',span:{name:'page_call',id:22,parent_id:1},fields:{page_event:'call_finished',command:'read_native_text',result:'denied',error_category:'invoke_rejected',window_label:'pdf-output',webview_label:'pdf-output'}}),
- record({event:'web_event',origin:'web',span:{name:'page_call',id:23,parent_id:1},fields:{page_event:'call_finished',command:'select_native_open',result:'denied',error_category:'invoke_rejected',window_label:'pdf-output',webview_label:'pdf-output'}}),
+ record({event:'web_event',origin:'web',span:{name:'page_call',id:22,parent_id:1},fields:{page_event:'call_finished',command:'read_native_text',result:'denied',error_category:'invoke-rejected',window_label:'pdf-output',webview_label:'pdf-output'}}),
+ record({event:'web_event',origin:'web',span:{name:'page_call',id:23,parent_id:1},fields:{page_event:'call_finished',command:'select_native_open',result:'denied',error_category:'invoke-rejected',window_label:'pdf-output',webview_label:'pdf-output'}}),
  record({event:'web_event',origin:'web',span:{name:'page_call',id:24,parent_id:1},fields:{page_event:'call_finished',command:'release_native_file',result:'ok',window_label:'main',webview_label:'main'}}),
- record({event:'web_event',origin:'web',span:{name:'page_call',id:25,parent_id:1},fields:{page_event:'call_finished',command:'release_native_file',result:'denied',error_category:'invoke_rejected',window_label:'pdf-output',webview_label:'pdf-output'}}),
+ record({event:'web_event',origin:'web',span:{name:'page_call',id:25,parent_id:1},fields:{page_event:'call_finished',command:'release_native_file',result:'denied',error_category:'invoke-rejected',window_label:'pdf-output',webview_label:'pdf-output'}}),
 ];
 
 /** 一份默认构建的运行：只有主窗口放行，无探针痕迹。 */

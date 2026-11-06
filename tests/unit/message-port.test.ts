@@ -14,19 +14,19 @@ beforeEach(()=>{
 
 it('the browser port writes the raw text to the console', async()=>{
   const spy=vi.spyOn(console,'error').mockImplementation(()=>{});
-  await webMessagePort.report({ category:'export_failed', detail:'原始文本' });
+  await webMessagePort.report({ category:'export-failed', detail:'原始文本' });
   expect(spy).toHaveBeenCalledOnce();
-  expect(String(spy.mock.calls[0]?.[1])).toContain('export_failed');
+  expect(String(spy.mock.calls[0]?.[1])).toContain('export-failed');
   expect(String(spy.mock.calls[0]?.[2])).toContain('原始文本');
   spy.mockRestore();
 });
 
 it('the desktop port sends only the category to the log', async()=>{
   native.isTauri.mockReturnValue(true);
-  await tauriMessagePort.report({ category:'export_failed', detail:'原始文本' });
+  await tauriMessagePort.report({ category:'export-failed', detail:'原始文本' });
   expect(native.invoke).toHaveBeenCalledOnce();
   const payload=JSON.parse(String(native.invoke.mock.calls[0]?.[1]?.payload));
-  expect(payload).toEqual({ event:'page_error', error_category:'export_failed' });
+  expect(payload).toEqual({ event:'page_error', error_category:'export-failed' });
   // 原始文本不进日志 ✓（基座 §5.2 的硬约束 ✓）。
   expect(JSON.stringify(payload)).not.toContain('原始文本');
 });

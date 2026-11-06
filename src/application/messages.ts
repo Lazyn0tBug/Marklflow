@@ -1,19 +1,39 @@
 /**
  * 应用消息：类别词表、报告的形状、文案，以及端口接口。
  *
- * **一处事实** ✓：原生侧的失败码与���用侧的失败码在同一张表里 ✓（见
+ * **一处事实** ✓：原生侧的失败码与应用侧的失败码在同一张表里 ✓（见
  * [本地文档支持设计](../docs/design/local-document-support-2026-11-05.md) §9 与
- * [应用消息方案](../docs/design/app-messaging-plan-2026-11-07.md) §3）⇒ ⇒
- * 原生侧的码由 Rust 给出、与这里**必须同步** ✓（已有的"两处必须同步改"约定 ✓）。
+ * [日志基座设计](../docs/design/log-base-plan-2026-11-03.md) §5.2 ✓）⇒ ⇒
+ * 原生侧的码由 Rust 给出、与这里**必须同步** ✓（已有的"两处必须同步改"约定 ✓）
+ * ⇒ ⇒ **这次同步由检查兜住** ✓：`scripts/check-message-vocabulary.ts` ✓
+ * ⇒ ⇒ 两侧对不上就红 ✓ ⇒ ⇒ 词表不会烂掉 ✓。
  *
  * **成功不是失败** ⇒ ⇒ 成功不在这张表里 ✓（成功的分流由回执与 result 枚举承载 ✓）。
  */
 
-/** 消息类别（封闭）✓：原生侧的失败 ＋ 应用自身的失败 ✓。 */
+/**
+ * 消息类别（封闭）✓：**页面侧与应用侧共用这一份** ✓。
+ *
+ * **一族一种拼写** ✓：全是 kebab ✓ ⇒ ⇒ 同一个字段里不会混着两种写法 ✓
+ * ⇒ ⇒ 线上名字只有一处事实 ✓（Rust 侧的同一个枚举 ✓，
+ * 见 [日志基座设计](../../docs/design/log-base-plan-2026-11-03.md) §5.2 ✓）。
+ *
+ * **四族** ✓：
+ * - **通道类** ✓：页面到原生的**通道自己**的问题 ✓（基座原有 ✓，探针在用 ✓）；
+ * - **原生文件类** ✓：由 `files.rs` 与 `source_guard.rs` 给出 ✓，拼写与那边一致 ✓；
+ * - **应用自身类** ✓：应用自己的失败 ✓；
+ * - **捕获类** ✓：**未捕获的错误从哪来** ✓（渲染期、脚本、拒绝、启动、后台）✓。
+ */
 export const MESSAGE_CATEGORIES=[
- // 拒绝（来源守卫）
+ // 通道类（基座原有 ✓，探针在用 ✓）
+ 'no-tauri-internals',
+ 'invoke-rejected',
+ 'invalid-payload',
+ 'rate-limited',
+ 'timeout',
+ 'unknown',
+ // 原生文件类（`files.rs` 与 `source_guard.rs` 给出 ✓）
  'native-source-denied',
- // 失败（用户可行动）
  'native-target-missing',
  'native-permission-denied',
  'native-io-failed',
@@ -30,12 +50,18 @@ export const MESSAGE_CATEGORIES=[
  'invalid-file-name',
  'invalid-target',
  // 应用自身的失败
- 'export_failed',
- 'export_blocked',
- 'save_failed',
- 'storage_corrupted',
- 'preview_unavailable',
- 'import_rejected',
+ 'export-failed',
+ 'export-blocked',
+ 'save-failed',
+ 'storage-corrupted',
+ 'preview-unavailable',
+ 'import-rejected',
+ // 捕获类（未捕获的错误从哪来 ✓）
+ 'render',
+ 'unhandled',
+ 'rejection',
+ 'startup',
+ 'worker',
 ] as const;
 
 export type MessageCategory=typeof MESSAGE_CATEGORIES[number];
@@ -59,12 +85,17 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,string>>={
  'not-a-regular-target':'目标不是一个普通文件',
  'unknown-file-key':'这个文件的授权已经失效',
  'print-failed':'打印失败',
- 'export_failed':'导出失败，请重试',
- 'export_blocked':'这个产物在此平台无法导出',
- 'save_failed':'保存失败，内容仍在工作区',
- 'storage_corrupted':'部分记录已损坏，原始数据已保留',
- 'preview_unavailable':'这一份预览没能生成',
- 'import_rejected':'这个文件没能导入',
+ 'export-failed':'导出失败，请重试',
+ 'export-blocked':'这个产物在此平台无法导出',
+ 'save-failed':'保存失败，内容仍在工作区',
+ 'storage-corrupted':'部分记录已损坏，原始数据已保留',
+ 'preview-unavailable':'这一份预览没能生成',
+ 'import-rejected':'这个文件没能导入',
+ 'render':'这一部分没能显示',
+ 'unhandled':'有个操作没能完成',
+ 'rejection':'有个操作没能完成',
+ 'startup':'工作台没能完全启动',
+ 'worker':'后台处理没能完成',
 };
 
 /** 通用文案：不属于"用户可行动"那一类的失败 ⇒ 用户看到这一句 ✓。 */

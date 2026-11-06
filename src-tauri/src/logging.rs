@@ -123,16 +123,68 @@ pub enum WebResult {
     Cancelled,
 }
 
-/// 错误类别枚举：只传类别，不传原始异常 message。
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum WebErrorCategory {
-    NoTauriInternals,
-    InvokeRejected,
-    InvalidPayload,
-    RateLimited,
-    Timeout,
-    Unknown,
+/// 错误类别：**页面侧与应用侧共用同一份封闭词表** ✓（见
+/// [日志基座设计](../../../docs/design/log-base-plan-2026-11-03.md) §5.2 ✓）。
+///
+/// **只传类别，不传原始异常 message** ✓（基座 §5.2 ✓）。
+///
+/// 宏把变体、线上名字与取名字的函数**一起生成** ✓ ⇒ ⇒ **线上名字只有一处事实** ✓
+/// ⇒ 改名字只改这一处 ✓ ⇒ 前端那份不会漂 ✓
+/// ⇒ ⇒ `scripts/check-message-vocabulary.ts` 兜底 ✓（两侧对不上就红 ✓）。
+macro_rules! web_error_categories {
+    ($($variant:ident => $name:literal),* $(,)?) => {
+        #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+        pub enum WebErrorCategory {
+            $(#[serde(rename = $name)] $variant,)*
+        }
+        impl WebErrorCategory {
+            /// 线上名字 ✓：与 serde 的 rename 是**同一个字面量** ✓。
+            fn name(self) -> &'static str {
+                match self {
+                    $(WebErrorCategory::$variant => $name,)*
+                }
+            }
+        }
+    };
+}
+
+web_error_categories! {
+    // 通道类（基座原有 ✓，探针在用 ✓）：页面到原生的通道自己的问题 ✓。
+    NoTauriInternals => "no-tauri-internals",
+    InvokeRejected => "invoke-rejected",
+    InvalidPayload => "invalid-payload",
+    RateLimited => "rate-limited",
+    Timeout => "timeout",
+    Unknown => "unknown",
+    // 原生文件类（`files.rs` 与 `source_guard.rs` 给出 ✓）：拼写与那边一致 ✓。
+    NativeSourceDenied => "native-source-denied",
+    NativeTargetMissing => "native-target-missing",
+    NativePermissionDenied => "native-permission-denied",
+    NativeIoFailed => "native-io-failed",
+    NativeDialogFailed => "native-dialog-failed",
+    FileTooLarge => "file-too-large",
+    InvalidUtf8 => "invalid-utf8",
+    NotAFile => "not-a-file",
+    NotARegularTarget => "not-a-regular-target",
+    UnknownFileKey => "unknown-file-key",
+    PrintFailed => "print-failed",
+    FileCapabilityMismatch => "file-capability-mismatch",
+    NativeInternalFailed => "native-internal-failed",
+    InvalidFileName => "invalid-file-name",
+    InvalidTarget => "invalid-target",
+    // 应用自身类（前端给出 ✓）。
+    ExportFailed => "export-failed",
+    ExportBlocked => "export-blocked",
+    SaveFailed => "save-failed",
+    StorageCorrupted => "storage-corrupted",
+    PreviewUnavailable => "preview-unavailable",
+    ImportRejected => "import-rejected",
+    // 捕获类（前端捕获未捕获错误时给出 ✓）。
+    Render => "render",
+    Unhandled => "unhandled",
+    Rejection => "rejection",
+    Startup => "startup",
+    Worker => "worker",
 }
 
 /// web 侧回传的最小事件结构。**未知字段或未知事件一律拒收**：
@@ -608,7 +660,7 @@ fn record_web_event_for(
         fields.insert("result".to_owned(), result_name(result).to_owned());
     }
     if let Some(category) = event.error_category {
-        fields.insert("error_category".to_owned(), error_category_name(category).to_owned());
+        fields.insert("error_category".to_owned(), category.name().to_owned());
     }
     if let Some(bytes) = event.bytes {
         fields.insert("bytes".to_owned(), bytes.to_string());
@@ -1286,17 +1338,6 @@ fn result_name(result: WebResult) -> &'static str {
     }
 }
 
-fn error_category_name(category: WebErrorCategory) -> &'static str {
-    match category {
-        WebErrorCategory::NoTauriInternals => "no_tauri_internals",
-        WebErrorCategory::InvokeRejected => "invoke_rejected",
-        WebErrorCategory::InvalidPayload => "invalid_payload",
-        WebErrorCategory::RateLimited => "rate_limited",
-        WebErrorCategory::Timeout => "timeout",
-        WebErrorCategory::Unknown => "unknown",
-    }
-}
-
 /// JSON 字符串转义。
 fn json_string(value: &str) -> String {
     let mut out = String::with_capacity(value.len() + 2);
@@ -1714,6 +1755,63 @@ mod tests {
             let parsed:WebCommand=serde_json::from_str(&format!("\"{name}\"")).unwrap();
             assert_eq!(parsed,command,"页面发的名字解析回了别的命令");
         }
+    }
+
+    #[test]
+    fn the_error_category_names_are_the_ones_the_page_sends() {
+        // 页面回传的类别名与日志里的类别名（`name` ✓）必须是**同一个字符串** ✓：
+        // 不在枚举里的类别名让**整条载荷**反序列化失败 ✓ ⇒ ⇒ 那条页面事件
+        // 连同类别一起消失 ✓（只留一个 `rejected` 计数 ✓ ⇒ 没人看得见 ✓）。
+        let cases:[(WebErrorCategory,&str);5]=[
+            (WebErrorCategory::ExportFailed,"export-failed"),
+            (WebErrorCategory::NativeIoFailed,"native-io-failed"),
+            (WebErrorCategory::InvokeRejected,"invoke-rejected"),
+            (WebErrorCategory::Render,"render"),
+            (WebErrorCategory::Unknown,"unknown"),
+        ];
+        for (category,name) in cases{
+            assert_eq!(category.name(),name,"日志名与页面发的名字不一致");
+            // 页面发的那个名字必须能解析回同一个变体 ✓。
+            let parsed:WebErrorCategory=serde_json::from_str(&format!("\"{name}\"")).unwrap();
+            assert_eq!(parsed,category,"页面发的名字解析回了别的类别");
+        }
+    }
+
+    #[test]
+    fn a_page_error_with_an_application_category_is_not_rejected() {
+        // 应用自身的失败（`export-failed` ✓）现在在枚举里 ✓ ⇒ ⇒ 整条载荷不再被拒收 ✓。
+        // 这条是 N5 的牙齿 ✓：改之前这里会被拒收 ✓ ⇒ ⇒ 事件消失 ✓。
+        let (emitter, receiver, health) = test_emitter(8);
+        let before = health.rejected.load(Ordering::Relaxed);
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("main", "main"),
+                r#"{"event":"page_error","error_category":"export-failed"}"#.to_owned(),
+                &emitter
+            ),
+            WEB_ACCEPTED
+        );
+        assert_eq!(health.rejected.load(Ordering::Relaxed), before);
+        // 日志里的类别名就是页面发的那个 ✓。
+        let record = receiver.try_recv().expect("记录已入队");
+        let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
+        assert!(text.contains("\"error_category\":\"export-failed\""),"日志里的类别名不对：{text}");
+    }
+
+    #[test]
+    fn a_page_error_with_an_unknown_category_is_rejected() {
+        // 不在封闭词表里的类别：整条载荷拒收 ✓ ⇒ ⇒ 页面不能自造类别 ✓。
+        let (emitter, _receiver, health) = test_emitter(8);
+        let before = health.rejected.load(Ordering::Relaxed);
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("main", "main"),
+                r#"{"event":"page_error","error_category":"export_failed"}"#.to_owned(),
+                &emitter
+            ),
+            WEB_REJECTED
+        );
+        assert!(health.rejected.load(Ordering::Relaxed) > before);
     }
 
     #[test]
