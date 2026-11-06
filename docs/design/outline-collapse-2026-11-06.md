@@ -302,8 +302,21 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 | --- | --- | --- | --- |
 | R1 | 新建 `src/application/workspace/outlineState.ts`，先只搬**纯函数**（视图模型），组件不动 | 视图模型的单元断言覆盖不变量 1、2、4、5、8（O-23）；组件未动，端到端全绿 | ✓ `outlineView` + `tests/unit/outline-state.test.ts`（7 项）；组件未动 |
 | R2 | 加 reducer 与动作，用单元测试把 §2.3 与 §3.4 的规则钉住 | reducer 单元断言全过（O-19~O-21）；组件仍未动 | ✓ `outlineReducer` + 五个动作；`tests/unit/outline-state.test.ts` 12 项；组件未动 |
-| R3 | 组件切到 `useReducer` + `useMemo`：删掉 `fold` 状态、`previousDuplicates` ref、清理 effect 与 `displayTree` 第二棵树；事件改为 dispatch | §9 的端到端全绿；§3.7 八条逐条对应到具体用例 | 待做 |
+| R3 | 组件切到 `useReducer` + `useMemo`：删掉 `fold` 状态、`previousDuplicates` ref、清理 effect 与 `displayTree` 第二棵树；事件改为 dispatch | §9 的端到端全绿；§3.7 八条逐条对应到具体用例 | ✓ 组件净减 75 行；只剩滚动到高亮项那一个 DOM 效果 |
 | R4 | 收尾：删掉不再需要的旧路径与导入；同步本文档的落点表 | lint / typecheck / 单元 / 端到端全绿；模块边界与纯度检查通过 | 待做 |
+
+### 11.1 八条不变量对应到哪些用例
+
+| 不变量 | 单元 | 端到端 |
+| --- | --- | --- |
+| 1 深度默认收起、叶子无按钮 | O-23 | O-9 |
+| 2 收起只隐藏后代 | O-3 | O-10 |
+| 3 覆盖跨编辑保留、同名组清理不转移 | O-5、O-8、O-14、O-15 | O-18 |
+| 4 搜索忽略折叠、清空后恢复 | O-4 | O-12 |
+| 5 跳转展开祖先、滚动不展开 | O-15、O-16 | O-13 |
+| 6 换文档清零、页签切换保留 | O-14 | O-17 |
+| 7 折叠按钮文案不以标题原文开头 | — | O-11 |
+| 8 高亮落在收起分支内 | O-6 | O-14 |
 
 做法要求：
 

@@ -3,7 +3,7 @@
  * 对应设计方案第 4.5.2 节：多文档列表、批量导入、可编辑 HTML 还原与实时大纲树
  */
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useReducer } from 'react';
 import {
   FileText,
   ListTree,
@@ -19,17 +19,13 @@ import {
   PanelLeftClose,
 } from 'lucide-react';
 import { DocumentRecord } from '../../core/model/document';
-import { extractOutline, type HeadingItem } from '../../core/parse/markdown';
+import { extractOutline } from '../../core/parse/markdown';
 import {
-  ancestorKeys,
-  buildOutlineTree,
-  collapsibleKeys,
-  collapsedAncestors,
-  duplicateHeadingTexts,
-  effectiveCollapsed,
-  outlineRows,
-  pruneOverrides,
-} from '../../core/parse/outlineTree';
+  outlineReducer,
+  outlineView,
+  type OutlineState,
+  type OutlineView,
+} from '../../application/workspace/outlineState';
 
 interface SidebarProps {
   documents: DocumentRecord[];
@@ -45,187 +41,127 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
 }
 
-/** 深度 ≥ 3 的分支默认收起（根的深度是 0）。 */
-const DEFAULT_COLLAPSED_DEPTH = 3;
-const EMPTY_SET: ReadonlySet<string> = new Set();
-const EMPTY_MAP: ReadonlyMap<string, boolean> = new Map();
-
 interface OutlinePanelProps {
-  items: readonly HeadingItem[];
-  overrides: ReadonlyMap<string, boolean>;
-  onOverrides: (update: (prev: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>) => void;
+  view: OutlineView;
   filter: string;
-  onFilterChange: (value: string) => void;
+  onFilter: (value: string) => void;
+  onToggle: (key: string) => void;
+  onToggleAll: () => void;
+  onJump: (itemId: string, line: number) => void;
   activeHeadingId: string | null | undefined;
-  onScrollToHeading: (headingId: string, line: number) => void;
   activeItemRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /**
- * 大纲树。折叠状态由外层按文档 ID 隔离：切换文档时清零，
- * 同一文档内的编辑按 §2.3 清理同名组的覆盖。
+ * 大纲树的渲染。只画视图给的行，不判断折叠、搜索与高亮。
  */
 const OutlinePanel: React.FC<OutlinePanelProps> = ({
-  items,
-  overrides,
-  onOverrides,
+  view,
   filter,
-  onFilterChange,
+  onFilter,
+  onToggle,
+  onToggleAll,
+  onJump,
   activeHeadingId,
-  onScrollToHeading,
   activeItemRef,
-}) => {
-  const tree = useMemo(() => buildOutlineTree(items), [items]);
-
-  const collapsed = useMemo(
-    () => effectiveCollapsed(tree, overrides, DEFAULT_COLLAPSED_DEPTH),
-    [tree, overrides]
-  );
-  const searching = filter.trim().length > 0;
-  const visible = useMemo(() => {
-    const needle = filter.trim().toLowerCase();
-    return needle ? items.filter((item) => item.text.toLowerCase().includes(needle)) : items;
-  }, [items, filter]);
-  const displayTree = useMemo(
-    () => (searching ? buildOutlineTree(visible) : tree),
-    [searching, visible, tree]
-  );
-  const rows = useMemo(
-    () => outlineRows(displayTree, searching ? EMPTY_SET : collapsed),
-    [displayTree, collapsed, searching]
-  );
-  const marked = useMemo(
-    () => collapsedAncestors(tree, activeHeadingId ?? null, collapsed),
-    [tree, activeHeadingId, collapsed]
-  );
-  const collapsible = useMemo(() => collapsibleKeys(tree), [tree]);
-  const allExpanded = collapsible.every((key) => !collapsed.has(key));
-
-  const toggle = (key: string) =>
-    onOverrides((prev) => {
-      const next = new Map(prev);
-      next.set(key, !collapsed.has(key));
-      return next;
-    });
-  const toggleAll = () =>
-    onOverrides((prev) => {
-      const next = new Map(prev);
-      for (const key of collapsible) next.set(key, allExpanded);
-      return next;
-    });
-  // 主动跳转才展开路径；滚动引起的高亮变化不展开。
-  const jump = (item: HeadingItem) => {
-    const keys = ancestorKeys(tree, item.id);
-    if (keys.length)
-      onOverrides((prev) => {
-        const next = new Map(prev);
-        for (const key of keys) next.set(key, false);
-        return next;
-      });
-    onScrollToHeading(item.id, item.line);
-  };
-
-  return (
-    <div className="space-y-2">
-      {/* Outline Search */}
-      <div className="relative mb-2 flex items-center gap-1">
-        <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-neutral-500" />
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => onFilterChange(e.target.value)}
-            placeholder="搜索标题大纲..."
-            className="w-full pl-7 pr-2 py-1 rounded bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-teal-500"
-          />
-        </div>
-        <button
-          onClick={toggleAll}
-          title={allExpanded ? '折叠全部大纲' : '展开全部大纲'}
-          aria-label={allExpanded ? '折叠全部大纲' : '展开全部大纲'}
-          className="shrink-0 p-1 rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
-        >
-          <ChevronsUpDown className="w-3.5 h-3.5" />
-        </button>
+}) => (
+  <div className="space-y-2">
+    {/* Outline Search */}
+    <div className="relative mb-2 flex items-center gap-1">
+      <div className="relative flex-1">
+        <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-neutral-500" />
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => onFilter(e.target.value)}
+          placeholder="搜索标题大纲..."
+          className="w-full pl-7 pr-2 py-1 rounded bg-neutral-950/80 border border-neutral-800 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-teal-500"
+        />
       </div>
+      <button
+        onClick={onToggleAll}
+        title={view.allExpanded ? '折叠全部大纲' : '展开全部大纲'}
+        aria-label={view.allExpanded ? '折叠全部大纲' : '展开全部大纲'}
+        className="shrink-0 p-1 rounded text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+      >
+        <ChevronsUpDown className="w-3.5 h-3.5" />
+      </button>
+    </div>
 
-      {rows.length > 0 ? (
-        <div className="space-y-1">
-          {rows.map((row) => {
-            const { item, hasChildren, collapsed: isCollapsed } = row;
-            const indent = (item.level - 1) * 10;
-            const isActive = item.id === activeHeadingId;
-            return (
-              <div
-                key={row.key}
-                className={`flex items-center rounded transition-colors ${
-                  isActive
-                    ? 'bg-teal-950/80 border border-teal-500/60 shadow-sm ring-1 ring-teal-500/30'
-                    : 'border border-transparent hover:bg-neutral-800/60'
-                }`}
-              >
-                {hasChildren && !searching ? (
-                  <button
-                    onClick={() => toggle(row.key)}
-                    aria-expanded={!isCollapsed}
-                    data-contains-active={marked.has(row.key) ? 'true' : undefined}
-                    aria-label={`${isCollapsed ? '展开' : '折叠'} ${item.text}（第 ${item.line} 行）`}
-                    title={`${isCollapsed ? '展开' : '折叠'}：${item.text}`}
-                    className={`shrink-0 w-6 h-6 flex items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${
-                      marked.has(row.key)
-                        ? 'text-teal-300'
-                        : 'text-neutral-500 hover:text-teal-300'
-                    }`}
-                  >
-                    {isCollapsed ? (
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                ) : (
-                  <span className="shrink-0 w-6 h-6" />
-                )}
+    {view.rows.length > 0 ? (
+      <div className="space-y-1">
+        {view.rows.map((row) => {
+          const { item, foldable, collapsed: isCollapsed, marked } = row;
+          const indent = (item.level - 1) * 10;
+          const isActive = item.id === activeHeadingId;
+          return (
+            <div
+              key={row.key}
+              className={`flex items-center rounded transition-colors ${
+                isActive
+                  ? 'bg-teal-950/80 border border-teal-500/60 shadow-sm ring-1 ring-teal-500/30'
+                  : 'border border-transparent hover:bg-neutral-800/60'
+              }`}
+            >
+              {foldable ? (
                 <button
-                  aria-current={isActive ? 'location' : undefined}
-                  ref={isActive ? activeItemRef : null}
-                  onClick={() => jump(item)}
-                  style={{ paddingLeft: `${indent + 8}px` }}
-                  className={`flex-1 min-w-0 text-left py-1.5 pr-2 rounded text-xs truncate transition-all flex items-center gap-1.5 ${
-                    isActive
-                      ? 'text-teal-200 font-semibold'
-                      : 'text-neutral-400 hover:text-teal-300'
+                  onClick={() => onToggle(row.key)}
+                  aria-expanded={!isCollapsed}
+                  data-contains-active={marked ? 'true' : undefined}
+                  aria-label={`${isCollapsed ? '展开' : '折叠'} ${item.text}（第 ${item.line} 行）`}
+                  title={`${isCollapsed ? '展开' : '折叠'}：${item.text}`}
+                  className={`shrink-0 w-6 h-6 flex items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${
+                    marked ? 'text-teal-300' : 'text-neutral-500 hover:text-teal-300'
                   }`}
-                  title={`${item.text} (第 ${item.line} 行)`}
                 >
-                  <span
-                    className={`text-[10px] font-mono shrink-0 px-1 py-0.5 rounded leading-none ${
-                      isActive
-                        ? 'bg-teal-500/30 text-teal-300 font-bold'
-                        : 'bg-neutral-800 text-neutral-500'
-                    }`}
-                  >
-                    H{item.level}
-                  </span>
-                  <span className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}>
-                    {item.text}
-                  </span>
-                  {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0 ml-auto mr-1 shadow-[0_0_6px_rgba(45,212,191,0.8)] animate-pulse" />
+                  {isCollapsed ? (
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
                 </button>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-neutral-500 text-xs">
-          {items.length === 0 ? '当前文档暂无标题 (# 标题)' : '未找到匹配的标题'}
-        </div>
-      )}
-    </div>
-  );
-};
+              ) : (
+                <span className="shrink-0 w-6 h-6" />
+              )}
+              <button
+                aria-current={isActive ? 'location' : undefined}
+                ref={isActive ? activeItemRef : null}
+                onClick={() => onJump(item.id, item.line)}
+                style={{ paddingLeft: `${indent + 8}px` }}
+                className={`flex-1 min-w-0 text-left py-1.5 pr-2 rounded text-xs truncate transition-all flex items-center gap-1.5 ${
+                  isActive
+                    ? 'text-teal-200 font-semibold'
+                    : 'text-neutral-400 hover:text-teal-300'
+                }`}
+                title={`${item.text} (第 ${item.line} 行)`}
+              >
+                <span
+                  className={`text-[10px] font-mono shrink-0 px-1 py-0.5 rounded leading-none ${
+                    isActive
+                      ? 'bg-teal-500/30 text-teal-300 font-bold'
+                      : 'bg-neutral-800 text-neutral-500'
+                  }`}
+                >
+                  H{item.level}
+                </span>
+                <span className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}>
+                  {item.text}
+                </span>
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0 ml-auto mr-1 shadow-[0_0_6px_rgba(45,212,191,0.8)] animate-pulse" />
+                )}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    ) : (
+      <div className="text-center py-8 text-neutral-500 text-xs">
+        {view.empty === 'none' ? '当前文档暂无标题 (# 标题)' : '未找到匹配的标题'}
+      </div>
+    )}
+  </div>
+);
 
 export const Sidebar: React.FC<SidebarProps> = ({
   documents,
@@ -241,48 +177,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
 }) => {
   const [activeTab, setActiveTab] = useState<'docs' | 'outline'>('docs');
-  const [outlineFilter, setOutlineFilter] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
   const listRef=useRef<HTMLDivElement>(null);
 
   const outline = useMemo(() => extractOutline(currentMarkdown), [currentMarkdown]);
-  const duplicates = useMemo(() => duplicateHeadingTexts(outline), [outline]);
-  // 折叠状态只属于当前激活文档：换了文档就是默认状态。
-  const [fold, setFold] = useState<{ docId: string; overrides: ReadonlyMap<string, boolean> }>({
-    docId: currentDocId,
-    overrides: new Map(),
-  });
-  const overrides = fold.docId === currentDocId ? fold.overrides : EMPTY_MAP;
-  const previousDuplicates = useRef<{ docId: string; duplicates: ReadonlySet<string> }>({
-    docId: currentDocId,
-    duplicates: EMPTY_SET,
-  });
-
-  // 换了文档就把覆盖清零（切回旧文档也从默认状态开始）；
-  // 同一文档内修订变化时丢弃同名组的覆盖：同名组较早恢复默认，好过把覆盖转移到另一节。
-  useEffect(() => {
-    const previous =
-      previousDuplicates.current.docId === currentDocId ? previousDuplicates.current.duplicates : EMPTY_SET;
-    setFold((current) => {
-      if (current.docId !== currentDocId) return { docId: currentDocId, overrides: new Map() };
-      const pruned = pruneOverrides(current.overrides, duplicates, previous);
-      return pruned === current.overrides ? current : { docId: currentDocId, overrides: pruned };
-    });
-    previousDuplicates.current = { docId: currentDocId, duplicates };
-  }, [duplicates, currentDocId]);
-
-  // 覆盖一律按当前状态改，不拿渲染时的快照去覆盖：两次操作落在同一批次时也不会互相吞掉。
-  const updateOverrides = (
-    update: (prev: ReadonlyMap<string, boolean>) => ReadonlyMap<string, boolean>
-  ) =>
-    setFold((current) => {
-      const base = current.docId === currentDocId ? current.overrides : EMPTY_MAP;
-      const next = update(base);
-      return next === current.overrides && current.docId === currentDocId
-        ? current
-        : { docId: currentDocId, overrides: next };
-    });
+  // 大纲的状态机：文档、标题、搜索词与显式覆盖都在这里（§3.2）。
+  const [outlineState, dispatch] = useReducer(
+    outlineReducer,
+    undefined,
+    (): OutlineState => ({
+      docId: currentDocId,
+      items: outline,
+      filter: '',
+      overrides: new Map(),
+      duplicates: new Set(),
+      previousDuplicates: new Set(),
+    })
+  );
+  // 外部世界只有"我变了"这一件事：换文档或内容变化，都走同一条 sync。
+  // 在渲染期派发，React 会立刻以新状态重渲染，不会有旧文档的标题闪一帧。
+  if (outlineState.docId !== currentDocId || outlineState.items !== outline) {
+    dispatch({ type: 'sync', docId: currentDocId, items: outline });
+  }
+  const view = useMemo(
+    () => outlineView(outlineState, currentDocId, activeHeadingId),
+    [outlineState, currentDocId, activeHeadingId]
+  );
 
   // Only scroll the outline list; highlighting must never move the horizontal workbench.
   React.useEffect(()=>{
@@ -432,13 +353,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           /* Outline Tab */
           <OutlinePanel
-            items={outline}
-            overrides={overrides}
-            onOverrides={updateOverrides}
-            filter={outlineFilter}
-            onFilterChange={setOutlineFilter}
+            view={view}
+            filter={outlineState.filter}
+            onFilter={(value) => dispatch({ type: 'filter', value })}
+            onToggle={(key) => dispatch({ type: 'toggle', key })}
+            onToggleAll={() => dispatch({ type: 'toggle-all' })}
+            onJump={(itemId, line) => {
+              // 主动跳转才展开路径；滚动引起的高亮变化不展开。
+              dispatch({ type: 'jump', itemId });
+              onScrollToHeading(itemId, line);
+            }}
             activeHeadingId={activeHeadingId}
-            onScrollToHeading={onScrollToHeading}
             activeItemRef={activeItemRef}
           />
         )}
