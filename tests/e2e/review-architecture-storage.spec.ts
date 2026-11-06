@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 import {readFile} from 'node:fs/promises';
 import {DEFAULT_THEME} from '../../src/core/model/document';
 async function host(page:Page){await page.route('**/__review_storage__',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Storage review</title>'}));await page.goto('/__review_storage__')}

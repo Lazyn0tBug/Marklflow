@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {readFile} from 'node:fs/promises';
 import {DEFAULT_THEME} from '../../src/core/model/document';
 test('keeps legacy IDB version and metadata while exposing untouched invalid records',async({page},info)=>{

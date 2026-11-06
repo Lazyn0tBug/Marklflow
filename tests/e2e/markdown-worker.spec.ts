@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {z} from 'zod';
 import {summarizeMarkdown} from '../../src/core/parse/markdownSummary';
 for(const environment of ['development','built','http'] as const)test(`single Markdown worker parses and reports errors consistently in ${environment}`,async({page})=>{

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {z} from 'zod';
 import {writeFile} from 'node:fs/promises';
 const pagePath='/tests/fixtures/architecture/dual-worker-probe.html';

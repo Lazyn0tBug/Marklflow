@@ -1,5 +1,5 @@
 import {writeFile} from 'node:fs/promises';
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 declare global {interface Window {releasePdfPreview?:()=>void}}
 const source=['# PDF_SOURCE','',...Array.from({length:4},(_,i)=>'## Section '+i+'\n\n'+Array.from({length:12},(_,j)=>'PDF paragraph '+i+'_'+j+' 中文正文 selectable text. '.repeat(3)).join('\n\n')),'','$$x^2+1$$','','```mermaid','graph LR; A-->B;','```','','PDF_FINAL_MARKER'].join('\n');
 for(const mode of ['flow','a4','hidden'] as const)test('exports A4 from '+mode+' without a PDF preview step',async({page},info)=>{

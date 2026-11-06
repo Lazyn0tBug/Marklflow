@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 test.use({viewport:{width:1280,height:900}});
 
 const section=(title:string,level:number,body:number)=>

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {pathToFileURL} from 'node:url';
 test('keeps long table/code text and container layout in A4 pages',async({page,context},info)=>{
  await page.goto('/');await expect(page.locator('textarea')).toBeVisible();

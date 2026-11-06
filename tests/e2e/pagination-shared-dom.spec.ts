@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {writeFile} from 'node:fs/promises';
 import {z} from 'zod';
 const artifact=z.object({total:z.number(),pageElements:z.number(),text:z.string().nullable(),math:z.number(),svg:z.number(),images:z.number(),mapped:z.number(),validMap:z.boolean(),lastMapped:z.boolean(),css:z.boolean(),cssBytes:z.number()});

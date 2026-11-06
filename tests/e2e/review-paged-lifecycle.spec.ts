@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 
 test('recovers from an interrupted A4 preview without retaining an abandoned host',async({page})=>{
  await page.goto('/');const editor=page.locator('textarea').first();await expect(editor).toBeVisible();

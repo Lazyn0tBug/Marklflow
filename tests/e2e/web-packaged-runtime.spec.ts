@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {readFile} from 'node:fs/promises';
 test('production parsing, math, diagrams, pagination and HTML export use only packaged runtime resources',async({page,context,browser},info)=>{
  const remote:string[]=[],local:string[]=[];

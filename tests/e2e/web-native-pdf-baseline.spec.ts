@@ -1,5 +1,5 @@
 import {writeFile} from 'node:fs/promises';
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {pdfName,rowMarkers,paragraphMarkers} from '../fixtures/architecture/web-native-pdf-source';
 for(const environment of ['development','built','http'] as const)for(const mathMode of ['mathml','svg'] as const)test(`Web native PDF handoff baseline ${environment} ${mathMode}`,async({page},info)=>{
  // Observe production handoff without opening an OS modal in unattended tests.

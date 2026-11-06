@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 import {readFile,copyFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';

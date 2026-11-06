@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 interface Probe {starts:{id:string;docId:string;kind:string;source:string}[];results:string[];hold:string;held:number}
 declare global {interface Window {__u6e:Probe}}
 async function instrument(page:Page){await page.addInitScript(()=>{

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {z} from 'zod';
 const reportSchema=z.object({beforeprintObserved:z.literal(true),exportBusyAtNativeCall:z.literal(true),domStagesAtNativeCall:z.literal(0),domAtNativeCall:z.object({active:z.undefined().optional(),waiting:z.array(z.string()).length(0),blocked:z.literal(false)}),busy:z.literal(false),saveObservedByApplication:z.literal(false),result:z.object({status:z.literal('completed'),revision:z.literal(1),message:z.string()})});
 test('Web PDF adapter hands off frozen HTML without holding the shared DOM step',async({page},info)=>{

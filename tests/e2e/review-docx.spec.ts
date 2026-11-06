@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import JSZip from 'jszip';import {readFile} from 'node:fs/promises';
 test('preserves mixed text, list starts, bookmarks, page breaks and A4 in DOCX',async({page},info)=>{
  await page.goto('/');await expect(page.locator('textarea').first()).toBeVisible();

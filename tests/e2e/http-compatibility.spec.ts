@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 test('previews and exports on a real insecure HTTP origin without randomUUID or subtle',async({page},info)=>{

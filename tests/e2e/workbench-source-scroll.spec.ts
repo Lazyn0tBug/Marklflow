@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 import {readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 test.use({viewport:{width:1440,height:960}});

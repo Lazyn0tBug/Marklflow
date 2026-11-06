@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 import {DEFAULT_THEME,type DocumentRecord} from '../../src/core/model/document';
 const fixture=(id='p1-html'):DocumentRecord=>({schemaVersion:1,id,revision:1,markdown:'# Imported HTML\n\nOriginal payload.',meta:{title:'Imported HTML',createdAt:'2026-10-26T00:00:00Z',updatedAt:'2026-10-26T00:00:00Z'},theme:DEFAULT_THEME,options:{syntaxProfile:'commonmark-gfm-v1',mathMode:'mathml'}});
 const text=(name:string,body:string)=>({name,mimeType:'text/plain',buffer:Buffer.from(body)});

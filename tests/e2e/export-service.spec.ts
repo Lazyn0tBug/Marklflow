@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 import {readFile} from 'node:fs/promises';
 import JSZip from 'jszip';
 async function open(page:Page,source:string){await page.goto('/');await page.locator('textarea').first().fill(source);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.getByRole('button',{name:'导出',exact:true}).click()}

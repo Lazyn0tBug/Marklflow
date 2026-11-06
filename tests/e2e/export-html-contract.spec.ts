@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {z} from 'zod';
 const math=z.object({id:z.string(),line:z.string(),end:z.string(),text:z.string(),display:z.boolean(),hasSvg:z.boolean(),hasHidden:z.boolean()});
 const reportSchema=z.object({isolation:z.object({docxXml:z.string(),htmlText:z.string(),pdfText:z.string()}),reports:z.array(z.object({mathMode:z.enum(['mathml','svg']),math:z.array(math),hiddenInvisible:z.boolean(),html:z.string(),other:z.string(),repeat:z.array(z.string()),unknown:z.string(),recovered:z.boolean(),config:z.string(),serialized:z.number(),frozen:z.boolean(),sourceAttached:z.boolean()})),assetReport:z.object({reads:z.number(),assets:z.number(),title:z.string(),images:z.number(),hash:z.string(),immutable:z.boolean(),size:z.string()}),baselineRestored:z.boolean(),secure:z.boolean(),version:z.string(),dom:z.object({waiting:z.array(z.string()),blocked:z.boolean()})});

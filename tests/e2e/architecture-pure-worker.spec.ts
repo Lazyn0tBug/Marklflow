@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 test('pure parser and schema load in a real Worker without DOM or renderer setup',async({page})=>{
  // Source-module smoke uses the existing dev harness, not production task scheduling (A3).
  await page.route('**/tests/fixtures/architecture/host.html',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Worker import smoke</title>'}));

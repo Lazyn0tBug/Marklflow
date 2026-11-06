@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 test.use({viewport:{width:1280,height:900}});
 test('keeps all seven pane combinations under user control and prevents hiding the last',async({page})=>{
  await page.goto('/');await expect(page.locator('textarea')).toBeVisible();

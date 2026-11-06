@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 
 /**
  * 量一小块图里两段墨迹的竖直中心：按列分成两段，各自取上下沿的中点。

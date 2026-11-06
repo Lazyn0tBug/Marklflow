@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {writeFile} from 'node:fs/promises';
 test('records capability detection separately from rendered verification',async({page,browser},info)=>{
  await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');

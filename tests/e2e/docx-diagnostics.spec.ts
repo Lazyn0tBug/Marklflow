@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import JSZip from 'jszip';
 import {readFile} from 'node:fs/promises';
 import fixture from '../fixtures/docx-math/o0-cases.json' with {type:'json'};

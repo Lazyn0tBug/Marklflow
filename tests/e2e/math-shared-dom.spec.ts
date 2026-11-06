@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 import {z} from 'zod';
 import {writeFile} from 'node:fs/promises';
 const reportSchema=z.object({modes:z.array(z.object({mode:z.string(),a:z.array(z.string()),b:z.array(z.string()),svgCount:z.number()})),corpus:z.array(z.object({mode:z.string(),math:z.number(),svg:z.number(),mapped:z.number()})),footnote:z.array(z.string()),unknown:z.string(),cancelled:z.string(),cancelSeen:z.boolean(),after:z.string(),maxActive:z.number(),baselineRestored:z.boolean(),dom:z.object({waiting:z.array(z.string()),blocked:z.boolean()}),secure:z.boolean(),version:z.string(),events:z.array(z.string())});

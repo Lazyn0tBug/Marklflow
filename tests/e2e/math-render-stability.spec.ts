@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures';
 
 /**
  * The mapping layer injects generated markup as raw HTML. Without a source position on that raw node the

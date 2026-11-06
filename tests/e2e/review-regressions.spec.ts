@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from './fixtures';
 const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';
 async function ready(page:Page,markdown:string){await page.locator('textarea').first().fill(markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready')}
 test('isolates TeX definitions across repeated document revisions',async({page})=>{
