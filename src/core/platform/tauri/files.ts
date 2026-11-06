@@ -14,7 +14,11 @@ const nativeFailureSchema=z.object({code:z.string().min(1)}).strict();
  * 机器码 → 用户可见的文案。
  *
  * 原生侧只给码 ✓：文案在这里统一 ✓（跨平台要一致 ✓，不露裸码、调用方身份或允许名单 ✓）。
- * 与 Rust 侧 files.rs 的码一一对应；两边必须同步改 ✓。
+ *
+ * **这张表只收"用户可行动或可理解"的失败** ✓。其余的码——应用自己用错了授权、
+ * 授权已失效、内部状态不可用、路径或名字不可用——**不是用户的错** ✓ ⇒ 用户看到
+ * 通用的一句话即可 ✓；机器码仍留在错误对象上 ✓，给日志与诊断用 ✓。
+ * 机器码的完整清单与分类见[本地文档支持设计](../../../docs/design/local-document-support-2026-11-05.md) §9 ✓。
  */
 const NATIVE_FAILURE_MESSAGES:Record<string,string>={
  'native-source-denied':'当前窗口无权使用原生文件能力',
@@ -22,17 +26,12 @@ const NATIVE_FAILURE_MESSAGES:Record<string,string>={
  'native-permission-denied':'没有权限访问这个文件',
  'native-io-failed':'文件读写失败',
  'native-dialog-failed':'系统文件对话框打不开',
- 'native-internal-failed':'文件能力暂时不可用',
  'file-too-large':'文件超过可处理的大小上限',
  'invalid-utf8':'文件不是合法的 UTF-8 文本',
  'not-a-file':'目标不是一个普通文件',
  'not-a-regular-target':'目标不是一个普通文件',
  'unknown-file-key':'这个文件的授权已经失效',
- 'file-capability-mismatch':'这个文件不允许这样操作',
- 'invalid-file-name':'文件名无法读取',
- 'invalid-target':'目标路径无效',
  'print-failed':'打印失败',
- 'print-not-committed':'打印出来了，但没有写进目标文件',
 };
 
 /** 码 → 文案。认不出的码给一句通用的话 ✓：不猜它意味着什么 ✓。 */

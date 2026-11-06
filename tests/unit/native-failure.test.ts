@@ -11,6 +11,9 @@ it('maps the native codes to words and keeps the code on the error',()=>{
  expect(nativeFailureMessage('native-permission-denied')).toBe('没有权限访问这个文件');
  // 认不出的码给一句通用的话，不猜它意味着什么。
  expect(nativeFailureMessage('native-something-new')).toBe('文件操作失败');
+ // 不是用户造成的失败不给专门的话：机器码仍在错误对象上，给日志用。
+ expect(nativeFailureMessage('file-capability-mismatch')).toBe('文件操作失败');
+ expect(nativeFailureMessage('native-internal-failed')).toBe('文件操作失败');
  const error=new NativeFileError('native-permission-denied');
  expect(error.code).toBe('native-permission-denied');
  expect(error.message).toBe('没有权限访问这个文件');

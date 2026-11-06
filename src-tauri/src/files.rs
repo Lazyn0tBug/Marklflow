@@ -502,6 +502,12 @@ struct PrintReceipt {
 /// 而日志证明不了删没删 ✓。
 struct PrintFailureReading {
     /// 人读的原因短语 ✓。
+    ///
+    /// 默认构建里没人读它 ✓：命令边界只给固定码 ✓（原因不是码 ✓），
+    /// 读它的是探针 ✓ ⇒ 而探针的打印路径是 Windows 专属 ✓ ⇒
+    /// 于是只有「Windows + 带探针特性」这一种形状里它活着 ✓ ⇒
+    /// 与本仓"死代码随平台与特性各占一半"的约定一致 ✓。
+    #[cfg_attr(not(all(target_os = "windows", feature = "pdf-probe")), allow(dead_code))]
     reason: String,
     /// 临时文件清掉了没有 ✓。
     pdf_temp_removed: bool,
@@ -575,7 +581,10 @@ pub async fn print_native_pdf(
                     // 清理的结果也留证 ✓：失败路径上的临时文件同样可能删不掉 ✓。
                     pdf_temp_removed = failure.pdf_temp_removed,
                 );
-                Err(failure.reason)
+                // 打印路径的失败原因是**诊断句**（"打印宿主创建失败"）✓，不是机器码 ✓：
+                // 命令边界只给稳定的码 ✓（§3.1：打印路径不在 M4a 的范围 ✓）。
+                // 诊断句留在原生侧 ✓：探针按它取证 ✓（它直接读 impl 的回执 ✓）。
+                Err("print-failed".to_owned())
             }
         }
     })
@@ -779,6 +788,13 @@ mod tests {
         // 对话框故障与取消不同：取消是"未选"，没有码。
         assert_eq!(dialog_error("dialog exploded"), "native-dialog-failed");
         assert_eq!(internal_error("poisoned"), "native-internal-failed");
+    }
+
+    #[test]
+    fn the_failure_shape_is_an_object_with_a_code() {
+        // 前端按**对象**读失败 ✓（不再靠子串匹配 ✓）：形状固定为 {code} ✓。
+        let value=serde_json::to_value(NativeFailure::from_code("native-io-failed".to_owned())).unwrap();
+        assert_eq!(value, serde_json::json!({"code":"native-io-failed"}));
     }
 
     #[test]
