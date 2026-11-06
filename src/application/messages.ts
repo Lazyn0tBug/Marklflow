@@ -116,10 +116,14 @@ export function hasOwnText(category:string):boolean{
  *
  * `detail` 是**原始文本** ⇒ ⇒ 只进控制台，不进日志、不进用户面 ✓
  * （基座 §5.2 的硬约束 ✓）。
+ *
+ * `cause` 是**原始异常本身** ⇒ ⇒ 控制台按它打（带可点的栈 ✓）⇒ ⇒ 借的是
+ * `Error.cause` 的那个形状 ✓（设计 §7.1 ✓）⇒ ⇒ 日志与用户面都不碰它 ✓。
  */
 export interface ProblemReport{
  category:MessageCategory;
  detail?:string;
+ cause?:unknown;
 }
 
 /** 消息端口：应用层只认这个接口 ✓，不认 console、不认 log_event ✓。 */

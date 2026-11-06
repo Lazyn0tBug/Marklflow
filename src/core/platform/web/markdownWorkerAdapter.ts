@@ -1,4 +1,5 @@
 import {workerStartSchema,executorMessageSchema,executionIdentitySchema,sameExecution,type WorkerAdapter,type ExecutionIdentity,type TaskRequest,type ExecutionResources} from '../../../application/tasks/contracts';
+import {reportCapture} from './capture';
 let sequence=0;
 /** One resident module Worker; hard stop is terminal for this adapter instance. Caller owns dispose. */
 export class MarkdownWorkerAdapter implements WorkerAdapter {
@@ -8,7 +9,7 @@ export class MarkdownWorkerAdapter implements WorkerAdapter {
   if(!Number.isSafeInteger(generation)||generation<0||sequence===Number.MAX_SAFE_INTEGER)throw new Error('Invalid Markdown worker instance');
   this.id='markdown-worker-'+(++sequence);this.worker=new Worker(new URL('../../../workers/markdownWorker.ts',import.meta.url),{type:'module',name:'markflow-markdown'});
   this.worker.addEventListener('message',(event:MessageEvent<unknown>)=>{const run=this.current;if(!run)return;const raw=event.data,header=raw&&typeof raw==='object'&&'execution'in raw?executionIdentitySchema.safeParse(raw.execution):undefined;if(header?.success&&!sameExecution(header.data,run.execution))return;const parsed=executorMessageSchema.safeParse(raw);if(!parsed.success){this.fail('Invalid Markdown worker response');return}if(sameExecution(parsed.data.execution,run.execution))run.receive(parsed.data)});
-  this.worker.addEventListener('error',event=>{event.preventDefault();this.fail(event.message||'Markdown worker failed')});
+  this.worker.addEventListener('error',event=>{event.preventDefault();void reportCapture('worker',event.error??event.message??'Markdown worker failed',this.id);this.fail(event.message||'Markdown worker failed')});
   this.worker.addEventListener('messageerror',()=>this.fail('Markdown worker message could not be decoded'));
  }
  private fail(message:string):void{const run=this.current;this.dead=true;this.worker.terminate();if(run)run.receive({protocolVersion:1,execution:run.execution,type:'error',code:'host',message:message.slice(0,8192)})}

@@ -28,6 +28,7 @@ import {
   recoveryJson,
 } from './core/storage/storage';
 import {readSoftWrapPreference,writeSoftWrapPreference} from './core/platform/web/editorPreferences';
+import {markAppReady} from './core/platform/web/capture';
 import {ResizablePanes} from './components/workspace/ResizablePanes';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
@@ -111,6 +112,8 @@ export default function App() {
 
   // 初始化加载文档
   useEffect(() => {
+    // 工作台起来了 ✓：崩在这一次提交之前的 ⇒ 类别是"起不来" ✓。
+    markAppReady();
     let active=true;
     let pipeline:WorkbenchPreviewRuntime|undefined;let unsubscribe=()=>{};
     try{pipeline=new WorkbenchPreviewRuntime(sessions);runtime.current=pipeline;const owner=pipeline;unsubscribe=owner.subscribe(()=>{if(active)setPreview(owner.view)})}catch(error){setActionError('预览启动失败，文档仍可编辑与保存：'+String(error))}
