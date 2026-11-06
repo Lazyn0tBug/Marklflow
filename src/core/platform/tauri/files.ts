@@ -1,18 +1,55 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
 const selectedSchema=z.object({key:z.string().uuid(),name:z.string().min(1),size:z.number().int().nonnegative().safe()}).strict();
-// 与 Rust 侧 source_guard::SOURCE_DENIED 一致；两处必须同步改。
-const SOURCE_DENIED='native-source-denied';
-const SOURCE_DENIED_MESSAGE='当前窗口无权使用原生文件能力';
+/** 原生失败的形态：稳定的机器码 ✓（与 Rust 侧 files.rs 一一对应 ✓）。 */
+const nativeFailureSchema=z.object({code:z.string().min(1)}).strict();
+
+/**
+ * 机器码 → 用户可见的文案。
+ *
+ * 原生侧只给码 ✓：文案在这里统一 ✓（跨平台要一致 ✓，不露裸码、调用方身份或允许名单 ✓）。
+ * 与 Rust 侧 files.rs 的码一一对应；两边必须同步改 ✓。
+ */
+const NATIVE_FAILURE_MESSAGES:Record<string,string>={
+ 'native-source-denied':'当前窗口无权使用原生文件能力',
+ 'native-target-missing':'文件已被移走或重命名',
+ 'native-permission-denied':'没有权限访问这个文件',
+ 'native-io-failed':'文件读写失败',
+ 'native-dialog-failed':'系统文件对话框打不开',
+ 'native-internal-failed':'文件能力暂时不可用',
+ 'file-too-large':'文件超过可处理的大小上限',
+ 'invalid-utf8':'文件不是合法的 UTF-8 文本',
+ 'not-a-file':'目标不是一个普通文件',
+ 'not-a-regular-target':'目标不是一个普通文件',
+ 'unknown-file-key':'这个文件的授权已经失效',
+ 'file-capability-mismatch':'这个文件不允许这样操作',
+ 'invalid-file-name':'文件名无法读取',
+ 'invalid-target':'目标路径无效',
+ 'print-failed':'打印失败',
+ 'print-not-committed':'打印出来了，但没有写进目标文件',
+};
+
+/** 码 → 文案。认不出的码给一句通用的话 ✓：不猜它意味着什么 ✓。 */
+export function nativeFailureMessage(code:string):string{
+ return NATIVE_FAILURE_MESSAGES[code]??'文件操作失败';
+}
+
+/** 原生失败：机器码留着分流 ✓，用户看到的是文案 ✓。 */
+export class NativeFileError extends Error {
+ readonly code:string;
+ constructor(code:string){super(nativeFailureMessage(code));this.name='NativeFileError';this.code=code;}
+}
+
 export type NativeSelection=z.infer<typeof selectedSchema>;
 async function invoke(command:string,args?:Record<string,unknown>):Promise<unknown>{
  const native=await import('@tauri-apps/api/core');
  if(!native.isTauri())throw new Error('原生文件能力仅在桌面应用中可用');
  try{return await native.invoke(command,args)}
  catch(error){
-  // 来源拒绝的共享稳定码在用户可见路径映射为友好提示：不露裸码、调用方身份或允许名单。
-  // 受控探针不经这里，仍按机器码取证。
-  if(String(error).includes(SOURCE_DENIED))throw new Error(SOURCE_DENIED_MESSAGE);
+  // 原生侧给的是结构化的机器码 ✓：拒绝不再靠子串匹配 ✓（§9）。
+  // 探针要机器码取证 ✓：错误对象上留着码 ✓。
+  const failure=nativeFailureSchema.safeParse(error);
+  if(failure.success)throw new NativeFileError(failure.data.code);
   throw error;
  }
 }

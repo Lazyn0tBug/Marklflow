@@ -21,12 +21,25 @@ it('rejects native file operations outside Tauri',async()=>{
  await expect(selectNativeSave('report.md')).rejects.toThrow('原生文件能力');
  expect(native.invoke).not.toHaveBeenCalled();
 });
-it('maps the shared source denial to a friendly message without exposing the code',async()=>{
- native.invoke.mockRejectedValue(new Error('native-source-denied'));
+it('maps a native machine code to a friendly message and keeps the code for evidence',async()=>{
+ // 原生侧给的是结构化的机器码 ✓（§9）：拒绝不再靠子串匹配 ✓。
+ native.invoke.mockRejectedValue({code:'native-source-denied'});
  const error=await selectNativeOpen().catch(failure=>failure);
  expect(String(error)).toContain('当前窗口无权使用原生文件能力');
  expect(String(error)).not.toContain('native-source-denied');
+ // 机器码留在错误对象上 ✓：探针与诊断要它 ✓。
+ expect((error as {code?:string}).code).toBe('native-source-denied');
 });
+it('tells the reasons apart: a file that moved is not a file that cannot be written',async()=>{
+ native.invoke.mockRejectedValueOnce({code:'native-target-missing'});
+ const missing=await selectNativeOpen().catch(failure=>failure);
+ expect(String(missing)).toContain('已被移走');
+ native.invoke.mockRejectedValueOnce({code:'native-permission-denied'});
+ const denied=await selectNativeOpen().catch(failure=>failure);
+ expect(String(denied)).toContain('没有权限');
+ expect(String(denied)).not.toBe(String(missing));
+});
+
 it('validates selected metadata strictly and preserves only opaque keys',async()=>{
  native.invoke.mockResolvedValue([selected]);
  expect(await selectNativeOpen()).toEqual([selected]);

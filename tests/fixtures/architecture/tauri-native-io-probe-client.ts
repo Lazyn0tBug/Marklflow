@@ -53,7 +53,11 @@ async function releaseOpenKey(){
  if(!files)return {step:'释放',status:'cancelled' as const,message:CANCELLED_NOTE};
  await releaseNativeFile(files[0]!.key);
  let afterRelease='释放后仍可读取（不符合预期）';
- try{await readNativeText(files[0]!)}catch(error){afterRelease='释放后读取被拒绝：'+String(error instanceof Error?error.message:error).slice(0,120)}
+ try{await readNativeText(files[0]!)}catch(error){
+  // 取证要机器码 ✓：原生失败带 code ✓，取不到才退回文案 ✓。
+  const code=(error as {code?:unknown}|null)?.code;
+  afterRelease='释放后读取被拒绝：'+String(code??(error instanceof Error?error.message:error)).slice(0,120);
+ }
  return {step:'释放',status:'ok' as const,message:'已释放打开授权',data:{afterRelease}};
 }
 

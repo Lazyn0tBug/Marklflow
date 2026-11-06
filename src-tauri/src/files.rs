@@ -60,7 +60,7 @@ fn in_command_span<T>(
     command: WebCommand,
     webview: &tauri::Webview,
     body: impl FnOnce(std::time::Instant, &'static str) -> Result<T, String>,
-) -> Result<T, String> {
+) -> Result<T, NativeFailure> {
     let name = logging::command_name(command);
     let identity =
         source_guard::Identity::from_labels(webview.window().label(), webview.label());
@@ -79,9 +79,9 @@ fn in_command_span<T>(
                 reason_code = code.as_str(),
                 elapsed_ms = started.elapsed().as_millis(),
             );
-            return Err(code);
+            return Err(NativeFailure::from_code(code));
         }
-        body(started, name)
+        body(started, name).map_err(NativeFailure::from_code)
     })
 }
 
@@ -103,8 +103,39 @@ pub struct SelectedFile {
     /// 选中文件的字节数 ✓（打开时读的文件大小 ✓；新建的文件是 0 ✓）。
     size: u64,
 }
-fn error(_: impl std::fmt::Display) -> String {
-    "native-io-failed".into()
+/// 原生命令失败的**稳定机器码** ✓（§9）：前端按码分流 ✓，拒绝不再靠子串匹配 ✓。
+/// 用户可见的文案由前端按码映射 ✓：原生侧不产出用户文案 ✓（跨平台的文案要一致 ✓）。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeFailure {
+    /// 稳定机器码。
+    pub code: String,
+}
+impl NativeFailure {
+    fn from_code(code: String) -> Self {
+        NativeFailure { code }
+    }
+}
+
+/// IO 失败按原因细分 ✓：UI 要能区分"文件被移走"与"磁盘写不进去"（§9）。
+/// 目标不存在 / 权限不足 / 其余，各有自己的机器码 ✓。
+fn io_error(error: &std::io::Error) -> String {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "native-target-missing".into(),
+        std::io::ErrorKind::PermissionDenied => "native-permission-denied".into(),
+        _ => "native-io-failed".into(),
+    }
+}
+
+/// 系统对话框自身的失败。**与取消不同** ✓：取消是"未选" ✓（`Ok(None)` ✓），
+/// 对话框故障才有码 ✓（§9）。
+fn dialog_error(_: impl std::fmt::Display) -> String {
+    "native-dialog-failed".into()
+}
+
+/// 内部状态不可用（互斥锁中毒）——不是 IO 失败 ✓。
+fn internal_error(_: impl std::fmt::Display) -> String {
+    "native-internal-failed".into()
 }
 impl FileAccess {
     /// 签发授权。生产入口只经由五个受保护命令；探针在受控初始化里直接调用它铸造受控授权。
@@ -119,12 +150,12 @@ impl FileAccess {
             Ok(meta) if meta.is_file() => meta.len(),
             Ok(_) => return Err("not-a-file".into()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => 0,
-            Err(e) => return Err(error(e)),
+            Err(e) => return Err(io_error(&e)),
         };
         let key = uuid::Uuid::new_v4().to_string();
         self.0
             .lock()
-            .map_err(error)?
+            .map_err(internal_error)?
             .insert(key.clone(), Grant { path, writable });
         Ok(SelectedFile { key, name, size })
     }
@@ -132,7 +163,7 @@ impl FileAccess {
     /// 打开用户选中的文件时签发的授权读、写都有 ✓，写回原文件走同一次打开的 key ✓；
     /// 反过来，只读授权不能被当写授权用 ✓（"用错了"不是"没碰它" ✓）。
     fn path(&self, key: &str, writable: bool) -> Result<PathBuf, String> {
-        let grants = self.0.lock().map_err(error)?;
+        let grants = self.0.lock().map_err(internal_error)?;
         let grant = grants.get(key).ok_or("unknown-file-key")?;
         if writable && !grant.writable {
             return Err("file-capability-mismatch".into());
@@ -149,14 +180,14 @@ impl FileAccess {
     }
 }
 pub fn read_text(path: &Path) -> Result<String, String> {
-    let file = File::open(path).map_err(error)?;
-    if !file.metadata().map_err(error)?.is_file() {
+    let file = File::open(path).map_err(|e| io_error(&e))?;
+    if !file.metadata().map_err(|e| io_error(&e))?.is_file() {
         return Err("not-a-file".into());
     }
     let mut bytes = Vec::new();
     file.take(READ_LIMIT + 1)
         .read_to_end(&mut bytes)
-        .map_err(error)?;
+        .map_err(|e| io_error(&e))?;
     if bytes.len() as u64 > READ_LIMIT {
         return Err("file-too-large".into());
     }
@@ -173,21 +204,21 @@ pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
         Ok(meta) if !meta.is_file() || meta.file_type().is_symlink() => {
             return Err("not-a-regular-target".into())
         }
-        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(error(e)),
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(io_error(&e)),
         _ => {}
     }
     let parent = path.parent().ok_or("invalid-target")?;
     // The temporary file is created 0600; the target keeps its own permission bits.
     #[cfg(unix)]
     let existing_mode = std::fs::metadata(path).ok().map(|meta| meta.permissions().mode());
-    let mut temp = tempfile::NamedTempFile::new_in(parent).map_err(error)?;
+    let mut temp = tempfile::NamedTempFile::new_in(parent).map_err(|e| io_error(&e))?;
     #[cfg(unix)]
     if let Some(mode) = existing_mode {
         let _ = temp.as_file().set_permissions(std::fs::Permissions::from_mode(mode));
     }
-    temp.write_all(bytes).map_err(error)?;
-    temp.as_file().sync_all().map_err(error)?;
-    temp.persist(path).map_err(error)?;
+    temp.write_all(bytes).map_err(|e| io_error(&e))?;
+    temp.as_file().sync_all().map_err(|e| io_error(&e))?;
+    temp.persist(path).map_err(|e| io_error(&e.error))?;
     // The rename is only durable once the directory entry reaches the disk.
     #[cfg(unix)]
     if let Ok(dir) = File::open(parent) {
@@ -200,7 +231,7 @@ pub async fn select_native_open(
     app: tauri::AppHandle,
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
-) -> Result<Option<Vec<SelectedFile>>, String> {
+) -> Result<Option<Vec<SelectedFile>>, NativeFailure> {
     in_command_span(WebCommand::SelectNativeOpen, &webview, |started, cmd| {
         let outcome = paths_of(app, access);
         let elapsed = started.elapsed().as_millis();
@@ -246,12 +277,12 @@ fn paths_of(
             for item in items {
                 match item
                     .into_path()
-                    .map_err(error)
+                    .map_err(dialog_error)
                     .and_then(|path| access.grant(path, true))
                 {
                     Ok(file) => selected.push(file),
                     Err(failure) => {
-                        let mut grants = access.0.lock().map_err(error)?;
+                        let mut grants = access.0.lock().map_err(internal_error)?;
                         for file in selected {
                             grants.remove(&file.key);
                         }
@@ -269,7 +300,7 @@ pub async fn select_native_save(
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     name: String,
-) -> Result<Option<SelectedFile>, String> {
+) -> Result<Option<SelectedFile>, NativeFailure> {
     in_command_span(WebCommand::SelectNativeSave, &webview, |started, cmd| {
         if name.is_empty() || name.contains(['/', '\\', '\0']) || name == "." || name == ".." {
             tracing::warn!(
@@ -286,7 +317,7 @@ pub async fn select_native_save(
             .file()
             .set_file_name(name)
             .blocking_save_file()
-            .map(|p| access.grant(p.into_path().map_err(error)?, true))
+            .map(|p| access.grant(p.into_path().map_err(dialog_error)?, true))
             .transpose();
         let elapsed = started.elapsed().as_millis();
         match granted {
@@ -318,7 +349,7 @@ pub async fn read_native_text(
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     key: String,
-) -> Result<String, String> {
+) -> Result<String, NativeFailure> {
     in_command_span(WebCommand::ReadNativeText, &webview, |started, cmd| {
         // 授权解析失败也是命令结果：早退路径同样记 operation_result，不留空白。
         let outcome = access.path(&key, false).and_then(|path| read_text(&path));
@@ -353,7 +384,7 @@ pub async fn write_native_bytes(
     access: tauri::State<'_, FileAccess>,
     key: String,
     bytes: Vec<u8>,
-) -> Result<(), String> {
+) -> Result<(), NativeFailure> {
     in_command_span(WebCommand::WriteNativeBytes, &webview, |started, cmd| {
         let outcome = access
             .path(&key, true)
@@ -436,7 +467,7 @@ pub async fn print_native_pdf(
     access: tauri::State<'_, FileAccess>,
     html: String,
     key: String,
-) -> Result<String, String> {
+) -> Result<String, NativeFailure> {
     // **走来源守卫** ✓：这个命令写文件 ✓，守卫是本项目唯一的隔离层 ✓。
     in_command_span(WebCommand::PrintNativePdf, &webview, |started, cmd| {
         let outcome = print_native_pdf_impl(&app, &access, &html, &key);
@@ -553,12 +584,12 @@ pub fn release_native_file(
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     key: String,
-) -> Result<(), String> {
+) -> Result<(), NativeFailure> {
     in_command_span(WebCommand::ReleaseNativeFile, &webview, |started, cmd| {
         let outcome = access
             .0
             .lock()
-            .map_err(error)
+            .map_err(internal_error)
             .map(|mut grants| {
                 grants.remove(&key);
             });
@@ -667,6 +698,33 @@ mod tests {
     }
 
     #[test]
+    fn io_failures_are_told_apart_by_reason() {
+        // 目标不存在与权限不足要能分开：UI 要区分"文件被移走"与"磁盘写不进去"（§9）。
+        assert_eq!(
+            io_error(&std::io::Error::from(std::io::ErrorKind::NotFound)),
+            "native-target-missing"
+        );
+        assert_eq!(
+            io_error(&std::io::Error::from(std::io::ErrorKind::PermissionDenied)),
+            "native-permission-denied"
+        );
+        assert_eq!(
+            io_error(&std::io::Error::from(std::io::ErrorKind::BrokenPipe)),
+            "native-io-failed"
+        );
+        // 对话框故障与取消不同：取消是"未选"，没有码。
+        assert_eq!(dialog_error("dialog exploded"), "native-dialog-failed");
+        assert_eq!(internal_error("poisoned"), "native-internal-failed");
+    }
+
+    #[test]
+    fn a_missing_target_reads_as_target_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gone.md");
+        assert_eq!(read_text(&path).unwrap_err(), "native-target-missing");
+    }
+
+    #[test]
     fn file_keys_enforce_read_write_roles_and_release_revokes_access() {
         let dir = tempfile::tempdir().unwrap();
         let read_path = dir.path().join("read.md");
@@ -761,9 +819,12 @@ mod tests {
             .share_mode(0x0000_0001 | 0x0000_0002) // deny FILE_SHARE_DELETE
             .open(&path)
             .unwrap();
-        assert_eq!(
-            commit_bytes(&path, b"replacement").unwrap_err(),
-            "native-io-failed"
+        // 写不进被占用的文件 ⇒ IO 家族的码 ✓：具体归到"权限"还是"其余"，
+        // 取决于操作系统对共享冲突的归类 ✓，这里只断言它是 IO 失败 ✓。
+        let code = commit_bytes(&path, b"replacement").unwrap_err();
+        assert!(
+            code == "native-permission-denied" || code == "native-io-failed",
+            "unexpected code {code}"
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"original bytes");
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);

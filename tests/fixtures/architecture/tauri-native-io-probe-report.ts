@@ -14,6 +14,9 @@ export const CANCELLED_NOTE='未选择目标；官方 dialog 插件只返回 Opt
 export function classifyError(error:unknown):{status:StepStatus;message:string}{
  const message=error instanceof Error?error.message:String(error);
  if(message.includes('仅在桌面应用中可用'))return {status:'unavailable',message};
+ // 原生失败带机器码 ✓：取证要机器码 ✓（用户文案留给用户路径 ✓）。
+ const code=(error as {code?:unknown}|null)?.code;
+ if(typeof code==='string'&&code.length>0)return {status:'failed',message:code};
  return {status:'failed',message};
 }
 

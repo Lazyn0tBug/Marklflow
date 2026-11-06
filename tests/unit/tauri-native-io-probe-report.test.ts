@@ -12,6 +12,13 @@ it('separates "not in the desktop shell" from a real failure',()=>{
  expect(classifyError('普通字符串错误').status).toBe('failed');
 });
 
+it('keeps the machine code when the native side reports one',()=>{
+ const error=Object.assign(new Error('没有权限访问这个文件'),{code:'native-permission-denied'});
+ // 取证看机器码 ✓：文案是给人看的 ✓。
+ expect(classifyError(error).message).toBe('native-permission-denied');
+ expect(classifyError(error).status).toBe('failed');
+});
+
 it('says that a closed dialog cannot be told apart from a failed dialog',()=>{
  expect(CANCELLED_NOTE).toContain('无法区分');
 });
