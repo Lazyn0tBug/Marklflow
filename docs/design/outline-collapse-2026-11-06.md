@@ -202,8 +202,10 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 - 缩进挂在**行 div** 的 `padding-left`：折叠按钮要随层次右移，缩进必须在它之前；跳转按钮自己的 `padding-left` 是固定的 8px（标记与文字之间的空隙）；
 - 跳转按钮需要 `min-width:0` 与 `flex:1 1 0`，内层文本保留 `truncate`，否则长标题不会省略而是撑破行宽；
 - 折叠槽统一为 24px，图标宽 14px。按钮命中区占满槽宽和行高，行高至少 24px。叶子及搜索结果使用同宽占位。
-- 折叠图标按**光学对齐**上移：偏移写在 `--mf-icon-optical-offset`（`src/index.css`），用 `em` 表达——图标的墨迹中心 = 图标元素中心（与图标尺寸无关），文字的墨迹中心 = 行盒中心 − 一个由字体度量决定的量，该量**正比于字号**，所以用 `em` 表达后换字号自动跟随、换图标尺寸不受影响。
-  - 标定值 -0.055em（12px 时约 -0.66px）：WKWebView 实测需要约 -0.67px，Chromium 约 -0.34px，取中间值，两边残留都在半像素内。换字体（CJK 回退字体变了）要重新标定，标定方法写在 CSS 注释里。
+- 折叠图标按**光学对齐**与标题对齐：偏移写在 `--mf-icon-optical-offset`（`src/index.css`），**数值在运行时量出来**（`src/core/platform/web/textMetrics.ts`），不写死常数——换引擎、换字号、换字体都不用再标定。
+  - 量法三样都取自实际渲染：① **基线**从 DOM 量（塞一个零尺寸 inline-block，用 `vertical-align: baseline`，它的底边落在基线上；不能用 canvas 的 `fontBoundingBox`，浏览器行盒用的字体度量与它差 1px，照抄会把基线算错、连符号都反）；② **墨迹盒**从 canvas 量（`actualBoundingBoxAscent/Descent`，与实际渲染吻合）；③ **图标当前位置**从折叠槽量（图形在图标框里居中，槽的位置不受偏移影响）。
+  - 样本文本取第一行的标题：偏移必须所有行一致，否则各行的图标会彼此错开；取实际文本又保证量到的墨迹与画出来的一致。
+  - 实测：12px 与 16px 下，图标与文字的墨迹**完全重合**（中心差 0.0px）。
   - 试过但没用上的两条路（记下来免得再走）：`text-box: trim-both cap alphabetic`（Chrome 133+/Safari 18.4+/Firefox 154+）能让浏览器按字体度量裁文字盒、理论上零常数，但标题的 span 带 `truncate`（`overflow:hidden`），裁到拉丁 cap 高度会把中文字形顶部切掉，对 CJK 正确的 `ideographic` 边在实测的 Chromium 里没生效；`vertical-align: middle` 按拉丁 x-height 对齐，中文字身框整个在基线之上，差约 0.75em，比不校准更糟。
 - 折叠按钮须提供可见的键盘焦点样式。
 

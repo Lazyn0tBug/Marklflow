@@ -26,6 +26,7 @@ import {
   type OutlineState,
   type OutlineView,
 } from '../../application/workspace/outlineState';
+import {measureOpticalShift} from '../../core/platform/web/textMetrics';
 
 interface SidebarProps {
   documents: DocumentRecord[];
@@ -51,6 +52,9 @@ interface OutlinePanelProps {
   activeHeadingId: string | null | undefined;
   activeItemRef: React.RefObject<HTMLButtonElement | null>;
   entryItemRef: React.RefObject<HTMLButtonElement | null>;
+  panelRef: React.RefObject<HTMLDivElement | null>;
+  textRef: React.RefObject<HTMLSpanElement | null>;
+  setSlot: (element: HTMLElement | null) => void;
 }
 
 /**
@@ -66,8 +70,11 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
   activeHeadingId,
   activeItemRef,
   entryItemRef,
+  panelRef,
+  textRef,
+  setSlot,
 }) => (
-  <div className="space-y-2">
+  <div ref={panelRef} className="space-y-2 text-xs">
     {/* Outline Search */}
     <div className="relative mb-2 flex items-center gap-1">
       <div className="relative flex-1">
@@ -92,7 +99,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
 
     {view.rows.length > 0 ? (
       <div className="space-y-1">
-        {view.rows.map((row) => {
+        {view.rows.map((row,index) => {
           const { item, foldable, collapsed: isCollapsed, marked } = row;
           const indent = (item.level - 1) * 10;
           const isActive = item.id === activeHeadingId;
@@ -108,6 +115,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
             >
               {foldable ? (
                 <button
+                  ref={index===0?setSlot:undefined}
                   onClick={() => onToggle(row.key)}
                   aria-expanded={!isCollapsed}
                   data-contains-active={marked ? 'true' : undefined}
@@ -125,7 +133,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                   )}
                 </button>
               ) : (
-                <span className="shrink-0 w-6 h-6" />
+                <span ref={index===0?setSlot:undefined} className="shrink-0 w-6 h-6" />
               )}
               <button
                 aria-current={isActive ? 'location' : undefined}
@@ -139,7 +147,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                 }`}
                 title={`${item.text} (第 ${item.line} 行)`}
               >
-                <span className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}>
+                <span ref={index===0?textRef:null} className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}>
                   {item.text}
                 </span>
                 {isActive && (
@@ -175,6 +183,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
   const entryItemRef = useRef<HTMLButtonElement | null>(null);
+  const outlinePanelRef = useRef<HTMLDivElement | null>(null);
+  const outlineTextRef = useRef<HTMLSpanElement | null>(null);
+  const outlineSlotRef = useRef<HTMLElement | null>(null);
+  const setOutlineSlot=React.useCallback((element:HTMLElement|null)=>{outlineSlotRef.current=element;},[]);
   const listRef=useRef<HTMLDivElement>(null);
 
   const outline = useMemo(() => extractOutline(currentMarkdown), [currentMarkdown]);
@@ -200,6 +212,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     () => outlineView(outlineState, currentDocId, activeHeadingId),
     [outlineState, currentDocId, activeHeadingId]
   );
+
+  // 光学对齐：量出图标相对文字该上移多少，写进 CSS 变量。数值来自字体度量，
+  // 不写死常数——换引擎、换字号、换字体都对。字体加载完要重量一次。
+  const applyInkOffset=React.useCallback(()=>{
+    const text=outlineTextRef.current,slot=outlineSlotRef.current;
+    if(!text||!slot)return;
+    const shift=measureOpticalShift(text,slot);
+    const value=`${Math.round(shift*100)/100}px`;
+    if(document.documentElement.style.getPropertyValue('--mf-icon-optical-offset')!==value)
+      document.documentElement.style.setProperty('--mf-icon-optical-offset',value);
+  },[]);
+  React.useEffect(()=>{
+    // 大纲面板只在"大纲"页签渲染，页签没切过来时量不到元素。
+    if(activeTab!=='outline')return;
+    applyInkOffset();
+    void document.fonts?.ready.then(applyInkOffset);
+  },[activeTab,outline,applyInkOffset]);
 
   // Only scroll the outline list; highlighting must never move the horizontal workbench.
   // 高亮可见就滚到高亮行；高亮被收起的分支挡住，就滚到那个分支的入口行（§6.1）。
@@ -365,6 +394,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             activeHeadingId={activeHeadingId}
             activeItemRef={activeItemRef}
             entryItemRef={entryItemRef}
+            panelRef={outlinePanelRef}
+            textRef={outlineTextRef}
+            setSlot={setOutlineSlot}
           />
         )}
       </div>
