@@ -83,6 +83,20 @@ export async function selectNativeSave(name:string):Promise<NativeSaveTarget|und
 }
 
 /**
+ * 拖放进来的文件：与选择器**同一套授权与身份** ✓（§5.4）。
+ *
+ * 事件只带授权与身份，**不带路径** ✓。返回的函数用来取消监听 ✓。
+ */
+export async function listenNativeDrop(handler:(files:NativeSelection[])=>void):Promise<()=>void>{
+ const {listen}=await import('@tauri-apps/api/event');
+ const unlisten=await listen<{files?:unknown}>('native-files-dropped',event=>{
+  const files=z.array(selectedSchema).safeParse(event.payload?.files);
+  if(files.success)handler(files.data);
+ });
+ return unlisten;
+}
+
+/**
  * 静默 PDF：原生路径的打印 ✓。
  *
  * 回执只有两种 ✓：**提交成功才是 saved** ✓；其余（没提交、报错）都算没成 ✓。

@@ -1,8 +1,10 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import {readNativeText,releaseNativeFile,selectNativeOpen,selectNativeSave} from '../../src/core/platform/tauri/files';
+import {listenNativeDrop,readNativeText,releaseNativeFile,selectNativeOpen,selectNativeSave} from '../../src/core/platform/tauri/files';
 
 const native=vi.hoisted(()=>({isTauri:vi.fn(),invoke:vi.fn()}));
 vi.mock('@tauri-apps/api/core',()=>native);
+const events=vi.hoisted(()=>({listen:vi.fn()}));
+vi.mock('@tauri-apps/api/event',()=>events);
 const selected={key:'123e4567-e89b-42d3-a456-426614174000',name:'文档.md',size:3,identity:'987e4567-e89b-42d3-a456-426614174000'};
 beforeEach(()=>{vi.resetAllMocks();native.isTauri.mockReturnValue(true)});
 afterEach(()=>vi.unstubAllGlobals());
@@ -89,4 +91,17 @@ it('rejects oversized blobs before allocating their byte array',async()=>{
  await expect(target!.save(blob as unknown as Blob)).rejects.toThrow('100MiB');
  expect(blob.arrayBuffer).not.toHaveBeenCalled();
  expect(native.invoke).toHaveBeenCalledExactlyOnceWith('select_native_save',{name:'report.md'});
+});
+
+it('hands the dropped files over and ignores a payload it does not trust',async()=>{
+ let deliver:((event:{payload?:{files?:unknown}})=>void)|undefined;
+ events.listen.mockImplementation(async(_name:string,callback:(event:{payload?:{files?:unknown}})=>void)=>{deliver=callback;return ()=>{}});
+ const seen:unknown[]=[];
+ const unlisten=await listenNativeDrop(files=>seen.push(...files));
+ deliver?.({payload:{files:[selected]}});
+ expect(seen).toEqual([selected]);
+ // 不认的载荷不进批次 ✓：拖进来的是别的形状时，不该凭空多出一个文档 ✓。
+ deliver?.({payload:{files:[{key:'not-a-uuid'}]}});
+ expect(seen).toHaveLength(1);
+ unlisten();
 });

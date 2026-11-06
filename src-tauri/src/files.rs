@@ -97,7 +97,7 @@ struct Grant {
     path: PathBuf,
     writable: bool,
 }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SelectedFile {
     /// 授权的标识 ✓：**路径不在这里** ✓（前端只拿得到 key ✓）。
@@ -290,6 +290,40 @@ pub async fn select_native_open(
     })
 }
 
+/// 选择器与拖放共用同一份扩展名清单 ✓（§5.4：两条入口的行为一致 ✓）。
+const OPENABLE_EXTENSIONS: [&str; 5] = ["md", "markdown", "txt", "html", "htm"];
+
+/// 这个路径是不是可打开的文档（按扩展名 ✓；大小写不敏感 ✓）。
+fn is_openable(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| {
+            OPENABLE_EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str())
+        })
+        .unwrap_or(false)
+}
+
+/// 拖放进来的文件：与选择器**同一套授权与身份** ✓（§5.4）——
+/// 于是"拖进来的是刚才打开的那个文件"这种去重照样成立 ✓。
+/// 只带授权与身份，**不带路径** ✓。
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DroppedFiles {
+    pub files: Vec<SelectedFile>,
+}
+
+/// 给拖进来的文件签发授权。
+///
+/// 不可打开的直接忽略 ✓：**不铸授权** ✓ ⇒ 不留一份要回收的授权 ✓。
+/// 铸出来的是读 + 写 ✓：与选择器一样 ✓（§3.2）。
+pub fn grant_dropped(paths: Vec<PathBuf>, access: &FileAccess) -> Vec<SelectedFile> {
+    paths
+        .into_iter()
+        .filter(|path| is_openable(path))
+        .filter_map(|path| access.grant(path, true).ok())
+        .collect()
+}
+
 /// 打开文件对话框并为选中的文件签发**读 + 写**授权 ✓：写能力只在用户显式触发保存时使用 ✓，
 /// 建立授权本身不写任何字节 ✓。写回原文件不必再选一次 ✓。
 fn paths_of(
@@ -299,7 +333,7 @@ fn paths_of(
     let paths = app
         .dialog()
         .file()
-        .add_filter("Documents", &["md", "markdown", "txt", "html", "htm"])
+        .add_filter("Documents", &OPENABLE_EXTENSIONS)
         .blocking_pick_files();
     paths
         .map(|items| {
@@ -824,6 +858,35 @@ mod tests {
             access.path(&granted.key, false).unwrap_err(),
             "unknown-file-key".to_owned()
         );
+    }
+
+    #[test]
+    fn dropped_files_get_the_same_grants_as_the_picker() {
+        let dir = tempfile::tempdir().unwrap();
+        let note = dir.path().join("note.md");
+        std::fs::write(&note, b"x").unwrap();
+        let picture = dir.path().join("picture.png");
+        std::fs::write(&picture, b"x").unwrap();
+        let access = FileAccess::default();
+        let dropped = grant_dropped(vec![note.clone(), picture], &access);
+        // 不可打开的直接忽略 ✓：不铸授权 ✓ ⇒ 不留要回收的授权 ✓。
+        assert_eq!(dropped.len(), 1);
+        assert_eq!(dropped[0].name, "note.md");
+        // 与选择器同一套授权与身份 ✓：同一个文件 ⇒ 同一个身份 ✓（去重因此成立 ✓）。
+        let picked = access.grant(note, true).unwrap();
+        assert_eq!(dropped[0].identity, picked.identity);
+    }
+
+    #[test]
+    fn only_the_documented_extensions_are_openable() {
+        assert!(is_openable(Path::new("a.md")));
+        assert!(is_openable(Path::new("a.MD")));
+        assert!(is_openable(Path::new("a.markdown")));
+        assert!(is_openable(Path::new("a.txt")));
+        assert!(is_openable(Path::new("a.html")));
+        assert!(is_openable(Path::new("a.htm")));
+        assert!(!is_openable(Path::new("a.png")));
+        assert!(!is_openable(Path::new("a")));
     }
 
     #[test]

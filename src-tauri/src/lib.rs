@@ -20,6 +20,7 @@ mod source_guard;
 #[cfg(feature = "pdf-probe")]
 mod probe;
 use serde::Serialize;
+use tauri::{Emitter,Manager};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -106,6 +107,23 @@ pub fn run() {
         #[cfg(feature = "pdf-probe")]
         probe::run(_app.handle(), config, &cwd)?;
         Ok(())
+    });
+    // 拖放进来的文件：与选择器同一套授权与身份 ✓（§5.4）。
+    // 事件只带授权与身份，不带路径 ✓；页面不能凭它反推路径 ✓。
+    let builder = builder.on_window_event(|window, event| {
+        let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event else {
+            return;
+        };
+        // 只认主窗口：探针的输出宿主不是落文档的地方 ✓。
+        if window.label() != "main" {
+            return;
+        }
+        let access = window.state::<files::FileAccess>();
+        let dropped = files::grant_dropped(paths.clone(), &access);
+        if dropped.is_empty() {
+            return;
+        }
+        let _ = window.emit("native-files-dropped", files::DroppedFiles { files: dropped });
     });
     builder
         .build(tauri::generate_context!())
