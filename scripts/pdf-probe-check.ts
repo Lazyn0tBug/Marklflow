@@ -172,7 +172,7 @@ const number=(value:string|undefined):number|undefined=>{
  * 解析一行日志。返回记录或问题。
  *
  * 两种形态都认：JSONL（机器形态）与人读文本。两者由**同一个写出器**从同一批记录
- * 生成，字段与脱敏规则相同；人读形态的值里没有转义，含空格的���由续写规则还原。
+ * 生成，字段与脱敏规则相同；人读形态的值里没有转义，含空格的字段由续写规则还原。
  */
 export function parseLogLine(raw:string,file:string,line:number):{record?:LogRecord;issue?:ParseIssue}{
  return raw.trimStart().startsWith('{')
@@ -227,7 +227,7 @@ export function parseJsonLine(raw:string,file:string,line:number):{record?:LogRe
  * 解析一行人读形态：`时间 级别 run_id=… event=… span=… 字段=值…`。
  *
  * span 写作 `name{id=…,parent_id=…}`，无 span 写作 `-`。
- * 值不含转义：含空格的��按"续写上一个字段"还原（写出器的字段值里目前没有空格，
+ * 值不含转义：含空格的字段按"续写上一个字段"还原（写出器的字段值里目前没有空格，
  * 这条规则只是兜底；值里若含 `=` 则以第一个 `=` 分界）。
  */
 export function parseTextLine(raw:string,file:string,line:number):{record?:LogRecord;issue?:ParseIssue}{
