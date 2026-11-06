@@ -4,7 +4,7 @@
  * 整合：三栏工作台、多文档与大纲、双模公式与图表、流式/A4物理预览、导出中心与 1.0 审查看板
  */
 
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { TopBar } from './components/header/TopBar';
 import { Sidebar } from './components/workspace/Sidebar';
@@ -198,7 +198,9 @@ export default function App() {
     if(!currentDoc)return;const position=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current;
     if(editor){const geometry=editorGeometry(editor),top=position.sourceAnchor&&position.editorLayoutKey!==geometry.layoutKey?sourceAnchorTop(position.sourceAnchor,geometry):position.scrollTop;editor.setSelectionRange(position.selectionStart,position.selectionEnd);syncPosition(editor,'editor',top,position.sourceAnchor?.line??null);editor.scrollLeft=position.scrollLeft;lastEditorGeometry.current=geometry;tabEditorGeometry.current.set(currentDoc.id,geometry)}
   },[currentDocId,showEditor,softWrap,contentMaxWidth,sidebarOpen,showPreview]);
-  const previewPoints=()=>{const view=previewContainerRef.current;return view&&currentDoc?previewSourcePoints(view,currentDoc.markdown.split('\n').length):[]};
+  // 行数按修订 memo 一份 ✓：滚动事件可达 60Hz ✓，每个事件都把全文切一遍是白扔的垃圾 ✓。
+  const totalLines=useMemo(()=>currentDoc?currentDoc.markdown.split('\n').length:0,[currentDoc?.markdown]);
+  const previewPoints=()=>{const view=previewContainerRef.current;return view&&currentDoc?previewSourcePoints(view,totalLines):[]};
   const positionPreview=(line:number)=>{const view=previewContainerRef.current;if(view){previewLine.current=line;syncPosition(view,'preview',interpolate(previewPoints(),line,'line'),line)}};
   useLayoutEffect(()=>{
     if(!currentDoc||previewView.state!=='ready'||!showPreview)return;
@@ -329,7 +331,7 @@ export default function App() {
     highlightLine(editorLineAt(top+editor.clientHeight/2,geometry));
     if(!syncScroll||previewView.state!=='ready')return;
     const view=previewContainerRef.current;if(!view)return;
-    const max=editor.scrollHeight-editor.clientHeight,totalLines=currentDoc.markdown.split('\n').length;
+    const max=editor.scrollHeight-editor.clientHeight;
     if(top<=2)syncPosition(view,'preview',0,1);
     else if(max>0&&top>=max-3)syncPosition(view,'preview',view.scrollHeight-view.clientHeight,totalLines);
     else positionPreview(startLine);
@@ -342,7 +344,7 @@ export default function App() {
     highlightLine(interpolate(points,top+view.clientHeight/2,'top'));
     const editor=editorTextareaRef.current;if(!syncScroll)return;
     if(!editor){const saved=sessions.read(currentDoc.id).position,geometry=tabEditorGeometry.current.get(currentDoc.id)??{lineHeight:24,paddingTop:12},top=editorTopAt(startLine,geometry);sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:sourceAnchorAt(top,geometry),editorLayoutKey:''});return}
-    const max=view.scrollHeight-view.clientHeight,totalLines=currentDoc.markdown.split('\n').length;
+    const max=view.scrollHeight-view.clientHeight;
     if(top<=2)syncPosition(editor,'editor',0,1);
     else if(max>0&&top>=max-3)syncPosition(editor,'editor',editor.scrollHeight-editor.clientHeight,totalLines);
     else syncPosition(editor,'editor',editorTopAt(startLine,editorGeometry(editor)),startLine);

@@ -14,6 +14,16 @@
  */
 
 /**
+ * 字形墨迹中心在基线上方多少。
+ *
+ * 墨迹自基线向上 ascent、向下 descent ⇒ 中心在基线上方 (ascent − descent)/2 处 ✓。
+ * CJK 的字形填满字身框 ⇒ ascent 大 ⇒ 中心偏上 ⇒ 图标要相应上移 ✓。
+ */
+export function inkCenterOffset(ascent:number,descent:number):number{
+ return (ascent-descent)/2;
+}
+
+/**
  * 图标相对文字该挪的像素数（正数 = 下移，负数 = 上移）。
  *
  * @param text 用来取样的一段文字（它的墨迹中心就是对齐的目标）。
@@ -38,7 +48,7 @@ export function measureOpticalShift(text:HTMLElement,slot:HTMLElement):number{
  if(!Number.isFinite(ascent)||!Number.isFinite(descent))return 0;
 
  // 墨迹中心在基线上方 (ascent − descent)/2 处。
- const inkCenter=baseline-(ascent-descent)/2;
+ const inkCenter=baseline-inkCenterOffset(ascent,descent);
  const slotBox=slot.getBoundingClientRect();
  const slotCenter=(slotBox.top+slotBox.bottom)/2;
  return inkCenter-slotCenter;

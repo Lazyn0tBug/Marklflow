@@ -223,12 +223,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if(document.documentElement.style.getPropertyValue('--mf-icon-optical-offset')!==value)
       document.documentElement.style.setProperty('--mf-icon-optical-offset',value);
   },[]);
+  // 光学对齐的测量只依赖**字体度量**与**第一行标题的文本** ✓：
+  // 跟着整份大纲走 ⇒ 每次击键都要重测一次（一次样式重算 + 一次 canvas 量测 +
+  // 一次探针的强制布局 + 一次全局样式失效）✗，而结果并不会因此更准 ✓。
+  const outlineSample=view.rows[0]?.item.text??'';
   React.useEffect(()=>{
     // 大纲面板只在"大纲"页签渲染，页签没切过来时量不到元素。
     if(activeTab!=='outline')return;
     applyInkOffset();
     void document.fonts?.ready.then(applyInkOffset);
-  },[activeTab,outline,applyInkOffset]);
+  },[activeTab,outlineSample,applyInkOffset]);
 
   // Only scroll the outline list; highlighting must never move the horizontal workbench.
   // 高亮可见就滚到高亮行；高亮被收起的分支挡住，就滚到那个分支的入口行（§6.1）。
