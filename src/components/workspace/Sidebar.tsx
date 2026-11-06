@@ -50,6 +50,7 @@ interface OutlinePanelProps {
   onJump: (itemId: string, line: number) => void;
   activeHeadingId: string | null | undefined;
   activeItemRef: React.RefObject<HTMLButtonElement | null>;
+  entryItemRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -64,6 +65,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
   onJump,
   activeHeadingId,
   activeItemRef,
+  entryItemRef,
 }) => (
   <div className="space-y-2">
     {/* Outline Search */}
@@ -87,6 +89,16 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
         <ChevronsUpDown className="w-3.5 h-3.5" />
       </button>
     </div>
+
+    {/* 当前位置：高亮被收起的分支挡住时，指路到那个分支的入口（§6.1）。固定在列表上方，滚动时不跟着走。 */}
+    {view.location && (
+      <p
+        data-outline-location
+        className="sticky top-0 z-10 mb-2 rounded bg-neutral-900 px-1 py-1 text-[11px] leading-tight text-neutral-400"
+      >
+        当前章节位于「{view.location.path.join(' › ')}」
+      </p>
+    )}
 
     {view.rows.length > 0 ? (
       <div className="space-y-1">
@@ -125,7 +137,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
               )}
               <button
                 aria-current={isActive ? 'location' : undefined}
-                ref={isActive ? activeItemRef : null}
+                ref={isActive ? activeItemRef : row.entry ? entryItemRef : null}
                 onClick={() => onJump(item.id, item.line)}
                 style={{ paddingLeft: `${indent + 8}px` }}
                 className={`flex-1 min-w-0 text-left py-1.5 pr-2 rounded text-xs truncate transition-all flex items-center gap-1.5 ${
@@ -179,6 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [activeTab, setActiveTab] = useState<'docs' | 'outline'>('docs');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeItemRef = useRef<HTMLButtonElement | null>(null);
+  const entryItemRef = useRef<HTMLButtonElement | null>(null);
   const listRef=useRef<HTMLDivElement>(null);
 
   const outline = useMemo(() => extractOutline(currentMarkdown), [currentMarkdown]);
@@ -206,13 +219,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   // Only scroll the outline list; highlighting must never move the horizontal workbench.
+  // 高亮可见就滚到高亮行；高亮被收起的分支挡住，就滚到那个分支的入口行（§6.1）。
+  // 依赖带上入口行：手动收起或展开会换掉目标，位置必须跟着重算。
+  const locationKey=view.location?.key??null;
   React.useEffect(()=>{
-    const item=activeItemRef.current,list=listRef.current;
+    const item=activeItemRef.current??entryItemRef.current,list=listRef.current;
     if(!item||!list||item.closest('[inert]')||activeTab!=='outline')return;
     const target=item.getBoundingClientRect(),viewport=list.getBoundingClientRect();
     if(target.top<viewport.top)list.scrollTop+=target.top-viewport.top;
     else if(target.bottom>viewport.bottom)list.scrollTop+=target.bottom-viewport.bottom;
-  },[activeHeadingId,activeTab]);
+  },[activeHeadingId,activeTab,locationKey]);
 
   const handleFileChange=(event:React.ChangeEvent<HTMLInputElement>)=>{
     const files=Array.from(event.target.files??[]);event.target.value='';
@@ -365,6 +381,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
             activeHeadingId={activeHeadingId}
             activeItemRef={activeItemRef}
+            entryItemRef={entryItemRef}
           />
         )}
       </div>

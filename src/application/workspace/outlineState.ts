@@ -10,6 +10,7 @@ import {
   ancestorKeys,
   buildOutlineTree,
   collapsedAncestors,
+  collapsedLocation,
   collapsibleKeys,
   duplicateHeadingTexts,
   effectiveCollapsed,
@@ -38,7 +39,7 @@ export interface OutlineState {
   previousDuplicates:ReadonlySet<string>;
 }
 
-/** 一行。四个标记由视图给出，渲染不再自己判断。 */
+/** 一行。五个标记由视图给出，渲染不再自己判断。 */
 export interface OutlineRow {
   item:HeadingItem;
   key:string;
@@ -50,6 +51,8 @@ export interface OutlineRow {
   collapsed:boolean;
   /** 收起的、且其子树包含当前高亮标题。 */
   marked:boolean;
+  /** 高亮被收起挡住时的入口行：挡住它的那个收起祖先。 */
+  entry:boolean;
 }
 
 export interface OutlineView {
@@ -58,6 +61,11 @@ export interface OutlineView {
   allExpanded:boolean;
   /** 没有标题 / 有标题但没有命中 / 有内容。 */
   empty:'none'|'no-match'|null;
+  /**
+   * 高亮被收起挡住时的位置：入口行的键与从根到它的标题路径。
+   * 高亮可见时为 null。搜索期间忽略折叠，所以也是 null。
+   */
+  location:{key:string; path:string[]}|null;
 }
 
 /** 动作。外部世界对组件只有"我变了"这一件事，所以只有一条 `sync`。 */
@@ -134,6 +142,8 @@ export function outlineView(
   const tree=buildOutlineTree(state.items);
   const collapsed=effectiveCollapsed(tree,overrides,DEFAULT_COLLAPSED_DEPTH);
   const marked=collapsedAncestors(tree,activeHeadingId??null,collapsed);
+  // 搜索期间忽略折叠，高亮是否被挡住与折叠无关，所以不给位置。
+  const location=searching?null:collapsedLocation(tree,activeHeadingId??null,collapsed);
   const visible=outlineRows(tree,searching?EMPTY_SET:collapsed);
   const rows=searching
     ?visible.filter(row=>row.item.text.toLowerCase().includes(needle))
@@ -146,8 +156,10 @@ export function outlineView(
       foldable:row.hasChildren&&!searching,
       collapsed:row.collapsed,
       marked:marked.has(row.key),
+      entry:location?.key===row.key,
     })),
     allExpanded:collapsibleKeys(tree).every(key=>!collapsed.has(key)),
     empty:state.items.length===0?'none':rows.length===0?'no-match':null,
+    location,
   };
 }

@@ -100,6 +100,34 @@ export function ancestorKeys(tree:readonly OutlineNode[],itemId:string):string[]
  return found;
 }
 
+/** 高亮被收起挡住时的位置：入口行与从根到它的标题路径。 */
+export interface CollapsedLocation {key:string; path:string[]}
+
+/**
+ * 挡住当前高亮的收起祖先里**最外层**的那一个。
+ *
+ * 收起只隐藏后代，所以更深的收起祖先连同它自己的行一起被外层挡住，根本不在屏上；
+ * 能指路的只有仍然可见的那一个。路径是从根到它的标题链，回答"我在哪儿"。
+ */
+export function collapsedLocation(tree:readonly OutlineNode[],activeId:string|null,collapsed:ReadonlySet<string>):CollapsedLocation|null{
+ if(!activeId)return null;
+ const walk=(nodes:readonly OutlineNode[],ancestors:readonly OutlineNode[]):CollapsedLocation|null=>{
+  for(const node of nodes){
+   if(node.item.id===activeId){
+    for(let i=0;i<ancestors.length;i++){
+     const ancestor=ancestors[i]!;
+     if(collapsed.has(ancestor.key))return {key:ancestor.key,path:ancestors.slice(0,i+1).map(entry=>entry.item.text)};
+    }
+    return null;
+   }
+   const hit=walk(node.children,[...ancestors,node]);
+   if(hit)return hit;
+  }
+  return null;
+ };
+ return walk(tree,[]);
+}
+
 /** 所有可折叠节点的稳定键。 */
 export function collapsibleKeys(tree:readonly OutlineNode[]):string[]{
  const out:string[]=[];

@@ -4,6 +4,7 @@ import {
   buildOutlineTree,
   collapsibleKeys,
   collapsedAncestors,
+  collapsedLocation,
   duplicateHeadingTexts,
   effectiveCollapsed,
   outlineRows,
@@ -94,4 +95,19 @@ it('lists the ancestors of a heading from the top down',()=>{
  const tree=buildOutlineTree([h(1,'甲',1),h(2,'乙',3),h(3,'丙',5)]);
  expect(ancestorKeys(tree,'heading_5_丙')).toEqual(['甲','乙']);
  expect(ancestorKeys(tree,'heading_1_甲')).toEqual([]);
+});
+
+it('points at the outermost collapsed ancestor that still holds the active heading',()=>{
+ const items=[h(1,'甲',1),h(2,'乙',3),h(3,'丙',5),h(4,'丁',7),h(5,'戊',9)];
+ const tree=buildOutlineTree(items);
+ // 「丙」和「丁」都收起：挡住「戊」的收起祖先有两个，但「丙」的行被更外层挡住时看不见，
+ // 能指路的只有仍然可见的那一个。
+ expect(collapsedLocation(tree,'heading_9_戊',new Set(['丙','丁']))).toEqual({key:'丙',path:['甲','乙','丙']});
+ // 只有一层收起时就是那一层，路径是从根到它。
+ expect(collapsedLocation(tree,'heading_9_戊',new Set(['丁']))).toEqual({key:'丁',path:['甲','乙','丙','丁']});
+ // 收起的那一行自己仍然可见（收起只藏后代），高亮在它身上时没有位置可指。
+ expect(collapsedLocation(tree,'heading_5_丙',new Set(['丙','丁']))).toBe(null);
+ // 但它被外层的收起挡住时，就有位置了。
+ expect(collapsedLocation(tree,'heading_7_丁',new Set(['丙','丁']))).toEqual({key:'丙',path:['甲','乙','丙']});
+ expect(collapsedLocation(tree,null,new Set(['丙','丁']))).toBe(null);
 });

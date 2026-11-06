@@ -4,13 +4,23 @@ test.use({viewport:{width:1280,height:900}});
 const section=(title:string,level:number,body:number)=>
   `${'#'.repeat(level)} ${title}\n\n`+Array.from({length:body},(_,i)=>`段落 ${title} ${i}`).join('\n\n');
 const md=[section('一级',1,6),section('二级',2,6),section('三级',3,6),section('四级',4,6),section('五级',5,30)].join('\n\n');
+/** 前面一长串平铺的标题，加一条深链：深层(0) → 次层(1) → 再次层(2) → 深枝(3) → 深章(4)。 */
+const flat=Array.from({length:40},(_,i)=>section('条目 '+i,1,1)).join('\n\n');
+const deepMd=flat+'\n\n'+[section('深层',1,1),section('次层',2,1),section('再次层',3,1),section('深枝',4,1),section('深章',5,30)].join('\n\n');
 const row=(page:Page,title:string)=>page.locator(`button[title^="${title} (第"]`);
 
-async function openOutline(page:Page){
+/** 侧栏列表滚了多少，以及这一行是否落在它的可视范围内。 */
+const panelState=async(target:ReturnType<Page['locator']>)=>target.evaluate(el=>{
+ const scroller=el.closest('aside')!.querySelector('.overflow-y-auto') as HTMLElement;
+ const box=el.getBoundingClientRect(),view=scroller.getBoundingClientRect();
+ return {scrollTop:scroller.scrollTop,inView:box.top>=view.top-1&&box.bottom<=view.bottom+1};
+});
+
+async function openOutline(page:Page,source=md){
  await page.goto('/');
  const editor=page.locator('textarea');
  await expect(editor).toBeVisible();
- await editor.fill(md);
+ await editor.fill(source);
  await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');
  await page.getByRole('button',{name:/^大纲 \(/}).click();
  return editor;
@@ -110,4 +120,42 @@ test('starts from the default state again after another document was open',async
  await page.getByRole('button',{name:/^大纲 \(/}).click();
  await expect(row(page,'四级')).toHaveCount(1);
  await expect(row(page,'五级')).toHaveCount(0);
+});
+
+test('shows where the active heading is and scrolls to the branch that holds it',async({page})=>{
+ const editor=await openOutline(page,deepMd);
+ // 视口落到文末，当前章节就是收在「深枝」里的「深章」。
+ await editor.evaluate(node=>{node.scrollTop=node.scrollHeight;});
+ await expect.poll(()=>editor.evaluate(node=>node.scrollTop)).toBeGreaterThan(100);
+ // 高亮行不在列表里；收起它的按钮带标记。
+ await expect(page.locator('[aria-current=location]')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^展开 深枝/})).toHaveAttribute('data-contains-active','true');
+ // 位置可读：告诉用户当前章节在哪个分支里。
+ await expect(page.locator('[data-outline-location]')).toHaveText('当前章节位于「深层 › 次层 › 再次层 › 深枝」');
+ await expect(page.locator('[data-outline-location]')).toBeInViewport();
+ // 够得到：列表滚到那个入口行，它落在侧栏的可视范围内。
+ await expect(row(page,'深枝')).toBeVisible();
+ const entry=await panelState(row(page,'深枝'));
+ expect(entry.scrollTop).toBeGreaterThan(0);
+ expect(entry.inView).toBe(true);
+ // 仍然不自动展开。
+ await expect(row(page,'深章')).toHaveCount(0);
+});
+
+test('keeps the position readable when the branch that holds it is folded away too',async({page})=>{
+ const editor=await openOutline(page,deepMd);
+ // 再收起「再次层」：挡住「深章」的收起祖先变成两层。
+ // 用 evaluate 触发点击：Playwright 的点击会先把元素滚进视口，那样列表就自己滚过了，断言会空过。
+ await page.getByRole('button',{name:/^折叠 再次层/}).evaluate(el=>el.click());
+ await expect(row(page,'深枝')).toHaveCount(0);
+ await editor.evaluate(node=>{node.scrollTop=node.scrollHeight;});
+ await expect.poll(()=>editor.evaluate(node=>node.scrollTop)).toBeGreaterThan(100);
+ // 位置指向仍然可见的那一层，不依赖被挡住的那一行。
+ await expect(page.locator('[data-outline-location]')).toHaveText('当前章节位于「深层 › 次层 › 再次层」');
+ await expect(page.locator('[data-outline-location]')).toBeInViewport();
+ // 入口是「再次层」那一行，它可见，且被列表滚到可视范围内。
+ await expect(row(page,'再次层')).toBeVisible();
+ const entry=await panelState(row(page,'再次层'));
+ expect(entry.scrollTop).toBeGreaterThan(0);
+ expect(entry.inView).toBe(true);
 });
