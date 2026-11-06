@@ -17,7 +17,7 @@
 - [本地文档支持设计](design/local-document-support-2026-11-05.md)：M4/M5/M6 的语义、授权与绑定模型、UI规格与验收条目；设计稿，未实施。
 - [大纲折叠设计](design/outline-collapse-2026-11-06.md)：侧栏大纲树的展开与收起、稳定键、默认深度与验收条目；设计稿，未实施。
 - [CM6 + Vim可行性与代价](design/cm6-vim-feasibility-and-cost-2026-11-01.md)：独立讨论稿，无实施步骤、排期或迁移决定。
-- [审查与测试规范](development/review-and-testing.md)：增量审查、风险选测、证据复用和全量触发；[项目指导](../AGENTS.md)。
+- [分析与验证规范](development/analysis-and-verification.md)：增量审查、风险选测、证据复用和全量触发；[项目指导](../AGENTS.md)。
 
 当前保留MathJax 3.2.2/Paged.js 0.4.3和textarea。多Tab、软换行、分栏及OMML已有实现，但不由本文宣称当前全量回归或系统验收通过。系统PDF文件/默认名、Word/WPS、目标OS桌面能力及发布条件按实际证据分别记录；不要求实体打印作为文档导出必经门槛。
 

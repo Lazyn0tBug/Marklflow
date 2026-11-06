@@ -46,7 +46,7 @@ D1d 的机器部分需要从探针产出的 PDF 里读出四样东西：页数�
 
 **审查缺一个维度。** 前几轮看的是类型、逻辑、命名、契约；没问"**这个数由谁决定、最坏多大**"。只看类型与逻辑，看不出偏移混用这类问题。
 
-已把这条写进[审查与测试规范](../development/review-and-testing.md)：凡"量由输入决定"的地方都要有硬上界；偏移量要统一基准。
+已把这条写进[分析与验证规范](../development/analysis-and-verification.md)：凡"量由输入决定"的地方都要有硬上界；偏移量要统一基准。
 
 ---
 
@@ -131,5 +131,5 @@ D1d 的机器部分需要从探针产出的 PDF 里读出四样东西：页数�
 
 - [探针阶段记录](pdf-probe-stage-record-2026-11-02.md)：D1b／D1c／D1d 的实际执行与证据。
 - [探针实施方案](../design/pdf-probe-implementation-plan-2026-11-02.md)：D1d 的断言与 TBD-13（poppler 的授权）。
-- [审查与测试规范](../development/review-and-testing.md)：本轮补入的审查维度（输入可控的量要有硬上界、偏移要统一基准）。
+- [分析与验证规范](../development/analysis-and-verification.md)：本轮补入的审查维度（输入可控的量要有硬上界、偏移要统一基准）。
 - [日志基座设计](../design/log-base-plan-2026-11-03.md)："两侧对照"的取信规则（本轮的"手写 × poppler"沿用同一思路）。

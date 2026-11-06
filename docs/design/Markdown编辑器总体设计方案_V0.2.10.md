@@ -1,6 +1,6 @@
 # Markdown 编辑器总体设计方案 V0.2.10
 
-> 当前实现与设计历史分开阅读：原技术选型中的 CodeMirror/MathJax 4 等不表示已经迁入。当前分支仍用 textarea、MathJax 3.2.2 和 Paged.js 0.4.3；CM6 + Vim 仅见[可行性讨论](cm6-vim-feasibility-and-cost-2026-11-01.md)。当前输出事实与剩余实现以[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)为准，平台接入见[Tauri迁移方案](tauri-migration-plan-2026-10-29.md)，审查验证范围见[项目规范](../development/review-and-testing.md)。这些引用不表示实现或系统验收自动完成。
+> 当前实现与设计历史分开阅读：原技术选型中的 CodeMirror/MathJax 4 等不表示已经迁入。当前分支仍用 textarea、MathJax 3.2.2 和 Paged.js 0.4.3；CM6 + Vim 仅见[可行性讨论](cm6-vim-feasibility-and-cost-2026-11-01.md)。当前输出事实与剩余实现以[完整输出方案](export-outputs-formula-and-print-plan-2026-10-30.md)为准，平台接入见[Tauri迁移方案](tauri-migration-plan-2026-10-29.md)，审查验证范围见[分析与验证规范](../development/analysis-and-verification.md)。这些引用不表示实现或系统验收自动完成。
 
 
 日期：2026-10-23  
@@ -855,7 +855,7 @@ PR 模板至少包含：问题与结果、范围/非目标、设计/契约变化
 
 ### 12.4 测试策略与验收证据
 
-执行范围遵循[项目审查与测试规范](../development/review-and-testing.md)：默认审查本轮差异及必要上下游，按风险选择验证子集；修复后增量复审，复用前提未失效的证据。下列类别描述项目验证能力，不要求每步全部执行；广泛变化、影响不明、阶段整合风险及发布/既有门禁触发相应完整验证。审查与测试由GPT-6 Luna执行，不改变现有CI和系统验收要求。
+执行范围遵循[分析与验证规范](../development/analysis-and-verification.md)：默认审查本轮差异及必要上下游，按风险选择验证子集；修复后增量复审，复用前提未失效的证据。下列类别描述项目验证能力，不要求每步全部执行；广泛变化、影响不明、阶段整合风险及发布/既有门禁触发相应完整验证。审查与测试由GPT-6 Luna执行，不改变现有CI和系统验收要求。
 
 - 单元：IR/schema、纯转换、资源路径、缓存键及失效、修订选择、降级判断。修复缺陷时优先增加能复现问题的回归测试，不编写仅镜像实现的断言。
 - 集成：编辑状态与持久化、插件契约、异步失败/竞态、渲染就绪屏障、源载荷往返、导出快照。非运行阶段的 M1–M4 不提前要求实现或测试其功能。

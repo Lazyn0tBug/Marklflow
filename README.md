@@ -208,7 +208,7 @@ npm run lint
 2. **CM6 + Vim**：仅有[独立可行性与代价讨论](docs/design/cm6-vim-feasibility-and-cost-2026-11-01.md)，尚未迁移，当前编辑器仍为 textarea。
 3. **Tauri**：桌面壳和独立文件适配已有实现，原生工作区/源文件绑定和生产导出接入仍按[迁移方案](docs/design/tauri-migration-plan-2026-10-29.md)推进，不把工程准备当成全部桌面功能已交付。
 
-开发审查与验证遵循[项目规范](docs/development/review-and-testing.md)：增量审查、按风险选测、复用有效证据；全量验证按触发条件执行。
+开发审查与验证遵循[分析与验证规范](docs/development/analysis-and-verification.md)：增量审查、按风险选测、复用有效证据；全量验证按触发条件执行。
 
 Mermaid静态SVG封装已在0.9.1实现，接收方无需运行Mermaid引擎；已验证范围和限制见[审查记录](docs/reviews/html-review-2026-10-24.md)。
 
