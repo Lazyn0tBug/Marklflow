@@ -113,14 +113,15 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                   data-contains-active={marked ? 'true' : undefined}
                   aria-label={`${isCollapsed ? '展开' : '折叠'} ${item.text}（第 ${item.line} 行）`}
                   title={`${isCollapsed ? '展开' : '折叠'}：${item.text}`}
-                  className={`shrink-0 w-6 h-6 flex items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${
+                  className={`shrink-0 w-6 h-6 flex items-center justify-center rounded text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${
                     marked ? 'text-teal-300' : 'text-neutral-500 hover:text-teal-300'
                   }`}
                 >
+                  {/* 图标比文字的光学对齐偏移，随字号走（见 index.css 的 --mf-icon-optical-offset）。 */}
                   {isCollapsed ? (
-                    <SquarePlus className="w-3.5 h-3.5" />
+                    <SquarePlus className="w-3.5 h-3.5" style={{ transform: 'translateY(var(--mf-icon-optical-offset))' }} />
                   ) : (
-                    <SquareMinus className="w-3.5 h-3.5" />
+                    <SquareMinus className="w-3.5 h-3.5" style={{ transform: 'translateY(var(--mf-icon-optical-offset))' }} />
                   )}
                 </button>
               ) : (

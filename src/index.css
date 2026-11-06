@@ -9,6 +9,30 @@
     --color-primary-hover: #0f766e;
     --paper-bg: #ffffff;
     --paper-text: #171717;
+
+    /*
+     * 图标相对文字的光学对齐偏移。
+     *
+     * 图标的墨迹中心 = 图标元素的中心（图形在图标框里居中，与图标尺寸无关）；
+     * 文字的墨迹中心 = 行盒中心 - (1 - ascent + descent)/2 × 字号，即偏上。
+     * 所以偏移正比于**字号**，用 em 表达：换字号自动跟着变，换图标尺寸不受影响。
+     *
+     * 数值按当前字体标定（12px 时约 -0.66px）。两个引擎略有出入：WKWebView 实测
+     * 需要约 -0.67px，Chromium 约 -0.34px，取中间值，两边残留都在半像素内。
+     * 换字体（或 CJK 回退字体）要重新标定。
+     *
+     * 标定方法：截图标与文字各自的一小块，比两者的墨迹上下沿中点之差，
+     * 除以该处文字的字号，写成 em 的负值。
+     *
+     * 试过但没用上的两条路（免得再走一遍）：
+     * - `text-box: trim-both cap alphabetic`（Chrome 133+/Safari 18.4+/Firefox 154+）：
+     *   浏览器按字体度量裁剪文字盒，理论上零常数；但标题的 span 带 `truncate`
+     *   （overflow:hidden），裁到拉丁的 cap 高度会把中文字形顶部切掉。对 CJK 正确的
+     *   `ideographic` 边在实测的 Chromium 里没有生效。
+     * - `vertical-align: middle`：按拉丁的 x-height 对齐，中文的字身框整个在基线之上，
+     *   差约 0.75em，比不校准还糟。
+     */
+    --mf-icon-optical-offset: -0.055em;
   }
 
   body {
