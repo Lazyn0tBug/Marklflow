@@ -7,7 +7,12 @@ const lineOf=(text:string)=>source.split('\n').findIndex(line=>line.startsWith(t
 async function ready(page:Page){await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready',{timeout:30000})}
 async function boot(page:Page){await page.goto('/');await ready(page);await page.locator('textarea').fill(source);await ready(page);await page.getByRole('button',{name:/^大纲 \(/}).click()}
 async function editorAt(page:Page,line:number){const editor=page.locator('textarea'),row=page.locator('[data-view=editor] [data-line-numbers] > div').nth(line-1);await editor.dispatchEvent('pointerdown');await editor.evaluate((el:HTMLTextAreaElement,rowTop)=>{el.scrollTop=Math.max(0,el.scrollTop+rowTop-el.getBoundingClientRect().top)},await row.evaluate(el=>el.getBoundingClientRect().top))}
-async function previewAt(page:Page,line:number){const view=page.locator('[data-view=html] > div');await view.dispatchEvent('pointerdown');await view.evaluate((el:HTMLElement,line)=>{const target=el.querySelector<HTMLElement>('[data-line="'+line+'"]');if(!target)throw new Error('Missing source node '+line);el.scrollTop+=target.getBoundingClientRect().top-el.getBoundingClientRect().top},line)}
+async function previewAt(page:Page,line:number){
+ // 前提：预览正在显示当前内容。预览未就绪时它还是旧内容，滚动落在旧内容上，
+ // 应用无法把它映射成行（那一档的滚动会被丢弃），编辑器也就不会跟过来。
+ // 流式预览就绪时 article 标 ready；A4 预览就绪时才会渲染出页面容器。
+ await expect.poll(async()=>await page.locator('[data-view=html] [data-render-state="ready"],[data-view=html] [data-page-count]').count()).toBeGreaterThan(0);
+ const view=page.locator('[data-view=html] > div');await view.dispatchEvent('pointerdown');await view.evaluate((el:HTMLElement,line)=>{const target=el.querySelector<HTMLElement>('[data-line="'+line+'"]');if(!target)throw new Error('Missing source node '+line);el.scrollTop+=target.getBoundingClientRect().top-el.getBoundingClientRect().top},line)}
 async function editorLine(page:Page){return page.locator('textarea').evaluate((el:HTMLTextAreaElement)=>{const gutter=el.parentElement!.querySelector<HTMLElement>('[data-line-numbers]')!,rows=[...gutter.children] as HTMLElement[],style=getComputedStyle(el);const viewTop=el.getBoundingClientRect().top+parseFloat(style.borderTopWidth||'0');for(let i=0;i<rows.length;i++){const rect=rows[i]!.getBoundingClientRect();if(viewTop<rect.bottom||i===rows.length-1)return i+1+Math.max(0,Math.min(1,(viewTop-rect.top)/(rect.height||1)))}return 1})}
 
 test('synchronizes mapped paragraphs and long code, and highlights the editor center chapter',async({page})=>{

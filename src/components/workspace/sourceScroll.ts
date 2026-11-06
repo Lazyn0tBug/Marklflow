@@ -50,6 +50,14 @@ export function interpolate(points:readonly SourcePoint[],value:number,from:'lin
  }
  return last[to];
 }
+/**
+ * 应用自己造成的一次放置。
+ *
+ * `top` 是应用设的位置，浏览器会原样报回来 ⇒ 判身份是等值比较，不是猜测。
+ * `line` 是这次放置对应哪一行（内容坐标），是同步的落点。
+ */
+export interface ScrollPlacement {top:number;line:number|null}
+
 /** Read current geometry instead of caching stale positions across widths, fonts or A4 mounts. */
 export function previewSourcePoints(preview:HTMLElement,totalLines:number):SourcePoint[] {
  const selector='h1[data-line],h2[data-line],h3[data-line],h4[data-line],h5[data-line],h6[data-line],p[data-line],pre[data-line],figure[data-line],.mf-math[data-line],tr[data-line],li[data-line],hr[data-line]';

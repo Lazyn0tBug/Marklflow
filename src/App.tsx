@@ -37,7 +37,7 @@ import type {ImportItemResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
 import {DOCUMENT_MARKDOWN_MAX} from './core/model/documentSchema';
-import {editorGeometry,editorLineAt,editorTopAt,sourceAnchorAt,sourceAnchorTop,previewSourcePoints,interpolate,type EditorGeometry} from './components/workspace/sourceScroll';
+import {editorGeometry,editorLineAt,editorTopAt,sourceAnchorAt,sourceAnchorTop,previewSourcePoints,interpolate,type EditorGeometry,type ScrollPlacement} from './components/workspace/sourceScroll';
 
 export default function App() {
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
@@ -85,9 +85,25 @@ export default function App() {
   const previewLine=useRef(1);
   const lastEditorGeometry=useRef<EditorGeometry>({lineHeight:24,paddingTop:12});
   const tabEditorGeometry=useRef(new Map<string,EditorGeometry>());
-  const expectedScroll=useRef<{editor:number|null;preview:number|null}>({editor:null,preview:null});
-  const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number)=>{const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));expectedScroll.current[pane]=clamped;el.scrollTop=clamped};
-  const isProgrammatic=(pane:'editor'|'preview',top:number)=>{const expected=expectedScroll.current[pane];expectedScroll.current[pane]=null;return expected!==null&&Math.abs(expected-top)<2};
+  // 滚动的模型：内容是源文档的行序列，视口是内容上的一个窗口，滚动就是移动这个窗口。
+  // 状态是应用上次对这个面板做过的一次放置，记两样：
+  //   位置——应用自己设的，浏览器会原样报回来，等值比较即可判身份；
+  //   行——这次放置对应哪一行（内容坐标），是同步的落点。
+  const placements=useRef<{editor:ScrollPlacement|null;preview:ScrollPlacement|null}>({editor:null,preview:null});
+  const syncPosition=(el:HTMLElement,pane:'editor'|'preview',top:number,line:number|null)=>{
+    const clamped=Math.max(0,Math.min(top,el.scrollHeight-el.clientHeight));
+    placements.current[pane]={top:clamped,line};
+    el.scrollTop=clamped;
+  };
+  // 事件的位置与记忆的位置一致 ⇒ 这是应用自己造成的，忽略它：往返因此精确，不漂。
+  // 匹配时不消费记忆：同一次程序化滚动可能带来两个事件。位置对不上时记忆作废。
+  const isOwnScroll=(pane:'editor'|'preview',top:number)=>{
+    const placed=placements.current[pane];
+    if(!placed)return false;
+    if(Math.abs(placed.top-top)<1)return true;
+    placements.current[pane]=null;
+    return false;
+  };
 
 
   const pendingSaves=useRef(new Map<string,{timer:ReturnType<typeof setTimeout>;doc:DocumentRecord}>());
@@ -160,12 +176,12 @@ export default function App() {
   };
   const selectDocument=(id:string)=>{
     capturePosition();const doc=sessions.documentIds.includes(id)?sessions.read(id).document:documents.find(value=>value.id===id);if(!doc)return;
-    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;expectedScroll.current={editor:null,preview:null};pendingPreviewLine.current=undefined}catch(error){setActionError(String(error))}
+    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;placements.current={editor:null,preview:null};pendingPreviewLine.current=undefined}catch(error){setActionError(String(error))}
   };
   const removeSession=(id:string)=>{
     const active=sessions.activeDocumentId===id;if(sessions.documentIds.includes(id))sessions.close(id,true);
     runtime.current?.forget(id);tabModes.current.delete(id);tabHeadings.current.delete(id);tabEditorGeometry.current.delete(id);setTabs(sessions.documentIds);
-    if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;expectedScroll.current={editor:null,preview:null};pendingPreviewLine.current=undefined}
+    if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;placements.current={editor:null,preview:null};pendingPreviewLine.current=undefined}
     if(!sessions.documentIds.length)runtime.current?.clear();
   };
   const closeTab=async(id:string)=>{
@@ -180,16 +196,16 @@ export default function App() {
   },[currentDocId,currentDoc?.revision,kind,tabs.join('|')]);
   useLayoutEffect(()=>{
     if(!currentDoc)return;const position=sessions.read(currentDoc.id).position,editor=editorTextareaRef.current;
-    if(editor){const geometry=editorGeometry(editor),top=position.sourceAnchor&&position.editorLayoutKey!==geometry.layoutKey?sourceAnchorTop(position.sourceAnchor,geometry):position.scrollTop;editor.setSelectionRange(position.selectionStart,position.selectionEnd);syncPosition(editor,'editor',top);editor.scrollLeft=position.scrollLeft;lastEditorGeometry.current=geometry;tabEditorGeometry.current.set(currentDoc.id,geometry)}
+    if(editor){const geometry=editorGeometry(editor),top=position.sourceAnchor&&position.editorLayoutKey!==geometry.layoutKey?sourceAnchorTop(position.sourceAnchor,geometry):position.scrollTop;editor.setSelectionRange(position.selectionStart,position.selectionEnd);syncPosition(editor,'editor',top,position.sourceAnchor?.line??null);editor.scrollLeft=position.scrollLeft;lastEditorGeometry.current=geometry;tabEditorGeometry.current.set(currentDoc.id,geometry)}
   },[currentDocId,showEditor,softWrap,contentMaxWidth,sidebarOpen,showPreview]);
   const previewPoints=()=>{const view=previewContainerRef.current;return view&&currentDoc?previewSourcePoints(view,currentDoc.markdown.split('\n').length):[]};
-  const positionPreview=(line:number)=>{const view=previewContainerRef.current;if(view){previewLine.current=line;syncPosition(view,'preview',interpolate(previewPoints(),line,'line'))}};
+  const positionPreview=(line:number)=>{const view=previewContainerRef.current;if(view){previewLine.current=line;syncPosition(view,'preview',interpolate(previewPoints(),line,'line'),line)}};
   useLayoutEffect(()=>{
     if(!currentDoc||previewView.state!=='ready'||!showPreview)return;
     const view=previewContainerRef.current;if(!view)return;
     const target=pendingPreviewLine.current;
     if(target?.documentId===currentDoc.id){positionPreview(target.line);pendingPreviewLine.current=undefined;restorePreview.current=undefined}
-    else if(restorePreview.current===currentDoc.id){syncPosition(view,'preview',sessions.read(currentDoc.id).position.previewScrollTop);previewLine.current=interpolate(previewPoints(),view.scrollTop,'top');restorePreview.current=undefined}
+    else if(restorePreview.current===currentDoc.id){const saved=sessions.read(currentDoc.id).position;syncPosition(view,'preview',saved.previewScrollTop,saved.sourceAnchor?.line??null);previewLine.current=interpolate(previewPoints(),view.scrollTop,'top');restorePreview.current=undefined}
     else if(syncScroll&&editorTextareaRef.current){positionPreview(editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current)))}
     else positionPreview(previewLine.current);
   },[currentDocId,previewView.state,previewView.referenceId,showPreview,showEditor,previewMode,contentMaxWidth,sidebarOpen,softWrap]);
@@ -287,7 +303,6 @@ export default function App() {
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
   };
 
-  const handleDirectScroll=(pane:'editor'|'preview')=>{expectedScroll.current[pane]=null};
   const highlightLine=(line:number)=>{
     if(!currentDoc)return;
     const outline=extractOutline(currentDoc.markdown);
@@ -301,32 +316,36 @@ export default function App() {
     const editor=editorTextareaRef.current;if(editor){lastEditorGeometry.current=editorGeometry(editor);tabEditorGeometry.current.set(currentDoc.id,lastEditorGeometry.current)}
     const geometry=editor?editorGeometry(editor):tabEditorGeometry.current.get(currentDoc.id)??{lineHeight:24,paddingTop:12};
     const top=editorTopAt(target,geometry);
-    if(editor)syncPosition(editor,'editor',top);
+    if(editor)syncPosition(editor,'editor',top,target);
     const saved=sessions.read(currentDoc.id).position;sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:{line:target,offset:0},editorLayoutKey:geometry.layoutKey??''});
     if(previewView.state==='ready'&&previewContainerRef.current)positionPreview(target);
     else pendingPreviewLine.current={documentId:currentDoc.id,line:target};
   };
   const handleEditorScroll=(_ratio:number,top:number)=>{
-    const editor=editorTextareaRef.current;if(!editor||!currentDoc||isProgrammatic('editor',top))return;
+    const editor=editorTextareaRef.current;if(!editor||!currentDoc)return;
     const geometry=editorGeometry(editor);lastEditorGeometry.current=geometry;tabEditorGeometry.current.set(currentDoc.id,geometry);
+    if(isOwnScroll('editor',top))return;
+    const startLine=editorLineAt(top,geometry);
     highlightLine(editorLineAt(top+editor.clientHeight/2,geometry));
     if(!syncScroll||previewView.state!=='ready')return;
     const view=previewContainerRef.current;if(!view)return;
-    const max=editor.scrollHeight-editor.clientHeight;
-    if(top<=2)syncPosition(view,'preview',0);
-    else if(max>0&&top>=max-3)syncPosition(view,'preview',view.scrollHeight-view.clientHeight);
-    else positionPreview(editorLineAt(top,geometry));
+    const max=editor.scrollHeight-editor.clientHeight,totalLines=currentDoc.markdown.split('\n').length;
+    if(top<=2)syncPosition(view,'preview',0,1);
+    else if(max>0&&top>=max-3)syncPosition(view,'preview',view.scrollHeight-view.clientHeight,totalLines);
+    else positionPreview(startLine);
   };
   const handlePreviewScroll=(_ratio:number,top:number)=>{
-    const view=previewContainerRef.current;if(!view||!currentDoc||previewView.state!=='ready'||isProgrammatic('preview',top))return;
-    const points=previewPoints();previewLine.current=interpolate(points,top,'top');
+    const view=previewContainerRef.current;if(!view||!currentDoc||previewView.state!=='ready')return;
+    if(isOwnScroll('preview',top))return;
+    const points=previewPoints(),startLine=interpolate(points,top,'top');
+    previewLine.current=startLine;
     highlightLine(interpolate(points,top+view.clientHeight/2,'top'));
     const editor=editorTextareaRef.current;if(!syncScroll)return;
-    if(!editor){const saved=sessions.read(currentDoc.id).position,geometry=tabEditorGeometry.current.get(currentDoc.id)??{lineHeight:24,paddingTop:12},top=editorTopAt(previewLine.current,geometry);sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:sourceAnchorAt(top,geometry),editorLayoutKey:''});return}
-    const max=view.scrollHeight-view.clientHeight;
-    if(top<=2)syncPosition(editor,'editor',0);
-    else if(max>0&&top>=max-3)syncPosition(editor,'editor',editor.scrollHeight-editor.clientHeight);
-    else syncPosition(editor,'editor',editorTopAt(previewLine.current,editorGeometry(editor)));
+    if(!editor){const saved=sessions.read(currentDoc.id).position,geometry=tabEditorGeometry.current.get(currentDoc.id)??{lineHeight:24,paddingTop:12},top=editorTopAt(startLine,geometry);sessions.setPosition(currentDoc.id,{...saved,scrollTop:top,sourceAnchor:sourceAnchorAt(top,geometry),editorLayoutKey:''});return}
+    const max=view.scrollHeight-view.clientHeight,totalLines=currentDoc.markdown.split('\n').length;
+    if(top<=2)syncPosition(editor,'editor',0,1);
+    else if(max>0&&top>=max-3)syncPosition(editor,'editor',editor.scrollHeight-editor.clientHeight,totalLines);
+    else syncPosition(editor,'editor',editorTopAt(startLine,editorGeometry(editor)),startLine);
   };
   const changePreviewMode=(mode:'flow'|'a4')=>{
     capturePosition();
@@ -447,7 +466,7 @@ export default function App() {
           )}
 
           {/* Resizing changes workbench geometry only; content max-width remains independent. */}
-          <ResizablePanes labelledBy={'tab-'+encodeURIComponent(currentDocId)} onBeforeResize={capturePosition} onDirectScroll={handleDirectScroll}
+          <ResizablePanes labelledBy={'tab-'+encodeURIComponent(currentDocId)} onBeforeResize={capturePosition}
             editor={showEditor?<>
                 <Editor
                   sessionId={currentDoc.id}
