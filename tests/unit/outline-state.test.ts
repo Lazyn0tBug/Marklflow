@@ -53,15 +53,15 @@ it('gives every row the marks the render needs',()=>{
 
 it('tells where the active heading is when a collapsed branch hides it',()=>{
  const view=outlineView(state(new Map([['丁',true]])),'doc-1','heading_9_戊');
- // 高亮「戊」被收起的「丁」挡住 ⇒ 位置指向「丁」，路径是从根到它。
- expect(view.location).toEqual({key:'丁',path:['甲','乙','丙','丁']});
+ // 高亮「戊」被收起的「丁」挡住 ⇒ 入口是「丁」。
+ expect(view.entrance).toBe('丁');
  // 入口行被标出来，渲染据此挂 ref；只有一行是入口。
  expect(view.rows.find(row=>row.item.text==='丁')!.entry).toBe(true);
  expect(view.rows.filter(row=>row.entry)).toHaveLength(1);
- // 高亮可见时没有位置可指。
- expect(outlineView(state(new Map([['丁',true]])),'doc-1','heading_5_丙').location).toBe(null);
- // 搜索期间忽略折叠，不给位置。
- expect(outlineView(state(new Map([['丁',true]]),chain,'戊'),'doc-1','heading_9_戊').location).toBe(null);
+ // 高亮可见时没有入口。
+ expect(outlineView(state(new Map([['丁',true]])),'doc-1','heading_5_丙').entrance).toBe(null);
+ // 搜索期间忽略折叠，不给入口。
+ expect(outlineView(state(new Map([['丁',true]]),chain,'戊'),'doc-1','heading_9_戊').entrance).toBe(null);
 });
 
 it('ignores the fold state while searching and shows no fold buttons',()=>{

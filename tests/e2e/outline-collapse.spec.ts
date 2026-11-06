@@ -122,7 +122,7 @@ test('starts from the default state again after another document was open',async
  await expect(row(page,'五级')).toHaveCount(0);
 });
 
-test('shows where the active heading is and scrolls to the branch that holds it',async({page})=>{
+test('scrolls to the branch that holds the active heading',async({page})=>{
  const editor=await openOutline(page,deepMd);
  // 视口落到文末，当前章节就是收在「深枝」里的「深章」。
  await editor.evaluate(node=>{node.scrollTop=node.scrollHeight;});
@@ -130,9 +130,6 @@ test('shows where the active heading is and scrolls to the branch that holds it'
  // 高亮行不在列表里；收起它的按钮带标记。
  await expect(page.locator('[aria-current=location]')).toHaveCount(0);
  await expect(page.getByRole('button',{name:/^展开 深枝/})).toHaveAttribute('data-contains-active','true');
- // 位置可读：告诉用户当前章节在哪个分支里。
- await expect(page.locator('[data-outline-location]')).toHaveText('当前章节位于「深层 › 次层 › 再次层 › 深枝」');
- await expect(page.locator('[data-outline-location]')).toBeInViewport();
  // 够得到：列表滚到那个入口行，它落在侧栏的可视范围内。
  await expect(row(page,'深枝')).toBeVisible();
  const entry=await panelState(row(page,'深枝'));
@@ -142,19 +139,18 @@ test('shows where the active heading is and scrolls to the branch that holds it'
  await expect(row(page,'深章')).toHaveCount(0);
 });
 
-test('keeps the position readable when the branch that holds it is folded away too',async({page})=>{
+test('points at the outermost branch when the one holding it is folded away too',async({page})=>{
  const editor=await openOutline(page,deepMd);
  // 再收起「再次层」：挡住「深章」的收起祖先变成两层。
  // 用 evaluate 触发点击：Playwright 的点击会先把元素滚进视口，那样列表就自己滚过了，断言会空过。
- await page.getByRole('button',{name:/^折叠 再次层/}).evaluate(el=>el.click());
+ await page.getByRole('button',{name:/^折叠 再次层/}).evaluate(el=>(el as HTMLElement).click());
  await expect(row(page,'深枝')).toHaveCount(0);
  await editor.evaluate(node=>{node.scrollTop=node.scrollHeight;});
  await expect.poll(()=>editor.evaluate(node=>node.scrollTop)).toBeGreaterThan(100);
- // 位置指向仍然可见的那一层，不依赖被挡住的那一行。
- await expect(page.locator('[data-outline-location]')).toHaveText('当前章节位于「深层 › 次层 › 再次层」');
- await expect(page.locator('[data-outline-location]')).toBeInViewport();
- // 入口是「再次层」那一行，它可见，且被列表滚到可视范围内。
+ // 入口是最外层那个收起祖先：它的行仍然可见，带标记。
+ await expect(page.getByRole('button',{name:/^展开 再次层/})).toHaveAttribute('data-contains-active','true');
  await expect(row(page,'再次层')).toBeVisible();
+ // 列表滚到那个入口。
  const entry=await panelState(row(page,'再次层'));
  expect(entry.scrollTop).toBeGreaterThan(0);
  expect(entry.inView).toBe(true);

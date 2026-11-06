@@ -90,16 +90,6 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
       </button>
     </div>
 
-    {/* 当前位置：高亮被收起的分支挡住时，指路到那个分支的入口（§6.1）。固定在列表上方，滚动时不跟着走。 */}
-    {view.location && (
-      <p
-        data-outline-location
-        className="sticky top-0 z-10 mb-2 rounded bg-neutral-900 px-1 py-1 text-[11px] leading-tight text-neutral-400"
-      >
-        当前章节位于「{view.location.path.join(' › ')}」
-      </p>
-    )}
-
     {view.rows.length > 0 ? (
       <div className="space-y-1">
         {view.rows.map((row) => {
@@ -147,15 +137,6 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                 }`}
                 title={`${item.text} (第 ${item.line} 行)`}
               >
-                <span
-                  className={`text-[10px] font-mono shrink-0 px-1 py-0.5 rounded leading-none ${
-                    isActive
-                      ? 'bg-teal-500/30 text-teal-300 font-bold'
-                      : 'bg-neutral-800 text-neutral-500'
-                  }`}
-                >
-                  H{item.level}
-                </span>
                 <span className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}>
                   {item.text}
                 </span>
@@ -221,14 +202,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Only scroll the outline list; highlighting must never move the horizontal workbench.
   // 高亮可见就滚到高亮行；高亮被收起的分支挡住，就滚到那个分支的入口行（§6.1）。
   // 依赖带上入口行：手动收起或展开会换掉目标，位置必须跟着重算。
-  const locationKey=view.location?.key??null;
+  const entranceKey=view.entrance;
   React.useEffect(()=>{
     const item=activeItemRef.current??entryItemRef.current,list=listRef.current;
     if(!item||!list||item.closest('[inert]')||activeTab!=='outline')return;
     const target=item.getBoundingClientRect(),viewport=list.getBoundingClientRect();
     if(target.top<viewport.top)list.scrollTop+=target.top-viewport.top;
     else if(target.bottom>viewport.bottom)list.scrollTop+=target.bottom-viewport.bottom;
-  },[activeHeadingId,activeTab,locationKey]);
+  },[activeHeadingId,activeTab,entranceKey]);
 
   const handleFileChange=(event:React.ChangeEvent<HTMLInputElement>)=>{
     const files=Array.from(event.target.files??[]);event.target.value='';

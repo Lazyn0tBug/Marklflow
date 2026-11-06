@@ -4,7 +4,7 @@ import {
   buildOutlineTree,
   collapsibleKeys,
   collapsedAncestors,
-  collapsedLocation,
+  collapsedEntrance,
   duplicateHeadingTexts,
   effectiveCollapsed,
   outlineRows,
@@ -102,12 +102,12 @@ it('points at the outermost collapsed ancestor that still holds the active headi
  const tree=buildOutlineTree(items);
  // 「丙」和「丁」都收起：挡住「戊」的收起祖先有两个，但「丙」的行被更外层挡住时看不见，
  // 能指路的只有仍然可见的那一个。
- expect(collapsedLocation(tree,'heading_9_戊',new Set(['丙','丁']))).toEqual({key:'丙',path:['甲','乙','丙']});
- // 只有一层收起时就是那一层，路径是从根到它。
- expect(collapsedLocation(tree,'heading_9_戊',new Set(['丁']))).toEqual({key:'丁',path:['甲','乙','丙','丁']});
- // 收起的那一行自己仍然可见（收起只藏后代），高亮在它身上时没有位置可指。
- expect(collapsedLocation(tree,'heading_5_丙',new Set(['丙','丁']))).toBe(null);
- // 但它被外层的收起挡住时，就有位置了。
- expect(collapsedLocation(tree,'heading_7_丁',new Set(['丙','丁']))).toEqual({key:'丙',path:['甲','乙','丙']});
- expect(collapsedLocation(tree,null,new Set(['丙','丁']))).toBe(null);
+ expect(collapsedEntrance(tree,'heading_9_戊',new Set(['丙','丁']))).toBe('丙');
+ // 只有一层收起时就是那一层。
+ expect(collapsedEntrance(tree,'heading_9_戊',new Set(['丁']))).toBe('丁');
+ // 收起的那一行自己仍然可见（收起只藏后代），高亮在它身上时没有入口。
+ expect(collapsedEntrance(tree,'heading_5_丙',new Set(['丙','丁']))).toBe(null);
+ // 但它被外层的收起挡住时，就有入口了。
+ expect(collapsedEntrance(tree,'heading_7_丁',new Set(['丙','丁']))).toBe('丙');
+ expect(collapsedEntrance(tree,null,new Set(['丙','丁']))).toBe(null);
 });
