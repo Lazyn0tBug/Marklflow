@@ -301,7 +301,7 @@ outlineView(state, currentDocId, activeHeadingId): OutlineView
 | 步骤 | 做什么 | 退出条件 | 状态 |
 | --- | --- | --- | --- |
 | R1 | 新建 `src/application/workspace/outlineState.ts`，先只搬**纯函数**（视图模型），组件不动 | 视图模型的单元断言覆盖不变量 1、2、4、5、8（O-23）；组件未动，端到端全绿 | ✓ `outlineView` + `tests/unit/outline-state.test.ts`（7 项）；组件未动 |
-| R2 | 加 reducer 与动作，用单元测试把 §2.3 与 §3.4 的规则钉住 | reducer 单元断言全过（O-19~O-21）；组件仍未动 | 待做 |
+| R2 | 加 reducer 与动作，用单元测试把 §2.3 与 §3.4 的规则钉住 | reducer 单元断言全过（O-19~O-21）；组件仍未动 | ✓ `outlineReducer` + 五个动作；`tests/unit/outline-state.test.ts` 12 项；组件未动 |
 | R3 | 组件切到 `useReducer` + `useMemo`：删掉 `fold` 状态、`previousDuplicates` ref、清理 effect 与 `displayTree` 第二棵树；事件改为 dispatch | §9 的端到端全绿；§3.7 八条逐条对应到具体用例 | 待做 |
 | R4 | 收尾：删掉不再需要的旧路径与导入；同步本文档的落点表 | lint / typecheck / 单元 / 端到端全绿；模块边界与纯度检查通过 | 待做 |
 

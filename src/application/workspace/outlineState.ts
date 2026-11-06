@@ -7,11 +7,14 @@
  */
 import type {HeadingItem} from '../../core/parse/markdown';
 import {
+  ancestorKeys,
   buildOutlineTree,
   collapsedAncestors,
   collapsibleKeys,
+  duplicateHeadingTexts,
   effectiveCollapsed,
   outlineRows,
+  pruneOverrides,
 } from '../../core/parse/outlineTree';
 
 /** 深度 ≥ 3 的分支默认收起（根的深度是 0）。 */
@@ -55,6 +58,62 @@ export interface OutlineView {
   allExpanded:boolean;
   /** 没有标题 / 有标题但没有命中 / 有内容。 */
   empty:'none'|'no-match'|null;
+}
+
+/** 动作。外部世界对组件只有"我变了"这一件事，所以只有一条 `sync`。 */
+export type OutlineAction =
+  | {type:'sync'; docId:string; items:readonly HeadingItem[]}
+  | {type:'filter'; value:string}
+  | {type:'toggle'; key:string}
+  | {type:'toggle-all'}
+  | {type:'jump'; itemId:string};
+
+/**
+ * 状态机。纯函数：动作 → 新状态。
+ *
+ * - `sync`：换文档 ⇒ 覆盖清零；同一文档的修订变化 ⇒ 丢弃同名组的覆盖（用当前 ∪ 上一修订的同名文本判定）。
+ * - `toggle` / `toggle-all`：按"当前生效值的反面"写覆盖，生效值由深度默认与已有覆盖算出。
+ * - `jump`：把该标题的祖先键写为展开。
+ */
+export function outlineReducer(state:OutlineState,action:OutlineAction):OutlineState{
+  switch(action.type){
+    case 'filter':{
+      return state.filter===action.value?state:{...state,filter:action.value};
+    }
+    case 'sync':{
+      const duplicates=duplicateHeadingTexts(action.items);
+      if(action.docId!==state.docId){
+        // 换文档：覆盖清零，搜索词保留（与今天一致），同名组以新文档的当前修订为基线。
+        return {...state,docId:action.docId,items:action.items,overrides:new Map(),duplicates,previousDuplicates:duplicates};
+      }
+      const overrides=pruneOverrides(state.overrides,duplicates,state.duplicates);
+      return {...state,docId:action.docId,items:action.items,overrides,duplicates,previousDuplicates:state.duplicates};
+    }
+    case 'toggle':{
+      const tree=buildOutlineTree(state.items);
+      const collapsed=effectiveCollapsed(tree,state.overrides,DEFAULT_COLLAPSED_DEPTH);
+      const overrides=new Map(state.overrides);
+      overrides.set(action.key,!collapsed.has(action.key));
+      return {...state,overrides};
+    }
+    case 'toggle-all':{
+      const tree=buildOutlineTree(state.items);
+      const collapsed=effectiveCollapsed(tree,state.overrides,DEFAULT_COLLAPSED_DEPTH);
+      const keys=collapsibleKeys(tree);
+      const allExpanded=keys.every(key=>!collapsed.has(key));
+      const overrides=new Map(state.overrides);
+      for(const key of keys)overrides.set(key,allExpanded);
+      return {...state,overrides};
+    }
+    case 'jump':{
+      const tree=buildOutlineTree(state.items);
+      const keys=ancestorKeys(tree,action.itemId);
+      if(!keys.length)return state;
+      const overrides=new Map(state.overrides);
+      for(const key of keys)overrides.set(key,false);
+      return {...state,overrides};
+    }
+  }
 }
 
 /**

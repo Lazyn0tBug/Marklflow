@@ -1,6 +1,7 @@
 import {expect,it} from 'vitest';
-import {outlineView,type OutlineState} from '../../src/application/workspace/outlineState';
+import {outlineReducer,outlineView,type OutlineAction,type OutlineState} from '../../src/application/workspace/outlineState';
 import type {HeadingItem} from '../../src/core/parse/markdown';
+import {buildOutlineTree,type OutlineNode} from '../../src/core/parse/outlineTree';
 
 const h=(level:number,text:string,line:number):HeadingItem=>({id:`heading_${line}_${text}`,level,text,line});
 /** 一条链：甲(深度0) → 乙(1) → 丙(2) → 丁(3) → 戊(4)。 */
@@ -88,4 +89,77 @@ it('reports whether everything is expanded and why the list is empty',()=>{
  expect(outlineView(state(new Map(),[]),'doc-1',null).empty).toBe('none');
  expect(outlineView(state(new Map(),chain,'没有这个标题'),'doc-1',null).empty).toBe('no-match');
  expect(outlineView(state(),'doc-1',null).empty).toBe(null);
+});
+
+// —— R2：状态机 ——
+
+const reduce=(current:OutlineState,action:OutlineAction)=>outlineReducer(current,action);
+/** 树上所有节点的稳定键，按文档顺序。测试不写死键的格式。 */
+const allKeys=(items:readonly HeadingItem[]):string[]=>{
+ const out:string[]=[];
+ const walk=(nodes:readonly OutlineNode[])=>{for(const node of nodes){out.push(node.key);walk(node.children);}};
+ walk(buildOutlineTree(items));
+ return out;
+};
+
+it('clears the choices when the document changes and keeps them cleared when coming back',()=>{
+ const first=reduce(state(new Map([['丁',true]])),{type:'sync',docId:'doc-1',items:chain});
+ expect(first.overrides.get('丁')).toBe(true);
+ const second=reduce(first,{type:'sync',docId:'doc-2',items:chain});
+ expect(second.overrides.size).toBe(0);
+ const back=reduce(second,{type:'sync',docId:'doc-1',items:chain});
+ expect(back.overrides.size).toBe(0);
+ // 视图上是默认状态。
+ expect(texts(outlineView(back,'doc-1',null))).toEqual(['甲','乙','丙','丁']);
+});
+
+it('drops the choices of a heading that became ambiguous and never moves them to another one',()=>{
+ const one=[h(1,'概述',1),h(2,'结论',3)];
+ const two=[h(1,'概述',1),h(2,'概述',3),h(2,'结论',5)];
+ const single=reduce(state(new Map([['概述',true]])),{type:'sync',docId:'doc-1',items:one});
+ expect(single.overrides.get('概述')).toBe(true);
+ // 一个变两个：覆盖被清掉。
+ const ambiguous=reduce(single,{type:'sync',docId:'doc-1',items:two});
+ expect(ambiguous.overrides.size).toBe(0);
+ // 两个变一个：上一修订里同名，覆盖也被清掉，不会落到新的那一个上。
+ const pair=reduce(state(),{type:'sync',docId:'doc-1',items:two});
+ const pairKeys=allKeys(two);
+ const withChoice=reduce(pair,{type:'toggle',key:pairKeys[0]!});
+ expect(withChoice.overrides.get(pairKeys[0]!)).toBe(true);
+ const singleAgain=reduce(withChoice,{type:'sync',docId:'doc-1',items:one});
+ expect(singleAgain.overrides.size).toBe(0);
+ expect(singleAgain.overrides.has('概述')).toBe(false);
+});
+
+it('keeps the choice of a unique heading when the text above it changes',()=>{
+ const before=reduce(state(new Map([['丁',true]])),{type:'sync',docId:'doc-1',items:chain});
+ const shifted=[h(1,'甲',1),h(2,'乙',3),h(3,'丙',5),h(4,'丁',99),h(5,'戊',101)];
+ const after=reduce(before,{type:'sync',docId:'doc-1',items:shifted});
+ expect(after.overrides.get('丁')).toBe(true);
+});
+
+it('writes the choices so that the view agrees with them',()=>{
+ // 默认收起的「丁」点一下就展开，再点一下就收起。
+ const opened=reduce(state(),{type:'toggle',key:'丁'});
+ expect(opened.overrides.get('丁')).toBe(false);
+ expect(texts(outlineView(opened,'doc-1',null))).toEqual(['甲','乙','丙','丁','戊']);
+ const closed=reduce(opened,{type:'toggle',key:'丁'});
+ expect(closed.overrides.get('丁')).toBe(true);
+ expect(texts(outlineView(closed,'doc-1',null))).toEqual(['甲','乙','丙','丁']);
+ // 全部展开 / 全部折叠：按钮在两态之间切换。
+ const expanded=reduce(state(),{type:'toggle-all'});
+ expect(outlineView(expanded,'doc-1',null).allExpanded).toBe(true);
+ expect(texts(outlineView(expanded,'doc-1',null))).toEqual(['甲','乙','丙','丁','戊']);
+ const collapsed=reduce(expanded,{type:'toggle-all'});
+ expect(outlineView(collapsed,'doc-1',null).allExpanded).toBe(false);
+ expect(texts(outlineView(collapsed,'doc-1',null))).toEqual(['甲']);
+});
+
+it('opens the path of the heading it jumps to',()=>{
+ const closed=reduce(state(new Map([['丙',true],['丁',true]])),{type:'sync',docId:'doc-1',items:chain});
+ expect(texts(outlineView(closed,'doc-1',null))).toEqual(['甲','乙','丙']);
+ const jumped=reduce(closed,{type:'jump',itemId:'heading_9_戊'});
+ expect(jumped.overrides.get('丙')).toBe(false);
+ expect(jumped.overrides.get('丁')).toBe(false);
+ expect(texts(outlineView(jumped,'doc-1',null))).toEqual(['甲','乙','丙','丁','戊']);
 });
