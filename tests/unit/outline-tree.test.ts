@@ -1,0 +1,97 @@
+import {expect,it} from 'vitest';
+import {
+  ancestorKeys,
+  buildOutlineTree,
+  collapsibleKeys,
+  collapsedAncestors,
+  duplicateHeadingTexts,
+  effectiveCollapsed,
+  outlineRows,
+  pruneOverrides,
+} from '../../src/core/parse/outlineTree';
+import type {HeadingItem} from '../../src/core/parse/markdown';
+
+/** 稳定键里的分隔符，与实现一致。 */
+const SEP='\u0000';
+
+const h=(level:number,text:string,line:number):HeadingItem=>({id:`heading_${line}_${text}`,level,text,line});
+const keys=(items:readonly HeadingItem[])=>items.map(item=>item.text);
+const rowsOf=(items:readonly HeadingItem[],collapsed:ReadonlySet<string>=new Set())=>outlineRows(buildOutlineTree(items),collapsed);
+
+it('nests a flat heading list by level and tolerates skipped levels',()=>{
+ const tree=buildOutlineTree([h(1,'甲',1),h(3,'乙',3),h(2,'丙',5)]);
+ expect(tree).toHaveLength(1);
+ expect(keys(tree[0]!.children.map(child=>child.item))).toEqual(['乙','丙']);
+ expect(tree[0]!.children[0]!.children).toEqual([]);
+ expect(tree[0]!.children[1]!.children).toEqual([]);
+});
+
+it('reports only the headings that have children as collapsible',()=>{
+ const tree=buildOutlineTree([h(1,'甲',1),h(2,'乙',3),h(2,'丙',5)]);
+ expect(collapsibleKeys(tree)).toEqual(['甲']);
+ expect(rowsOf([h(1,'甲',1),h(2,'乙',3),h(2,'丙',5)]).map(row=>row.hasChildren)).toEqual([true,false,false]);
+});
+
+it('hides the descendants of a collapsed heading and leaves the siblings alone',()=>{
+ const items=[h(1,'甲',1),h(2,'乙',3),h(3,'丙',5),h(1,'丁',7)];
+ const collapsed=new Set(['甲']);
+ expect(keys(rowsOf(items,collapsed).map(row=>row.item))).toEqual(['甲','丁']);
+ expect(rowsOf(items,collapsed)[0]!.collapsed).toBe(true);
+ expect(rowsOf(items,collapsed)[1]!.collapsed).toBe(false);
+});
+
+it('collapses by depth unless the user chose otherwise',()=>{
+ const items=[h(1,'甲',1),h(2,'乙',3),h(3,'丙',5),h(4,'丁',7),h(5,'戊',9)];
+ const tree=buildOutlineTree(items);
+ // 甲=0 乙=1 丙=2 丁=3 戊=4：深度 3 起默认收起，只有有子节点的标题可折叠。
+ expect([...effectiveCollapsed(tree,new Map(),3)]).toEqual(['丁']);
+ expect([...effectiveCollapsed(tree,new Map([['丁',false]]),3)]).toEqual([]);
+ expect([...effectiveCollapsed(tree,new Map([['甲',true]]),3)]).toEqual(['甲','丁']);
+});
+
+it('drops the overrides of a heading that became ambiguous and never moves them to another section',()=>{
+ const single=new Map([['概述',true]]);
+ const two=new Map([['概述'+SEP+'1',true],['概述'+SEP+'2',false]]);
+ const unique=new Map([['结论',true]]);
+ // 一个变两个：覆盖随键失效而丢弃。
+ expect(pruneOverrides(single,new Set(['概述']),new Set()).size).toBe(0);
+ // 两个变一个：上一修订里同名，同样丢弃。
+ expect(pruneOverrides(two,new Set(),new Set(['概述'])).size).toBe(0);
+ // 唯一标题不受影响。
+ expect(pruneOverrides(unique,new Set(['概述']),new Set(['概述'])).get('结论')).toBe(true);
+ // 没有要清理的覆盖时原样返回，调用方据此省掉一次渲染。
+ const untouched=new Map([['结论',true]]);
+ expect(pruneOverrides(untouched,new Set(),new Set())).toBe(untouched);
+ expect(pruneOverrides(unique,new Set(['概述']),new Set(['概述']))).toBe(unique);
+});
+
+it('keeps the key of a unique heading when the text above it changes',()=>{
+ const before=[h(1,'甲',1),h(2,'乙',10)];
+ const after=[h(1,'甲',1),h(2,'乙',42)];
+ expect(buildOutlineTree(before)[0]!.children[0]!.key).toBe(buildOutlineTree(after)[0]!.children[0]!.key);
+ expect(buildOutlineTree(before)[0]!.key).toBe('甲');
+ expect(pruneOverrides(new Map([['乙',true]]),new Set(),new Set()).get('乙')).toBe(true);
+});
+
+it('separates the headings that share a text by their order',()=>{
+ const tree=buildOutlineTree([h(1,'概述',1),h(2,'概述',3),h(1,'结论',5)]);
+ expect(tree[0]!.key).toBe('概述'+SEP+'1');
+ expect(tree[0]!.children[0]!.key).toBe('概述'+SEP+'2');
+ expect(tree[1]!.key).toBe('结论');
+ expect([...duplicateHeadingTexts([h(1,'概述',1),h(2,'概述',3),h(1,'结论',5)])]).toEqual(['概述']);
+});
+
+it('finds the collapsed ancestors that hold the active heading',()=>{
+ const items=[h(1,'甲',1),h(2,'乙',3),h(3,'丙',5)];
+ const tree=buildOutlineTree(items);
+ const collapsed=new Set(['甲','乙']);
+ expect([...collapsedAncestors(tree,'heading_5_丙',collapsed)]).toEqual(['甲','乙']);
+ expect([...collapsedAncestors(tree,'heading_1_甲',collapsed)]).toEqual([]);
+ expect([...collapsedAncestors(tree,null,collapsed)]).toEqual([]);
+});
+
+it('lists the ancestors of a heading from the top down',()=>{
+ const tree=buildOutlineTree([h(1,'甲',1),h(2,'乙',3),h(3,'丙',5)]);
+ expect(ancestorKeys(tree,'heading_5_丙')).toEqual(['甲','乙']);
+ expect(ancestorKeys(tree,'heading_1_甲')).toEqual([]);
+});
