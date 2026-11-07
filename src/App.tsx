@@ -14,7 +14,8 @@ import { A4PagePreview } from './components/preview/A4PagePreview';
 import { StatusBar } from './components/footer/StatusBar';
 import { ExportModal } from './components/export/ExportModal';
 import {NoticeList} from './components/notice/NoticeList';
-import {DemoMessageView,MessageGallery,type DemoMessage} from './components/message/MessageGallery';
+import {DemoMessageView,MessageGallery} from './components/message/MessageGallery';
+import {useDemoMessages} from './components/message/useDemoMessages';
 import {MessageCard,MessageResult} from './presentation/messages';
 import {noticeStore,type NoticeTone} from './application/notices';
 import {reportFailure} from './core/platform/failures';
@@ -82,7 +83,7 @@ export default function App() {
   const [roadmapModalOpen, setRoadmapModalOpen] = useState<boolean>(false);
   /** 消息视觉页 ✓：点一个用例 ⇒ ⇒ 消息出现在真实的右下区域里 ✓。 */
   const [messageGalleryOpen, setMessageGalleryOpen] = useState<boolean>(false);
-  const [demoMessages, setDemoMessages] = useState<readonly DemoMessage[]>([]);
+  const demoMessages=useDemoMessages();
 
   /**
    * 通知面的一条 ✓：**不带类别的那种** ✓ ⇒ ⇒ 那是成功或提示 ✓
@@ -335,7 +336,7 @@ export default function App() {
     null;
   // 消息区：**两种界面状态共用一处** ✓ ⇒ ⇒ 通知与导入结果始终在同一个区域里 ✓。
   // `tabIndex={-1}` ⇒ ⇒ 消息都收走后，焦点有个落点 ✓（设计 §9 ✓）。
-  const messageRegion=<div className="mf-message no-print" tabIndex={-1} aria-label="工作台消息">{demoMessages.map(demo=><DemoMessageView key={demo.id} demo={demo} onDismiss={id=>setDemoMessages(previous=>previous.filter(item=>item.id!==id))}/>)}<NoticeList/>{importMessage}</div>;
+  const messageRegion=<div className="mf-message no-print" tabIndex={-1} aria-label="工作台消息">{demoMessages.demos.map(demo=><DemoMessageView key={demo.id} demo={demo} onDismiss={demoMessages.dismiss}/>)}<NoticeList/>{importMessage}</div>;
   const handleDeleteDoc=(id:string)=>{
     setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});
@@ -557,10 +558,10 @@ export default function App() {
       {/* 消息视觉页 ✓：**只在开发构建里** ✓ ⇒ ⇒ 它是核对用的工具，不是产品功能 ✓。 */}
       {import.meta.env.DEV&&messageGalleryOpen?
        <MessageGallery
-        demos={demoMessages}
-        onPick={demos=>setDemoMessages(demos)}
-        onClear={()=>setDemoMessages([])}
-        onClose={()=>{setMessageGalleryOpen(false);setDemoMessages([])}}/>:
+        demos={demoMessages.demos}
+        onPick={demoMessages.pick}
+        onClear={demoMessages.clear}
+        onClose={()=>{setMessageGalleryOpen(false);demoMessages.clear()}}/>:
        null}
 
       {/* Version Roadmap & 1.0 Audit Matrix Modal */}

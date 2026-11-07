@@ -82,6 +82,23 @@ test('the visual page surfaces a shape in the real region',async({page})=>{
  await expect(region.locator('.mf-message-card[data-shape="persistent"]')).toHaveCount(0);
 });
 
+test('the visual page dismisses a transient message on its own',async({page})=>{
+ // **对着开发服务器跑** ✓ ⇒ ⇒ 视觉页只在开发构建里 ✓。
+ await page.goto(devOrigin+'/');
+ await page.waitForSelector('[data-render-state="ready"]',{timeout:30000});
+ await page.getByRole('button',{name:'消息',exact:true}).click();
+ const panel=page.getByRole('complementary',{name:'消息视觉页'});
+ await expect(panel).toBeVisible();
+ await panel.getByRole('button',{name:'瞬时 · 成功'}).click();
+ const region=page.locator('.mf-message');
+ const transient=region.locator('.mf-message-card[data-shape="transient"]');
+ await expect(transient).toBeVisible();
+ // **一次告知不用手动关** ✓ ⇒ ⇒ 它定时自己走 ✓ ⇒ ⇒ 视觉页与产品一致 ✓
+ // ⇒ ⇒ （产品是 10 秒 ✓ ⇒ ⇒ 演示是 6 秒 ✓ ⇒ ⇒ 演示短一点，看得见 ✓）。
+ await page.waitForFunction(()=>document.querySelector('.mf-message-card[data-leaving="true"]')!==null,{timeout:15000});
+ await expect(transient).toHaveCount(0);
+});
+
 test('the production build carries no message visual page',async({page})=>{
  // 它是核对用的工具 ✓ ⇒ ⇒ 生产构建里没有那个入口 ✓。
  await page.goto('/');

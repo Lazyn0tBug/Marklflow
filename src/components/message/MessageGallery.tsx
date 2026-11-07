@@ -28,6 +28,10 @@ export interface DemoMessage{
  open?:boolean;
  /** 结果的条目 ✓。 */
  items?:{label:string;detail?:string;failed?:boolean}[];
+ /** 是不是一次告知 ✓ ⇒ ⇒ 那种定时自己走 ✓（与产品一致 ✓）。 */
+ transient?:boolean;
+ /** 正在退场 ✓ ⇒ ⇒ 渐隐往下沉 ✓。 */
+ leaving?:boolean;
 }
 
 /** 演示里的一条 ✓：用真组件画 ✓ ⇒ ⇒ 看到的就是产品里的样子 ✓。 */
@@ -39,6 +43,7 @@ export function DemoMessageView({demo,onDismiss}:{demo:DemoMessage;onDismiss:(id
    items={demo.items??[]}
    role="status"
    closeLabel="关闭"
+   leaving={demo.leaving}
    onClose={()=>onDismiss(demo.id)}/>;
  }
  if(demo.kind==='status'){
@@ -50,6 +55,7 @@ export function DemoMessageView({demo,onDismiss}:{demo:DemoMessage;onDismiss:(id
    expanded={demo.open??false}
    role="status"
    acknowledgeLabel="知道了"
+   leaving={demo.leaving}
    onAcknowledge={()=>onDismiss(demo.id)}/>;
  }
  return <MessageCard
@@ -59,6 +65,7 @@ export function DemoMessageView({demo,onDismiss}:{demo:DemoMessage;onDismiss:(id
   detail={demo.detail}
   expanded={demo.open??false}
   role="status"
+  leaving={demo.leaving}
   actions={[{label:'关闭',onClick:()=>onDismiss(demo.id)}]}/>;
 }
 
@@ -69,7 +76,7 @@ interface DemoCase{
  demos:DemoMessage[];
 }
 
-const card=(id:string,tone:MessageTone,body:string,extra:Partial<DemoMessage>={}):DemoMessage=>({id,kind:'card',tone,body,...extra});
+const card=(id:string,tone:MessageTone,body:string,extra:Partial<DemoMessage>={}):DemoMessage=>({id,kind:'card',tone,body,transient:true,...extra});
 
 /** 用例表 ✓：三种形状 × 四种语气 × 几个内容结构 ✓。 */
 export const DEMO_CASES:DemoCase[]=[
