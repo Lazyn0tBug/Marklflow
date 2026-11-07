@@ -24,6 +24,12 @@ export interface Notice{
  category?:MessageCategory;
  /** 失败才有 ✓：诊断 id ✓（用户能念出来 ✓ ⇒ ⇒ 拿它对上控制台那一条 ✓）。 */
  diagnosticId?:string;
+ /**
+  * 正在退场 ✓ ⇒ ⇒ 先渐隐往下沉 ✓ ⇒ ⇒ 动画走完才真的收走 ✓。
+  *
+  * **消失是分两段的事** ✓ ⇒ ⇒ 存储只管"开始退场" ✓ ⇒ ⇒ 真正收走是 `remove` ✓。
+  */
+ leaving?:boolean;
 }
 
 /**
@@ -103,7 +109,25 @@ export class NoticeStore{
   return id;
  }
 
+ /**
+  * 关掉 ✓：**先开始退场** ✓ ⇒ ⇒ 淡出动画走完才真的没 ✓。
+  *
+  * **为什么分两段** ✓：直接删掉就没有退场动画 ✓ ⇒ ⇒ 用户看不见那条消息是怎么走的 ✓。
+  */
  dismiss(id:string):void{
+  let changed=false;
+  const next=this.items.map(item=>{
+   if(item.id!==id||item.leaving)return item;
+   changed=true;
+   return {...item,leaving:true};
+  });
+  if(!changed)return;
+  this.items=next;
+  this.emit();
+ }
+
+ /** 退场完了 ✓：真的收走 ✓。 */
+ remove(id:string):void{
   const next=this.items.filter(item=>item.id!==id);
   if(next.length===this.items.length)return;
   this.items=next;

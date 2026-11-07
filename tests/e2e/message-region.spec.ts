@@ -53,6 +53,18 @@ test('closing a message moves the focus to a control that remains',async({page})
  await expect(page.getByRole('button',{name:'关闭通知'})).toBeFocused();
 });
 
+test('a closing message fades out before it is gone',async({page})=>{
+ await page.goto('/');
+ await page.evaluate(()=>{setTimeout(()=>{throw new Error('退场检查')},0);});
+ const card=page.getByRole('status',{name:'通知'}).first();
+ await expect(card).toBeVisible();
+ await page.getByRole('button',{name:'关闭通知'}).first().click();
+ // **先退场、后收走** ✓ ⇒ ⇒ 这一刻它还在 ✓ ⇒ ⇒ 动画走完才真的没 ✓。
+ // ⇒ ⇒ **盯属性，不盯那个元素** ✓ ⇒ ⇒ 元素 200ms 后就没了 ✓ ⇒ ⇒ 盯元素会撞上那个窗口 ✓。
+ await page.waitForFunction(()=>document.querySelector('.mf-message-card[data-leaving="true"]')!==null);
+ await expect(card).toHaveCount(0);
+});
+
 test('the visual page surfaces a shape in the real region',async({page})=>{
  // **对着开发服务器跑** ✓ ⇒ ⇒ 视觉页只在开发构建里 ✓。
  await page.goto(devOrigin+'/');

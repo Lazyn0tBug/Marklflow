@@ -18,7 +18,13 @@ it('dismisses one notice without touching the others',()=>{
   const store=new NoticeStore();
   const first=store.push({tone:'info',message:'一'});
   store.push({tone:'info',message:'二'});
+  // 关闭分两段 ✓ ⇒ ⇒ 先标记退场 ✓ ⇒ ⇒ 那一条还在列表里 ✓。
   store.dismiss(first);
+  expect(store.list()).toHaveLength(2);
+  expect(store.list()[0]?.leaving).toBe(true);
+  expect(store.list()[1]?.leaving).toBeUndefined();
+  // 动画走完才真的收走 ✓ ⇒ ⇒ 别的没动 ✓。
+  store.remove(first);
   expect(store.list()).toHaveLength(1);
   expect(store.list()[0]?.message).toBe('二');
 });
