@@ -99,6 +99,24 @@ test('the visual page dismisses a transient message on its own',async({page})=>{
  await expect(transient).toHaveCount(0);
 });
 
+test('a message does not cover the dialog that is open',async({page})=>{
+ await page.goto('/');
+ await page.waitForSelector('[data-render-state="ready"]',{timeout:30000});
+ await page.evaluate(()=>{setTimeout(()=>{throw new Error('盖住检查')},0);});
+ await expect(notice(page).first()).toBeVisible();
+ await page.getByRole('button',{name:'导出',exact:true}).click();
+ const confirm=page.getByRole('button',{name:'立即导出并保存',exact:true});
+ await expect(confirm).toBeVisible();
+ // **那个点上真正接住点击的是它自己** ✓ ⇒ ⇒ 消息区没有盖在对话框上面 ✓
+ // ⇒ ⇒ （区域在对话框之下 ✓ ⇒ ⇒ 对话框是模态的，它占着屏幕 ✓）。
+ const covered=await confirm.evaluate(element=>{
+  const box=element.getBoundingClientRect();
+  const top=document.elementFromPoint(box.x+box.width/2,box.y+box.height/2);
+  return top!==element&&!element.contains(top);
+ });
+ expect(covered).toBe(false);
+});
+
 test('the production build carries no message visual page',async({page})=>{
  // 它是核对用的工具 ✓ ⇒ ⇒ 生产构建里没有那个入口 ✓。
  await page.goto('/');
