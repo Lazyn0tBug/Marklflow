@@ -169,7 +169,7 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 | --- | --- | --- |
 | **通道类** | `no-tauri-internals` / `invoke-rejected` / `invalid-payload` / `rate-limited` / `timeout` / `unknown` | 探针页 ✓（基座原有 ✓） |
 | **原生文件类** | `native-source-denied` / `native-target-missing` / `native-permission-denied` / `native-io-failed` / `native-dialog-failed` / `file-too-large` / `invalid-utf8` / `not-a-file` / `not-a-regular-target` / `unknown-file-key` / `print-failed` / `file-capability-mismatch` / `native-internal-failed` / `invalid-file-name` / `invalid-target` | 原生侧 ✓（`files.rs` 与 `source_guard.rs` ✓） |
-| **应用自身类** | `export-failed` / `export-blocked` / `save-failed` / `storage-corrupted` / `preview-unavailable` / `import-rejected` | 应用层 ✓ |
+| **应用自身类** | `app-internal-failed` / `document-open-failed` / `export-failed` / `export-blocked` / `save-failed` / `storage-corrupted` / `storage-unreadable` / `storage-write-failed` / `preview-unavailable` / `import-rejected` / `input-too-large` | 应用层 ✓ |
 | **捕获类** | `render` / `unhandled` / `rejection` / `startup` / `worker` | 前端捕获未捕获错误时 ✓ |
 
 ⇒ **类别是码，不是文案** ✓：文案在应用侧那张表里 ✓（`src/application/messages.ts` ✓）⇒ ⇒ 日志里只有码 ✓。

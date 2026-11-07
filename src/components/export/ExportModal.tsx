@@ -4,6 +4,7 @@ import { resolveExportRoot,type ExportRootChoice } from '../../core/platform/exp
 import type {ExportFormat,ExportService} from '../../application/exports/exportService';
 import {exportFile} from '../../application/exports/exportFile';
 import { groupDocxIssues,type OutputIssue } from '../../core/export/outputCapabilities';
+import {reportFailure} from '../../core/platform/failures';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
@@ -93,8 +94,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, docum
       }});
       if(result.status!=='busy'&&result.issues)setDocxIssues(result.issues);
       // The print dialog and the save picker are system windows: the outcome is reported outside this dialog.
-      if(result.status!=='busy')onNotice?.({message:result.message,tone:result.status==='completed'?'success':result.status==='failed'?'error':result.status==='blocked'?'warning':'info'});
-    }catch(err){console.error('Export error:',err);alert('导出过程出错: '+String(err));onNotice?.({message:'导出失败：'+String(err),tone:'error'})}
+      // 失败 ⇒ **带机器码走那个出口** ✓ ⇒ ⇒ 通知、日志、控制台一次到位 ✓ ⇒ ⇒ 原文不进用户面 ✓。
+      if(result.status==='failed')await reportFailure({category:'export-failed',message:result.message,detail:result.message});
+      else if(result.status==='blocked')await reportFailure({category:'export-blocked',message:result.message,detail:result.message,tone:'warning'});
+      else if(result.status!=='busy')onNotice?.({message:result.message,tone:result.status==='completed'?'success':'info'});
+    }catch(err){
+      // **不再弹窗，也不再把原文给用户** ✓ ⇒ ⇒ 原文只进控制台 ✓ ⇒ ⇒ 用户看一句可行动的话 ✓。
+      await reportFailure({category:'export-failed',detail:String(err),cause:err});
+    }
     finally{setIsExporting(false)}
   };
 

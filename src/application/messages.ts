@@ -50,12 +50,17 @@ export const MESSAGE_CATEGORIES=[
  'invalid-file-name',
  'invalid-target',
  // 应用自身的失败
+ 'app-internal-failed',
+ 'document-open-failed',
  'export-failed',
  'export-blocked',
  'save-failed',
  'storage-corrupted',
+ 'storage-unreadable',
+ 'storage-write-failed',
  'preview-unavailable',
  'import-rejected',
+ 'input-too-large',
  // 捕获类（未捕获的错误从哪来 ✓）
  'render',
  'unhandled',
@@ -85,12 +90,17 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,string>>={
  'not-a-regular-target':'目标不是一个普通文件',
  'unknown-file-key':'这个文件的授权已经失效',
  'print-failed':'打印失败',
+ 'app-internal-failed':'应用内部出了点问题，这次操作没有生效',
+ 'document-open-failed':'这个文档没能打开',
  'export-failed':'导出失败，请重试',
  'export-blocked':'这个产物在此平台无法导出',
  'save-failed':'保存失败，内容仍在工作区',
  'storage-corrupted':'部分记录已损坏，原始数据已保留',
+ 'storage-unreadable':'存储读不出来，原始数据未改写',
  'preview-unavailable':'这一份预览没能生成',
  'import-rejected':'这个文件没能导入',
+ 'input-too-large':'文档超过源文大小上限，本次输入未应用',
+ 'storage-write-failed':'这次改动没能存下来，原数据未动',
  'render':'这一部分没能显示',
  'unhandled':'有个操作没能完成',
  'rejection':'有个操作没能完成',
@@ -119,9 +129,13 @@ export function hasOwnText(category:string):boolean{
  *
  * `cause` 是**原始异常本身** ⇒ ⇒ 控制台按它打（带可点的栈 ✓）⇒ ⇒ 借的是
  * `Error.cause` 的那个形状 ✓（设计 §7.1 ✓）⇒ ⇒ 日志与用户面都不碰它 ✓。
+ *
+ * `diagnosticId` 是**诊断 id** ✓：短、稳定、可复述 ✓ ⇒ ⇒ 用户面与控制台都有它 ✓
+ * ⇒ ⇒ 拿它对上那一条 ✓ ⇒ ⇒ **不进日志** ✓（基座的载荷白名单里没有它 ✓）。
  */
 export interface ProblemReport{
  category:MessageCategory;
+ diagnosticId?:string;
  detail?:string;
  cause?:unknown;
 }

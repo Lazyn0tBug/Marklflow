@@ -1,9 +1,9 @@
 import {ErrorCapture} from '../../../application/capture';
 import type {MessageCategory} from '../../../application/messages';
-import {resolveMessagePort} from '../messages';
+import {reportFailure} from '../failures';
 
 /**
- * 捕获的接线：浏览器的三个捕获点 ⇒ 一份策略 ⇒ 消息端口 ✓。
+ * 捕获的接线：浏览器的三个捕获点 ⇒ 一份策略 ⇒ **失败的那个出口** ✓。
  *
  * **这一层只碰浏览器接口** ✓ ⇒ ⇒ 策略（去重、限流、分类的细则 ✓）在应用层 ✓
  * ⇒ ⇒ 那一层可以单测 ✓ ⇒ ⇒ 这一层只管"把信号接上" ✓。
@@ -12,8 +12,8 @@ import {resolveMessagePort} from '../messages';
  * ⇒ ⇒ 不用把捕获器一路传下去 ✓ ⇒ ⇒ 少一处 threading ✓ ⇒ ⇒ 也少一处"忘了传" ✓。
  */
 
-/** 捕获器：端口按运行期选 ✓（桌面走原生日志 ✓，浏览器走控制台 ✓）。 */
-const capture=new ErrorCapture(()=>resolveMessagePort());
+/** 捕获器：报告走**失败的那个出口** ✓ ⇒ ⇒ 通知、日志、控制台一次到位 ✓。 */
+const capture=new ErrorCapture(async report=>{await reportFailure(report);});
 
 /**
  * 工作台起来过吗 ✓。

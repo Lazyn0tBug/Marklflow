@@ -26,3 +26,19 @@ test('records the page errors without failing the test', async ({ page, pageErro
   await expect.poll(() => reported.filter(text => text.includes('[message]')).length).toBeGreaterThan(0);
   expect(reported.some(text => text.includes('[message] unhandled'))).toBe(true);
 });
+
+/**
+ * 通知面：**多条并存 · 可关闭** ✓（P-9 ✓）。
+ *
+ * 两个抛出点 ⇒ 两个来源 ⇒ ⇒ 两条通知 ⇒ ⇒ 后一条不盖掉前一条 ✓ ⇒ ⇒ 各自可关 ✓。
+ */
+test('keeps one notice per problem and lets each one be closed', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    setTimeout(() => { throw new Error('第一个错误'); }, 0);
+    setTimeout(() => { throw new Error('第二个错误'); }, 10);
+  });
+  await expect(page.getByRole('status',{name:'通知'})).toHaveCount(2);
+  await page.getByRole('button',{name:'关闭通知'}).first().click();
+  await expect(page.getByRole('status',{name:'通知'})).toHaveCount(1);
+});

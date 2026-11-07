@@ -1,4 +1,4 @@
-import {test,expect,type Page} from './fixtures';
+import {test,expect,recordDialogs,type Page} from './fixtures';
 interface Probe {starts:{id:string;docId:string;kind:string;source:string}[];results:string[];hold:string;held:number}
 declare global {interface Window {__u6e:Probe}}
 async function instrument(page:Page){await page.addInitScript(()=>{
@@ -43,7 +43,11 @@ test('closing saved tabs preserves workspace files including when the last tab i
 });
 
 test('save failure while closing a dirty tab keeps its draft and tab available',async({page})=>{
- await boot(page);await create(page,'Beta');await page.evaluate(()=>{IDBObjectStore.prototype.put=function(){throw new Error('u6e controlled save failure')}});const messages:string[]=[];page.on('dialog',async dialog=>{messages.push(dialog.message());await dialog.accept()});await page.locator('textarea').fill(source('UNSAVED'));await page.getByRole('button',{name:'关闭 UNSAVED',exact:true}).click();await expect.poll(()=>messages.some(value=>value.includes('保存失败'))).toBe(true);await expect(tab(page,'UNSAVED')).toBeVisible();await expect(page.locator('textarea')).toHaveValue(source('UNSAVED'));await expect(tab(page,'UNSAVED')).toHaveAttribute('title',/未保存/);
+ await boot(page);await create(page,'Beta');await page.evaluate(()=>{IDBObjectStore.prototype.put=function(){throw new Error('u6e controlled save failure')}});// **不再弹窗** ✓ ⇒ ⇒ 原文只进控制台 ✓ ⇒ ⇒ 用户看到的是一条可关闭的通知 ✓。
+const dialogs=recordDialogs(page);await page.locator('textarea').fill(source('UNSAVED'));await page.getByRole('button',{name:'关闭 UNSAVED',exact:true}).click();
+await expect(page.getByText(/（save-failed · e-\d+）/)).toBeVisible();
+// 那个"还没保存，要先保存吗"的**确认**弹窗还在 ✓ ⇒ ⇒ 但**失败**不再用弹窗告知 ✓ ⇒ ⇒ 通知面给 ✓。
+expect(dialogs.some(value=>value.includes('保存失败'))).toBe(false);await expect(tab(page,'UNSAVED')).toBeVisible();await expect(page.locator('textarea')).toHaveValue(source('UNSAVED'));await expect(tab(page,'UNSAVED')).toHaveAttribute('title',/未保存/);
 });
 
 test('production tabs and their compute pipeline run on ordinary HTTP',async({page})=>{

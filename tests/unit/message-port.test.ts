@@ -14,10 +14,12 @@ beforeEach(()=>{
 
 it('the browser port writes the raw text to the console', async()=>{
   const spy=vi.spyOn(console,'error').mockImplementation(()=>{});
-  await webMessagePort.report({ category:'export-failed', detail:'原始文本' });
+  await webMessagePort.report({ category:'export-failed', diagnosticId:'e-1', detail:'原始文本' });
   expect(spy).toHaveBeenCalledOnce();
   expect(String(spy.mock.calls[0]?.[1])).toContain('export-failed');
-  expect(String(spy.mock.calls[0]?.[2])).toContain('原始文本');
+  // 诊断 id 也在 ⇒ ⇒ 拿它对得上用户面那条 ✓。
+  expect(String(spy.mock.calls[0]?.[2])).toContain('e-1');
+  expect(String(spy.mock.calls[0]?.[3])).toContain('原始文本');
   spy.mockRestore();
 });
 

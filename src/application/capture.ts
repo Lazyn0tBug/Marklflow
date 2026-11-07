@@ -1,4 +1,4 @@
-import type {MessageCategory, MessagePort, ProblemReport} from './messages';
+import type {MessageCategory, ProblemReport} from './messages';
 
 /**
  * 捕获与分类：未捕获的错误怎么变成**一份报告** ✓。
@@ -19,8 +19,14 @@ import type {MessageCategory, MessagePort, ProblemReport} from './messages';
  * ⇒ ⇒ 也不递归 ✓。
  */
 
-/** 端口的来源：延迟解析 ✓ ⇒ ⇒ 报告不必等端口就绪 ✓ ⇒ ⇒ 首屏不被端口拖住 ✓。 */
-export type MessagePortProvider=()=>Promise<MessagePort>;
+/**
+ * 报告的去处 ✓：一个函数 ✓ ⇒ ⇒ 谁报告都一样 ✓。
+ *
+ * **它不是端口本身** ✓：端口只管"把类别送进日志或控制台" ✓ ⇒ ⇒
+ * 而"报告"还要**顺带**做别的事（发一条通知 ✓）⇒ ⇒ 那是平台层那个出口的事 ✓
+ * ⇒ ⇒ 这一层只认这个形状 ✓ ⇒ ⇒ 单元测试塞个假的进去就行 ✓。
+ */
+export type FailureSink=(report:ProblemReport)=>Promise<void>;
 
 /** 捕获的可选项。 */
 export interface CaptureOptions{
@@ -49,7 +55,7 @@ export function describeError(error:unknown):string{
  * **它不碰任何浏览器接口** ✓ ⇒ ⇒ 那一层在平台侧 ✓ ⇒ ⇒ 这份策略可以单测 ✓。
  */
 export class ErrorCapture{
- private readonly port:MessagePortProvider;
+ private readonly port:FailureSink;
  private readonly maxPerSecond:number;
  /** 已经报过的问题 ✓：键 =（类别，来源）✓。 */
  private readonly seen=new Set<string>();
@@ -57,9 +63,8 @@ export class ErrorCapture{
  private readonly reported=new WeakSet<object>();
  private windowStart=0;
  private windowCount=0;
- private resolved?:Promise<MessagePort>;
 
- constructor(port:MessagePortProvider,options:CaptureOptions={}){
+ constructor(port:FailureSink,options:CaptureOptions={}){
   this.port=port;
   this.maxPerSecond=options.maxPerSecond??DEFAULT_MAX_PER_SECOND;
  }
@@ -84,20 +89,13 @@ export class ErrorCapture{
   return true;
  }
 
- /** 端口的失败被吞掉 ✓：应用不因此崩 ✓，也不递归报告自己 ✓（P-4 ✓）。 */
+ /** 出口的失败被吞掉 ✓：应用不因此崩 ✓，也不递归报告自己 ✓（P-4 ✓）。 */
  private async deliver(report:ProblemReport):Promise<void>{
   try{
-   const port=await this.resolve();
-   await port.report(report);
+   await this.port(report);
   }catch{
    // 报告通道自己失败 ⇒ 就这样 ✓：再报一次就是递归 ✓（基座 §4 同一条 ✓）。
   }
- }
-
- /** 端口只解析一次 ✓。 */
- private resolve():Promise<MessagePort>{
-  this.resolved??=this.port();
-  return this.resolved;
  }
 
  /** 每秒固定窗口 ✓（与基座同一种窗口 ✓）。 */

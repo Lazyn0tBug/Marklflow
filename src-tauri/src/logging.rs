@@ -173,12 +173,17 @@ web_error_categories! {
     InvalidFileName => "invalid-file-name",
     InvalidTarget => "invalid-target",
     // 应用自身类（前端给出 ✓）。
+    AppInternalFailed => "app-internal-failed",
+    DocumentOpenFailed => "document-open-failed",
     ExportFailed => "export-failed",
     ExportBlocked => "export-blocked",
     SaveFailed => "save-failed",
     StorageCorrupted => "storage-corrupted",
+    StorageUnreadable => "storage-unreadable",
+    StorageWriteFailed => "storage-write-failed",
     PreviewUnavailable => "preview-unavailable",
     ImportRejected => "import-rejected",
+    InputTooLarge => "input-too-large",
     // 捕获类（前端捕获未捕获错误时给出 ✓）。
     Render => "render",
     Unhandled => "unhandled",

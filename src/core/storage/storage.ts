@@ -8,6 +8,7 @@ import { DocumentRecord, DEFAULT_THEME, INITIAL_SAMPLE_MARKDOWN } from '../model
 
 import {webDocumentRepository,recoveryJson} from '../platform/web/documentRepository';
 import {createRenderNonce} from '../platform/crypto';
+import {reportFailure} from '../platform/failures';
 export {recoveryJson};
 export async function loadDocuments(){
  const loaded=await webDocumentRepository.load();
@@ -104,7 +105,9 @@ export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | nu
       };
     }
   } catch (err) {
-    console.warn('Failed to parse embedded MarkFlow payload', err);
+    // **不再直连 console** ✓ ⇒ ⇒ 走消息端口 ✓ ⇒ ⇒ 日志里有一条带类别的记录 ✓
+    // ⇒ ⇒ 而原文只进控制台 ✓ ⇒ ⇒ 类别是"导入被拒" ✓。
+    void reportFailure({category:'import-rejected',detail:'Failed to parse embedded MarkFlow payload',cause:err});
   }
   return null;
 }

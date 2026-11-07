@@ -1,4 +1,4 @@
-import {test,expect} from './fixtures';
+import {test,expect,recordDialogs} from './fixtures';
 import JSZip from 'jszip';
 import {readFile} from 'node:fs/promises';
 import fixture from '../fixtures/docx-math/o0-cases.json' with {type:'json'};
@@ -18,7 +18,7 @@ test('DOCX blockers stay visible and cannot be bypassed by confirmation',async({
  await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(fixture.cases[1]!.markdown);await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();const report=page.getByRole('region',{name:'DOCX 兼容性提示'});await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();await expect(report).toContainText('原始MathML');await expect(report.getByRole('alert')).toBeVisible();await expect(report.getByRole('checkbox')).toHaveCount(0);await expect(page.getByRole('button',{name:'立即导出并保存',exact:true})).toBeDisabled();
 });
 test('invalid LaTeX fails before compatibility confirmation or delivery',async({page})=>{
- await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(fixture.cases[2]!.markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();const failure=page.waitForEvent('dialog'),action=page.getByRole('button',{name:/^(立即导出并保存|确认并导出)$/}).click();const dialog=await failure;expect(dialog.message()).toContain('公式');await dialog.accept();await action;await expect(page.getByText(/已生成并发起下载/)).toHaveCount(0);await expect(page.getByRole('button',{name:'立即导出并保存',exact:true})).toBeEnabled();
+ await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(fixture.cases[2]!.markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();const dialogs=recordDialogs(page);await page.getByRole('button',{name:/^(立即导出并保存|确认并导出)$/}).click();await expect(page.getByText(/（export-(failed|blocked) · e-\d+）/)).toBeVisible();expect(dialogs).toEqual([]);await expect(page.getByText(/已生成并发起下载/)).toHaveCount(0);await expect(page.getByRole('button',{name:'立即导出并保存',exact:true})).toBeEnabled();
 });
 
 // Exercise the existing download path; picker capability is covered separately.

@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import {test,expect,type Page} from './fixtures';
+import {test,expect,recordDialogs,type Page} from './fixtures';
 import {readFile,copyFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';
@@ -90,8 +90,9 @@ test('prepares the print frame only after assets are ready and cleans up after p
 
 test('does not report successful export for a corrupt embedded image',async({page})=>{
  await source(page,'# 损坏图片\n\n![invalid](data:image/png;base64,AAAA)');await page.getByRole('button',{name:'导出',exact:true}).click();
- const alert=page.waitForEvent('dialog');const action=page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
- const dialog=await alert;expect(dialog.message()).toContain('导出过程出错');await dialog.accept();await action;
+ // **不再弹窗** ✓ ⇒ ⇒ 原文只进控制台 ✓ ⇒ ⇒ 用户看到的是类别与一句可行动的话 ✓。
+ const dialogs=recordDialogs(page);await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
+ await expect(page.getByText(/（export-(failed|blocked) · e-\d+）/)).toBeVisible();expect(dialogs).toEqual([]);
  await expect(page.getByText(/已成功生成|已成功下载/)).toHaveCount(0);
 });
 

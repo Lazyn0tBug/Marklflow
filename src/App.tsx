@@ -12,7 +12,10 @@ import { Editor } from './components/editor/Editor';
 import { ReadingPreview } from './components/preview/ReadingPreview';
 import { A4PagePreview } from './components/preview/A4PagePreview';
 import { StatusBar } from './components/footer/StatusBar';
-import { ExportModal, type ExportNotice } from './components/export/ExportModal';
+import { ExportModal } from './components/export/ExportModal';
+import {NoticeSurface} from './components/notice/NoticeSurface';
+import {noticeStore,type NoticeTone} from './application/notices';
+import {reportFailure} from './core/platform/failures';
 import { RoadmapModal } from './components/roadmap/RoadmapModal';
 import { WorkbenchToolbar } from './components/toolbar/WorkbenchToolbar';
 import {
@@ -74,8 +77,15 @@ export default function App() {
   const tabModes=useRef(new Map<string,'flow'|'a4'>());
   const tabHeadings=useRef(new Map<string,string|null>());
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
-  const [exportNotice, setExportNotice] = useState<ExportNotice | null>(null);
   const [roadmapModalOpen, setRoadmapModalOpen] = useState<boolean>(false);
+
+  /**
+   * 通知面的一条 ✓：**不带类别的那种** ✓ ⇒ ⇒ 那是成功或提示 ✓
+   * ⇒ ⇒ 失败走 `reportFailure` ✓（那里带类别与诊断 id ✓）⇒ ⇒ 不混 ✓。
+   */
+  const pushNotice=useCallback((notice:{message:string;tone:NoticeTone})=>{
+    noticeStore.push({tone:notice.tone,message:notice.message});
+  },[]);
 
   // 同步滚动与大纲高亮状态
   const [syncScroll, setSyncScroll] = useState<boolean>(true);
@@ -116,7 +126,7 @@ export default function App() {
     markAppReady();
     let active=true;
     let pipeline:WorkbenchPreviewRuntime|undefined;let unsubscribe=()=>{};
-    try{pipeline=new WorkbenchPreviewRuntime(sessions);runtime.current=pipeline;const owner=pipeline;unsubscribe=owner.subscribe(()=>{if(active)setPreview(owner.view)})}catch(error){setActionError('预览启动失败，文档仍可编辑与保存：'+String(error))}
+    try{pipeline=new WorkbenchPreviewRuntime(sessions);runtime.current=pipeline;const owner=pipeline;unsubscribe=owner.subscribe(()=>{if(active)setPreview(owner.view)})}catch(error){setActionError('预览启动失败，文档仍可编辑与保存：'+String(error));void reportFailure({category:'preview-unavailable',detail:String(error),cause:error})}
     loadDocuments().then(({documents:docs,warnings}) => {
       if(!active)return;
       setStorageWarnings(warnings);
@@ -127,8 +137,8 @@ export default function App() {
         setCurrentDocId(first.id);
         setMathMode(first.options.mathMode);
       }
-    }).catch(error=>{if(active)setLoadError(String(error))}).finally(async()=>{
-      try{const entries=await getStorageRecoveries();if(active)setRecoveryCount(entries.length)}catch(error){if(active)setLoadError(String(error))}
+    }).catch(error=>{if(active)setLoadError(String(error));void reportFailure({category:'storage-unreadable',detail:String(error),cause:error})}).finally(async()=>{
+      try{const entries=await getStorageRecoveries();if(active)setRecoveryCount(entries.length)}catch(error){if(active)setLoadError(String(error));void reportFailure({category:'storage-unreadable',detail:String(error),cause:error})}
       if(active)setLoadComplete(true);
     });
     return()=>{active=false;unsubscribe();pipeline?.dispose();runtime.current=null;for(const entry of pendingSaves.current.values())clearTimeout(entry.timer);};
@@ -139,17 +149,17 @@ export default function App() {
       const url=URL.createObjectURL(new Blob([recoveryJson({version:1,entries})],{type:'application/json'}));
       const link=document.createElement('a');link.href=url;link.download='markflow-recovery.json';link.click();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
-    }catch(error){setLoadError('恢复备份读取失败，原始数据未改写：'+String(error))}
+    }catch(error){setLoadError('恢复备份读取失败，原始数据未改写：'+String(error));void reportFailure({category:'storage-unreadable',detail:String(error),cause:error})}
   };
-  // The export outcome outlives the dialog and any system window that covered it.
-  useEffect(()=>{
-    if(!exportNotice)return;
-    const timer=setTimeout(()=>setExportNotice(null),10000);
-    return()=>clearTimeout(timer);
-  },[exportNotice]);
-  const recoveryNotice=(loadError||actionError||storageWarnings.length>0||recoveryCount>0)?<aside role="alert" className="px-4 py-2 text-sm bg-amber-950 text-amber-100">
-    {actionError||loadError||storageWarnings.join('；')||`发现 ${recoveryCount} 项损坏或不支持的存储记录，原始数据已保留。`}
-    {(recoveryCount>0||loadError)&&<button className="ml-3 underline" onClick={()=>{void downloadRecovery()}}>下载恢复备份</button>}
+  // 通知面：**多条并存** ✓ ⇒ ⇒ 后一条不盖掉前一条 ✓ ⇒ ⇒ 各自可关 ✓。
+  // **三个状态各走各的** ✓ ⇒ ⇒ 不再是"谁先来谁显示" ✓ ⇒ ⇒ 后来的不盖掉前面的 ✓
+  // ⇒ ⇒ 一个状态顶掉另一个这件事没了 ✓（那正是那条 `||` 短路的病 ✓）。
+  const recoveryNotice=(loadError||actionError||storageWarnings.length>0||recoveryCount>0)?<aside role="alert" className="text-sm bg-amber-950 text-amber-100">
+    {actionError&&<p className="px-4 py-2">{actionError}</p>}
+    {loadError&&<p className="px-4 py-2">{loadError}</p>}
+    {storageWarnings.length>0&&<p className="px-4 py-2">{storageWarnings.join('；')}</p>}
+    {recoveryCount>0&&<p className="px-4 py-2">发现 {recoveryCount} 项损坏或不支持的存储记录，原始数据已保留。</p>}
+    {(recoveryCount>0||loadError)&&<p className="px-4 pb-2"><button className="underline" onClick={()=>{void downloadRecovery()}}>下载恢复备份</button></p>}
   </aside>:null;
 
   // 当前活动文档
@@ -161,7 +171,11 @@ export default function App() {
 
   const persist=async(doc:DocumentRecord):Promise<boolean>=>{
     try{await saveSource(sessions,doc,saveDocument);sessionChanged(value=>value+1);return true}
-    catch(error){alert('保存失败（'+doc.meta.title+'，Rev '+doc.revision+'），请导出备份后重试：'+String(error));return false}
+    catch(error){
+      // **不再弹窗** ✓ ⇒ ⇒ 不打断正在做的事 ✓ ⇒ ⇒ 原文只进控制台 ✓ ⇒ ⇒ 用户看一句可行动的话 ✓。
+      await reportFailure({category:'save-failed',message:'保存失败（'+doc.meta.title+'，Rev '+doc.revision+'），内容仍在工作区',detail:String(error),cause:error});
+      return false;
+    }
   };
   const queueSave=(doc:DocumentRecord)=>{
     const prior=pendingSaves.current.get(doc.id);if(prior)clearTimeout(prior.timer);
@@ -179,7 +193,7 @@ export default function App() {
   };
   const selectDocument=(id:string)=>{
     capturePosition();const doc=sessions.documentIds.includes(id)?sessions.read(id).document:documents.find(value=>value.id===id);if(!doc)return;
-    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;placements.current={editor:null,preview:null};pendingPreviewLine.current=undefined}catch(error){setActionError(String(error))}
+    try{sessions.open(doc);setTabs(sessions.documentIds);setCurrentDocId(id);setMathMode(sessions.read(id).document.options.mathMode);setPreviewMode(tabModes.current.get(id)??'flow');setActiveHeadingId(tabHeadings.current.get(id)??null);restorePreview.current=id;placements.current={editor:null,preview:null};pendingPreviewLine.current=undefined}catch(error){setActionError('这个文档没能打开：'+String(error));void reportFailure({category:'document-open-failed',detail:String(error),cause:error})}
   };
   const removeSession=(id:string)=>{
     const active=sessions.activeDocumentId===id;if(sessions.documentIds.includes(id))sessions.close(id,true);
@@ -244,7 +258,7 @@ export default function App() {
   const applyDocument=(doc:DocumentRecord)=>{sessions.update(doc);setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);queueSave(doc)};
   const handleMarkdownChange=useCallback((markdown:string)=>{
     if(!currentDoc)return;
-    if(markdown.length>DOCUMENT_MARKDOWN_MAX){setActionError('文档超过源文大小上限，本次输入未应用');return}
+    if(markdown.length>DOCUMENT_MARKDOWN_MAX){setActionError('文档超过源文大小上限，本次输入未应用');void reportFailure({category:'input-too-large'});return}
     const doc={...currentDoc,revision:currentDoc.revision+1,markdown};const title=deriveDocumentTitle(markdown);if(title)doc.meta={...doc.meta,title};applyDocument(doc);
   },[currentDoc]);
   const history=(direction:'undo'|'redo')=>{if(!currentDoc)return;if(sessions[direction](currentDoc.id)){const doc=sessions.read(currentDoc.id).document;setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);setMathMode(doc.options.mathMode);queueSave(doc)}};
@@ -294,18 +308,18 @@ export default function App() {
     return 'opened';
   };
   importOpen.current=addDocument;
-  const handleCreateDoc=()=>{if(importBusy)return;setActionError('');void addDocument(createNewDocument('新建 Markdown 文档')).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)))};
+  const handleCreateDoc=()=>{if(importBusy)return;setActionError('');void addDocument(createNewDocument('新建 Markdown 文档')).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});};
   const handleImportFiles=async(files:File[])=>{
     const service=importer.current;if(!service||service.busy)return;
     setImportBusy(true);setImportResults([]);
     try{const result=await service.run(files);if(result.status==='completed')setImportResults(result.items)}
-    catch(error){setImportResults([{name:'导入',status:'failed',message:String(error)}])}
+    catch(error){setImportResults([{name:'导入',status:'failed',message:String(error)}]);void reportFailure({category:'import-rejected',detail:String(error),cause:error})}
     finally{setImportBusy(false)}
   };
   const importNotice=importBusy?<p role="status" className="px-4 py-2 text-xs bg-neutral-900 text-neutral-200">正在读取、校验并导入文件…</p>:importResults.length>0?<aside role={importResults.some(value=>value.status==='failed')?'alert':'status'} className="px-4 py-2 text-xs bg-neutral-900 text-neutral-200 max-h-32 overflow-y-auto wrap-anywhere shrink-0"><ul>{importResults.map((item,index)=><li key={index}>{item.name}：{item.message}</li>)}</ul><button className="mt-1 underline" onClick={()=>setImportResults([])}>关闭导入结果</button></aside>:null;
   const handleDeleteDoc=(id:string)=>{
     setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
-    deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>setActionError('操作失败，原文档与编辑内容已保留：'+String(error)));
+    deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});
   };
 
   const highlightLine=(line:number)=>{
@@ -514,14 +528,11 @@ export default function App() {
         onClose={() => setExportModalOpen(false)}
         document={currentDoc}
         mathMode={mathMode}
-        onNotice={setExportNotice}
+        onNotice={pushNotice}
       />
 
-      {/* Export outcome, reported above every dialog and never printed. */}
-      {exportNotice&&<div role="status" aria-label="导出结果通知" className={`fixed bottom-10 right-4 z-[60] flex max-w-sm items-start gap-3 rounded-lg border px-3 py-2 text-xs shadow-xl no-print ${exportNotice.tone==='success'?'bg-teal-950/95 border-teal-700 text-teal-100':exportNotice.tone==='warning'?'bg-amber-950/95 border-amber-700 text-amber-100':exportNotice.tone==='error'?'bg-red-950/95 border-red-700 text-red-100':'bg-neutral-900/95 border-neutral-700 text-neutral-100'}`}>
-        <span className="wrap-anywhere">{exportNotice.message}</span>
-        <button aria-label="关闭导出结果通知" className="ml-auto shrink-0 underline" onClick={()=>setExportNotice(null)}>关闭</button>
-      </div>}
+      {/* 通知面：多条并存 · 可关闭 · 四种语气 ✓。 */}
+      <NoticeSurface/>
 
       {/* Version Roadmap & 1.0 Audit Matrix Modal */}
       <RoadmapModal

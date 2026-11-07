@@ -1,4 +1,4 @@
-import {test,expect,type Page} from './fixtures';
+import {test,expect,recordDialogs,type Page} from './fixtures';
 const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1S8AAAAASUVORK5CYII=';
 async function ready(page:Page,markdown:string){await page.locator('textarea').first().fill(markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready')}
 test('isolates TeX definitions across repeated document revisions',async({page})=>{
@@ -13,8 +13,9 @@ test('blocks corrupt SVG images instead of exporting a blank figure',async({page
  await page.goto('/');await expect(page.locator('textarea').first()).toBeVisible();
  await ready(page,'# SVG图片\n\n<svg width="40" height="40"><image href="data:image/png;base64,AAAA" width="40" height="40"/></svg>');
  await page.getByRole('button',{name:'导出',exact:true}).click();
- const event=page.waitForEvent('dialog');const action=page.getByRole('button',{name:'立即导出并保存'}).click();
- const dialog=await event;expect(dialog.message()).toContain('导出过程出错');await dialog.accept();await action;
+ // **不再弹窗** ✓ ⇒ ⇒ 原文只进控制台 ✓ ⇒ ⇒ 用户看到的是类别与一句可行动的话 ✓。
+ const dialogs=recordDialogs(page);await page.getByRole('button',{name:'立即导出并保存'}).click();
+ await expect(page.getByText(/（export-(failed|blocked) · e-\d+）/)).toBeVisible();expect(dialogs).toEqual([]);
 });
 test('shows unsupported content diagnostics and keeps static task state',async({page})=>{
  await page.goto('/');await expect(page.locator('textarea').first()).toBeVisible();

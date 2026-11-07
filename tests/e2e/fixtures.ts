@@ -4,6 +4,19 @@ import { test as base, expect, type Page, type TestInfo } from '@playwright/test
 export interface MessageFixtures {
   /** 页面抛出的未捕获错误（按发生顺序）。 */
   pageErrors:string[];
+  /** 控制台里的错误输出 ✓（失败时能对上根因 ✓）。 */
+  consoleErrors:string[];
+}
+
+/**
+ * 记录弹窗 ✓：**不弹**是目标 ✓ ⇒ ⇒ 于是要能断言"一个都没弹" ✓。
+ *
+ * 弹窗一律**自动收掉** ✓ ⇒ ⇒ 弹窗不会把流程卡住 ✓ ⇒ ⇒ 用例的其余断言照常跑 ✓。
+ */
+export function recordDialogs(page:Page):string[]{
+  const messages:string[]=[];
+  page.on('dialog',dialog=>{messages.push(dialog.message());void dialog.accept()});
+  return messages;
 }
 
 /**
@@ -29,8 +42,15 @@ export const test = base.extend<MessageFixtures>({
       await testInfo.attach('page-errors', { body:text, contentType:'text/plain' });
     }
   },
-  page: async ({ page, pageErrors }, use) => {
+  consoleErrors: async ({}, use) => {
+    const errors:string[]=[];
+    await use(errors);
+  },
+  page: async ({ page, pageErrors, consoleErrors }, use) => {
     page.on('pageerror', error=>pageErrors.push(String(error?.stack??error)));
+    page.on('console', message => {
+      if(message.type()==='error')consoleErrors.push(message.text());
+    });
     await use(page);
   },
 });

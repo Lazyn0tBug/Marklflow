@@ -1,4 +1,4 @@
-import {test,expect,type Page} from './fixtures';
+import {test,expect,recordDialogs,type Page} from './fixtures';
 import JSZip from 'jszip';
 import {readFile} from 'node:fs/promises';
 import invalidMath from '../fixtures/docx-math/o0-cases.json' with {type:'json'};
@@ -41,13 +41,13 @@ test('waits for file close before showing saved feedback',async({page})=>{
  await install(page,'close-wait');await open(page,'原始 Markdown (.md)');await action(page).click();await expect.poll(()=>page.evaluate(()=>Boolean(window.saveProbe.release))).toBe(true);await expect(action(page)).toBeDisabled();await expect(page.getByText(/已保存文件/)).toHaveCount(0);await page.evaluate(()=>window.saveProbe.release?.());await expect(page.getByText(/已保存文件/)).toBeVisible();await expect(action(page)).toBeEnabled();
 });
 for(const mode of ['permission','write-fail','close-fail'] as const)test('reports '+mode+' without silent download fallback',async({page})=>{
- await install(page,mode);let downloads=0;page.on('download',()=>downloads++);await open(page,'原始 Markdown (.md)');const event=page.waitForEvent('dialog'),click=action(page).click(),dialog=await event;expect(dialog.message()).toContain(mode==='permission'?'picker denied':mode==='write-fail'?'write denied':'close denied');await dialog.accept();await click;await expect(action(page)).toBeEnabled();expect(downloads).toBe(0);expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({aborts:mode==='permission'?0:1,closes:0});await expect(page.getByText(/已保存文件/)).toHaveCount(0);
+ await install(page,mode);let downloads=0;page.on('download',()=>downloads++);await open(page,'原始 Markdown (.md)');const dialogs=recordDialogs(page);await action(page).click();await expect(page.getByText(/（export-(failed|blocked) · e-\d+）/)).toBeVisible();expect(dialogs).toEqual([]);await expect(action(page)).toBeEnabled();expect(downloads).toBe(0);expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({aborts:mode==='permission'?0:1,closes:0});await expect(page.getByText(/已保存文件/)).toHaveCount(0);
 });
 test('a chosen path that holds no file hands the bytes to the browser and says so',async({page})=>{
  await install(page,'write-lost');let downloads=0;page.on('download',()=>downloads++);await open(page,'原始 Markdown (.md)');
  const downloading=page.waitForEvent('download'),click=action(page).click();await click;const download=await downloading;
  expect(download.suggestedFilename()).toMatch(/\.md$/);
- await expect(page.getByRole('status',{name:'导出结果通知'})).toContainText('所选位置未生成文件，已改为浏览器下载');
+ await expect(page.getByText('所选位置未生成文件，已改为浏览器下载')).toBeVisible();
  expect(downloads).toBe(1);
  expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:1,creates:1,writes:1,closes:1});
 });
@@ -56,7 +56,7 @@ test('DOCX consent occurs before a selected file is opened for writing',async({p
 });
 test('PDF keeps native HTML delivery and the normalized title without a byte picker',async({page})=>{
  await install(page);await page.addInitScript(()=>document.addEventListener('load',event=>{if(event.target instanceof HTMLIFrameElement&&event.target.title==='PDF导出文档'){const frame=event.target;frame.contentWindow!.print=()=>{frame.setAttribute('data-delivered','true')}}},true));
- await open(page,'PDF 文档（A4）');await page.getByLabel('导出文件主名称').fill('中文.pdf.pdf');await action(page).click();const frame=page.locator('iframe[title="PDF导出文档"]');await expect(frame).toHaveAttribute('data-delivered','true');expect(await frame.evaluate(node=>(node as HTMLIFrameElement).contentDocument!.title)).toBe('中文');expect(await page.evaluate(()=>window.saveProbe.calls)).toBe(0);await expect(page.getByText(/PDF导出已交由浏览器处理/)).toBeVisible();await expect(page.getByRole('status',{name:'导出结果通知'})).toContainText('PDF导出已交由浏览器处理');await frame.evaluate(node=>(node as HTMLIFrameElement).contentWindow!.dispatchEvent(new Event('afterprint')));await expect(frame).toHaveCount(0);
+ await open(page,'PDF 文档（A4）');await page.getByLabel('导出文件主名称').fill('中文.pdf.pdf');await action(page).click();const frame=page.locator('iframe[title="PDF导出文档"]');await expect(frame).toHaveAttribute('data-delivered','true');expect(await frame.evaluate(node=>(node as HTMLIFrameElement).contentDocument!.title)).toBe('中文');expect(await page.evaluate(()=>window.saveProbe.calls)).toBe(0);await expect(page.getByText(/PDF导出已交由浏览器处理/)).toBeVisible();await expect(page.getByRole('status',{name:'通知'}).filter({hasText:'PDF导出已交由浏览器处理'})).toBeVisible();await frame.evaluate(node=>(node as HTMLIFrameElement).contentWindow!.dispatchEvent(new Event('afterprint')));await expect(frame).toHaveCount(0);
 });
 
 test('ordinary HTTP ignores even a present picker and downloads with the common empty-name rule',async({page})=>{
@@ -73,7 +73,7 @@ test('bounds long Unicode suggestions in the actual save picker and common filen
 });
 test('generation failure never asks for a location and permits an explicit source-save retry',async({page})=>{
  await install(page);let downloads=0;page.on('download',()=>downloads++);await page.goto('/');await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','ready');await page.locator('textarea').fill(invalidMath.cases[2]!.markdown);await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state','error');await page.getByRole('button',{name:'导出',exact:true}).click();await page.getByRole('button',{name:/Word 原生文档/}).click();
- const event=page.waitForEvent('dialog'),click=action(page).click(),dialog=await event;expect(dialog.message()).toContain('公式');await dialog.accept();await click;await expect(action(page)).toBeEnabled();
+ const dialogs=recordDialogs(page);await action(page).click();await expect(page.getByText(/（export-(failed|blocked) · e-\d+）/)).toBeVisible();expect(dialogs).toEqual([]);await expect(action(page)).toBeEnabled();
  // The content is produced before a destination is chosen, so a failed generation never opens the picker.
  expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:0,creates:0,writes:0,closes:0,aborts:0});expect(downloads).toBe(0);
  await page.getByRole('button',{name:'原始 Markdown (.md)',exact:true}).click();await action(page).click();await expect(page.getByText(/已保存文件/)).toBeVisible();expect(await page.evaluate(()=>window.saveProbe)).toMatchObject({calls:1,creates:1,writes:1,closes:1,text:invalidMath.cases[2]!.markdown});expect(downloads).toBe(0);

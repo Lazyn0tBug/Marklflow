@@ -1,4 +1,5 @@
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
+import {reportFailure} from '../failures';
 import type {ExportFile} from '../../../application/exports/exportFile';
 import {apiObject,apiMethod,apiPromise} from '../externalApi';
 function downloadBlob(blob:Blob,name:string):void{
@@ -65,7 +66,8 @@ export async function selectWebSave(file:ExportFile):Promise<ByteSaveTarget|unde
   // browser instead of reporting a success that did not happen.
   const state=await confirmWritten(handle,blob.size);
   if(state==='lost'){downloadBlob(blob,name);return 'recovered-download'}
-  if(state==='unknown')console.warn('[export] 文件已提交，但无法回读校验所选位置：'+name);
+  // **不再直连 console** ✓ ⇒ ⇒ 走消息端口 ✓ ⇒ ⇒ 日志里有一条带类别的记录 ✓。
+  if(state==='unknown')void reportFailure({category:'export-failed',detail:'文件已提交，但无法回读校验所选位置：'+name,tone:'warning'});
   return 'saved';
  }};
 }
