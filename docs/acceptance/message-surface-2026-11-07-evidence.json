@@ -16,7 +16,7 @@
     "lint": "passed",
     "unitTests": 604,
     "productionBuild": "passed",
-    "chromiumE2E": 166,
+    "chromiumE2E": 167,
     "e2eSkipped": 1,
     "e2eSkippedReason": "pre-existing skip: keeps flow/A4 cache entries independent and invalidates a changed math configuration",
     "newEndToEnd": [
@@ -29,7 +29,8 @@
       "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
       "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
       "tests/e2e/message-region.spec.ts: the message region follows the workbench theme switch"
-    ]
+    ],
+    "engineFloor": "Chrome 123 / Safari 17.5 / Firefox 120, declared in build.cssTarget; older engines are out of scope and the module carries no fallback for them"
   },
   "applicationPageRequirements": [
     {
@@ -93,19 +94,39 @@
       "symptom": "closing a message dropped the focus back to the body",
       "cause": "the focused close button is removed with the message",
       "fix": "the list remembers the region while the button is attached and moves the focus to the next control, or to the programmatically focusable region"
+    },
+    {
+      "id": "light-dark rewritten by the build",
+      "symptom": "the module was light in the dark application: its border, background and padding were gone",
+      "cause": "Lightning CSS rewrote light-dark() inside a custom property as var(--lightningcss-light,X)var(--lightningcss-dark,Y); those variables are never defined, so the value was invalid; the dev server does not rewrite it, so the standalone sample looked right",
+      "fix": "the engine floor is declared in build.cssTarget so the minifier leaves modern css alone, and the module carries no fallback for older engines",
+      "guard": "the end to end test measures the real background colour of a card in the application, in the dark theme"
     }
   ],
   "notValidated": [
     "visual check against the 2026-11-07 prototype: the prototype files are on another host and are not archived in the repository",
     "readers and screen readers: only roles, names and keyboard order are asserted, no assistive technology was run",
     "physical print: the region carries no-print, no printed output was inspected",
-    "WKWebView on macOS and WebKitGTK on Linux: only Chromium was run, and the modern css fallbacks were never exercised",
-    "engines without light-dark(), color-mix() or :has(): the fallbacks were written but never executed",
+    "WKWebView on macOS and WebKitGTK on Linux: only Chromium was run; the declared floor is Safari 17.5, older WebKitGTK is out of scope",
+    "engines below the declared floor: the module carries no fallback for them by decision",
     "remote CI, other browsers, Tauri desktop",
     "the two kept entries and the business migration of their ownership"
   ],
   "warnings": [
     "the review and the test execution were done by the main agent: AGENTS.md asks for the gpt-6-luna subagent, which is not available in this environment",
-    "the message module carries its own visual language by design, so it wins over Tailwind utilities; the host adjusts it through the --mf-message-* tokens"
+    "the message module carries its own visual language by design, so it wins over Tailwind utilities; the host adjusts it through the --mf-message-* tokens",
+    "the message visual page ships in the workbench chrome: it is a review aid, not a product feature"
+  ],
+  "newEndToEnd": [
+    "tests/e2e/message-presentation.spec.ts: the css entry alone renders the three shapes",
+    "tests/e2e/message-presentation.spec.ts: the application keeps the message styles above the preflight",
+    "tests/e2e/message-presentation.spec.ts: the css entry follows the color scheme it is given",
+    "tests/e2e/message-presentation.spec.ts: the detail toggle opens with the keyboard",
+    "tests/e2e/message-presentation.spec.ts: the pure components hand the callbacks back to the caller",
+    "tests/e2e/message-region.spec.ts: the region stays inside a narrow window and does not push the workbench",
+    "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
+    "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
+    "tests/e2e/message-region.spec.ts: the visual page surfaces a shape in the real region",
+    "tests/e2e/message-region.spec.ts: the message region follows the workbench theme switch"
   ]
 }

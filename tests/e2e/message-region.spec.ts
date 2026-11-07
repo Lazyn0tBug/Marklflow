@@ -50,6 +50,22 @@ test('closing a message moves the focus to a control that remains',async({page})
  await expect(page.getByRole('button',{name:'关闭通知'})).toBeFocused();
 });
 
+test('the visual page surfaces a shape in the real region',async({page})=>{
+ await page.goto('/');
+ await page.waitForSelector('[data-render-state="ready"]',{timeout:30000});
+ await page.getByRole('button',{name:'消息',exact:true}).click();
+ const panel=page.getByRole('complementary',{name:'消息视觉页'});
+ await expect(panel).toBeVisible();
+ // 点一个用例 ⇒ ⇒ 消息出现在**真实的右下区域**里 ✓（不是静态样板 ✓）。
+ await panel.getByRole('button',{name:'持续 · 失败（待确认）'}).click();
+ const region=page.locator('.mf-message');
+ await expect(region.locator('.mf-message-card[data-shape="persistent"]')).toBeVisible();
+ await expect(region.locator('.mf-message-card[data-shape="persistent"]')).toContainText('保存失败');
+ // 清空 ⇒ ⇒ 演示的消息不留在工作台里 ✓。
+ await panel.getByRole('button',{name:'清空'}).click();
+ await expect(region.locator('.mf-message-card[data-shape="persistent"]')).toHaveCount(0);
+});
+
 test('the message region follows the workbench theme switch',async({page})=>{
  await page.goto('/');
  await page.waitForSelector('[data-render-state="ready"]',{timeout:30000});
@@ -58,4 +74,11 @@ test('the message region follows the workbench theme switch',async({page})=>{
  expect(await region.evaluate(node=>getComputedStyle(node).colorScheme)).toBe('dark');
  await page.getByRole('button',{name:'切换浅色模式'}).click();
  expect(await region.evaluate(node=>getComputedStyle(node).colorScheme)).toBe('light');
+ // **颜色**也跟着换 ✓ ⇒ ⇒ 只看 color-scheme 是不够的 ✓（`light-dark()` 被改坏时
+ // ⇒ ⇒ color-scheme 还是对的、颜色却是旧的 ✓ ⇒ ⇒ 这里量真的底色 ✓）。
+ await page.getByRole('button',{name:'消息',exact:true}).click();
+ await page.getByRole('complementary',{name:'消息视觉页'}).getByRole('button',{name:'瞬时 · 信息'}).click();
+ const card=page.locator('.mf-message-card[data-shape="transient"]').first();
+ await expect(card).toBeVisible();
+ expect(await card.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe('rgb(255, 255, 255)');
 });

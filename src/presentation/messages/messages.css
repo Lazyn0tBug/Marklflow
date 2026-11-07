@@ -13,8 +13,9 @@
  * **形状与语气是数据属性** ✓：`data-shape` / `data-tone` ✓ ⇒ ⇒ 视觉归这份 CSS ✓
  * ⇒ ⇒ React 只出结构 ✓ ⇒ ⇒ 纯 HTML 样例也能被同一份 CSS 正确渲染 ✓。
  *
- * **现代特性都留了退路** ✓：`light-dark()` 与 `color-mix()` 放在 `@supports` 里 ✓
- * ⇒ ⇒ 老内核拿到的仍是可用的一份 ✓（Tauri 的 macOS 走 WKWebView、Linux 走 WebKitGTK ✓）。
+ * **现代特性直接用** ✓：`light-dark()`、`color-mix()`、`:has()` ✓ ⇒ ⇒ 不写兜底 ✓
+ * ⇒ ⇒ 老内核上颜色会失效 ✓ ⇒ ⇒ 这是接受的代价 ✓（本应用不特地兼容老内核 ✓）。
+ * ⇒ ⇒ 因此**主题靠 `color-scheme`** ✓ ⇒ ⇒ 宿主声明它 ✓ ⇒ ⇒ 消息区继承它 ✓。
  *
  * **特异性策略** ✓：几何（位置、尺寸、边距）用 `:where()` ✓ ⇒ ⇒ 宿主要接管不必改这里 ✓；
  * 文字与语气用类选择器 ✓ ⇒ ⇒ 压得住宿主的元素选择器 ✓（`p { margin: 1rem }` 那种 ✓）。
@@ -28,13 +29,13 @@
   .mf-message,
   .mf-message-card,
   .mf-message-result {
-    --mf-message-surface: #ffffff;
-    --mf-message-ink: #171717;
-    --mf-message-muted: #525252;
-    --mf-message-line: #d4d4d4;
-    --mf-message-accent: #0d9488;
-    --mf-message-warn: #b45309;
-    --mf-message-danger: #b91c1c;
+    --mf-message-surface: light-dark(#ffffff, #171717);
+    --mf-message-ink: light-dark(#171717, #f5f5f5);
+    --mf-message-muted: light-dark(#525252, #a3a3a3);
+    --mf-message-line: light-dark(#d4d4d4, #404040);
+    --mf-message-accent: light-dark(#0d9488, #2dd4bf);
+    --mf-message-warn: light-dark(#b45309, #fbbf24);
+    --mf-message-danger: light-dark(#b91c1c, #f87171);
 
     --mf-message-width: 24rem;
     --mf-message-gap: 0.5rem;
@@ -46,24 +47,6 @@
     --mf-message-inset-inline: 1rem;
     --mf-message-inset-block: 2.5rem;
     --mf-message-z: 60;
-  }
-
-  /*
-   * 明暗两套值 ✓：**只能整块覆盖** ✓ ⇒ ⇒ 自定义属性里不能靠"第二条声明"兜底 ✓
-   * ⇒ ⇒ 老内核拿到上面那套浅色值 ✓ ⇒ ⇒ 仍然可用 ✓。
-   */
-  @supports (color: light-dark(#ffffff, #000000)) {
-    .mf-message,
-    .mf-message-card,
-    .mf-message-result {
-      --mf-message-surface: light-dark(#ffffff, #171717);
-      --mf-message-ink: light-dark(#171717, #f5f5f5);
-      --mf-message-muted: light-dark(#525252, #a3a3a3);
-      --mf-message-line: light-dark(#d4d4d4, #404040);
-      --mf-message-accent: light-dark(#0d9488, #2dd4bf);
-      --mf-message-warn: light-dark(#b45309, #fbbf24);
-      --mf-message-danger: light-dark(#b91c1c, #f87171);
-    }
   }
 
   /* ---------- 消息区 ---------- */
@@ -219,27 +202,22 @@
   }
 
   /* 颜色计算 ✓：只给一个色相 ⇒ ⇒ 悬停底色由它算出来 ✓。 */
-  @supports (color: color-mix(in oklab, red, blue)) {
-    .mf-message-button:hover {
-      background: color-mix(in oklab, var(--mf-message-ink) 10%, transparent);
-    }
-    .mf-message-button:focus-visible {
-      outline-color: color-mix(in oklab, var(--mf-message-accent) 70%, transparent);
-    }
+  .mf-message-button:hover {
+    background: color-mix(in oklab, var(--mf-message-ink) 10%, transparent);
+  }
+  .mf-message-button:focus-visible {
+    outline-color: color-mix(in oklab, var(--mf-message-accent) 70%, transparent);
   }
 
   /* ---------- 焦点在卡片里 ---------- */
 
   /*
-   * `:has()` 只做增强 ✓ ⇒ ⇒ 不支持的老内核拿不到这条，键盘焦点仍有按钮自己的焦点环 ✓
+   * `:has()` 只做增强 ✓ ⇒ ⇒ 键盘焦点仍有按钮自己的焦点环 ✓
    * ⇒ ⇒ 没有任何功能依赖它 ✓。
    */
-  /* 这里不用颜色计算 ✓ ⇒ ⇒ 支持 `:has()` 但不支持 `color-mix()` 的内核也拿得到 ✓。 */
-  @supports selector(:has(*)) {
-    .mf-message-card:has(:focus-visible) {
-      outline: 2px solid var(--mf-message-accent);
-      outline-offset: 2px;
-    }
+  .mf-message-card:has(:focus-visible) {
+    outline: 2px solid var(--mf-message-accent);
+    outline-offset: 2px;
   }
 
   /* ---------- 进场 ---------- */

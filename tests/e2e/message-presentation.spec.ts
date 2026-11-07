@@ -30,11 +30,14 @@ test('the application keeps the message styles above the preflight',async({page}
  await page.evaluate(()=>{setTimeout(()=>{throw new Error('样式检查用的错误')},0);});
  const card=page.getByRole('status',{name:'通知'}).first();
  await expect(card).toBeVisible();
- const style=await card.evaluate(element=>{const computed=getComputedStyle(element);return {border:computed.borderTopWidth,padding:computed.paddingTop,radius:computed.borderTopLeftRadius}});
+ const style=await card.evaluate(element=>{const computed=getComputedStyle(element);return {border:computed.borderTopWidth,padding:computed.paddingTop,radius:computed.borderTopLeftRadius,background:computed.backgroundColor}});
  // 预检把 `*` 的边框与内边距清成 0 ✓ ⇒ ⇒ 消息的层若在预检之下 ⇒ ⇒ 这里就是 0 ✓。
  expect(style.border).toBe('1px');
  expect(style.padding).not.toBe('0px');
  expect(style.radius).not.toBe('0px');
+ // 应用默认深色 ✓ ⇒ ⇒ 消息的底色也该是深色那支 ✓（#171717 ✓）
+ // ⇒ ⇒ 只量边框会漏掉"模块一直是浅色"这件事 ✓ ⇒ ⇒ 这里量颜色 ✓。
+ expect(style.background).toBe('rgb(23, 23, 23)');
 });
 
 test('the css entry follows the color scheme it is given',async({page})=>{

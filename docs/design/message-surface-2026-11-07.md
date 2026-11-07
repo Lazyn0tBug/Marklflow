@@ -104,6 +104,8 @@
 
 同仓库提供明确的 CSS 和组件入口。样式与组件无需加载 Marklflow 会话、通知存储、日志或 Tauri。外部动作通过回调协作，无需单独发包或建立第二个消息 store。
 
+**内核地板与构建（2026-11-07 定）**：本应用**不特地兼容老内核** ⇒ ⇒ `light-dark()`、`color-mix()`、`:has()` **直接用** ✓ ⇒ ⇒ **不写兜底** ✓ ⇒ ⇒ 地板写进构建：`build.cssTarget: ['chrome123','safari17.5','firefox120']` ✓ ⇒ ⇒ 压缩器不再改写新特性 ✓。**这一步是必须的** ✓：Lightning CSS 默认把 `light-dark()` 降级成 `var(--lightningcss-light,X)var(--lightningcss-dark,Y)` ✓ ⇒ ⇒ 那两个变量从没被定义 ✓ ⇒ ⇒ 值无效 ✓ ⇒ ⇒ 边框、底色、内边距全失效 ✓ ⇒ ⇒ **开发服务器不做这个转换** ⇒ ⇒ 样页对、构建产物错 ✓ ⇒ ⇒ 只看样例必然漏 ✓。
+
 **样式入口的具体约定（2026-11-07 定）**：选择器一律 `mf-message*` 前缀 ⇒ ⇒ 不引用宿主任何类；令牌一律 `--mf-message-*` ⇒ ⇒ 模块给默认值 ⇒ ⇒ 宿主覆盖令牌或改 `color-scheme` 即换主题 ⇒ ⇒ 不另建配色体系；全部规则收在 `@layer mf-message` ⇒ ⇒ **层序由 Tailwind 定** ⇒ ⇒ 应用样式入口用 `@import "./presentation/messages/messages.css" layer(components);` 引进它 ⇒ ⇒ 它落在预检之上、工具类之下 ⇒ ⇒ 预检压不过它、工具类仍能微调它 ⇒ ⇒ **不要自己写层序声明** ⇒ ⇒ Tailwind 的插件会把它整条丢掉（实测：在 `@import` 前后都丢 ✓）⇒ ⇒ 层只能这样挂，不能靠声明改；**样式入口只有一个主人** ⇒ ⇒ 组件入口不 import 它 ⇒ ⇒ 两处都引会出两份副本（实测 ✓）⇒ ⇒ 独立样例自己引（实测 ✓）；形状与语气用 `data-shape` / `data-tone` 表达 ⇒ ⇒ 视觉归样式、组件只出结构 ⇒ ⇒ 纯 HTML 样例能被同一份 CSS 正确渲染；`light-dark()` 与 `color-mix()` 放在 `@supports` 里，`@starting-style` 与 `:has()` 只做增强 ⇒ ⇒ 不支持的内核拿到的仍是可用的一份（Tauri 的 macOS 走 WKWebView、Linux 走 WebKitGTK ⇒ ⇒ `@scope` 那类"整块丢弃"的做法不作为隔离手段 ⇒ ⇒ 隔离靠命名空间与令牌）。
 
 ## 6. 现有界面的迁移门槛
@@ -133,7 +135,7 @@
 | S-3 | 按第 6 节核对并迁移符合条件的现有界面。 | 用定向交互回归核对迁移前后的显示、关闭、计时、焦点和播报语义，记录迁移项及因行为差异保留的入口。 |
 | S-4 | 收口本版交付。 | CSS 入口、纯组件与独立样例均通过验收。样例覆盖三种形状，生产接入以行为等价为门槛。 |
 
-实施状态（2026-11-07）：S-1 已实施 ⇒ `src/presentation/messages/messages.css` 自足、无 import、前缀与令牌如第 5 节 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-css-sample.html` 只加载它 ⇒ ⇒ 三种形状由静态标记渲染 ✓。S-2 两步都已实施 ⇒ ⇒ `MessageCard.tsx`（瞬时）、`MessageStatusBar.tsx`（持续，带确认）、`MessageResult.tsx`（结果，逐条语气）⇒ ⇒ 三者共用 `MessagePanel.tsx` 的内里 ⇒ ⇒ 都不持状态、不计时、不播报 ⇒ ⇒ 关闭、展开、确认与播报语义全由外面给 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-component-sample-client.tsx` 用模拟数据与回调驱动三种形状 ⇒ ⇒ 端到端断言见 `tests/e2e/message-presentation.spec.ts`。**样式由应用样式入口按 `layer(components)` 引进** ⇒ ⇒ 组件入口不引它 ⇒ ⇒ 两处都引会出两份副本（实测 ✓）。S-3 已实施 ⇒ ⇒ 通知列表与应用根节点的 `color-scheme` 见第 6 节 ✓ ⇒ ⇒ 顶部横幅与面板内提示按第 6 节保留 ✓。S-4 已收口 ⇒ ⇒ 第 9 节的应用页面要求逐条落成端到端断言（窄窗 ✓ 不越视口 ✓ 不推挤工作台 ✓ 不抢编辑焦点 ✓ 关掉后焦点落到还留着的控件上 ✓ 键盘展开 ✓ 主题跟应用开关走 ✓）⇒ ⇒ 证据与未验证项见 `docs/acceptance/message-surface-2026-11-07-evidence.json` ✓ ⇒ ⇒ **视觉核对仍未做** ✓（那要对着原型看 ✓ ⇒ ⇒ 本机没有那些文件 ✓）。
+实施状态（2026-11-07）：S-1 已实施 ⇒ `src/presentation/messages/messages.css` 自足、无 import、前缀与令牌如第 5 节 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-css-sample.html` 只加载它 ⇒ ⇒ 三种形状由静态标记渲染 ✓。S-2 两步都已实施 ⇒ ⇒ `MessageCard.tsx`（瞬时）、`MessageStatusBar.tsx`（持续，带确认）、`MessageResult.tsx`（结果，逐条语气）⇒ ⇒ 三者共用 `MessagePanel.tsx` 的内里 ⇒ ⇒ 都不持状态、不计时、不播报 ⇒ ⇒ 关闭、展开、确认与播报语义全由外面给 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-component-sample-client.tsx` 用模拟数据与回调驱动三种形状 ⇒ ⇒ 端到端断言见 `tests/e2e/message-presentation.spec.ts`。**样式由应用样式入口按 `layer(components)` 引进** ⇒ ⇒ 组件入口不引它 ⇒ ⇒ 两处都引会出两份副本（实测 ✓）。S-3 已实施 ⇒ ⇒ 通知列表与应用根节点的 `color-scheme` 见第 6 节 ✓ ⇒ ⇒ 顶部横幅与面板内提示按第 6 节保留 ✓。**消息视觉页**（2026-11-07 交付）：贴在工作台左侧的一个面板 ✓ ⇒ ⇒ 上面是按钮 ✓ ⇒ ⇒ 点一个 ⇒ ⇒ 那条消息就出现在**真实的右下区域**里 ✓ ⇒ ⇒ 三种形状 × 四种语气 × 几个内容结构都能点出来 ✓ ⇒ ⇒ 它不碰通知存储 ✓ ⇒ ⇒ 演示的消息不计时、不混进真消息 ✓ ⇒ ⇒ 入口在顶栏的"消息"按钮 ✓。S-4 已收口 ⇒ ⇒ 第 9 节的应用页面要求逐条落成端到端断言（窄窗 ✓ 不越视口 ✓ 不推挤工作台 ✓ 不抢编辑焦点 ✓ 关掉后焦点落到还留着的控件上 ✓ 键盘展开 ✓ 主题跟应用开关走 ✓）⇒ ⇒ 证据与未验证项见 `docs/acceptance/message-surface-2026-11-07-evidence.json` ✓ ⇒ ⇒ **视觉核对仍未做** ✓（那要对着原型看 ✓ ⇒ ⇒ 本机没有那些文件 ✓）。
 
 ## 8. 后续方向
 
@@ -149,3 +151,4 @@
 - 这些结果证明临时注入样式在应用页面的表现。生产 React 组件、消息分流、自动消失、队列及业务生命周期仍待后续接入验证，打印和读屏软件实测尚未完成。
 - 2026-11-07，本版收口：上面的应用页面要求已逐条落成端到端断言（`tests/e2e/message-region.spec.ts` 与 `tests/e2e/message-presentation.spec.ts` ✓）⇒ ⇒ 其中"不越视口、不推挤工作台、关掉后焦点落到还留着的控件上"三条是**在应用里**量的 ✓ ⇒ ⇒ 独立样例证明不了它们 ✓（样例没有 Tailwind、没有工作台、没有键盘顺序 ✓）。证据与未验证项见 `docs/acceptance/message-surface-2026-11-07-evidence.json` ✓。
 - 收口时补掉的两处缺陷：消息样式曾落在预检之下 ⇒ ⇒ 卡片没有边框也没有内边距（样例看不出来 ✓）；关掉消息后焦点掉回 body ⇒ ⇒ 键盘的人丢了位置 ✓。两处都补了断言 ⇒ ⇒ 故意改坏时断言会红 ✓。
+- 2026-11-07 视觉页交付后又抓到一处：构建把 `light-dark()` 改坏 ⇒ ⇒ **模块在深色应用里一直是浅色的** ✓ ⇒ ⇒ 之前的断言只量了边框与内边距 ⇒ ⇒ 量不到颜色 ✓ ⇒ ⇒ 现在断言里加了真的底色 ✓ ⇒ ⇒ 地板写进了构建配置 ✓。

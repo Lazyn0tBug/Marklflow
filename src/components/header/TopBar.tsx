@@ -22,6 +22,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   Check,
+  MessageSquare,
 } from 'lucide-react';
 
 export type ViewMode = 'split' | 'edit' | 'reading' | 'a4';
@@ -53,6 +54,8 @@ export interface TopBarProps {
   onSave: () => void;
   onOpenExport: () => void;
   onOpenRoadmap: () => void;
+  /** 打开消息视觉页 ✓（核对消息的样子用 ✓）。 */
+  onOpenMessages: () => void;
   documentTitle: string;
 }
 
@@ -85,6 +88,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSave,
   onOpenExport,
   onOpenRoadmap,
+  onOpenMessages,
   documentTitle,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
@@ -224,6 +228,16 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <Sigma className="w-3.5 h-3.5 text-teal-400" />
           <span>{mathMode === 'mathml' ? 'MathML' : 'SVG'}</span>
+        </button>
+
+        {/* 消息视觉页：把三种形状与四种语气都点出来 ✓。 */}
+        <button
+          onClick={onOpenMessages}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 transition-colors whitespace-nowrap"
+          title="打开消息视觉页：点一个按钮，右下角就会出现那条消息"
+        >
+          <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
+          <span className="hidden sm:inline">消息</span>
         </button>
 
         {/* 1.0 准入审查看板 */}
