@@ -54,8 +54,12 @@ export interface TopBarProps {
   onSave: () => void;
   onOpenExport: () => void;
   onOpenRoadmap: () => void;
-  /** 打开消息视觉页 ✓（核对消息的样子用 ✓）。 */
-  onOpenMessages: () => void;
+  /**
+   * 打开消息视觉页 ✓（核对消息的样子用 ✓）。
+   *
+   * **只在开发构建里给** ✓ ⇒ ⇒ 生产构建没有那个入口 ✓ ⇒ ⇒ 它不是产品功能 ✓。
+   */
+  onOpenMessages: (() => void)|undefined;
   documentTitle: string;
 }
 
@@ -230,7 +234,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span>{mathMode === 'mathml' ? 'MathML' : 'SVG'}</span>
         </button>
 
-        {/* 消息视觉页：把三种形状与四种语气都点出来 ✓。 */}
+        {/* 消息视觉页：把三种形状与四种语气都点出来 ✓（只在开发构建里 ✓）。 */}
+        {onOpenMessages?
         <button
           onClick={onOpenMessages}
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 transition-colors whitespace-nowrap"
@@ -238,7 +243,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
           <span className="hidden sm:inline">消息</span>
-        </button>
+        </button>:null}
 
         {/* 1.0 准入审查看板 */}
         <button

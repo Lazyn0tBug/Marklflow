@@ -28,9 +28,11 @@
       "tests/e2e/message-region.spec.ts: the region stays inside a narrow window and does not push the workbench",
       "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
       "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
+      "tests/e2e/message-region.spec.ts: the visual page surfaces a shape in the real region (against the dev server)",
+      "tests/e2e/message-region.spec.ts: the production build carries no message visual page",
       "tests/e2e/message-region.spec.ts: the message region follows the workbench theme switch"
     ],
-    "engineFloor": "Chrome 123 / Safari 17.5 / Firefox 120, declared in build.cssTarget; older engines are out of scope and the module carries no fallback for them"
+    "engineFloor": "Chrome 123 / Safari 17.5 / Firefox 120, declared in build.cssTarget. The floor is the lowest version of the one feature the design depends on (light-dark, which carries the theme); color-mix, :has, text-wrap, @starting-style and scrollbar-gutter are progressive and do not raise it. Below the floor is out of scope and the module carries no fallback."
   },
   "applicationPageRequirements": [
     {
@@ -115,6 +117,6 @@
   "warnings": [
     "the review and the test execution were done by the main agent: AGENTS.md asks for the gpt-6-luna subagent, which is not available in this environment",
     "the message module carries its own visual language by design, so it wins over Tailwind utilities; the host adjusts it through the --mf-message-* tokens",
-    "the message visual page ships in the workbench chrome: it is a review aid, not a product feature"
+    "the message visual page is a review aid and ships only in the development build; its end to end test therefore runs against the dev server"
   ]
 }

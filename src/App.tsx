@@ -448,7 +448,7 @@ export default function App() {
         onSave={handleSaveImmediately}
         onOpenExport={() => setExportModalOpen(true)}
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
-        onOpenMessages={() => setMessageGalleryOpen(true)}
+        onOpenMessages={import.meta.env.DEV?()=>setMessageGalleryOpen(true):undefined}
         documentTitle={currentDoc.meta.title}
       />
 
@@ -554,8 +554,8 @@ export default function App() {
       {/* 消息区：通知与导入结果都在这里 ✓（设计 §3 ✓ ⇒ ⇒ 一个区域 ✓）。 */}
       {messageRegion}
 
-      {/* 消息视觉页 ✓：贴左边 ⇒ ⇒ 右下那条区域看得见 ✓。 */}
-      {messageGalleryOpen?
+      {/* 消息视觉页 ✓：**只在开发构建里** ✓ ⇒ ⇒ 它是核对用的工具，不是产品功能 ✓。 */}
+      {import.meta.env.DEV&&messageGalleryOpen?
        <MessageGallery
         demos={demoMessages}
         onPick={demos=>setDemoMessages(demos)}
