@@ -93,6 +93,21 @@ test('a closing message fades out before it is gone',async({page})=>{
  await expect(card).toHaveCount(0);
 });
 
+test('a leaving message does not take clicks',async({page})=>{
+ await page.goto('/');
+ await page.evaluate(()=>{setTimeout(()=>{throw new Error('退场不点')},0);});
+ const card=page.getByRole('status',{name:'通知'}).first();
+ await expect(card).toBeVisible();
+ await page.getByRole('button',{name:'关闭通知'}).first().click();
+ // **退场中的那条不吃点击** ✓ ⇒ ⇒ 看不见了就不该占着右下角那一块 ✓
+ // ⇒ ⇒ （`pointer-events` 没有过渡 ✓ ⇒ ⇒ 读到的那一刻就是生效的那一刻 ✓）。
+ const pointerEvents=await page.waitForFunction(()=>{
+  const leaving=document.querySelector('.mf-message-card[data-leaving="true"]');
+  return leaving?getComputedStyle(leaving).pointerEvents:null;
+ }).then(handle=>handle.jsonValue());
+ expect(pointerEvents).toBe('none');
+});
+
 test('the visual page surfaces a shape in the real region',async({page})=>{
  // **对着开发服务器跑** ✓ ⇒ ⇒ 视觉页只在开发构建里 ✓。
  await page.goto(devOrigin+'/');

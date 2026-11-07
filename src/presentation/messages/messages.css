@@ -241,6 +241,8 @@
   .mf-message-result[data-leaving="true"] {
     opacity: 0;
     transform: translateY(6px);
+    /* **看不见了就不该吃点击** ✓ ⇒ ⇒ 退场那 200ms 里右下角那一块不该是死的 ✓。 */
+    pointer-events: none;
   }
 
   @media (prefers-reduced-motion: no-preference) {
