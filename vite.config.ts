@@ -2,26 +2,30 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {createRequire} from 'node:module';
-import {defineConfig} from 'vite';
+import {defineConfig,type UserConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(():UserConfig=>{
   return {
     plugins: [react(), tailwindcss()],
     build: {
       /*
-       * CSS 的目标内核 ✓：**明写** ✓ ⇒ ⇒ 压缩器不再把新特性改写掉 ✓。
+       * **用 esbuild 压 CSS** ✓ ⇒ ⇒ 它只压缩，**不改写新特性** ✓。
        *
-       * **为什么必须写** ✓：Lightning CSS 默认会把 `light-dark()` 降级成
+       * **为什么必须换** ✓：Lightning CSS 会把 `light-dark()` 降级成
        * `var(--lightningcss-light,X)var(--lightningcss-dark,Y)` ✓ ⇒ ⇒ 那两个变量从没被定义 ✓
        * ⇒ ⇒ 值无效 ✓ ⇒ ⇒ 用它的属性（边框、底色、内边距）全部失效 ✓
        * ⇒ ⇒ **开发服务器不做这个转换** ⇒ ⇒ 样页是对的、构建产物是错的 ✓。
        *
-       * **这三个数字怎么来的** ✓：**被依赖的**特性是 `light-dark()`（主题就靠它 ✓）
-       * ⇒ ⇒ 它的最低版本就是地板 ✓ ⇒ ⇒ Chrome 123 ✓ Safari 17.5 ✓ Firefox 120 ✓。
-       * 其余的（`color-mix()` ✓ `:has()` ✓ `text-wrap` ✓ `@starting-style` ✓
-       * ⇒ ⇒ `scrollbar-gutter` ✓）都是**渐进增强** ✓ ⇒ ⇒ 不支持时整块丢弃、功能不丢 ✓
-       * ⇒ ⇒ 它们不抬地板 ✓ ⇒ ⇒ 低于这个版本不在支持范围内 ✓ ⇒ ⇒ 不写兜底 ✓。
+       * **只写 `cssTarget` 不够** ✓ ⇒ ⇒ 那个只定"降到哪个版本" ✓ ⇒ ⇒ 降级规则仍在 ✓
+       * ⇒ ⇒ 版本再新也救不了被改写的值 ✓ ⇒ ⇒ **要换的是压缩器本身** ✓。
+       *
+       * **地板就是浏览器自己的** ✓ ⇒ ⇒ 被依赖的只有 `light-dark()`（主题靠它 ✓）
+       * ⇒ ⇒ 地板 = Chrome 123 ✓ Safari 17.5 ✓ Firefox 120 ✓
+       * ⇒ ⇒ 低于这个版本不在支持范围内 ✓ ⇒ ⇒ **不写兜底** ✓。
+       * ⇒ ⇒ 其余的（`color-mix()` ✓ `:has()` ✓ `text-wrap` ✓ `@starting-style` ✓
+       * ⇒ ⇒ `scrollbar-gutter` ✓）都是**渐进增强** ✓ ⇒ ⇒ 不抬地板 ✓。
        */
+      cssMinify: 'esbuild',
       cssTarget: ['chrome123', 'safari17.5', 'firefox120'],
     },
     resolve: {
