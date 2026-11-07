@@ -48,6 +48,16 @@ test('the css entry follows the color scheme it is given',async({page})=>{
  expect(dark).not.toBe(light);
 });
 
+test('the detail toggle opens with the keyboard',async({page})=>{
+ await page.goto(origin+'/tests/fixtures/messages/messages-component-sample.html');
+ const toggle=page.getByRole('button',{name:'详情'});
+ await toggle.focus();
+ // 详情支持键盘展开 ✓（§9 ✓）⇒ ⇒ 它是个按钮，不是 div ✓。
+ await page.keyboard.press('Enter');
+ await expect(page.getByRole('button',{name:'收起'})).toHaveAttribute('aria-expanded','true');
+ await expect(page.locator('.mf-message-card__detail')).toBeVisible();
+});
+
 test('the pure components hand the callbacks back to the caller',async({page,pageErrors})=>{
  await page.goto(origin+'/tests/fixtures/messages/messages-component-sample.html');
  // 瞬时那条 ✓。

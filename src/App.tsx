@@ -330,7 +330,8 @@ export default function App() {
      onClose={()=>setImportResults([])}/>:
     null;
   // 消息区：**两种界面状态共用一处** ✓ ⇒ ⇒ 通知与导入结果始终在同一个区域里 ✓。
-  const messageRegion=<div className="mf-message no-print" aria-label="工作台消息"><NoticeList/>{importMessage}</div>;
+  // `tabIndex={-1}` ⇒ ⇒ 消息都收走后，焦点有个落点 ✓（设计 §9 ✓）。
+  const messageRegion=<div className="mf-message no-print" tabIndex={-1} aria-label="工作台消息"><NoticeList/>{importMessage}</div>;
   const handleDeleteDoc=(id:string)=>{
     setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});
