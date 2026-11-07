@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-11-07T06:37:25+00:00",
+  "reviewBase": "508282e453e2b1af940ba374841bb072e0456535",
+  "validatedCodeCommit": "1da8b1fbc84df4c7a384ceb815a432f098d91df2",
+  "branch": "local-document",
+  "scope": "S1-S4 of the message surface: independent css entry, three pure presentation components with standalone samples, application adoption, closeout. No push, no merge, no tag move, no dependency or lockfile change.",
+  "design": "docs/design/message-surface-2026-11-07.md",
+  "checks": {
+    "typecheck": "4 profiles + 283 managed sources/configs covered",
+    "sourcePolicy": "passed",
+    "moduleBoundaries": "passed",
+    "nativeIsolation": "passed",
+    "commandAdmission": "passed",
+    "messageVocabulary": "37 categories on both sides, one list",
+    "lint": "passed",
+    "unitTests": 604,
+    "productionBuild": "passed",
+    "chromiumE2E": 166,
+    "e2eSkipped": 1,
+    "e2eSkippedReason": "pre-existing skip: keeps flow/A4 cache entries independent and invalidates a changed math configuration",
+    "newEndToEnd": [
+      "tests/e2e/message-presentation.spec.ts: the css entry alone renders the three shapes",
+      "tests/e2e/message-presentation.spec.ts: the application keeps the message styles above the preflight",
+      "tests/e2e/message-presentation.spec.ts: the css entry follows the color scheme it is given",
+      "tests/e2e/message-presentation.spec.ts: the detail toggle opens with the keyboard",
+      "tests/e2e/message-presentation.spec.ts: the pure components hand the callbacks back to the caller",
+      "tests/e2e/message-region.spec.ts: the region stays inside a narrow window and does not push the workbench",
+      "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
+      "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
+      "tests/e2e/message-region.spec.ts: the message region follows the workbench theme switch"
+    ]
+  },
+  "applicationPageRequirements": [
+    {
+      "requirement": "the region sits at the bottom right and clears the status bar",
+      "evidence": "region is fixed at 2.5rem from the bottom, the status bar is 1.75rem tall; narrow window assertion measures the box inside a 360x740 viewport"
+    },
+    {
+      "requirement": "the region shrinks to the available width on a narrow window",
+      "evidence": "tests/e2e/message-region.spec.ts, 360x740 viewport"
+    },
+    {
+      "requirement": "the region bounds its height and scrolls, the batch result scrolls inside",
+      "evidence": "region max-height 70vh/30rem with overflow-y auto; result list max-height 12rem with overflow-y auto"
+    },
+    {
+      "requirement": "long file names and unbroken text wrap",
+      "evidence": "tests/e2e/message-presentation.spec.ts measures scrollWidth <= clientWidth on the long result item"
+    },
+    {
+      "requirement": "the region does not leave the viewport and does not push the workbench",
+      "evidence": "tests/e2e/message-region.spec.ts compares the editor box before and after a message arrives"
+    },
+    {
+      "requirement": "a message does not take the editing focus",
+      "evidence": "tests/e2e/message-region.spec.ts asserts the editor keeps the focus"
+    },
+    {
+      "requirement": "closing a message moves the focus to a control that is still there",
+      "evidence": "tests/e2e/message-region.spec.ts asserts the remaining close button is focused"
+    },
+    {
+      "requirement": "the detail expands with the keyboard",
+      "evidence": "tests/e2e/message-presentation.spec.ts presses Enter on the toggle"
+    },
+    {
+      "requirement": "the theme is the application's own switch",
+      "evidence": "tests/e2e/message-region.spec.ts asserts the region colour scheme follows the workbench toggle"
+    }
+  ],
+  "migration": {
+    "migrated": [
+      "notification surface: many at once, each closable, ten second timer still owned by the list, four tones, announcement still status",
+      "import result and import busy line: ownership still in the application, wording and actions unchanged",
+      "save failure: waits for an acknowledgement instead of timing out, a deliberate behaviour change"
+    ],
+    "kept": [
+      "storage recovery and action error banner: four meanings in one strip, splitting it changes ownership, keeping it as one strip rewords it",
+      "compatibility hint inside the export panel: it belongs to the dialog it sits in"
+    ]
+  },
+  "defectsFoundDuringReview": [
+    {
+      "id": "layer order",
+      "symptom": "in the application the cards had no border, no padding and square buttons",
+      "cause": "Tailwind drops any layer order statement the application writes, so the message layer was registered first and became the lowest one; the preflight won",
+      "fix": "the stylesheet is imported into Tailwind's components layer, so it sits above the preflight and below the utilities; the component entry no longer imports it, two owners produced two copies and the first copy decided the layer",
+      "guard": "tests/e2e/message-presentation.spec.ts measures the card in the application, where the preflight is present; it fails when the import moves back"
+    },
+    {
+      "id": "focus after closing",
+      "symptom": "closing a message dropped the focus back to the body",
+      "cause": "the focused close button is removed with the message",
+      "fix": "the list remembers the region while the button is attached and moves the focus to the next control, or to the programmatically focusable region"
+    }
+  ],
+  "notValidated": [
+    "visual check against the 2026-11-07 prototype: the prototype files are on another host and are not archived in the repository",
+    "readers and screen readers: only roles, names and keyboard order are asserted, no assistive technology was run",
+    "physical print: the region carries no-print, no printed output was inspected",
+    "WKWebView on macOS and WebKitGTK on Linux: only Chromium was run, and the modern css fallbacks were never exercised",
+    "engines without light-dark(), color-mix() or :has(): the fallbacks were written but never executed",
+    "remote CI, other browsers, Tauri desktop",
+    "the two kept entries and the business migration of their ownership"
+  ],
+  "warnings": [
+    "the review and the test execution were done by the main agent: AGENTS.md asks for the gpt-6-luna subagent, which is not available in this environment",
+    "the message module carries its own visual language by design, so it wins over Tailwind utilities; the host adjusts it through the --mf-message-* tokens"
+  ]
+}

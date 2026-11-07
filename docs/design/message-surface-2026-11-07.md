@@ -1,6 +1,6 @@
 # 消息的形状：问题、需求与待决项（2026-11-07）
 
-状态：本版样式、纯呈现与接入都已实施（2026-11-07）；S-4 收口未做。第 0–2 节保留历史问题背景，第 4 节为外部参考，第 3、5–9 节定义本应用约定及验证状态。历史位置不作为目标布局。
+状态：本版已收口（2026-11-07，S-1–S-4 ✓）⇒ ⇒ 应用页面要求已逐条落成断言 ✓ ⇒ ⇒ **仍缺 §9 的视觉核对** ✓（原型在另一台机器上，未入库 ✓）⇒ ⇒ 证据见 `docs/acceptance/message-surface-2026-11-07-evidence.json` ✓。第 0–2 节保留历史问题背景，第 4 节为外部参考，第 3、5–9 节定义本应用约定及验证状态。历史位置不作为目标布局。
 关联：[应用消息方案](app-messaging-plan-2026-11-07.md)（三条去向 ✓、机器码 ✓、通知面的**行为**规格 ✓ §4）、[日志基座](log-base-plan-2026-11-03.md)（词汇与通道 ✓）、[分析与验证规范](../development/analysis-and-verification.md)（验证范围 ✓）。
 
 ---
@@ -133,7 +133,7 @@
 | S-3 | 按第 6 节核对并迁移符合条件的现有界面。 | 用定向交互回归核对迁移前后的显示、关闭、计时、焦点和播报语义，记录迁移项及因行为差异保留的入口。 |
 | S-4 | 收口本版交付。 | CSS 入口、纯组件与独立样例均通过验收。样例覆盖三种形状，生产接入以行为等价为门槛。 |
 
-实施状态（2026-11-07）：S-1 已实施 ⇒ `src/presentation/messages/messages.css` 自足、无 import、前缀与令牌如第 5 节 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-css-sample.html` 只加载它 ⇒ ⇒ 三种形状由静态标记渲染 ✓。S-2 两步都已实施 ⇒ ⇒ `MessageCard.tsx`（瞬时）、`MessageStatusBar.tsx`（持续，带确认）、`MessageResult.tsx`（结果，逐条语气）⇒ ⇒ 三者共用 `MessagePanel.tsx` 的内里 ⇒ ⇒ 都不持状态、不计时、不播报 ⇒ ⇒ 关闭、展开、确认与播报语义全由外面给 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-component-sample-client.tsx` 用模拟数据与回调驱动三种形状 ⇒ ⇒ 端到端断言见 `tests/e2e/message-presentation.spec.ts`。**样式由组件入口 `index.ts` 一处带进来** ⇒ ⇒ 组件文件里不再各自 import ⇒ ⇒ 只有一个地方会漏 ✓。S-3 已实施 ⇒ ⇒ 通知列表与应用根节点的 `color-scheme` 见第 6 节 ✓ ⇒ ⇒ 层序在 `src/index.css` 里登记 ✓ ⇒ ⇒ 顶部横幅与面板内提示按第 6 节保留 ✓。S-4 未做 ⇒ ⇒ 收口与视觉核对未开始 ✓。
+实施状态（2026-11-07）：S-1 已实施 ⇒ `src/presentation/messages/messages.css` 自足、无 import、前缀与令牌如第 5 节 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-css-sample.html` 只加载它 ⇒ ⇒ 三种形状由静态标记渲染 ✓。S-2 两步都已实施 ⇒ ⇒ `MessageCard.tsx`（瞬时）、`MessageStatusBar.tsx`（持续，带确认）、`MessageResult.tsx`（结果，逐条语气）⇒ ⇒ 三者共用 `MessagePanel.tsx` 的内里 ⇒ ⇒ 都不持状态、不计时、不播报 ⇒ ⇒ 关闭、展开、确认与播报语义全由外面给 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-component-sample-client.tsx` 用模拟数据与回调驱动三种形状 ⇒ ⇒ 端到端断言见 `tests/e2e/message-presentation.spec.ts`。**样式由应用样式入口按 `layer(components)` 引进** ⇒ ⇒ 组件入口不引它 ⇒ ⇒ 两处都引会出两份副本（实测 ✓）。S-3 已实施 ⇒ ⇒ 通知列表与应用根节点的 `color-scheme` 见第 6 节 ✓ ⇒ ⇒ 顶部横幅与面板内提示按第 6 节保留 ✓。S-4 已收口 ⇒ ⇒ 第 9 节的应用页面要求逐条落成端到端断言（窄窗 ✓ 不越视口 ✓ 不推挤工作台 ✓ 不抢编辑焦点 ✓ 关掉后焦点落到还留着的控件上 ✓ 键盘展开 ✓ 主题跟应用开关走 ✓）⇒ ⇒ 证据与未验证项见 `docs/acceptance/message-surface-2026-11-07-evidence.json` ✓ ⇒ ⇒ **视觉核对仍未做** ✓（那要对着原型看 ✓ ⇒ ⇒ 本机没有那些文件 ✓）。
 
 ## 8. 后续方向
 
@@ -147,3 +147,5 @@
 - 2026-11-07，Luna 在本地真实工作台页面通过浏览器临时注入原型验证。原型文件位于 D:/codex/workbench-notification-prototype，包含 validate-workbench-notifications.cjs 和 desktop、mobile360、mobile390 的 light/dark 截图。此路径为本机证据，未纳入仓库归档。
 - 最终统一区域原型在 360/390 像素明暗主题下纵向排列完整、无横向溢出，长文件名换行，重试、关闭与恢复焦点、详情展开通过，未见页面错误。早期上下分散方案曾遮挡状态条和工具栏，已由统一区域原型取代。
 - 这些结果证明临时注入样式在应用页面的表现。生产 React 组件、消息分流、自动消失、队列及业务生命周期仍待后续接入验证，打印和读屏软件实测尚未完成。
+- 2026-11-07，本版收口：上面的应用页面要求已逐条落成端到端断言（`tests/e2e/message-region.spec.ts` 与 `tests/e2e/message-presentation.spec.ts` ✓）⇒ ⇒ 其中"不越视口、不推挤工作台、关掉后焦点落到还留着的控件上"三条是**在应用里**量的 ✓ ⇒ ⇒ 独立样例证明不了它们 ✓（样例没有 Tailwind、没有工作台、没有键盘顺序 ✓）。证据与未验证项见 `docs/acceptance/message-surface-2026-11-07-evidence.json` ✓。
+- 收口时补掉的两处缺陷：消息样式曾落在预检之下 ⇒ ⇒ 卡片没有边框也没有内边距（样例看不出来 ✓）；关掉消息后焦点掉回 body ⇒ ⇒ 键盘的人丢了位置 ✓。两处都补了断言 ⇒ ⇒ 故意改坏时断言会红 ✓。
