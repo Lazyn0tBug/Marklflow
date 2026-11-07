@@ -51,6 +51,23 @@ export function notifiesUser(category:MessageCategory):boolean{
 }
 
 /**
+ * 哪些失败**要人确认才算完** ✓。
+ *
+ * **保存失败是其中一条** ✓：内容还在工作区 ✓ ⇒ ⇒ 用户不点破就会一直不知道 ⇒ ⇒
+ * ⇒ ⇒ 它不能定时自己走 ✓ ⇒ ⇒ 它等一个确认 ✓（设计 §8 ✓）。
+ *
+ * **其余的照旧** ✓：定时消失 ✓ ⇒ ⇒ 一次告知就是一次告知 ✓。
+ */
+const NEEDS_ACKNOWLEDGEMENT:ReadonlySet<MessageCategory>=new Set<MessageCategory>([
+ 'save-failed',
+]);
+
+/** 这个类别要不要等用户确认 ✓（类别没有就不等 ✓）。 */
+export function needsAcknowledgement(category:MessageCategory|undefined):boolean{
+ return category!==undefined&&NEEDS_ACKNOWLEDGEMENT.has(category);
+}
+
+/**
  * 通知的存放处 ✓。
  *
  * **为什么不是组件里的状态** ✓：失败可能发生在**应用挂载之前** ✓（启动期 ✓）

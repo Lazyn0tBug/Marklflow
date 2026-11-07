@@ -74,14 +74,15 @@
    */
   :where(.mf-message) {
     /*
-     * 主题开关 ✓：**只声明在这一层** ✓ ⇒ ⇒ 卡片继承它 ✓。
+     * 主题开关 ✓：**跟着宿主走** ✓ ⇒ ⇒ 宿主在根上设的 `color-scheme` 就是这一区的 ✓
+     * ⇒ ⇒ 宿主的明暗切换说了算 ✓ ⇒ ⇒ 这里不另设一套 ✓。
      *
-     * **特异性为零** ✓ ⇒ ⇒ 宿主在 `:root` 上设的 `color-scheme` 压得过它 ✓
-     * ⇒ ⇒ 宿主的主题开关说了算 ✓（`:root` 是 0,1,0 ⇒ ⇒ 压得住 0,0,0 ✓）。
+     * **为什么是 `inherit` 而不是 `light dark`** ✓：继承只发生在元素自己没有声明时 ✓
+     * ⇒ ⇒ 这一层若自己声明了 `light dark` ⇒ ⇒ 宿主的值就被挡住 ⇒ ⇒ 两边就分家了 ✓。
      *
-     * 宿主什么都不设时 ⇒ ⇒ 跟着系统的明暗偏好走 ✓ ⇒ ⇒ 独立样例才对 ✓。
+     * 宿主什么都不设 ⇒ ⇒ 落到 `normal` ⇒ ⇒ `light-dark()` 取浅色那支 ✓ ⇒ ⇒ 仍是可用的一份 ✓。
      */
-    color-scheme: light dark;
+    color-scheme: inherit;
     position: fixed;
     inset-block-end: var(--mf-message-inset-block);
     inset-inline-end: var(--mf-message-inset-inline);

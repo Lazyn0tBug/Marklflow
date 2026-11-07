@@ -18,4 +18,6 @@ export interface MessageAction{
  onClick:()=>void;
  /** 是不是主动作 ✓（主动作视觉上更重 ✓）。 */
  primary?:boolean;
+ /** 无障碍名 ✓（不给就等于上面的字 ✓ ⇒ ⇒ 看得见的短、无障碍名长 ✓ 时用它 ✓）。 */
+ ariaLabel?:Optional<string>;
 }

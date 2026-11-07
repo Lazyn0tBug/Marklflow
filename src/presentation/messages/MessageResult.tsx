@@ -39,10 +39,12 @@ export interface MessageResultProps{
  live?:Optional<'polite'|'assertive'|'off'>;
  /** 宿主给的额外类名 ✓。 */
  className?:Optional<string>;
+ /** 这一条的无障碍名 ✓（不给就没有名字 ✓）。 */
+ ariaLabel?:Optional<string>;
 }
 
 export function MessageResult(props:MessageResultProps):ReactNode{
- const {title,items,tone='info',onClose,closeLabel='关闭',actions=[],role,live,className}=props;
+ const {title,items,tone='info',onClose,closeLabel='关闭',actions=[],role,live,className,ariaLabel}=props;
  const list:MessageAction[]=[
   ...actions,
   ...(onClose?[{label:closeLabel,onClick:onClose}]:[]),
@@ -52,7 +54,8 @@ export function MessageResult(props:MessageResultProps):ReactNode{
   data-shape="result"
   data-tone={tone}
   {...(role?{role}:{})}
-  {...(live?{'aria-live':live}:{})}>
+  {...(live?{'aria-live':live}:{})}
+  {...(ariaLabel?{'aria-label':ariaLabel}:{})}>
   <p className="mf-message-result__title">{title}</p>
   <ul className="mf-message-result__list">
    {items.map((item,index)=>

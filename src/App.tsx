@@ -13,7 +13,8 @@ import { ReadingPreview } from './components/preview/ReadingPreview';
 import { A4PagePreview } from './components/preview/A4PagePreview';
 import { StatusBar } from './components/footer/StatusBar';
 import { ExportModal } from './components/export/ExportModal';
-import {NoticeSurface} from './components/notice/NoticeSurface';
+import {NoticeList} from './components/notice/NoticeList';
+import {MessageCard,MessageResult} from './presentation/messages';
 import {noticeStore,type NoticeTone} from './application/notices';
 import {reportFailure} from './core/platform/failures';
 import { RoadmapModal } from './components/roadmap/RoadmapModal';
@@ -316,7 +317,20 @@ export default function App() {
     catch(error){setImportResults([{name:'导入',status:'failed',message:String(error)}]);void reportFailure({category:'import-rejected',detail:String(error),cause:error})}
     finally{setImportBusy(false)}
   };
-  const importNotice=importBusy?<p role="status" className="px-4 py-2 text-xs bg-neutral-900 text-neutral-200">正在读取、校验并导入文件…</p>:importResults.length>0?<aside role={importResults.some(value=>value.status==='failed')?'alert':'status'} className="px-4 py-2 text-xs bg-neutral-900 text-neutral-200 max-h-32 overflow-y-auto wrap-anywhere shrink-0"><ul>{importResults.map((item,index)=><li key={index}>{item.name}：{item.message}</li>)}</ul><button className="mt-1 underline" onClick={()=>setImportResults([])}>关闭导入结果</button></aside>:null;
+  // 导入的忙碌与结果：**进右下消息区** ✓（设计 §3 ✓）⇒ ⇒ 归属还在这里 ✓
+  // ⇒ ⇒ 只是换了个形状与位置 ✓ ⇒ ⇒ 文字与动作照旧 ✓。
+  const importMessage=importBusy?
+   <MessageCard body="正在读取、校验并导入文件…" role="status"/>:
+   importResults.length>0?
+    <MessageResult
+     title="导入结果"
+     items={importResults.map(item=>({label:item.name,detail:item.message,failed:item.status==='failed'}))}
+     role={importResults.some(value=>value.status==='failed')?'alert':'status'}
+     closeLabel="关闭导入结果"
+     onClose={()=>setImportResults([])}/>:
+    null;
+  // 消息区：**两种界面状态共用一处** ✓ ⇒ ⇒ 通知与导入结果始终在同一个区域里 ✓。
+  const messageRegion=<div className="mf-message no-print" aria-label="工作台消息"><NoticeList/>{importMessage}</div>;
   const handleDeleteDoc=(id:string)=>{
     setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});
@@ -394,7 +408,7 @@ export default function App() {
   const handleToggleEditor=()=>{capturePosition();if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
   const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview&&syncScroll&&editorTextareaRef.current){pendingPreviewLine.current={documentId:currentDocId,line:editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current))};restorePreview.current=undefined}if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
-  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{importNotice}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportFiles={files=>{void handleImportFiles(files)}} importBusy={importBusy} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
+  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{messageRegion}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportFiles={files=>{void handleImportFiles(files)}} importBusy={importBusy} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
 
   const lines = currentDoc.markdown.split('\n');
   const charCount = currentDoc.markdown.length;
@@ -403,10 +417,10 @@ export default function App() {
 
   const tabBar=<DocumentTabs tabs={tabs.map(id=>{const value=sessions.read(id);return {id,title:value.document.meta.title,dirty:value.dirty}})} activeId={currentDocId} onActivate={selectDocument} onClose={id=>{void closeTab(id)}}/>;
 
+  // `color-scheme` 让原生控件与消息模块的明暗跟着应用的开关走 ✓（设计 §5 ✓）。
   return (
-    <div className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}>
+    <div className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`} style={{colorScheme:isDark?'dark':'light'}}>
       {recoveryNotice}
-      {importNotice}
       {/* 3-Zone Top Bar */}
       <TopBar
         sidebarOpen={sidebarOpen}
@@ -531,8 +545,8 @@ export default function App() {
         onNotice={pushNotice}
       />
 
-      {/* 通知面：多条并存 · 可关闭 · 四种语气 ✓。 */}
-      <NoticeSurface/>
+      {/* 消息区：通知与导入结果都在这里 ✓（设计 §3 ✓ ⇒ ⇒ 一个区域 ✓）。 */}
+      {messageRegion}
 
       {/* Version Roadmap & 1.0 Audit Matrix Modal */}
       <RoadmapModal

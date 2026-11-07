@@ -1,3 +1,10 @@
+/*
+ * 层序 ✓：**自己声明** ✓ ⇒ ⇒ 谁压过谁是写明的 ✓（设计 §5 ✓）。
+ *
+ * `mf-message` 放在 `base` 之后、`utilities` 之前 ✓ ⇒ ⇒ Tailwind 的预检压不过消息样式 ✓
+ * ⇒ ⇒ 工具类仍能微调它 ✓ ⇒ ⇒ 消息模块对自己的外观有所有权 ✓。
+ */
+@layer theme, base, mf-message, components, utilities;
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark,.dark *));
 

@@ -39,10 +39,12 @@ export interface MessageCardProps{
  live?:Optional<'polite'|'assertive'|'off'>;
  /** 宿主给的额外类名 ✓。 */
  className?:Optional<string>;
+ /** 这一条的无障碍名 ✓（不给就没有名字 ✓）。 */
+ ariaLabel?:Optional<string>;
 }
 
 export function MessageCard(props:MessageCardProps):ReactNode{
- const {tone='info',title,body,detail,actions=[],onClose,closeLabel='关闭',expanded=false,onToggleDetail,role,live,className}=props;
+ const {tone='info',title,body,detail,actions=[],onClose,closeLabel='关闭',expanded=false,onToggleDetail,role,live,className,ariaLabel}=props;
  const list:MessageAction[]=[
   ...actions,
   ...(onClose?[{label:closeLabel,onClick:onClose}]:[]),
@@ -52,7 +54,8 @@ export function MessageCard(props:MessageCardProps):ReactNode{
   data-shape="transient"
   data-tone={tone}
   {...(role?{role}:{})}
-  {...(live?{'aria-live':live}:{})}>
+  {...(live?{'aria-live':live}:{})}
+  {...(ariaLabel?{'aria-label':ariaLabel}:{})}>
   <MessagePanel title={title} body={body} detail={detail} expanded={expanded} onToggleDetail={onToggleDetail} actions={list}/>
  </div>;
 }

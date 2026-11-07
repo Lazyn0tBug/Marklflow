@@ -15,7 +15,7 @@ export function MessageActions({actions,label,before}:{actions:readonly MessageA
  return <div className="mf-message-actions" {...(label?{'aria-label':label}:{})}>
   {before}
   {actions.map((action,index)=>
-   <button key={`${index}-${action.label}`} type="button" className={action.primary?'mf-message-button mf-message-button--primary':'mf-message-button'} onClick={action.onClick}>{action.label}</button>)}
+   <button key={`${index}-${action.label}`} type="button" className={action.primary?'mf-message-button mf-message-button--primary':'mf-message-button'} {...(action.ariaLabel?{'aria-label':action.ariaLabel}:{})} onClick={action.onClick}>{action.label}</button>)}
  </div>;
 }
 
