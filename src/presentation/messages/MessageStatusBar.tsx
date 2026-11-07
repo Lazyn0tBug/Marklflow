@@ -41,10 +41,12 @@ export interface MessageStatusBarProps{
  className?:Optional<string>;
  /** 这一条的无障碍名 ✓（不给就没有名字 ✓）。 */
  ariaLabel?:Optional<string>;
+ /** 正在退场 ✓（渐隐往下沉 ✓ ⇒ ⇒ 组件不决定它什么时候没 ✓）。 */
+ leaving?:Optional<boolean>;
 }
 
 export function MessageStatusBar(props:MessageStatusBarProps):ReactNode{
- const {tone='info',title,body,detail,actions=[],onAcknowledge,acknowledgeLabel='知道了',expanded=false,onToggleDetail,role,live,className,ariaLabel}=props;
+ const {tone='info',title,body,detail,actions=[],onAcknowledge,acknowledgeLabel='知道了',expanded=false,onToggleDetail,role,live,className,ariaLabel,leaving}=props;
  const list:MessageAction[]=[
   ...actions,
   ...(onAcknowledge?[{label:acknowledgeLabel,onClick:onAcknowledge,primary:true}]:[]),
@@ -55,7 +57,8 @@ export function MessageStatusBar(props:MessageStatusBarProps):ReactNode{
   data-tone={tone}
   {...(role?{role}:{})}
   {...(live?{'aria-live':live}:{})}
-  {...(ariaLabel?{'aria-label':ariaLabel}:{})}>
+  {...(ariaLabel?{'aria-label':ariaLabel}:{})}
+  {...(leaving?{'data-leaving':'true'}:{})}>
   <MessagePanel title={title} body={body} detail={detail} expanded={expanded} onToggleDetail={onToggleDetail} actions={list}/>
  </div>;
 }

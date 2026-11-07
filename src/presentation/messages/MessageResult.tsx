@@ -41,10 +41,12 @@ export interface MessageResultProps{
  className?:Optional<string>;
  /** 这一条的无障碍名 ✓（不给就没有名字 ✓）。 */
  ariaLabel?:Optional<string>;
+ /** 正在退场 ✓（渐隐往下沉 ✓ ⇒ ⇒ 组件不决定它什么时候没 ✓）。 */
+ leaving?:Optional<boolean>;
 }
 
 export function MessageResult(props:MessageResultProps):ReactNode{
- const {title,items,tone='info',onClose,closeLabel='关闭',actions=[],role,live,className,ariaLabel}=props;
+ const {title,items,tone='info',onClose,closeLabel='关闭',actions=[],role,live,className,ariaLabel,leaving}=props;
  const list:MessageAction[]=[
   ...actions,
   ...(onClose?[{label:closeLabel,onClick:onClose}]:[]),
@@ -55,7 +57,8 @@ export function MessageResult(props:MessageResultProps):ReactNode{
   data-tone={tone}
   {...(role?{role}:{})}
   {...(live?{'aria-live':live}:{})}
-  {...(ariaLabel?{'aria-label':ariaLabel}:{})}>
+  {...(ariaLabel?{'aria-label':ariaLabel}:{})}
+  {...(leaving?{'data-leaving':'true'}:{})}>
   <p className="mf-message-result__title">{title}</p>
   <ul className="mf-message-result__list">
    {items.map((item,index)=>

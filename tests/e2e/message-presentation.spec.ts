@@ -35,9 +35,11 @@ test('the application keeps the message styles above the preflight',async({page}
  expect(style.border).toBe('1px');
  expect(style.padding).not.toBe('0px');
  expect(style.radius).not.toBe('0px');
- // 应用默认深色 ✓ ⇒ ⇒ 消息的底色也该是深色那支 ✓（#171717 ✓）
+ // 应用默认深色 ✓ ⇒ ⇒ 消息的底色也该是**深色那支且是半透明的** ✓
  // ⇒ ⇒ 只量边框会漏掉"模块一直是浅色"这件事 ✓ ⇒ ⇒ 这里量颜色 ✓。
- expect(style.background).toBe('rgb(23, 23, 23)');
+ // ⇒ ⇒ **底色那个数是深色那支的实数** ✓（浅色那支是 252 ✓ ⇒ ⇒ 这里量得到 ✓）
+ // ⇒ ⇒ **不透明度只要求它不是 1** ✓ ⇒ ⇒ 以后调透明度不必改这条断言 ✓。
+ expect(style.background).toMatch(/^rgba\(26, 26, 28, 0\.\d+\)$/);
 });
 
 test('the css entry follows the color scheme it is given',async({page})=>{
