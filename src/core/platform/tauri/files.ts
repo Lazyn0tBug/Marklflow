@@ -54,6 +54,13 @@ export async function selectNativeOpen():Promise<NativeSelection[]|undefined>{
 }
 export async function releaseNativeFile(key:string):Promise<void>{await invoke('release_native_file',{key})}
 export async function readNativeText(file:NativeSelection):Promise<string>{return z.string().parse(await invoke('read_native_text',{key:file.key}))}
+/**
+ * 问一句：**这个文件还是应用手上那一版吗** ✓（§3.1 ✓）。
+ *
+ * **只回一句是或不是** ✓ ⇒ ⇒ 摘要值不出原生侧 ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
+ * **答不了的时候给机器码** ✓ ⇒ ⇒ 应用侧据此记 null（"无法证明一致" ✓ §2.3 ✓）。
+ */
+export async function isNativeSynced(key:string):Promise<boolean>{return z.boolean().parse(await invoke('is_native_synced',{key}))}
 export interface NativeSaveTarget extends ByteSaveTarget {
  /** 授权的 key ✓ —— 路径只在原生侧可见 ✓，前端只拿得到它 ✓。 */
  key:string;

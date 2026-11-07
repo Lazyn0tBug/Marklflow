@@ -96,6 +96,11 @@ pub struct FileAccess(
 struct Grant {
     path: PathBuf,
     writable: bool,
+    /// **应用手上是哪个版本** ✓：读进来或写出去那一刻的字节摘要 ✓（§3.4 ✓）。
+    ///
+    /// **摘要只存在原生侧** ✓ ⇒ ⇒ 应用侧拿不到值 ✓ ⇒ ⇒ 只问一句 ✓
+    /// ⇒ ⇒ 这就是 `is_native_synced` 回答的那句 ✓。
+    digest: Option<String>,
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -164,7 +169,7 @@ impl FileAccess {
         self.0
             .lock()
             .map_err(internal_error)?
-            .insert(key.clone(), Grant { path, writable });
+            .insert(key.clone(), Grant { path, writable, digest: None });
         Ok(SelectedFile {
             key,
             name,
@@ -208,8 +213,54 @@ impl FileAccess {
             grants.remove(key);
         }
     }
+    /// 记下"应用手上是哪个版本" ✓：读进来或写出去那一刻的字节摘要 ✓（§3.4 ✓）。
+    ///
+    /// **记的是磁盘上那份的摘要** ✓ ⇒ ⇒ 回答"还是那一版吗"时比的是同一件事 ✓。
+    fn record_digest(&self, key: &str, digest: &str) -> Result<(), String> {
+        let mut grants = self.0.lock().map_err(internal_error)?;
+        let grant = grants.get_mut(key).ok_or("unknown-file-key")?;
+        grant.digest = Some(digest.to_owned());
+        Ok(())
+    }
+    /// **这个文件还是应用手上那一版吗** ✓（§3.1 ✓）。
+    ///
+    /// **答案在原生侧给** ✓ ⇒ ⇒ 应用侧既拿不到摘要、也不需要自己比 ✓（§3.4 ✓）。
+    /// **没有记过版本 ⇒ ⇒ 回答不了** ✓ ⇒ ⇒ 那是内部状态不可用 ✓ ⇒ ⇒ 不是"变了" ✓。
+    fn synced(&self, key: &str) -> Result<bool, String> {
+        let (path, digest) = {
+            let grants = self.0.lock().map_err(internal_error)?;
+            let grant = grants.get(key).ok_or("unknown-file-key")?;
+            let digest = grant
+                .digest
+                .clone()
+                .ok_or_else(|| "native-internal-failed".to_string())?;
+            (grant.path.clone(), digest)
+        };
+        // **比的是当前磁盘上那份** ✓ ⇒ ⇒ 外部改过就答"不是" ✓。
+        // **先看大小** ✓ ⇒ ⇒ 超过读上限的文件一定不是应用手上那一版 ✓
+        // ⇒ ⇒ 不必为了答一句话把它整个读进来 ✓。
+        let length = std::fs::metadata(&path).map_err(|e| io_error(&e))?.len();
+        if length > READ_LIMIT {
+            return Ok(false);
+        }
+        let bytes = std::fs::read(&path).map_err(|e| io_error(&e))?;
+        Ok(crate::hash::sha256_hex(&bytes) == digest)
+    }
 }
-pub fn read_text(path: &Path) -> Result<String, String> {
+/// **读到的内容与它的版本** ✓：一次读，两样东西 ✓。
+///
+/// **摘要算的就是应用拿到的��份字节** ✓ ⇒ ⇒ 记下来的就是"应用手上那一版" ✓
+/// ⇒ ⇒ 不是另读一遍 ✓（§3.4 ✓）。
+#[derive(Debug)]
+pub struct ReadContent {
+    /// 应用拿到的那份文本 ✓。
+    pub text: String,
+    /// 那份字节的摘要 ✓：**留在原生侧** ✓ ⇒ ⇒ 应用侧拿不到这个值 ✓。
+    pub digest: String,
+}
+
+/// **读原始字节** ✓：上限与失败原因照旧 ✓。
+pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
     let file = File::open(path).map_err(|e| io_error(&e))?;
     if !file.metadata().map_err(|e| io_error(&e))?.is_file() {
         return Err("not-a-file".into());
@@ -221,9 +272,21 @@ pub fn read_text(path: &Path) -> Result<String, String> {
     if bytes.len() as u64 > READ_LIMIT {
         return Err("file-too-large".into());
     }
-    // Match the Web TextDecoder: strict UTF-8, remove only an initial UTF-8 BOM.
+    Ok(bytes)
+}
+
+/// 字节按文本解 ✓：严格 UTF-8 ✓，只去开头的 BOM ✓（与 Web 的 TextDecoder 一致 ✓）。
+fn decode_text(bytes: Vec<u8>) -> Result<String, String> {
     let text = String::from_utf8(bytes).map_err(|_| "invalid-utf8".to_string())?;
     Ok(text.strip_prefix('\u{feff}').unwrap_or(&text).to_owned())
+}
+
+/// **读一份文件** ✓：文本与版本一起 ✓ ⇒ ⇒ 摘要与内容出自同一次读 ✓。
+pub fn read_content(path: &Path) -> Result<ReadContent, String> {
+    let bytes = read_bytes(path)?;
+    let digest = crate::hash::sha256_hex(&bytes);
+    let text = decode_text(bytes)?;
+    Ok(ReadContent { text, digest })
 }
 pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if bytes.len() > WRITE_LIMIT {
@@ -416,7 +479,12 @@ pub async fn read_native_text(
 ) -> Result<String, NativeFailure> {
     in_command_span(WebCommand::ReadNativeText, &webview, |started, cmd| {
         // 授权解析失败也是命令结果：早退路径同样记 operation_result，不留空白。
-        let outcome = access.path(&key, false).and_then(|path| read_text(&path));
+        let outcome = access.path(&key, false).and_then(|path| {
+            // **摘要算的就是应用拿到的这份字节** ✓ ⇒ ⇒ 记下的就是"应用手上那一版" ✓。
+            let content = read_content(&path)?;
+            access.record_digest(&key, &content.digest)?;
+            Ok(content.text)
+        });
         let elapsed = started.elapsed().as_millis();
         match outcome {
             Ok(text) => {
@@ -450,9 +518,12 @@ pub async fn write_native_bytes(
     bytes: Vec<u8>,
 ) -> Result<(), NativeFailure> {
     in_command_span(WebCommand::WriteNativeBytes, &webview, |started, cmd| {
-        let outcome = access
-            .path(&key, true)
-            .and_then(|path| commit_bytes(&path, &bytes));
+        let outcome = access.path(&key, true).and_then(|path| {
+            commit_bytes(&path, &bytes)?;
+            // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
+            access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
+            Ok(())
+        });
         let elapsed = started.elapsed().as_millis();
         match outcome {
             Ok(()) => {
@@ -464,6 +535,43 @@ pub async fn write_native_bytes(
                     elapsed_ms = elapsed,
                 );
                 Ok(())
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = cmd,
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
+}
+/// **问一句：这个文件还是应用手上那一版吗** ✓（§3.1 ✓）。
+///
+/// **只回一句是或不是** ✓ ⇒ ⇒ 摘要值不出原生侧 ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
+/// **应用侧拿到的就是这一个布尔** ✓ ⇒ ⇒ "无法证明"由应用侧记 null ✓（§2.3 ✓）。
+#[tauri::command]
+pub async fn is_native_synced(
+    webview: tauri::Webview,
+    access: tauri::State<'_, FileAccess>,
+    key: String,
+) -> Result<bool, NativeFailure> {
+    in_command_span(WebCommand::IsNativeSynced, &webview, |started, cmd| {
+        let outcome = access.synced(&key);
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(synced) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = cmd,
+                    synced,
+                    elapsed_ms = elapsed,
+                );
+                Ok(synced)
             }
             Err(code) => {
                 tracing::warn!(
@@ -703,12 +811,12 @@ mod tests {
         let mut file = File::create(&path).unwrap();
         file.write_all(&vec![b'a'; READ_LIMIT as usize]).unwrap();
         drop(file);
-        assert_eq!(read_text(&path).unwrap().len() as u64, READ_LIMIT);
+        assert_eq!(read_content(&path).unwrap().text.len() as u64, READ_LIMIT);
         let mut file = File::create(&path).unwrap();
         file.write_all(&vec![b'a'; READ_LIMIT as usize + 1])
             .unwrap();
         drop(file);
-        assert_eq!(read_text(&path).unwrap_err(), "file-too-large");
+        assert_eq!(read_content(&path).unwrap_err(), "file-too-large");
     }
 
     #[test]
@@ -716,13 +824,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("utf8.md");
         std::fs::write(&path, "\u{feff}中文🙂".as_bytes()).unwrap();
-        assert_eq!(read_text(&path).unwrap(), "中文🙂");
+        assert_eq!(read_content(&path).unwrap().text, "中文🙂");
         std::fs::write(&path, [0xE4, 0xB8]).unwrap();
-        assert_eq!(read_text(&path).unwrap_err(), "invalid-utf8");
+        assert_eq!(read_content(&path).unwrap_err(), "invalid-utf8");
         std::fs::write(&path, [0xC0, 0xAF]).unwrap();
-        assert_eq!(read_text(&path).unwrap_err(), "invalid-utf8");
+        assert_eq!(read_content(&path).unwrap_err(), "invalid-utf8");
         std::fs::write(&path, [0xEF, 0xBB, 0xBF, b'x', 0xEF, 0xBB, 0xBF]).unwrap();
-        assert_eq!(read_text(&path).unwrap(), "x\u{feff}");
+        assert_eq!(read_content(&path).unwrap().text, "x\u{feff}");
     }
 
     #[test]
@@ -737,7 +845,7 @@ mod tests {
         assert_eq!(std::fs::read(&new_path).unwrap(), b"new target");
         let empty_path = dir.path().join("empty.md");
         std::fs::write(&empty_path, b"").unwrap();
-        assert_eq!(read_text(&empty_path).unwrap(), "");
+        assert_eq!(read_content(&empty_path).unwrap().text, "");
         commit_bytes(&empty_path, b"").unwrap();
         assert_eq!(std::fs::read(&empty_path).unwrap(), b"");
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 3);
@@ -801,7 +909,7 @@ mod tests {
     fn a_missing_target_reads_as_target_missing() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gone.md");
-        assert_eq!(read_text(&path).unwrap_err(), "native-target-missing");
+        assert_eq!(read_content(&path).unwrap_err(), "native-target-missing");
     }
 
     #[test]
@@ -829,10 +937,55 @@ mod tests {
         );
     }
 
+    #[test]
+    fn synced_answers_yes_until_the_file_changes_underneath() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("version.md");
+        std::fs::write(&path, b"first").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        // **没读过 ⇒ ⇒ 答不了** ✓ ⇒ ⇒ 那不是"变了" ✓ ⇒ ⇒ 是内部状态不可用 ✓。
+        assert_eq!(
+            access.synced(&grant.key).unwrap_err(),
+            "native-internal-failed"
+        );
+        // 读过一次 ⇒ ⇒ 应用手上有了那一版 ✓ ⇒ ⇒ 答"是" ✓。
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+        assert!(access.synced(&grant.key).unwrap());
+        // **应用外改过** ⇒ ⇒ 答"不是" ✓ ⇒ ⇒ 应用据此提示"已变化" ✓（§5.2 ✓）。
+        std::fs::write(&path, b"second").unwrap();
+        assert!(!access.synced(&grant.key).unwrap());
+        // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ⇒ ⇒ 之后答"是" ✓。
+        commit_bytes(&path, b"third").unwrap();
+        access
+            .record_digest(&grant.key, &crate::hash::sha256_hex(b"third"))
+            .unwrap();
+        assert!(access.synced(&grant.key).unwrap());
+        // **不认识的 key** ✓ ⇒ ⇒ 稳定码 ✓。
+        assert_eq!(access.synced("not-a-key").unwrap_err(), "unknown-file-key");
+    }
+
+    #[test]
+    fn synced_reports_a_missing_file_by_its_own_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gone.md");
+        std::fs::write(&path, b"here").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+        std::fs::remove_file(&path).unwrap();
+        // **文件没了** ⇒ ⇒ 那是它自己的码 ✓ ⇒ ⇒ 界面能说"关联已失效" ✓（§8.5 ✓）。
+        assert_eq!(
+            access.synced(&grant.key).unwrap_err(),
+            "native-target-missing"
+        );
+    }
+
     #[cfg(unix)]
     #[test]
-    fn commit_bytes_preserves_target_permissions() {
-        use std::os::unix::fs::PermissionsExt;
+    fn commit_bytes_preserves_target_permissions() {        use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("mode.md");
         std::fs::write(&path, b"old").unwrap();

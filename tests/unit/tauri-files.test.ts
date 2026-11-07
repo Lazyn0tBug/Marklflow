@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import {listenNativeDrop,readNativeText,releaseNativeFile,selectNativeOpen,selectNativeSave} from '../../src/core/platform/tauri/files';
+import {isNativeSynced,listenNativeDrop,readNativeText,releaseNativeFile,selectNativeOpen,selectNativeSave} from '../../src/core/platform/tauri/files';
 
 const native=vi.hoisted(()=>({isTauri:vi.fn(),invoke:vi.fn()}));
 vi.mock('@tauri-apps/api/core',()=>native);
@@ -65,6 +65,19 @@ it('passes only the opaque key to read and release commands and validates read r
  expect(native.invoke).toHaveBeenNthCalledWith(2,'release_native_file',{key:selected.key});
  native.invoke.mockResolvedValue(42);
  await expect(readNativeText(selected)).rejects.toThrow();
+});
+it('asks the native side whether the file is still the version the app has',async()=>{
+ // **只回一句是或不是** ✓ ⇒ ⇒ 摘要值不出原生侧 ✓ ⇒ ⇒ 应用侧没有第二份事实 ✓（§3.4 ✓）。
+ native.invoke.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+ expect(await isNativeSynced(selected.key)).toBe(true);
+ expect(await isNativeSynced(selected.key)).toBe(false);
+ expect(native.invoke).toHaveBeenNthCalledWith(1,'is_native_synced',{key:selected.key});
+ // **回的不是布尔就是坏数据** ✓ ⇒ ⇒ 不能悄悄当真 ✓。
+ native.invoke.mockResolvedValueOnce('yes');
+ await expect(isNativeSynced(selected.key)).rejects.toThrow();
+ // **答不了的时候给机器码** ✓ ⇒ ⇒ 应用侧据此记 null ✓（§2.3 ✓）。
+ const failure=new Error('native state unavailable');native.invoke.mockRejectedValueOnce(failure);
+ await expect(isNativeSynced(selected.key)).rejects.toBe(failure);
 });
 it('selects a save target without writing until save, then reports saved only after native success',async()=>{
  native.invoke.mockResolvedValueOnce(selected).mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);

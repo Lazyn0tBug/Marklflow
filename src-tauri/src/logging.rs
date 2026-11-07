@@ -104,6 +104,10 @@ pub enum WebCommand {
     SelectNativeSave,
     ReadNativeText,
     WriteNativeBytes,
+    /// 问一句"这个文件还是应用手上那一版吗" ✓（§3.1 ✓）。
+    ///
+    /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    IsNativeSynced,
     ReleaseNativeFile,
     /// 产品形态的静默打印（D7 的入口）。
     ///
@@ -1329,6 +1333,7 @@ pub(crate) fn command_name(command: WebCommand) -> &'static str {
         WebCommand::SelectNativeSave => "select_native_save",
         WebCommand::ReadNativeText => "read_native_text",
         WebCommand::WriteNativeBytes => "write_native_bytes",
+        WebCommand::IsNativeSynced => "is_native_synced",
         WebCommand::ReleaseNativeFile => "release_native_file",
         WebCommand::PrintNativePdf => "print_native_pdf",
     }

@@ -1,5 +1,5 @@
 import {readTauriPlatformInfo} from '../../../src/core/platform/tauri/runtime';
-import {readNativeText,releaseNativeFile,selectNativeOpen,selectNativeSave} from '../../../src/core/platform/tauri/files';
+import {isNativeSynced,readNativeText,releaseNativeFile,selectNativeOpen,selectNativeSave} from '../../../src/core/platform/tauri/files';
 import {CANCELLED_NOTE,classifyError,describeSelection,previewText,type StepOutcome} from './tauri-native-io-probe-report';
 
 /**
@@ -61,6 +61,30 @@ async function releaseOpenKey(){
  return {step:'释放',status:'ok' as const,message:'已释放打开授权',data:{afterRelease}};
 }
 
+/**
+ * 问一句：**这个文件还是应用手上那一版吗** ✓（M4b 的原生取证 ✓）。
+ *
+ * **先读一次** ✓ ⇒ ⇒ 应用手上有了那一版 ✓ ⇒ ⇒ 紧接着问 ⇒ ⇒ 答"是" ✓。
+ * **再问一次** ✓ ⇒ ⇒ 用的是同一把 key ✓ ⇒ ⇒ 中间在应用外改过文件 ⇒ ⇒ 答"不是" ✓。
+ */
+let lastKey:string|undefined;
+
+async function askSynced(){
+ const files=await selectNativeOpen();
+ if(!files)return {step:'问一句',status:'cancelled' as const,message:CANCELLED_NOTE};
+ const file=files[0]!;
+ const text=await readNativeText(file);
+ lastKey=file.key;
+ const synced=await isNativeSynced(file.key);
+ return {step:'问一句',status:'ok' as const,message:synced?'刚读完就问：还是那一版':'刚读完就问：不是那一版（不应发生）',data:{preview:previewText(text),synced}};
+}
+
+async function askAgain(){
+ if(!lastKey)return {step:'再问一句',status:'cancelled' as const,message:'先做"问一句"那一步'};
+ const synced=await isNativeSynced(lastKey);
+ return {step:'再问一句',status:'ok' as const,message:synced?'还是那一版':'不是那一版（文件在应用外被改过）',data:{synced}};
+}
+
 const buttons:Record<string,()=>Promise<StepOutcome>>={
  环境:environment,
  '选择打开':chooseToOpen,
@@ -68,6 +92,8 @@ const buttons:Record<string,()=>Promise<StepOutcome>>={
  '选择保存':chooseToSave,
  写入:writeToSelected,
  释放:releaseOpenKey,
+ 问一句:askSynced,
+ 再问一句:askAgain,
 };
 
 for(const [name,run] of Object.entries(buttons)){
