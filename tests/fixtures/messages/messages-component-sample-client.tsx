@@ -1,6 +1,8 @@
 import {useState,type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {MessageCard,MessageResult,MessageStatusBar,type MessageTone} from '../../../src/presentation/messages';
+// 样式是**另一个入口** ✓：宿主自己引进它 ✓（这里引进是为了让样例自己站得住 ✓）。
+import '../../../src/presentation/messages/messages.css';
 
 /**
  * 消息组件的独立样例 ✓：**不碰工作台、不碰通知存储、不碰平台端口** ✓

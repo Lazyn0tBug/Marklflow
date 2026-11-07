@@ -1,11 +1,9 @@
-/*
- * 层序 ✓：**自己声明** ✓ ⇒ ⇒ 谁压过谁是写明的 ✓（设计 §5 ✓）。
- *
- * `mf-message` 放在 `base` 之后、`utilities` 之前 ✓ ⇒ ⇒ Tailwind 的预检压不过消息样式 ✓
- * ⇒ ⇒ 工具类仍能微调它 ✓ ⇒ ⇒ 消息模块对自己的外观有所有权 ✓。
- */
-@layer theme, base, mf-message, components, utilities;
 @import "tailwindcss";
+/*
+ * 消息样式：**引进 Tailwind 的 components 层** ✓ ⇒ ⇒ 层序是 Tailwind 定的 ✓
+ * ⇒ ⇒ 预检（base）压不过它 ✓ ⇒ ⇒ 工具类仍能微调它 ✓。
+ */
+@import "./presentation/messages/messages.css" layer(components);
 @custom-variant dark (&:where(.dark,.dark *));
 
 /* Workbench chrome. The document layer keeps its own tokens in styles/document.css. */

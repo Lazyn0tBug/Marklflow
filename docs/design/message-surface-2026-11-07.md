@@ -104,7 +104,7 @@
 
 同仓库提供明确的 CSS 和组件入口。样式与组件无需加载 Marklflow 会话、通知存储、日志或 Tauri。外部动作通过回调协作，无需单独发包或建立第二个消息 store。
 
-**样式入口的具体约定（2026-11-07 定）**：选择器一律 `mf-message*` 前缀 ⇒ ⇒ 不引用宿主任何类；令牌一律 `--mf-message-*` ⇒ ⇒ 模块给默认值 ⇒ ⇒ 宿主覆盖令牌或改 `color-scheme` 即换主题 ⇒ ⇒ 不另建配色体系；全部规则收在 `@layer mf-message` ⇒ ⇒ 接入时由应用入口登记层序 `@layer theme, base, mf-message, components, utilities` ⇒ ⇒ 模块层位于预检之后、工具类之前 ⇒ ⇒ 预检压不过它、工具类仍能微调它 ⇒ ⇒ 谁压过谁是写明的，不是导入顺序的偶然；形状与语气用 `data-shape` / `data-tone` 表达 ⇒ ⇒ 视觉归样式、组件只出结构 ⇒ ⇒ 纯 HTML 样例能被同一份 CSS 正确渲染；`light-dark()` 与 `color-mix()` 放在 `@supports` 里，`@starting-style` 与 `:has()` 只做增强 ⇒ ⇒ 不支持的内核拿到的仍是可用的一份（Tauri 的 macOS 走 WKWebView、Linux 走 WebKitGTK ⇒ ⇒ `@scope` 那类"整块丢弃"的做法不作为隔离手段 ⇒ ⇒ 隔离靠命名空间与令牌）。
+**样式入口的具体约定（2026-11-07 定）**：选择器一律 `mf-message*` 前缀 ⇒ ⇒ 不引用宿主任何类；令牌一律 `--mf-message-*` ⇒ ⇒ 模块给默认值 ⇒ ⇒ 宿主覆盖令牌或改 `color-scheme` 即换主题 ⇒ ⇒ 不另建配色体系；全部规则收在 `@layer mf-message` ⇒ ⇒ **层序由 Tailwind 定** ⇒ ⇒ 应用样式入口用 `@import "./presentation/messages/messages.css" layer(components);` 引进它 ⇒ ⇒ 它落在预检之上、工具类之下 ⇒ ⇒ 预检压不过它、工具类仍能微调它 ⇒ ⇒ **不要自己写层序声明** ⇒ ⇒ Tailwind 的插件会把它整条丢掉（实测：在 `@import` 前后都丢 ✓）⇒ ⇒ 层只能这样挂，不能靠声明改；**样式入口只有一个主人** ⇒ ⇒ 组件入口不 import 它 ⇒ ⇒ 两处都引会出两份副本（实测 ✓）⇒ ⇒ 独立样例自己引（实测 ✓）；形状与语气用 `data-shape` / `data-tone` 表达 ⇒ ⇒ 视觉归样式、组件只出结构 ⇒ ⇒ 纯 HTML 样例能被同一份 CSS 正确渲染；`light-dark()` 与 `color-mix()` 放在 `@supports` 里，`@starting-style` 与 `:has()` 只做增强 ⇒ ⇒ 不支持的内核拿到的仍是可用的一份（Tauri 的 macOS 走 WKWebView、Linux 走 WebKitGTK ⇒ ⇒ `@scope` 那类"整块丢弃"的做法不作为隔离手段 ⇒ ⇒ 隔离靠命名空间与令牌）。
 
 ## 6. 现有界面的迁移门槛
 
@@ -121,6 +121,8 @@
 | 导出面板内的兼容性提示 | **保留** ✓ | 它属于对话框自己的上下文 ⇒ ⇒ 移出去就改了操作语义 ⇒ ⇒ 本版不动 ✓ |
 
 迁移带来的一处前提：**应用根节点要声明 `color-scheme`** ✓ ⇒ ⇒ 消息模块的明暗才跟着应用的开关走 ✓ ⇒ ⇒ 独立样例自己声明 ✓ ⇒ ⇒ 模块一律继承 ✓。
+
+**接进来时踩到的一件事（2026-11-07 实测）**：消息样式若落在最低那一层 ⇒ ⇒ Tailwind 的预检压过它 ⇒ ⇒ **卡片没有边框、没有内边距、按钮没有圆角** ✓ ⇒ ⇒ 而独立样例（没有 Tailwind）看不出来 ✓ ⇒ ⇒ 只看样例会漏 ✓ ⇒ ⇒ 应用里要有断言量实际样式 ✓（`tests/e2e/message-presentation.spec.ts` 的那条 ✓ ⇒ ⇒ 故意把引进位置放错 ⇒ ⇒ 它会红 ✓ ⇒ ⇒ 有牙齿 ✓）。
 
 ## 7. 本版实施与验收
 

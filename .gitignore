@@ -25,3 +25,7 @@ src-tauri/gen/
 
 # Staged desktop CI bundles and artifact manifests.
 desktop-artifacts/
+
+# 代码知识图谱：本地 SQLite 库，含绝对路径与结构元数据，不入库。
+# （工具自己也会在目录里放一份 .gitignore，这里再挡一道，让意图对读仓库的人也是显式的。）
+.code-review-graph/

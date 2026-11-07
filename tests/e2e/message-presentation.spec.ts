@@ -24,6 +24,19 @@ test('the css entry alone renders the three shapes',async({page,pageErrors})=>{
  expect(pageErrors).toEqual([]);
 });
 
+test('the application keeps the message styles above the preflight',async({page})=>{
+ // **在应用里量** ✓ ⇒ ⇒ 样例页没有 Tailwind ⇒ ⇒ 压不住预检的问题只有在这里才现形 ✓。
+ await page.goto('/');
+ await page.evaluate(()=>{setTimeout(()=>{throw new Error('样式检查用的错误')},0);});
+ const card=page.getByRole('status',{name:'通知'}).first();
+ await expect(card).toBeVisible();
+ const style=await card.evaluate(element=>{const computed=getComputedStyle(element);return {border:computed.borderTopWidth,padding:computed.paddingTop,radius:computed.borderTopLeftRadius}});
+ // 预检把 `*` 的边框与内边距清成 0 ✓ ⇒ ⇒ 消息的层若在预检之下 ⇒ ⇒ 这里就是 0 ✓。
+ expect(style.border).toBe('1px');
+ expect(style.padding).not.toBe('0px');
+ expect(style.radius).not.toBe('0px');
+});
+
 test('the css entry follows the color scheme it is given',async({page})=>{
  await page.emulateMedia({colorScheme:'dark'});
  await page.goto(origin+'/tests/fixtures/messages/messages-css-sample.html');
