@@ -1,4 +1,4 @@
-import {useEffect,useRef,useSyncExternalStore,type ReactNode} from 'react';
+import {useCallback,useEffect,useRef,useSyncExternalStore,type ReactNode,type RefObject} from 'react';
 import {needsAcknowledgement,noticeStore,type Notice} from '../../application/notices';
 import {MessageCard,MessageStatusBar,MESSAGE_LEAVE_MS} from '../../presentation/messages';
 
@@ -18,6 +18,9 @@ import {MessageCard,MessageStatusBar,MESSAGE_LEAVE_MS} from '../../presentation/
  *
  * **关掉之后焦点要落到还留着的东西上** ✓（设计 §9 ✓）⇒ ⇒ 那个按钮没了之后
  * ⇒ ⇒ 焦点会掉回 body ⇒ ⇒ 键盘的人就丢了位置 ⇒ ⇒ 这里把它接回去 ✓。
+ *
+ * **两条消失的路都走这里** ✓：手动关 ✓ 与定时走 ✓ ⇒ ⇒ 定时走的那条也要接住焦点 ✓
+ * ⇒ ⇒ 否则键盘的人放着不动的消息也会把位置丢掉 ✓。
  */
 
 /**
@@ -34,9 +37,10 @@ function NoticeItem({notice,onDismiss}:{notice:Notice;onDismiss:(notice:Notice)=
  useEffect(()=>{
   // 等确认的那条不自己走 ✓ ⇒ ⇒ 只有一次告知才定时 ✓。
   if(manual)return;
-  const timer=setTimeout(()=>noticeStore.dismiss(notice.id),10000);
+  // **定时走的那条也走同一条路** ✓ ⇒ ⇒ 焦点由外面接住 ✓ ⇒ ⇒ 这里不自己动存储 ✓。
+  const timer=setTimeout(()=>onDismiss(notice),10000);
   return()=>clearTimeout(timer);
- },[notice.id,manual]);
+ },[notice.id,manual,onDismiss]);
  useEffect(()=>{
   // 退场完了才真的收走 ✓ ⇒ ⇒ 退场动画期间它还在列表里 ✓。
   if(!notice.leaving)return;
@@ -63,13 +67,16 @@ function NoticeItem({notice,onDismiss}:{notice:Notice;onDismiss:(notice:Notice)=
   actions={[{label:'关闭',ariaLabel:'关闭通知',onClick:()=>onDismiss(notice)}]}/>;
 }
 
-export function NoticeList():ReactNode{
+export function NoticeList({regionRef}:{regionRef:RefObject<HTMLDivElement|null>}):ReactNode{
  const notices=useSyncExternalStore(noticeStore.subscribe,noticeStore.list,noticeStore.list);
  /*
-  * 关掉的时候把两样东西抓住 ✓：**是哪一条** ✓ 与 **它所在的区域** ✓。
-  * 区域要**在按钮还在的时候**抓 ✓ ⇒ ⇒ 按钮被移除之后它就找不到了 ✓。
+  * 关掉的时候只记住**是哪一条** ✓。
+  *
+  * **区域不在这儿抓** ✓ ⇒ ⇒ 区域是外层那个一直都在的元素 ✓ ⇒ ⇒ 事后也能拿到 ✓
+  * ⇒ ⇒ **不从焦点反推区域** ✓ ⇒ ⇒ 平台在点击后不聚焦按钮时（macOS 的 WebKit ✓）
+  * ⇒ ⇒ 焦点仍是 body ✓ ⇒ ⇒ 那样就找不到区域 ✓ ⇒ ⇒ 焦点接不住 ✓。
   */
- const closing=useRef<{id:string;region:HTMLElement|null}|null>(null);
+ const closing=useRef<{id:string}|null>(null);
  useEffect(()=>{
   const pending=closing.current;
   if(!pending)return;
@@ -78,14 +85,18 @@ export function NoticeList():ReactNode{
   closing.current=null;
   // 焦点还在别处（用户已经自己移走了）⇒ ⇒ 不抢 ✓。
   if(document.activeElement&&document.activeElement!==document.body)return;
-  const next=pending.region?.querySelector<HTMLElement>('.mf-message-button');
+  const region=regionRef.current;
+  const next=region?.querySelector<HTMLElement>('.mf-message-button');
   // 还有控件就落到控件上 ✓ ⇒ ⇒ 没有就落到区域本身 ✓（它可编程聚焦 ✓）。
-  (next??pending.region)?.focus();
- },[notices]);
- const dismiss=(notice:Notice):void=>{
-  const active=document.activeElement instanceof HTMLElement?document.activeElement:null;
-  closing.current={id:notice.id,region:active?.closest<HTMLElement>('.mf-message')??null};
+  (next??region)?.focus();
+ },[notices,regionRef]);
+ /*
+  * **引用要稳** ✓ ⇒ ⇒ 计时器依赖它 ✓ ⇒ ⇒ 引用一变，计时器就重置 ✓
+  * ⇒ ⇒ 通知一来，那条就永远不走 ✓ ⇒ ⇒ 所以这里不带依赖 ✓。
+  */
+ const dismiss=useCallback((notice:Notice):void=>{
+  closing.current={id:notice.id};
   noticeStore.dismiss(notice.id);
- };
+ },[]);
  return <>{notices.map(notice=><NoticeItem key={notice.id} notice={notice} onDismiss={dismiss}/>)}</>;
 }

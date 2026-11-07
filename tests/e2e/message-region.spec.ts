@@ -53,6 +53,34 @@ test('closing a message moves the focus to a control that remains',async({page})
  await expect(page.getByRole('button',{name:'关闭通知'})).toBeFocused();
 });
 
+test('closing a message keeps the focus when the platform does not focus the button',async({page})=>{
+ await page.goto('/');
+ await page.evaluate(()=>{setTimeout(()=>{throw new Error('一')},0);setTimeout(()=>{throw new Error('二')},10);});
+ await expect(notice(page)).toHaveCount(2);
+ const close=page.getByRole('button',{name:'关闭通知'}).first();
+ // **程序化点击** ✓ ⇒ ⇒ 焦点不动 ✓ ⇒ ⇒ 这就是 macOS 上点按钮的样子 ✓
+ // ⇒ ⇒ （Chromium 用鼠标点会聚焦按钮 ✓ ⇒ ⇒ 那样就测不到这一条 ✓）。
+ await close.evaluate(button=>(button as HTMLElement).click());
+ await expect(notice(page)).toHaveCount(1);
+ // 关掉的那个没了 ⇒ ⇒ 焦点落到还留着的那个上 ✓ ⇒ ⇒ 区域不是从焦点反推的 ✓。
+ await expect(page.getByRole('button',{name:'关闭通知'})).toBeFocused();
+});
+
+test('a message that times out does not drop the focus',async({page})=>{
+ await page.goto('/');
+ await page.waitForSelector('[data-render-state="ready"]',{timeout:30000});
+ await page.evaluate(()=>{setTimeout(()=>{throw new Error('定时消失')},0);});
+ const card=page.getByRole('status',{name:'通知'}).first();
+ await expect(card).toBeVisible();
+ const close=page.getByRole('button',{name:'关闭通知'}).first();
+ await close.focus();
+ await expect(close).toBeFocused();
+ // **十秒后它自己走** ✓ ⇒ ⇒ 定时走的那条也要接住焦点 ✓ ⇒ ⇒ 键盘的人不能丢位置 ✓。
+ await expect(card).toHaveCount(0,{timeout:20000});
+ // 落回区域本身 ✓ ⇒ ⇒ 它可编程聚焦 ✓（`tabIndex={-1}` ✓）。
+ await expect.poll(async()=>page.evaluate(()=>document.activeElement?.className??'')).toContain('mf-message');
+});
+
 test('a closing message fades out before it is gone',async({page})=>{
  await page.goto('/');
  await page.evaluate(()=>{setTimeout(()=>{throw new Error('退场检查')},0);});

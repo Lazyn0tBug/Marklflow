@@ -98,6 +98,8 @@ export default function App() {
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  /** 消息区域 ✓：通知列表要知道焦点该落回哪儿 ✓ ⇒ ⇒ 区域由这里给它 ✓。 */
+  const messageRegionRef = useRef<HTMLDivElement | null>(null);
   const pendingPreviewLine=useRef<{documentId:string;line:number}|undefined>(undefined);
   const previewLine=useRef(1);
   const lastEditorGeometry=useRef<EditorGeometry>({lineHeight:24,paddingTop:12});
@@ -336,7 +338,8 @@ export default function App() {
     null;
   // 消息区：**两种界面状态共用一处** ✓ ⇒ ⇒ 通知与导入结果始终在同一个区域里 ✓。
   // `tabIndex={-1}` ⇒ ⇒ 消息都收走后，焦点有个落点 ✓（设计 §9 ✓）。
-  const messageRegion=<div className="mf-message no-print" tabIndex={-1} aria-label="工作台消息">{demoMessages.demos.map(demo=><DemoMessageView key={demo.id} demo={demo} onDismiss={demoMessages.dismiss}/>)}<NoticeList/>{importMessage}</div>;
+  // **区域由这里交下去** ✓ ⇒ ⇒ 通知列表不必从焦点反推它 ✓ ⇒ ⇒ 平台点击后不聚焦按钮时也能拿到 ✓。
+  const messageRegion=<div ref={messageRegionRef} className="mf-message no-print" tabIndex={-1} aria-label="工作台消息">{demoMessages.demos.map(demo=><DemoMessageView key={demo.id} demo={demo} onDismiss={demoMessages.dismiss}/>)}<NoticeList regionRef={messageRegionRef}/>{importMessage}</div>;
   const handleDeleteDoc=(id:string)=>{
     setActionError('');const pending=pendingSaves.current.get(id);if(pending)clearTimeout(pending.timer);pendingSaves.current.delete(id);
     deleteDocument(id).then(()=>{removeSession(id);setDocuments(previous=>previous.filter(value=>value.id!==id))}).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});
