@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-11-07T06:37:25+00:00",
+  "capturedAt": "2026-11-07T08:20:00+00:00",
   "reviewBase": "508282e453e2b1af940ba374841bb072e0456535",
-  "validatedCodeCommit": "1da8b1fbc84df4c7a384ceb815a432f098d91df2",
+  "validatedCodeCommit": "a8922b6",
   "branch": "local-document",
-  "scope": "S1-S4 of the message surface: independent css entry, three pure presentation components with standalone samples, application adoption, closeout. No push, no merge, no tag move, no dependency or lockfile change.",
+  "scope": "S1-S4 of the message surface: independent css entry, three pure presentation components with standalone samples, application adoption, closeout, the visual page, and the engine floor the build needs. No push, no merge, no tag move, no dependency or lockfile change.",
   "design": "docs/design/message-surface-2026-11-07.md",
   "checks": {
     "typecheck": "4 profiles + 283 managed sources/configs covered",
@@ -116,17 +116,5 @@
     "the review and the test execution were done by the main agent: AGENTS.md asks for the gpt-6-luna subagent, which is not available in this environment",
     "the message module carries its own visual language by design, so it wins over Tailwind utilities; the host adjusts it through the --mf-message-* tokens",
     "the message visual page ships in the workbench chrome: it is a review aid, not a product feature"
-  ],
-  "newEndToEnd": [
-    "tests/e2e/message-presentation.spec.ts: the css entry alone renders the three shapes",
-    "tests/e2e/message-presentation.spec.ts: the application keeps the message styles above the preflight",
-    "tests/e2e/message-presentation.spec.ts: the css entry follows the color scheme it is given",
-    "tests/e2e/message-presentation.spec.ts: the detail toggle opens with the keyboard",
-    "tests/e2e/message-presentation.spec.ts: the pure components hand the callbacks back to the caller",
-    "tests/e2e/message-region.spec.ts: the region stays inside a narrow window and does not push the workbench",
-    "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
-    "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
-    "tests/e2e/message-region.spec.ts: the visual page surfaces a shape in the real region",
-    "tests/e2e/message-region.spec.ts: the message region follows the workbench theme switch"
   ]
 }
