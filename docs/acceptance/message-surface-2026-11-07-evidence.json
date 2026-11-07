@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-11-07T07:55:56+00:00",
+  "capturedAt": "2026-11-07T08:20:30+00:00",
   "reviewBase": "c78df46030a333468db94dae84a95e09e88493fa",
-  "validatedCodeCommit": "fe3aaf5",
+  "validatedCodeCommit": "56dcbbc",
   "branch": "local-document",
-  "scope": "The visual round of the message surface: roomier cards, a translucent surface, an exit animation, a dismissal that takes two steps, a visual page that behaves like the product, and the css minifier the modern features need. Plus one layering fix the full end to end run found. No push, no merge, no tag move, no dependency or lockfile change.",
+  "scope": "The visual round of the message surface: roomier cards, a translucent surface, an exit animation, a dismissal that takes two steps, a visual page that behaves like the product, and the css minifier the modern features need. Plus one layering fix the full end to end run found, and three defects the delta review of that round found: the focus after a message goes away, the same on a platform that does not focus a button when it is clicked, and a leaving message that still took clicks. No push, no merge, no tag move, no dependency or lockfile change.",
   "design": "docs/design/message-surface-2026-11-07.md",
   "checks": {
     "typecheck": "4 profiles + 286 managed sources/configs covered",
@@ -16,7 +16,7 @@
     "lint": "passed",
     "unitTests": 604,
     "productionBuild": "passed",
-    "chromiumE2E": 171,
+    "chromiumE2E": 174,
     "e2eSkipped": 1,
     "e2eSkippedReason": "pre-existing fixme: keeps flow/A4 cache entries independent and invalidates a changed math configuration",
     "newEndToEnd": [
@@ -28,6 +28,9 @@
       "tests/e2e/message-region.spec.ts: the region stays inside a narrow window and does not push the workbench",
       "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
       "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
+      "tests/e2e/message-region.spec.ts: closing a message keeps the focus when the platform does not focus the button",
+      "tests/e2e/message-region.spec.ts: a message that times out does not drop the focus",
+      "tests/e2e/message-region.spec.ts: a leaving message does not take clicks",
       "tests/e2e/message-region.spec.ts: a closing message fades out before it is gone",
       "tests/e2e/message-region.spec.ts: the visual page surfaces a shape in the real region (against the dev server)",
       "tests/e2e/message-region.spec.ts: the visual page dismisses a transient message on its own (against the dev server)",
@@ -132,6 +135,27 @@
       "cause": "the region sat above the dialogs (60 against 50); the region was narrow enough to miss them until the card grew, and then the import result landed on the button",
       "fix": "the region now sits below the dialogs and above the top bar, which is where the application keeps its overlays; the dialog is modal and owns the screen",
       "guard": "tests/e2e/message-region.spec.ts checks the point of the confirm button; the layer was put back the way it was and the test does fail that way"
+    },
+    {
+      "id": "the focus was lost when a message timed out",
+      "symptom": "a keyboard user who tabbed into a message and left it alone lost their place when it timed out after ten seconds",
+      "cause": "the timer called the store directly, so the list never learned the message was going away and never moved the focus; the button that had the focus was removed with it",
+      "fix": "the timer goes through the same dismiss path as the close button; the callback it depends on is stable, so the timer is not reset whenever a notice arrives",
+      "guard": "tests/e2e/message-region.spec.ts waits for the ten seconds and asks where the focus is now"
+    },
+    {
+      "id": "the focus was lost when a message was closed on a platform that does not focus buttons",
+      "symptom": "closing a message dropped the focus to the body on macOS, where a click does not focus a button",
+      "cause": "the region was derived from the focused element, and on that platform the focused element is still the body after a click, so there was no region to hand the focus back to",
+      "fix": "the region is the element the workbench already owns, so it is handed down instead of being guessed from the focus",
+      "guard": "tests/e2e/message-region.spec.ts clicks the button programmatically, which moves no focus, and is what a click on macOS looks like to the page; it fails when the fix is taken out"
+    },
+    {
+      "id": "a leaving message still took clicks",
+      "symptom": "an invisible message held the clicks in that corner of the screen for the two hundred milliseconds its exit takes",
+      "cause": "the leaving rule set the opacity and the offset but not the pointer events",
+      "fix": "the leaving rule also turns the pointer events off",
+      "guard": "tests/e2e/message-region.spec.ts reads the computed pointer events of the card while it is leaving"
     }
   ],
   "openItems": [
@@ -150,7 +174,7 @@
     "visual check against the 2026-11-07 prototype: the prototype files are on another host and are not archived in the repository",
     "readers and screen readers: only roles, names and keyboard order are asserted, no assistive technology was run",
     "physical print: the region carries no-print, no printed output was inspected",
-    "WKWebView on macOS and WebKitGTK on Linux: only Chromium was run; the declared floor is Safari 17.5, older WebKitGTK is out of scope",
+    "WKWebView on macOS and WebKitGTK on Linux: only Chromium was run; the declared floor is Safari 17.5, older WebKitGTK is out of scope. One difference found there, a click that does not focus the button, is now covered by construction and by an assertion that reproduces it in Chromium; the rest of the platform differences are unverified",
     "engines below the declared floor: the module carries no fallback for them by decision",
     "remote CI, other browsers, Tauri desktop",
     "the two kept entries and the business migration of their ownership",
