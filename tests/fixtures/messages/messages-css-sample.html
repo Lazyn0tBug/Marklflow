@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>消息样式样例（只加载 CSS）</title>
+<!-- 这一页只加载这一份样式表 ✓ ⇒ ⇒ 没有 Tailwind、没有宿主样式 ✓ ⇒ ⇒ 看到的都是 messages.css 给的 ✓。 -->
+<link rel="stylesheet" href="../../../src/presentation/messages/messages.css">
+</head>
+<body>
+<h1>消息样式样例</h1>
+<p>这一页只有一份样式表：<code>messages.css</code>。下面三种形状都是静态标记，没有脚本。</p>
+<div class="mf-message" data-sample-region>
+ <div class="mf-message-card" data-shape="transient" data-tone="info">
+  <div class="mf-message-card__content">
+   <p class="mf-message-card__text">导出完成，文件已保存。</p>
+  </div>
+  <div class="mf-message-card__actions">
+   <button type="button" class="mf-message-button mf-message-card__close" aria-label="关闭通知">关闭</button>
+  </div>
+ </div>
+ <div class="mf-message-card" data-shape="persistent" data-tone="error">
+  <div class="mf-message-card__content">
+   <p class="mf-message-card__title">保存失败</p>
+   <p class="mf-message-card__text">内容仍在工作区里，存进去才算完。</p>
+   <div class="mf-message-card__detail" hidden>
+    <p class="mf-message-card__detail-text">诊断 id：e-1</p>
+   </div>
+  </div>
+  <div class="mf-message-card__actions">
+   <button type="button" class="mf-message-button" aria-expanded="false">详情</button>
+   <button type="button" class="mf-message-button mf-message-card__close">知道了</button>
+  </div>
+ </div>
+ <div class="mf-message-result" data-shape="result">
+  <p class="mf-message-result__title">导入结果</p>
+  <ul class="mf-message-result__list">
+   <li>第一章.md</li>
+   <li>一个非常非常长的文件名，长到一行放不下必须换行才能读完.md</li>
+   <li>第三章.md</li>
+  </ul>
+ </div>
+</div>
+</body>
+</html>

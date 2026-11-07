@@ -1,0 +1,292 @@
+/*
+ * 消息的独立样式入口（设计 §5、§7 S-1）。
+ *
+ * **这份 CSS 自己站得住** ✓：不 import 任何东西 ✓ ⇒ ⇒ 只加载它就能看见三种形状 ✓
+ * ⇒ ⇒ 因此它把用到的每个属性都写全 ✓（按钮、列表、标题都自己兜住 ✓ ⇒ ⇒ 不指望宿主的重置 ✓）。
+ *
+ * **不依赖工作台** ✓：不引用宿主任何一个类 ✓ ⇒ ⇒ 令牌只有自己这一套 ✓（`--mf-message-*` ✓）
+ * ⇒ ⇒ 宿主改外观 ⇒ 覆盖令牌或改 `color-scheme` ✓，不改这里 ✓。
+ *
+ * **层是声明出来的** ✓：全部收在 `@layer mf-message` 里 ✓ ⇒ ⇒ 谁压过谁不靠导入顺序 ✓
+ * ⇒ ⇒ 接入时由应用入口登记层序 ✓（`@layer theme, base, mf-message, components, utilities` ✓）。
+ *
+ * **形状与语气是数据属性** ✓：`data-shape` / `data-tone` ✓ ⇒ ⇒ 视觉归这份 CSS ✓
+ * ⇒ ⇒ React 只出结构 ✓ ⇒ ⇒ 纯 HTML 样例也能被同一份 CSS 正确渲染 ✓。
+ *
+ * **现代特性都留了退路** ✓：`light-dark()` 与 `color-mix()` 放在 `@supports` 里 ✓
+ * ⇒ ⇒ 老内核拿到的仍是可用的一份 ✓（Tauri 的 macOS 走 WKWebView、Linux 走 WebKitGTK ✓）。
+ *
+ * **特异性策略** ✓：几何（位置、尺寸、边距）用 `:where()` ✓ ⇒ ⇒ 宿主要接管不必改这里 ✓；
+ * 文字与语气用类选择器 ✓ ⇒ ⇒ 压得住宿主的元素选择器 ✓（`p { margin: 1rem }` 那种 ✓）。
+ */
+
+@layer mf-message {
+
+  /* ---------- 令牌 ---------- */
+
+  /* 三个入口都带上令牌 ✓ ⇒ ⇒ 单独用一张卡片也成立 ✓。 */
+  .mf-message,
+  .mf-message-card,
+  .mf-message-result {
+    --mf-message-surface: #ffffff;
+    --mf-message-ink: #171717;
+    --mf-message-muted: #525252;
+    --mf-message-line: #d4d4d4;
+    --mf-message-accent: #0d9488;
+    --mf-message-warn: #b45309;
+    --mf-message-danger: #b91c1c;
+
+    --mf-message-width: 24rem;
+    --mf-message-gap: 0.5rem;
+    --mf-message-pad: 0.75rem;
+    --mf-message-radius: 0.5rem;
+    --mf-message-size: 0.75rem;
+    --mf-message-leading: 1.5;
+    --mf-message-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --mf-message-inset-inline: 1rem;
+    --mf-message-inset-block: 2.5rem;
+    --mf-message-z: 60;
+  }
+
+  /*
+   * 明暗两套值 ✓：**只能整块覆盖** ✓ ⇒ ⇒ 自定义属性里不能靠"第二条声明"兜底 ✓
+   * ⇒ ⇒ 老内核拿到上面那套浅色值 ✓ ⇒ ⇒ 仍然可用 ✓。
+   */
+  @supports (color: light-dark(#ffffff, #000000)) {
+    .mf-message,
+    .mf-message-card,
+    .mf-message-result {
+      --mf-message-surface: light-dark(#ffffff, #171717);
+      --mf-message-ink: light-dark(#171717, #f5f5f5);
+      --mf-message-muted: light-dark(#525252, #a3a3a3);
+      --mf-message-line: light-dark(#d4d4d4, #404040);
+      --mf-message-accent: light-dark(#0d9488, #2dd4bf);
+      --mf-message-warn: light-dark(#b45309, #fbbf24);
+      --mf-message-danger: light-dark(#b91c1c, #f87171);
+    }
+  }
+
+  /* ---------- 消息区 ---------- */
+
+  /*
+   * 位置与尺寸用 `:where()` ✓ ⇒ ⇒ 宿主要挪位置、不必改这里 ✓
+   * ⇒ ⇒ 优先级最低 ⇒ ⇒ 宿主自己的类与工具类说了算 ✓。
+   */
+  :where(.mf-message) {
+    /*
+     * 主题开关 ✓：**只声明在这一层** ✓ ⇒ ⇒ 卡片继承它 ✓。
+     *
+     * **特异性为零** ✓ ⇒ ⇒ 宿主在 `:root` 上设的 `color-scheme` 压得过它 ✓
+     * ⇒ ⇒ 宿主的主题开关说了算 ✓（`:root` 是 0,1,0 ⇒ ⇒ 压得住 0,0,0 ✓）。
+     *
+     * 宿主什么都不设时 ⇒ ⇒ 跟着系统的明暗偏好走 ✓ ⇒ ⇒ 独立样例才对 ✓。
+     */
+    color-scheme: light dark;
+    position: fixed;
+    inset-block-end: var(--mf-message-inset-block);
+    inset-inline-end: var(--mf-message-inset-inline);
+    z-index: var(--mf-message-z);
+    display: flex;
+    flex-direction: column;
+    /* 不写 `align-items: flex-end` ✓：列容器里内容溢出时，靠端对齐会把顶部那截推到滚不到的地方 ✓
+       ⇒ ⇒ 默认的 stretch 让内容从头顶排起 ✓ ⇒ ⇒ 限高之后照样能滚上去 ✓。 */
+    gap: var(--mf-message-gap);
+    width: min(var(--mf-message-width), calc(100vw - 2 * var(--mf-message-inset-inline)));
+    max-height: min(70vh, 30rem);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    /* 空处不吃点击 ✓ ⇒ ⇒ 不挡工作台 ✓。 */
+    pointer-events: none;
+  }
+
+  /* 里面有卡片时卡片自己接点击 ✓。 */
+  :where(.mf-message) > * {
+    pointer-events: auto;
+  }
+
+  /* ---------- 卡片 ---------- */
+
+  .mf-message-card {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--mf-message-pad);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--mf-message-gap);
+    background: var(--mf-message-surface);
+    color: var(--mf-message-ink);
+    border: 1px solid var(--mf-message-line);
+    border-radius: var(--mf-message-radius);
+    box-shadow: var(--mf-message-shadow);
+    font-size: var(--mf-message-size);
+    line-height: var(--mf-message-leading);
+    font-family: inherit;
+    text-align: start;
+  }
+
+  /* 持续的那条留一道语气边 ✓ ⇒ ⇒ 与瞬时的那条一眼能分开 ✓。 */
+  .mf-message-card[data-shape="persistent"] {
+    border-inline-start: 3px solid var(--mf-message-tone, var(--mf-message-ink));
+  }
+
+  /* 语气只管语气 ✓ ⇒ ⇒ 不管播报紧急度 ✓（那是调用方的事 ✓）。 */
+  .mf-message-card[data-tone="success"] { --mf-message-tone: var(--mf-message-accent); }
+  .mf-message-card[data-tone="info"] { --mf-message-tone: var(--mf-message-muted); }
+  .mf-message-card[data-tone="warning"] { --mf-message-tone: var(--mf-message-warn); }
+  .mf-message-card[data-tone="error"] { --mf-message-tone: var(--mf-message-danger); }
+
+  /* 内容列 ✓ ⇒ ⇒ 动作列靠边 ✓。 */
+  .mf-message-card__content {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .mf-message-card__title {
+    margin: 0;
+    font-size: var(--mf-message-size);
+    font-weight: 600;
+    color: var(--mf-message-tone, var(--mf-message-ink));
+    text-wrap: balance;
+  }
+
+  .mf-message-card__text {
+    margin: 0;
+    /* 长文件名与无空格文本都换行 ✓。 */
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+
+  .mf-message-card__detail {
+    margin-block-start: 0.25rem;
+    padding-block-start: 0.25rem;
+    border-block-start: 1px solid var(--mf-message-line);
+    color: var(--mf-message-muted);
+  }
+
+  .mf-message-card__detail-text {
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .mf-message-card__actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  /* ---------- 按钮 ---------- */
+
+  .mf-message-button {
+    box-sizing: border-box;
+    appearance: none;
+    margin: 0;
+    padding: 0.125rem 0.375rem;
+    font: inherit;
+    font-size: var(--mf-message-size);
+    line-height: var(--mf-message-leading);
+    color: var(--mf-message-ink);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: calc(var(--mf-message-radius) / 2);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .mf-message-button:hover {
+    border-color: var(--mf-message-line);
+  }
+
+  .mf-message-button:focus-visible {
+    outline: 2px solid var(--mf-message-accent);
+    outline-offset: 2px;
+  }
+
+  .mf-message-button--primary {
+    color: var(--mf-message-accent);
+    border-color: var(--mf-message-accent);
+  }
+
+  /* 颜色计算 ✓：只给一个色相 ⇒ ⇒ 悬停底色由它算出来 ✓。 */
+  @supports (color: color-mix(in oklab, red, blue)) {
+    .mf-message-button:hover {
+      background: color-mix(in oklab, var(--mf-message-ink) 10%, transparent);
+    }
+    .mf-message-button:focus-visible {
+      outline-color: color-mix(in oklab, var(--mf-message-accent) 70%, transparent);
+    }
+  }
+
+  /* ---------- 焦点在卡片里 ---------- */
+
+  /*
+   * `:has()` 只做增强 ✓ ⇒ ⇒ 不支持的老内核拿不到这条，键盘焦点仍有按钮自己的焦点环 ✓
+   * ⇒ ⇒ 没有任何功能依赖它 ✓。
+   */
+  /* 这里不用颜色计算 ✓ ⇒ ⇒ 支持 `:has()` 但不支持 `color-mix()` 的内核也拿得到 ✓。 */
+  @supports selector(:has(*)) {
+    .mf-message-card:has(:focus-visible) {
+      outline: 2px solid var(--mf-message-accent);
+      outline-offset: 2px;
+    }
+  }
+
+  /* ---------- 进场 ---------- */
+
+  @media (prefers-reduced-motion: no-preference) {
+    .mf-message-card {
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    /* 老内核整块丢弃这一条 ✓ ⇒ ⇒ 卡片照常出现 ✓。 */
+    @starting-style {
+      .mf-message-card {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+    }
+  }
+
+  /* ---------- 操作结果区 ---------- */
+
+  .mf-message-result {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--mf-message-pad);
+    background: var(--mf-message-surface);
+    color: var(--mf-message-ink);
+    border: 1px solid var(--mf-message-line);
+    border-radius: var(--mf-message-radius);
+    box-shadow: var(--mf-message-shadow);
+    font-size: var(--mf-message-size);
+    line-height: var(--mf-message-leading);
+    font-family: inherit;
+    text-align: start;
+  }
+
+  .mf-message-result__title {
+    margin: 0 0 0.25rem;
+    font-size: var(--mf-message-size);
+    font-weight: 600;
+  }
+
+  /* 预检会把列表的记号与边距清掉 ✓ ⇒ ⇒ 这里自己写回来 ✓。 */
+  .mf-message-result__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    color: var(--mf-message-muted);
+    max-height: 12rem;
+    overflow-y: auto;
+  }
+
+  .mf-message-result__list li {
+    overflow-wrap: anywhere;
+  }
+}
