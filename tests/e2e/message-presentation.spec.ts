@@ -35,23 +35,42 @@ test('the css entry follows the color scheme it is given',async({page})=>{
  expect(dark).not.toBe(light);
 });
 
-test('the pure component hands the callbacks back to the caller',async({page,pageErrors})=>{
+test('the pure components hand the callbacks back to the caller',async({page,pageErrors})=>{
  await page.goto(origin+'/tests/fixtures/messages/messages-component-sample.html');
- const card=page.locator('.mf-message-card');
+ // 瞬时那条 ✓。
+ const card=page.locator('.mf-message-card[data-shape="transient"]');
  await expect(card).toBeVisible();
- // 播报由调用方给 ✓（组件自己不主动播报 ✓ ⇒ ⇒ 这一张显式给了 assertive ✓）。
- await expect(card).toHaveAttribute('role','alert');
+ // 播报由调用方给 ✓（组件自己不主动播报 ✓ ⇒ ⇒ 这一张显式给了 polite ✓）。
+ await expect(card).toHaveAttribute('role','status');
+ // 动作回调回到调用方 ✓ ⇒ ⇒ 组件自己不做业务 ✓。
+ await page.getByRole('button',{name:'重试'}).click();
+ await expect(page.locator('[data-sample-clicks]')).toHaveAttribute('data-sample-clicks','1');
+ // 关闭回调回到调用方 ✓ ⇒ ⇒ 卡片由外面收走 ✓。
+ await page.getByRole('button',{name:'关闭',exact:true}).click();
+ await expect(page.locator('[data-sample-empty]')).toBeVisible();
+ // 持续那条 ✓。
+ const status=page.locator('.mf-message-card[data-shape="persistent"]');
+ await expect(status).toBeVisible();
+ await expect(status).toHaveAttribute('role','alert');
  // 详情默认收起 ✓ ⇒ ⇒ 展开与否由外面给 ✓。
  const toggle=page.getByRole('button',{name:'详情'});
  await expect(toggle).toHaveAttribute('aria-expanded','false');
  await toggle.click();
  await expect(page.getByRole('button',{name:'收起'})).toHaveAttribute('aria-expanded','true');
  await expect(page.locator('.mf-message-card__detail')).toBeVisible();
- // 动作回调回到调用方 ✓ ⇒ ⇒ 组件自己不做业务 ✓。
- await page.getByRole('button',{name:'重试'}).click();
- await expect(page.locator('[data-sample-clicks]')).toHaveAttribute('data-sample-clicks','1');
- // 关闭回调回到调用方 ✓ ⇒ ⇒ 卡片由外面收走 ✓。
- await page.getByRole('button',{name:'关闭'}).click();
- await expect(page.locator('[data-sample-empty]')).toBeVisible();
+ // 确认是它自己的动作 ✓ ⇒ ⇒ 与瞬时那条的关闭不是一回事 ✓。
+ await page.getByRole('button',{name:'知道了'}).click();
+ await expect(page.locator('[data-sample-ack]')).toHaveAttribute('data-sample-ack','1');
+ await expect(status).toHaveCount(0);
+ // 结果那条 ✓。
+ const result=page.locator('.mf-message-result');
+ await expect(result).toBeVisible();
+ await expect(result.locator('li')).toHaveCount(2);
+ // 失败的那一条自己偏红 ✓ ⇒ ⇒ 语气是逐条的 ✓。
+ const failedColor=await result.locator('li[data-failed="true"]').evaluate(element=>getComputedStyle(element).color);
+ const plainColor=await result.locator('li').first().evaluate(element=>getComputedStyle(element).color);
+ expect(failedColor).not.toBe(plainColor);
+ await page.getByRole('button',{name:'关闭导入结果'}).click();
+ await expect(result).toHaveCount(0);
  expect(pageErrors).toEqual([]);
 });

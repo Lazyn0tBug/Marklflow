@@ -14,7 +14,7 @@
   <div class="mf-message-card__content">
    <p class="mf-message-card__text">导出完成，文件已保存。</p>
   </div>
-  <div class="mf-message-card__actions">
+  <div class="mf-message-actions">
    <button type="button" class="mf-message-button mf-message-card__close" aria-label="关闭通知">关闭</button>
   </div>
  </div>
@@ -26,18 +26,21 @@
     <p class="mf-message-card__detail-text">诊断 id：e-1</p>
    </div>
   </div>
-  <div class="mf-message-card__actions">
+  <div class="mf-message-actions">
    <button type="button" class="mf-message-button" aria-expanded="false">详情</button>
    <button type="button" class="mf-message-button mf-message-card__close">知道了</button>
   </div>
  </div>
- <div class="mf-message-result" data-shape="result">
+ <div class="mf-message-result" data-shape="result" data-tone="warning">
   <p class="mf-message-result__title">导入结果</p>
   <ul class="mf-message-result__list">
    <li>第一章.md</li>
    <li>一个非常非常长的文件名，长到一行放不下必须换行才能读完.md</li>
-   <li>第三章.md</li>
+   <li data-failed="true">第四章.md：格式不对，没有导入</li>
   </ul>
+  <div class="mf-message-actions">
+   <button type="button" class="mf-message-button">关闭导入结果</button>
+  </div>
  </div>
 </div>
 </body>

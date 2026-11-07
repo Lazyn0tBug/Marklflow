@@ -129,11 +129,16 @@
     border-inline-start: 3px solid var(--mf-message-tone, var(--mf-message-ink));
   }
 
-  /* 语气只管语气 ✓ ⇒ ⇒ 不管播报紧急度 ✓（那是调用方的事 ✓）。 */
-  .mf-message-card[data-tone="success"] { --mf-message-tone: var(--mf-message-accent); }
-  .mf-message-card[data-tone="info"] { --mf-message-tone: var(--mf-message-muted); }
-  .mf-message-card[data-tone="warning"] { --mf-message-tone: var(--mf-message-warn); }
-  .mf-message-card[data-tone="error"] { --mf-message-tone: var(--mf-message-danger); }
+  /*
+   * 语气只管语气 ✓ ⇒ ⇒ 不管播报紧急度 ✓（那是调用方的事 ✓）。
+   *
+   * **两个角色分开** ✓：`--mf-message-tone` 给那道语气边 ✓（中性是灰的 ✓）；
+   * `--mf-message-heading` 给标题 ✓（中性不强调 ✓ ⇒ ⇒ 标题仍是正文色 ✓）。
+   */
+  .mf-message-card[data-tone="success"], .mf-message-result[data-tone="success"] { --mf-message-tone: var(--mf-message-accent); --mf-message-heading: var(--mf-message-accent); }
+  .mf-message-card[data-tone="info"], .mf-message-result[data-tone="info"] { --mf-message-tone: var(--mf-message-muted); --mf-message-heading: var(--mf-message-ink); }
+  .mf-message-card[data-tone="warning"], .mf-message-result[data-tone="warning"] { --mf-message-tone: var(--mf-message-warn); --mf-message-heading: var(--mf-message-warn); }
+  .mf-message-card[data-tone="error"], .mf-message-result[data-tone="error"] { --mf-message-tone: var(--mf-message-danger); --mf-message-heading: var(--mf-message-danger); }
 
   /* 内容列 ✓ ⇒ ⇒ 动作列靠边 ✓。 */
   .mf-message-card__content {
@@ -148,7 +153,7 @@
     margin: 0;
     font-size: var(--mf-message-size);
     font-weight: 600;
-    color: var(--mf-message-tone, var(--mf-message-ink));
+    color: var(--mf-message-heading, var(--mf-message-ink));
     text-wrap: balance;
   }
 
@@ -172,7 +177,8 @@
     white-space: pre-wrap;
   }
 
-  .mf-message-card__actions {
+  /* 动作行 ✓：三种形状共用 ✓。 */
+  .mf-message-actions {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
@@ -271,6 +277,8 @@
     margin: 0 0 0.25rem;
     font-size: var(--mf-message-size);
     font-weight: 600;
+    /* 整块的语气落在标题上 ✓ ⇒ ⇒ 逐条的语气另说 ✓ ⇒ ⇒ 两层不混 ✓。 */
+    color: var(--mf-message-heading, var(--mf-message-ink));
   }
 
   /* 预检会把列表的记号与边距清掉 ✓ ⇒ ⇒ 这里自己写回来 ✓。 */
@@ -288,5 +296,10 @@
 
   .mf-message-result__list li {
     overflow-wrap: anywhere;
+  }
+
+  /* 失败的那一条自己偏红 ✓ ⇒ ⇒ 一批结果里哪条坏了，一眼看见 ✓。 */
+  .mf-message-result__list li[data-failed="true"] {
+    color: var(--mf-message-danger);
   }
 }
