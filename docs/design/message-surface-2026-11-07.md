@@ -119,7 +119,7 @@
 | S-3 | 按第 6 节核对并迁移符合条件的现有界面。 | 用定向交互回归核对迁移前后的显示、关闭、计时、焦点和播报语义，记录迁移项及因行为差异保留的入口。 |
 | S-4 | 收口本版交付。 | CSS 入口、纯组件与独立样例均通过验收。样例覆盖三种形状，生产接入以行为等价为门槛。 |
 
-实施状态（2026-11-07）：S-1 已实施 ⇒ `src/presentation/messages/messages.css` 自足、无 import、前缀与令牌如第 5 节 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-css-sample.html` 只加载它 ⇒ ⇒ 三种形状由静态标记渲染 ✓。S-2 第一步已实施 ⇒ `src/presentation/messages/MessageCard.tsx` 是瞬时通知卡片 ⇒ ⇒ 不持状态、不计时、不播报 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-component-sample-client.tsx` 用模拟数据与回调驱动 ⇒ ⇒ 端到端断言见 `tests/e2e/message-presentation.spec.ts`。S-2 第二步（持续状态条与操作结果区）与 S-3 未开始 ⇒ ⇒ 现有界面尚未接入 ⇒ ⇒ 应用现有通知面仍是原样。
+实施状态（2026-11-07）：S-1 已实施 ⇒ `src/presentation/messages/messages.css` 自足、无 import、前缀与令牌如第 5 节 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-css-sample.html` 只加载它 ⇒ ⇒ 三种形状由静态标记渲染 ✓。S-2 两步都已实施 ⇒ ⇒ `MessageCard.tsx`（瞬时）、`MessageStatusBar.tsx`（持续，带确认）、`MessageResult.tsx`（结果，逐条语气）⇒ ⇒ 三者共用 `MessagePanel.tsx` 的内里 ⇒ ⇒ 都不持状态、不计时、不播报 ⇒ ⇒ 关闭、展开、确认与播报语义全由外面给 ⇒ ⇒ 样例页 `tests/fixtures/messages/messages-component-sample-client.tsx` 用模拟数据与回调驱动三种形状 ⇒ ⇒ 端到端断言见 `tests/e2e/message-presentation.spec.ts`。**样式由组件入口 `index.ts` 一处带进来** ⇒ ⇒ 组件文件里不再各自 import ⇒ ⇒ 只有一个地方会漏 ✓。S-3 未开始 ⇒ ⇒ 现有界面尚未接入 ⇒ ⇒ 应用现有通知面仍是原样 ⇒ ⇒ 保存失败的待确认也还没接 ✓。
 
 ## 8. 后续方向
 
