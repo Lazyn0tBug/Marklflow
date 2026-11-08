@@ -1,8 +1,10 @@
 /**
  * 文档与磁盘的关系 ✓：**一份上下文** ✓（设计 §4.1 ✓）。
  *
- * **三个面** ✓：文件（file ✓）／ 一致性（sync ✓）／ 资源（resources ✓）
+ * **两个面** ✓：文件（file ✓）／ 一致性（sync ✓）
  * ⇒ ⇒ 上下文是一次转移带来的字段变化 ✓ ⇒ ⇒ 不是一袋字段 ✓。
+ * **没有资源面** ✓ ⇒ ⇒ M6 还没实施 ✓ ⇒ ⇒ 应用层不留一个用不上的面 ✓（《概念裁剪》§1 ✓）
+ * ⇒ ⇒ M6 实施时再加进来 ✓ ⇒ ⇒ 那时它的规则在《本地资源支持设计》里 ✓。
  *
  * **它不进文档** ✓ ⇒ ⇒ 文档记录会作为载荷外传 ✓ ⇒ ⇒ 本机路径不跟着走 ✓（§4.2 ✓）。
  * **它不落盘** ✓ ⇒ ⇒ 重启后绑定不恢复 ✓ ⇒ ⇒ 文件引用也随之作废 ✓（§3.3 ✓）。
@@ -49,8 +51,6 @@ export interface DocumentFileContext{
  file:FileReference;
  /** 一致性面 ✓。 */
  sync:SyncState;
- /** 资源面 ✓：M6 才填内容 ✓ ⇒ ⇒ 这一版只有"没有"这一种 ✓。 */
- resources:{snapshot:null};
 }
 
 /**
@@ -90,7 +90,7 @@ export class DocumentFileContexts{
   * **打开** ✓（§4.3 open ✓）。
   *
   * **读**：选择结果 ✓、文档当前修订 ✓。
-  * **写**：绑定就位 ✓、`lastSyncedRevision = revision` ✓、`resources.snapshot = null` ✓。
+  * **写**：绑定就位 ✓、`lastSyncedRevision = revision` ✓。
   * **不变量**：**打开不同步** ✓ ⇒ ⇒ 不读盘覆盖草稿 ✓。
   *
   * **基线由调用方给** ✓ ⇒ ⇒ 新建时给修订 ✓ ⇒ ⇒ 命中已有内容时按内容是否相同给修订或 null ✓（§2.3 ✓）。
@@ -101,7 +101,7 @@ export class DocumentFileContexts{
  open(documentId:string,file:FileReference,revision:number|null):OpenOutcome{
   const existing=this.byReference.get(file.reference);
   if(existing!==undefined&&existing!==documentId)return {kind:'already-bound',documentId:existing};
-  const context:DocumentFileContext={documentId,file,sync:{lastSyncedRevision:revision,conflict:null},resources:{snapshot:null}};
+  const context:DocumentFileContext={documentId,file,sync:{lastSyncedRevision:revision,conflict:null}};
   this.byDocument.set(documentId,context);
   this.byReference.set(file.reference,documentId);
   return {kind:'bound',context};
@@ -117,7 +117,7 @@ export class DocumentFileContexts{
  reAssociate(documentId:string,file:FileReference):DocumentFileContext{
   const previous=this.byDocument.get(documentId);
   if(previous!==undefined)this.byReference.delete(previous.file.reference);
-  const context:DocumentFileContext={documentId,file,sync:{lastSyncedRevision:null,conflict:null},resources:{snapshot:null}};
+  const context:DocumentFileContext={documentId,file,sync:{lastSyncedRevision:null,conflict:null}};
   this.byDocument.set(documentId,context);
   this.byReference.set(file.reference,documentId);
   return context;
