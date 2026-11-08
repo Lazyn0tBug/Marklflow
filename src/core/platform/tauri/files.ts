@@ -5,8 +5,8 @@ const selectedSchema=z.object({
  key:z.string().uuid(),
  name:z.string().min(1),
  size:z.number().int().nonnegative().safe(),
- /** 文件身份（会话内）✓：同一文件被多次选中时相同 ✓，只用于去重与聚焦 ✓（§3.3）。 */
- identity:z.string().uuid(),
+ /** 文件引用（会话内）✓：同一文件被多次选中时相同 ✓，只用于归属与聚焦 ✓（§3.3）。 */
+ reference:z.string().uuid(),
 }).strict();
 /** 原生失败的形态：稳定的机器码 ✓（与 Rust 侧 files.rs 一一对应 ✓）。 */
 const nativeFailureSchema=z.object({code:z.string().min(1)}).strict();

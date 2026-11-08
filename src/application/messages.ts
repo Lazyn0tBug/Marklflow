@@ -74,7 +74,7 @@ export type MessageCategory=typeof MESSAGE_CATEGORIES[number];
 /**
  * 类别 → 用户可见的文案。
  *
- * **只收"用户可行动或可理解"的那些** ✓；其余的（应用自己用错了授权、授权已失效、
+ * **只收"用户可行动或可理解"的那些** ✓；其余的（应用自己用错了句柄、句柄已失效、
  * 内部状态不可用、路径或名字不可用）**不是用户造成的** ⇒ ⇒ 用户看一句通用失败即可 ✓，
  * 机器码仍留在报告里给日志与诊断 ✓。
  */
@@ -88,7 +88,7 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,string>>={
  'invalid-utf8':'文件不是合法的 UTF-8 文本',
  'not-a-file':'目标不是一个普通文件',
  'not-a-regular-target':'目标不是一个普通文件',
- 'unknown-file-key':'这个文件的授权已经失效',
+ 'unknown-file-key':'这个文件已经不再可访问',
  'print-failed':'打印失败',
  'app-internal-failed':'应用内部出了点问题，这次操作没有生效',
  'document-open-failed':'这个文档没能打开',

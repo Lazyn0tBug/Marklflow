@@ -40,7 +40,7 @@ import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {saveSource} from './application/workspace/sourceSave';
 import {createWebSourceImport} from './core/platform/web/sourceImport';
-import {createNativeSourceImport,nativeFileIdentity} from './core/platform/tauri/sourceImport';
+import {createNativeSourceImport,nativeFileReference} from './core/platform/tauri/sourceImport';
 import {isNativeSynced,listenNativeDrop,releaseNativeFile,selectNativeOpen,type NativeSelection} from './core/platform/tauri/files';
 import {isDesktopRuntime} from './core/platform/tauri/runtime';
 import {DocumentFileContexts,releaseDocumentFileContext} from './application/workspace/documentFileContext';
@@ -79,11 +79,11 @@ export default function App() {
   const nativeOpener=useRef<DocumentOpener<NativeSelection>|null>(null);
   if(desktop&&!nativeOpener.current)nativeOpener.current=new DocumentOpener<NativeSelection>(contexts,{
    open:doc=>importOpen.current(doc),
-   identity:nativeFileIdentity,
-   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
-   sameVersion:key=>isNativeSynced(key),
+   reference:nativeFileReference,
+   boundDocument:reference=>contexts.documentFor(reference),
+   sameVersion:handle=>isNativeSynced(handle),
    // **这一次没有成为绑定的凭据时才放** ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
-   releaseHandle:key=>releaseNativeFile(key),
+   releaseHandle:handle=>releaseNativeFile(handle),
   });
   const [storageWarnings,setStorageWarnings]=useState<string[]>([]);
   const [recoveryCount,setRecoveryCount]=useState(0);
@@ -237,8 +237,8 @@ export default function App() {
     if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;placements.current={editor:null,preview:null};pendingPreviewLine.current=undefined}
     if(!sessions.documentIds.length)runtime.current?.clear();
     /*
-     * **关掉标签页 ⇒ ⇒ 授权释放** ✓ ⇒ ⇒ 绑定不留着 ✓ ⇒ ⇒ 原生侧不留可用的凭据 ✓（M4-8 ✓）。
-     * **没有绑定的文档** ⇒ ⇒ 没有授权可放 ✓ ⇒ ⇒ 这一步是空的 ✓。
+     * **关掉标签页 ⇒ ⇒ 句柄放掉** ✓ ⇒ ⇒ 绑定不留着 ✓ ⇒ ⇒ 原生侧不留可用的凭据 ✓（M4-8 ✓）。
+     * **没有绑定的文档** ⇒ ⇒ 没有句柄可放 ✓ ⇒ ⇒ 这一步是空的 ✓。
      */
     void releaseDocumentFileContext(contexts,id,releaseNativeFile).catch(()=>{});
   };

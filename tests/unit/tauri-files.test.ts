@@ -5,7 +5,7 @@ const native=vi.hoisted(()=>({isTauri:vi.fn(),invoke:vi.fn()}));
 vi.mock('@tauri-apps/api/core',()=>native);
 const events=vi.hoisted(()=>({listen:vi.fn()}));
 vi.mock('@tauri-apps/api/event',()=>events);
-const selected={key:'123e4567-e89b-42d3-a456-426614174000',name:'文档.md',size:3,identity:'987e4567-e89b-42d3-a456-426614174000'};
+const selected={key:'123e4567-e89b-42d3-a456-426614174000',name:'文档.md',size:3,reference:'987e4567-e89b-42d3-a456-426614174000'};
 beforeEach(()=>{vi.resetAllMocks();native.isTauri.mockReturnValue(true)});
 afterEach(()=>vi.unstubAllGlobals());
 

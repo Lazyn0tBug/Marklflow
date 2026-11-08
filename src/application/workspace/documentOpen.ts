@@ -1,6 +1,6 @@
 import type {DocumentRecord} from '../../core/model/document';
 import type {BoundSelection,ImportFile,OpenResult} from './sourceImport';
-import type {DocumentFileContexts,FileIdentityBinding} from './documentFileContext';
+import type {DocumentFileContexts,FileReference} from './documentFileContext';
 
 /**
  * **打开一个本地文件** ✓：打开与绑定是同一件事 ✓（设计 §4.3 ✓）。
@@ -11,17 +11,17 @@ import type {DocumentFileContexts,FileIdentityBinding} from './documentFileConte
 export interface DocumentOpenPorts<F extends ImportFile>{
  /** 打开这份载荷 ✓ ⇒ ⇒ 聚焦时把工作区里那一份也给出来 ✓。 */
  open(doc:DocumentRecord,file:F):Promise<OpenResult>;
- /** 从选择结果里取出身份 ✓（文件身份、授权 key、文件名、载荷类型 ✓）。 */
- identity(file:F):FileIdentityBinding;
- /** 这个身份绑在哪个文档上 ✓ ⇒ ⇒ 没有就是 undefined ✓。 */
- boundDocument(fileIdentity:string):string|undefined;
+ /** 从选择结果里取出文件引用 ✓（引用、访问句柄、文件名、载荷类型 ✓）。 */
+ reference(file:F):FileReference;
+ /** 这个文件绑在哪个文档上 ✓ ⇒ ⇒ 没有就是 undefined ✓。 */
+ boundDocument(reference:string):string|undefined;
  /**
   * 磁盘上那份还是不是应用手上那一版 ✓ ⇒ ⇒ **答不了就抛** ✓
   * ⇒ ⇒ 这里按"变了"处理 ✓ ⇒ ⇒ 交给用户决定 ✓（§5.2 ✓）。
   */
- sameVersion(key:string):Promise<boolean>;
- /** 放掉这一次的授权 ✓ ⇒ ⇒ 它没有成为绑定的凭据时才放 ✓（§5.1 三类 key ✓）。 */
- releaseHandle(key:string):Promise<void>;
+ sameVersion(handle:string):Promise<boolean>;
+ /** 放掉这一次的句柄 ✓ ⇒ ⇒ 它没有成为绑定的凭据时才放 ✓（§5.1 三类句柄 ✓）。 */
+ releaseHandle(handle:string):Promise<void>;
 }
 
 export class DocumentOpener<F extends ImportFile>{
@@ -37,16 +37,16 @@ export class DocumentOpener<F extends ImportFile>{
   */
  async open(doc:DocumentRecord,file:F):Promise<OpenResult>{
   const result=await this.ports.open(doc,file);
-  const identity=this.ports.identity(file);
+  const selected=this.ports.reference(file);
   // **归属命中时那份内容已经在工作区里** ✓ ⇒ ⇒ 绑定指回它 ✓ ⇒ ⇒ 换用这次的句柄 ✓。
   const existing=result.existing;
   const same=existing!==undefined&&sameSource(existing.markdown,doc.markdown);
   // **基线** ✓：新的一份内容就是文件当前的内容 ⇒ 它的修订 ✓；命中已有内容 ⇒ 按内容是否相同定 ✓（§2.3 ✓）。
   const baseline=result.status==='opened'?doc.revision:(same&&existing?existing.revision:null);
-  const outcome=this.contexts.open(doc.id,identity,baseline);
+  const outcome=this.contexts.open(doc.id,selected,baseline);
   if(outcome.kind==='already-bound'){
-   // **这一次的授权没有成为绑定的凭据** ✓ ⇒ ⇒ 放掉 ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
-   await this.ports.releaseHandle(identity.key).catch(()=>{});
+   // **这一次的句柄没有成为绑定的凭据** ✓ ⇒ ⇒ 放掉 ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
+   await this.ports.releaseHandle(selected.handle).catch(()=>{});
   }
   return result;
  }
@@ -54,14 +54,14 @@ export class DocumentOpener<F extends ImportFile>{
  /**
   * **这个文件是不是已经绑在某个文档上** ✓ ⇒ ⇒ 变了没有也一并答 ✓（§5.2 ✓）。
   *
-  * **文件身份优先** ✓ ⇒ ⇒ 命中的既有标签页聚焦 ✓ ⇒ ⇒ 不新建、不覆盖 ✓（§5.3 ✓）。
+  * **归属按文件引用** ✓ ⇒ ⇒ 命中的既有标签页聚焦 ✓ ⇒ ⇒ 不新建、不覆盖 ✓（§5.3 ✓）。
   */
  async bound(file:F):Promise<BoundSelection|undefined>{
-  const documentId=this.ports.boundDocument(this.ports.identity(file).fileIdentity);
+  const documentId=this.ports.boundDocument(this.ports.reference(file).reference);
   if(documentId===undefined)return undefined;
   const context=this.contexts.read(documentId);
   if(context===undefined)return undefined;
-  try{return {documentId,changed:!(await this.ports.sameVersion(context.identity.key))}}
+  try{return {documentId,changed:!(await this.ports.sameVersion(context.file.handle))}}
   catch{
    // **答不了 ⇒ ⇒ 交给用户决定** ✓ ⇒ ⇒ 不当成"没变" ✓ ⇒ ⇒ 不静默覆盖 ✓（§5.2 ✓）。
    return {documentId,changed:true};

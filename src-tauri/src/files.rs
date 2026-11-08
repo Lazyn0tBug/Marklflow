@@ -90,7 +90,7 @@ pub const WRITE_LIMIT: usize = 100 * 1024 * 1024;
 #[derive(Default)]
 pub struct FileAccess(
     Mutex<HashMap<String, Grant>>,
-    /// 规范化路径 → 随机 token（§3.3）：同一文件在本次进程内被多次选中，token 相同 ✓。
+    /// 规范名 → 随机 token（§3.3）：同一文件在本次进程内被多次选中，token 相同 ✓。
     Mutex<HashMap<PathBuf, String>>,
 );
 struct Grant {
@@ -111,9 +111,9 @@ pub struct SelectedFile {
     name: String,
     /// 选中文件的字节数 ✓（打开时读的文件大小 ✓；新建的文件是 0 ✓）。
     size: u64,
-    /// 文件身份（会话内）✓：同一文件在本次进程内被多次选中，token 相同 ✓（§3.3）。
-    /// 只用于**去重与聚焦** ✓；同步永远按授权里的实际路径执行 ✓。
-    pub(crate) identity: String,
+    /// 文件引用（会话内）✓：同一文件在本次进程内被多次选中，token 相同 ✓（§3.3）。
+    /// 只用于**归属与聚焦** ✓；同步永远按授权里的实际路径执行 ✓。
+    pub(crate) reference: String,
 }
 /// 原生命令失败的**稳定机器码** ✓（§9）：前端按码分流 ✓，拒绝不再靠子串匹配 ✓。
 /// 用户可见的文案由前端按码映射 ✓：原生侧不产出用户文案 ✓（跨平台的文案要一致 ✓）。
@@ -165,7 +165,7 @@ impl FileAccess {
             Err(e) => return Err(io_error(&e)),
         };
         let key = uuid::Uuid::new_v4().to_string();
-        let identity = self.identity_of(&path)?;
+        let reference = self.reference_of(&path)?;
         self.0
             .lock()
             .map_err(internal_error)?
@@ -174,7 +174,7 @@ impl FileAccess {
             key,
             name,
             size,
-            identity,
+            reference,
         })
     }
     /// 取授权里的路径。**写必须可写；读时可写蕴含可读** ✓：
@@ -188,21 +188,21 @@ impl FileAccess {
         }
         Ok(grant.path.clone())
     }
-    /// 文件身份（会话内）：**规范化路径 → 随机 token** ✓（§3.3）。
+    /// 文件引用（会话内）：**规范名 → 随机 token** ✓（§3.3）。
     ///
     /// token 是随机的 ✓，不是路径的摘要 ✓：路径熵低 ✓，摘要可被字典枚举还原 ✓，
     /// 等于把"路径不出原生侧"削弱成"需要暴力枚举才能反推" ✓。
     /// 规范化只做操作系统层面的 canonicalize ✓（解析符号链接与相对分量 ✓），
     /// **不做大小写折叠** ✓：大小写不敏感的文件系统上 `A.md` 与 `a.md` 常常是同一个文件 ✓，
     /// 而跨平台的字符串规范化规则本设计明确拒绝制定 ✓。
-    fn identity_of(&self, path: &Path) -> Result<String, String> {
+    fn reference_of(&self, path: &Path) -> Result<String, String> {
         let canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-        let mut identities = self.1.lock().map_err(internal_error)?;
-        if let Some(token) = identities.get(&canonical) {
+        let mut references = self.1.lock().map_err(internal_error)?;
+        if let Some(token) = references.get(&canonical) {
             return Ok(token.clone());
         }
         let token = uuid::Uuid::new_v4().to_string();
-        identities.insert(canonical, token.clone());
+        references.insert(canonical, token.clone());
         Ok(token)
     }
     /// 撤销授权。探针用它在受控初始化结束时回收自己的授权；
@@ -1043,7 +1043,7 @@ mod tests {
         assert_eq!(dropped[0].name, "note.md");
         // 与选择器同一套授权与身份 ✓：同一个文件 ⇒ 同一个身份 ✓（去重因此成立 ✓）。
         let picked = access.grant(note, true).unwrap();
-        assert_eq!(dropped[0].identity, picked.identity);
+        assert_eq!(dropped[0].reference, picked.reference);
     }
 
     #[test]
@@ -1059,7 +1059,7 @@ mod tests {
     }
 
     #[test]
-    fn the_same_file_gets_the_same_identity_within_the_session() {
+    fn the_same_file_gets_the_same_reference_within_the_session() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("same.md");
         std::fs::write(&path, b"x").unwrap();
@@ -1068,16 +1068,16 @@ mod tests {
         let first = access.grant(path.clone(), true).unwrap();
         let second = access.grant(path.clone(), true).unwrap();
         assert_ne!(first.key, second.key);
-        assert_eq!(first.identity, second.identity);
+        assert_eq!(first.reference, second.reference);
         // 不同的文件是不同的身份。
         let other = dir.path().join("other.md");
         std::fs::write(&other, b"y").unwrap();
-        assert_ne!(access.grant(other, true).unwrap().identity, first.identity);
+        assert_ne!(access.grant(other, true).unwrap().reference, first.reference);
     }
 
     #[cfg(unix)]
     #[test]
-    fn a_symbolic_link_shares_the_identity_of_its_target() {
+    fn a_symbolic_link_shares_the_reference_of_its_target() {
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join("target.md");
         std::fs::write(&target, b"x").unwrap();
@@ -1086,8 +1086,8 @@ mod tests {
         let access = FileAccess::default();
         // canonicalize 解析符号链接 ⇒ 两条路径指向同一个文件 ⇒ 同一个身份 ✓。
         assert_eq!(
-            access.grant(target, true).unwrap().identity,
-            access.grant(link, true).unwrap().identity
+            access.grant(target, true).unwrap().reference,
+            access.grant(link, true).unwrap().reference
         );
     }
 

@@ -12,7 +12,7 @@ import {createNewDocument} from '../../src/core/storage/storage';
 const native=vi.hoisted(()=>({isTauri:vi.fn(),invoke:vi.fn()}));
 vi.mock('@tauri-apps/api/core',()=>native);
 
-const selection:NativeSelection={key:'123e4567-e89b-42d3-a456-426614174000',name:'文档.md',size:3,identity:'987e4567-e89b-42d3-a456-426614174000'};
+const selection:NativeSelection={key:'123e4567-e89b-42d3-a456-426614174000',name:'文档.md',size:3,reference:'987e4567-e89b-42d3-a456-426614174000'};
 
 beforeEach(()=>{vi.resetAllMocks();native.isTauri.mockReturnValue(true)});
 
@@ -80,7 +80,7 @@ it('gives two different native files with the same name and content two document
  native.invoke.mockResolvedValue('# 同样的内容\n');
  const opened:string[]=[];
  const importer=createNativeSourceImport({boundSelection:async()=>undefined},async doc=>{opened.push(doc.id);return {status:'opened'}});
- const other:NativeSelection={...selection,key:'223e4567-e89b-42d3-a456-426614174000',identity:'333e4567-e89b-42d3-a456-426614174000'};
+ const other:NativeSelection={...selection,key:'223e4567-e89b-42d3-a456-426614174000',reference:'333e4567-e89b-42d3-a456-426614174000'};
  const result=await importer.run([selection,other]);
  expect(result.status==='completed'&&result.items.map(item=>item.status)).toEqual(['opened','opened']);
  expect(opened).toHaveLength(2);

@@ -3,7 +3,7 @@ import {
  DocumentFileContexts,
  releaseDocumentFileContext,
  syncStatus,
- type FileIdentityBinding,
+ type FileReference,
 } from '../../src/application/workspace/documentFileContext';
 
 /**
@@ -12,10 +12,10 @@ import {
  * **这里是纯应用层** ✓ ⇒ ⇒ 不起浏览器 ✓ ⇒ ⇒ 不碰原生 ✓ ⇒ ⇒ 规则本身被盯住 ✓。
  */
 
-const binding=(fileIdentity:string,key=fileIdentity):FileIdentityBinding=>({
- fileIdentity,
- key,
- displayName:`${fileIdentity}.md`,
+const binding=(reference:string,handle=reference):FileReference=>({
+ reference,
+ handle,
+ displayName:`${reference}.md`,
  sourceFormat:'markdown',
 });
 
@@ -26,7 +26,7 @@ describe('文档-文件上下文',()=>{
   expect(outcome.kind).toBe('bound');
   const context=contexts.read('d1');
   // **绑定就位** ✓ ⇒ ⇒ `lastSyncedRevision = document.revision` ✓（M4-1 ✓）。
-  expect(context?.identity.fileIdentity).toBe('f1');
+  expect(context?.file.reference).toBe('f1');
   expect(context?.sync.lastSyncedRevision).toBe(7);
   // **刚打开不显示未同步** ✓ ⇒ ⇒ 状态是"已同步" ✓（§2.3 ✓）。
   expect(syncStatus(context,7)).toBe('synced');
@@ -36,23 +36,23 @@ describe('文档-文件上下文',()=>{
   expect(syncStatus(context,8)).toBe('unsynced');
  });
 
- it('同一个身份再来一次是聚焦，不是新建',()=>{
+ it('同一个文件再来一次是聚焦，不是新建',()=>{
   const contexts=new DocumentFileContexts();
   contexts.open('d1',binding('f1'),1);
   const again=contexts.open('d2',binding('f1'),1);
-  // **文件身份优先** ✓ ⇒ ⇒ 命中的既有标签页 ✓ ⇒ ⇒ 不新建 ✓（§5.3 ✓、M4-4 ✓）。
+  // **归属按文件引用** ✓ ⇒ ⇒ 命中的既有标签页 ✓ ⇒ ⇒ 不新建 ✓（§5.3 ✓、M4-4 ✓）。
   expect(again.kind).toBe('already-bound');
   expect(again.kind==='already-bound'&&again.documentId).toBe('d1');
   expect(contexts.read('d2')).toBeUndefined();
   expect(contexts.documentFor('f1')).toBe('d1');
  });
 
- it('重新关联换身份，且无法证明一致',()=>{
+ it('重新关联换文件，且无法证明一致',()=>{
   const contexts=new DocumentFileContexts();
   contexts.open('d1',binding('f1'),3);
   const context=contexts.reAssociate('d1',binding('f2'));
-  // **identity 更新** ✓ ⇒ ⇒ 旧的索引让位 ✓。
-  expect(context.identity.fileIdentity).toBe('f2');
+  // **file 更新** ✓ ⇒ ⇒ 旧的索引让位 ✓。
+  expect(context.file.reference).toBe('f2');
   expect(contexts.documentFor('f1')).toBeUndefined();
   expect(contexts.documentFor('f2')).toBe('d1');
   // **无法证明一致 ⇒ ⇒ 记 null ⇒ ⇒ 按未同步显示** ✓（§2.3 ✓、§5.5 ✓）。
@@ -61,18 +61,18 @@ describe('文档-文件上下文',()=>{
   // **关联不算同步** ✓ ⇒ ⇒ 草稿那份修订一个字没动 ✓ ⇒ ⇒ 这里管不到 ✓。
  });
 
- it('关掉文档，授权跟着释放',async()=>{
+ it('关掉文档，句柄跟着放掉',async()=>{
   const contexts=new DocumentFileContexts();
   contexts.open('d1',binding('f1','grant-1'),1);
   const released:string[]=[];
-  await releaseDocumentFileContext(contexts,'d1',async key=>{released.push(key)});
-  // **授权被释放** ✓ ⇒ ⇒ 走的是这次打开的 key ✓（M4-8 ✓、M4-10 ✓）。
+  await releaseDocumentFileContext(contexts,'d1',async handle=>{released.push(handle)});
+  // **句柄被放掉** ✓ ⇒ ⇒ 走的是这次打开的那一个 ✓（M4-8 ✓、M4-10 ✓）。
   expect(released).toEqual(['grant-1']);
-  // **上下文与身份索引一起收走** ✓ ⇒ ⇒ 同一个文件还能再打开 ✓。
+  // **上下文与文件索引一起收走** ✓ ⇒ ⇒ 同一个文件还能再打开 ✓。
   expect(contexts.read('d1')).toBeUndefined();
   expect(contexts.documentFor('f1')).toBeUndefined();
-  // **关一个没有上下文的文档** ⇒ ⇒ 不释放任何东西 ✓。
-  await releaseDocumentFileContext(contexts,'d1',async key=>{released.push(key)});
+  // **关一个没有上下文的文档** ⇒ ⇒ 不放掉任何东西 ✓。
+  await releaseDocumentFileContext(contexts,'d1',async handle=>{released.push(handle)});
   expect(released).toEqual(['grant-1']);
  });
 

@@ -45,19 +45,19 @@ export interface SourceImportPorts<F extends ImportFile> {
   * 打开这份载荷 ✓。
   *
   * **文件也一并给** ✓ ⇒ ⇒ 打开与绑定是同一件事的两面 ✓ ⇒ ⇒ 桌面端据此建立绑定 ✓
-  * ⇒ ⇒ Web 端没有身份 ✓ ⇒ ⇒ 它不用这个参数 ✓。
+  * ⇒ ⇒ Web 端没有文件引用 ✓ ⇒ ⇒ 它不用这个参数 ✓。
   */
  open(doc:DocumentRecord,file:F):Promise<OpenResult>;
  /**
   * 这个文件是不是**已经绑在某个文档上** ✓ ⇒ ⇒ 命中就是聚焦 ✓ ⇒ ⇒ 不新建 ✓（§5.2 ✓）。
   *
-  * **文件身份优先** ✓ ⇒ ⇒ 内容哈希是二级 ✓（§5.3 ✓）⇒ ⇒ 同一个文件不会开出两个文档 ✓。
+  * **归属按文件引用** ✓ ⇒ ⇒ 内容哈希是二级 ✓（§5.3 ✓）⇒ ⇒ 同一个文件不会开出两个文档 ✓。
   */
  boundSelection(file:F):Promise<BoundSelection|undefined>;
  /**
-  * 释放这一项的授权 ✓ ⇒ ⇒ **没采用的授权不留着** ✓（§5.1 ✓、M4-5 ✓）。
+  * 放掉这一项的句柄 ✓ ⇒ ⇒ **没采用的不留着** ✓（§5.1 ✓、M4-5 ✓）。
   *
-  * **打开成功的那一项不释放** ✓ ⇒ ⇒ 它的授权是那个文档的绑定 ✓ ⇒ ⇒ 释放了绑定就断了 ✓。
+  * **打开成功的那一项不放掉** ✓ ⇒ ⇒ 它的句柄是那个文档的绑定 ✓ ⇒ ⇒ 放掉了绑定就断了 ✓。
   */
  release(file:F):Promise<void>;
 }
@@ -105,7 +105,7 @@ export class SourceImport<F extends ImportFile> {
       item={name:file.name,status,documentId:doc.id,message:status==='focused'?'已聚焦工作区已有文档，导入内容未覆盖':'已导入并打开'};
      }
     }catch(error){
-     // **失败项不建绑定** ✓ ⇒ ⇒ 它的授权要释放 ✓ ⇒ ⇒ 不留要回收的授权 ✓（M4-5 ✓）。
+     // **失败项不建绑定** ✓ ⇒ ⇒ 它的句柄要放掉 ✓ ⇒ ⇒ 不留要回收的凭据 ✓（M4-5 ✓）。
      release=true;
      item={name:file.name,status:'failed',message:error instanceof Error?error.message:String(error)};
     }
