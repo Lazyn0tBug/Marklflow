@@ -86,15 +86,17 @@ export class DocumentFileContexts{
   * **打开** ✓（§4.3 open ✓）。
   *
   * **读**：选择结果 ✓、文档当前修订 ✓。
-  * **写**：绑定就位 ✓、`lastSyncedRevision = document.revision` ✓、`resources.snapshot = null` ✓。
-  * **不变量**：**打开不同步** ✓ ⇒ ⇒ 刚打开不显示未同步 ✓ ⇒ ⇒ 不读盘覆盖草稿 ✓。
+  * **写**：绑定就位 ✓、`lastSyncedRevision = revision` ✓、`resources.snapshot = null` ✓。
+  * **不变量**：**打开不同步** ✓ ⇒ ⇒ 不读盘覆盖草稿 ✓。
   *
-  * **同一身份已绑在别处 ⇒ ⇒ 不新建** ✓ ⇒ ⇒ 那是聚焦 ✓（§5.3 身份优先 ✓）
-  * ⇒ ⇒ 交回去让调用方聚焦那个标签页 ✓。
+  * **基线由调用方给** ✓ ⇒ ⇒ 新建时给修订 ✓ ⇒ ⇒ 命中已有内容时按内容是否相同给修订或 null ✓（§2.3 ✓）。
+  *
+  * **同一身份已绑在这个文档上 ⇒ ⇒ 重新绑定** ✓ ⇒ ⇒ 换用这次的句柄 ✓。
+  * **绑在别的文档上 ⇒ ⇒ 不抢** ✓ ⇒ ⇒ 交回去让调用方聚焦那个标签页 ✓。
   */
- open(documentId:string,identity:FileIdentityBinding,revision:number):OpenOutcome{
+ open(documentId:string,identity:FileIdentityBinding,revision:number|null):OpenOutcome{
   const existing=this.byIdentity.get(identity.fileIdentity);
-  if(existing!==undefined)return {kind:'already-bound',documentId:existing};
+  if(existing!==undefined&&existing!==documentId)return {kind:'already-bound',documentId:existing};
   const context:DocumentFileContext={documentId,identity,sync:{lastSyncedRevision:revision,conflict:null},resources:{snapshot:null}};
   this.byDocument.set(documentId,context);
   this.byIdentity.set(identity.fileIdentity,documentId);

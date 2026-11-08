@@ -15,20 +15,22 @@ const file=(name:string,fileIdentity='f1'):ImportFile&{fileIdentity:string}=>({n
 function setup(options:{sameVersion?:()=>Promise<boolean>}={}){
  const contexts=new DocumentFileContexts();
  const opened:string[]=[];
+ const released:string[]=[];
  const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
-  open:async doc=>{opened.push(doc.id);return 'opened'},
+  open:async doc=>{opened.push(doc.id);return {status:'opened'}},
   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-'+input.fileIdentity,displayName:input.name,sourceFormat:'markdown'}),
   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
   sameVersion:options.sameVersion??(async()=>true),
+  releaseHandle:async key=>{released.push(key)},
  });
- return {contexts,opener,opened};
+ return {contexts,opener,opened,released};
 }
 
 describe('打开本地文件',()=>{
  it('binds the file to the document it opened',async()=>{
   const {contexts,opener,opened}=setup();
   const doc=createNewDocument('本地.md');
-  expect(await opener.open(doc,file('本地.md'))).toBe('opened');
+  expect(await opener.open(doc,file('本地.md'))).toEqual({status:'opened'});
   expect(opened).toEqual([doc.id]);
   // **绑定就位** ✓ ⇒ ⇒ 身份与授权 key 都在 ✓ ⇒ ⇒ 刚打开不显示未同步 ✓。
   const context=contexts.read(doc.id);
@@ -37,18 +39,79 @@ describe('打开本地文件',()=>{
   expect(context?.sync.lastSyncedRevision).toBe(doc.revision);
  });
 
- it('does not bind when the document was already there',async()=>{
-  const {contexts}=setup();
-  const other=createNewDocument('别的.md');
-  const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
-   open:async()=>'focused',
-   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-other',displayName:input.name,sourceFormat:'markdown'}),
+ it('binds the file again when the content it belongs to is already in the workspace',async()=>{
+  const {contexts,opener}=setup();
+  const doc=createNewDocument('本地.md');
+  const opener2=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
+   // **归属命中** ✓ ⇒ ⇒ 聚焦工作区里那一份 ✓ ⇒ ⇒ 不新建 ✓。
+   open:async()=>({status:'focused',existing:doc}),
+   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f1',displayName:input.name,sourceFormat:'markdown'}),
    boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
    sameVersion:async()=>true,
+   releaseHandle:async()=>{},
   });
-  expect(await opener.open(other,file('本地.md'))).toBe('focused');
-  // **聚焦的那一条不建绑定** ✓ ⇒ ⇒ 那个文档没有上下文 ✓ ⇒ ⇒ 绑定只属于打开成功的那一次 ✓。
-  expect(contexts.read(other.id)).toBeUndefined();
+  await opener2.open(doc,file('本地.md'));
+  // **绑定指回那一份** ✓ ⇒ ⇒ 这份内容仍是这份文件的 ✓ ⇒ ⇒ 打开本地文件就有同步目标 ✓。
+  const context=contexts.read(doc.id);
+  expect(context?.identity.fileIdentity).toBe('f1');
+  // **草稿与文件当前内容相同 ⇒ ⇒ 基线 = 草稿修订 ⇒ ⇒ 已同步 ✓**（§2.3 ✓）。
+  expect(context?.sync.lastSyncedRevision).toBe(doc.revision);
+ });
+
+ it('marks it unsynced when the draft and the file no longer agree',async()=>{
+  const {contexts}=setup();
+  const doc=createNewDocument('本地.md');
+  const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
+   // **草稿已经改过** ✓ ⇒ ⇒ 与文件当前内容不同 ✓。
+   open:async()=>({status:'focused',existing:{...doc,markdown:'改过的内容',revision:doc.revision+1}}),
+   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f1',displayName:input.name,sourceFormat:'markdown'}),
+   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
+   sameVersion:async()=>true,
+   releaseHandle:async()=>{},
+  });
+  await opener.open(doc,file('本地.md'));
+  // **不同 ⇒ ⇒ 基线 null ⇒ ⇒ 按未同步显示 ✓ ⇒ ⇒ 不静默覆盖草稿 ✓**（§2.3 ✓）。
+  expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBeNull();
+ });
+
+ it('treats a CRLF file as the same content',async()=>{
+  const {contexts}=setup();
+  const doc=createNewDocument('本地.md');
+  const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
+   // **编辑器的值是 LF** ✓ ⇒ ⇒ CRLF 的文件不该平白判成"不同" ✓。
+   open:async()=>({status:'focused',existing:{...doc,markdown:'一行\n两行'}}),
+   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f1',displayName:input.name,sourceFormat:'markdown'}),
+   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
+   sameVersion:async()=>true,
+   releaseHandle:async()=>{},
+  });
+  await opener.open({...doc,markdown:'一行\r\n两行'},file('本地.md'));
+  expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBe(doc.revision);
+ });
+
+ it('releases the handle when the file is already bound to another document',async()=>{
+  const {contexts,released}=setup();
+  const first=createNewDocument('先开的.md');
+  const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
+   open:async()=>({status:'opened'}),
+   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f1',displayName:input.name,sourceFormat:'markdown'}),
+   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
+   sameVersion:async()=>true,
+   releaseHandle:async key=>{released.push(key)},
+  });
+  await opener.open(first,file('先开的.md'));
+  const second=createNewDocument('后开的.md');
+  const opener2=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
+   open:async()=>({status:'opened'}),
+   identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f2',displayName:input.name,sourceFormat:'markdown'}),
+   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
+   sameVersion:async()=>true,
+   releaseHandle:async key=>{released.push(key)},
+  });
+  await opener2.open(second,file('后开的.md','f1'));
+  // **同一个文件只能绑一份内容** ✓ ⇒ ⇒ 这次没有成为绑定的凭据 ✓ ⇒ ⇒ 放掉 ✓（§5.1 ✓）。
+  expect(contexts.read(second.id)).toBeUndefined();
+  expect(released).toEqual(['grant-f2']);
  });
 
  it('finds the bound document and says the file did not change',async()=>{
@@ -65,13 +128,14 @@ describe('打开本地文件',()=>{
   const contexts=new DocumentFileContexts();
   const doc=createNewDocument('本地.md');
   const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
-   open:async()=>'opened',
+   open:async()=>({status:'opened'}),
    identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f1',displayName:input.name,sourceFormat:'markdown'}),
    boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
    sameVersion:async()=>false,
+   releaseHandle:async()=>{},
   });
   await opener.open(doc,file('本地.md'));
-  // **磁盘变了** ⇒ ⇒ 交给用户决定 ✓ ⇒ ⇒ 不静默覆盖 ✓（M4-9 ✓）。
+  // **磁盘变了** ✓ ⇒ ⇒ 交给用户决定 ✓ ⇒ ⇒ 不静默覆盖 ✓（M4-9 ✓）。
   expect(await opener.bound(file('本地.md'))).toEqual({documentId:doc.id,changed:true});
  });
 
@@ -79,11 +143,12 @@ describe('打开本地文件',()=>{
   const contexts=new DocumentFileContexts();
   const doc=createNewDocument('本地.md');
   const opener=new DocumentOpener<ImportFile&{fileIdentity:string}>(contexts,{
-   open:async()=>'opened',
+   open:async()=>({status:'opened'}),
    identity:input=>({fileIdentity:input.fileIdentity,key:'grant-f1',displayName:input.name,sourceFormat:'markdown'}),
    boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
    // **答不了** ✓ ⇒ ⇒ 那是"无法证明" ✓ ⇒ ⇒ 按变了处理 ✓ ⇒ ⇒ 问用户 ✓（§2.3 ✓）。
    sameVersion:async()=>{throw new Error('native state unavailable')},
+   releaseHandle:async()=>{},
   });
   await opener.open(doc,file('本地.md'));
   expect(await opener.bound(file('本地.md'))).toEqual({documentId:doc.id,changed:true});

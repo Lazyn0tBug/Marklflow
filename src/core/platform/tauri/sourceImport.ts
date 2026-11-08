@@ -1,5 +1,5 @@
 import {createSourceImport} from '../sourceImport';
-import type {BoundSelection} from '../../../application/workspace/sourceImport';
+import type {BoundSelection,OpenResult} from '../../../application/workspace/sourceImport';
 import type {FileIdentityBinding} from '../../../application/workspace/documentFileContext';
 import type {DocumentRecord} from '../../model/document';
 import {readNativeText,releaseNativeFile,type NativeSelection} from './files';
@@ -32,11 +32,14 @@ export function nativeFileIdentity(file:NativeSelection):FileIdentityBinding{
 
 export function createNativeSourceImport(
  platform:NativeSourceImportPlatform,
- open:(doc:DocumentRecord,file:NativeSelection)=>Promise<'opened'|'focused'>,
+ open:(doc:DocumentRecord,file:NativeSelection)=>Promise<OpenResult>,
 ){
  return createSourceImport<NativeSelection>({
   read:file=>readNativeText(file),
   boundSelection:platform.boundSelection,
   release:file=>releaseNativeFile(file.key),
+  // **归属按文件引用** ✓ ⇒ ⇒ 同一个文件恒对应同一份内容 ✓ ⇒ ⇒ 同名同内容也不合并 ✓
+  // ⇒ ⇒ 两个文件两个文档 ✓（§5.1、§5.3 ✓）。
+  fileReference:file=>file.identity,
  },open);
 }

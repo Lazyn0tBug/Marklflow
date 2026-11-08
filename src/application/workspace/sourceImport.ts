@@ -15,19 +15,39 @@ export interface BoundSelection{
  changed:boolean;
 }
 
+/**
+ * 打开的结果 ✓。
+ *
+ * **聚焦时把工作区里那一份给出来** ✓ ⇒ ⇒ 归属命中时它就是这份文件对应的那份内容 ✓
+ * ⇒ ⇒ 好按内容比较基线 ✓（§2.3 ✓）。
+ */
+export interface OpenResult{
+ /** 打开了新的一份 ✓，还是聚焦了工作区里已有的那一份 ✓。 */
+ status:'opened'|'focused';
+ /** 聚焦时的那一份 ✓ ⇒ ⇒ 没有就是 undefined ✓。 */
+ existing?:DocumentRecord|undefined;
+}
+
 export interface SourceImportPorts<F extends ImportFile> {
  read(file:F):Promise<string>;
  decodeHtml(content:string):DocumentRecord|null;
  createMarkdown(name:string,content:string):DocumentRecord;
  verify(doc:DocumentRecord):Promise<void>;
- markdownKey(name:string,content:string):Promise<string>;
+ /**
+  * 文档键 ✓：这份内容属不属于同一个文档 ✓。
+  *
+  * **文件也一并给** ✓ ⇒ ⇒ **来源不同的两份内容不该并成一个文档** ✓ ⇒ ⇒ 键由平台自己定 ✓（§5.1 ✓）。
+  *
+  * **原生端按文件引用归属** ✓ ⇒ ⇒ 同一个文件恒对应同一份内容 ✓ ⇒ ⇒ 键里不看内容摘要 ✓（§5.3 ✓）。
+  */
+ documentKey(file:F,name:string,content:string):Promise<string>;
  /**
   * 打开这份载荷 ✓。
   *
   * **文件也一并给** ✓ ⇒ ⇒ 打开与绑定是同一件事的两面 ✓ ⇒ ⇒ 桌面端据此建立绑定 ✓
   * ⇒ ⇒ Web 端没有身份 ✓ ⇒ ⇒ 它不用这个参数 ✓。
   */
- open(doc:DocumentRecord,file:F):Promise<'opened'|'focused'>;
+ open(doc:DocumentRecord,file:F):Promise<OpenResult>;
  /**
   * 这个文件是不是**已经绑在某个文档上** ✓ ⇒ ⇒ 命中就是聚焦 ✓ ⇒ ⇒ 不新建 ✓（§5.2 ✓）。
   *
@@ -75,11 +95,12 @@ export class SourceImport<F extends ImportFile> {
       const html=/\.html?$/i.test(file.name);let key:string|undefined;
       let candidate:DocumentRecord;
       if(html){const parsed=this.ports.decodeHtml(content);if(!parsed)throw new Error('HTML 没有有效源载荷或结构不受支持；不会按 Markdown 导入');candidate=parsed}
-      else{if(new TextEncoder().encode(content).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown 超过源文大小限制');key=await this.ports.markdownKey(file.name,content);candidate=this.ports.createMarkdown(file.name,content);const id=this.markdownIds.get(key);if(id)candidate={...candidate,id}}
+      else{if(new TextEncoder().encode(content).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown 超过源文大小限制');key=await this.ports.documentKey(file,file.name,content);candidate=this.ports.createMarkdown(file.name,content);const id=this.markdownIds.get(key);if(id)candidate={...candidate,id}}
       const doc=documentSchema.parse(candidate);
       if(!Number.isSafeInteger(doc.revision)||new TextEncoder().encode(doc.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown 超过源文大小限制或修订无效');
       await this.ports.verify(doc);
-      const status=await this.ports.open(doc,file);
+      const result=await this.ports.open(doc,file);
+      const status=result.status;
       if(key)this.markdownIds.set(key,doc.id);
       item={name:file.name,status,documentId:doc.id,message:status==='focused'?'已聚焦工作区已有文档，导入内容未覆盖':'已导入并打开'};
      }

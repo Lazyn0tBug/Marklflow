@@ -19,7 +19,7 @@ beforeEach(()=>{vi.resetAllMocks();native.isTauri.mockReturnValue(true)});
 it('reads through the grant and releases the grant it did not adopt',async()=>{
  native.invoke.mockResolvedValueOnce('# 标题\n').mockResolvedValueOnce(undefined);
  const opened:string[]=[];
- const importer=createNativeSourceImport({boundSelection:async()=>undefined},async doc=>{opened.push(doc.id);return 'opened'});
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async doc=>{opened.push(doc.id);return {status:'opened'}});
  const result=await importer.run([selection]);
  expect(result.status==='completed'&&result.items[0]?.status).toBe('opened');
  expect(opened).toHaveLength(1);
@@ -34,7 +34,7 @@ it('focuses the bound document and releases the selection it did not adopt',asyn
  const opened:string[]=[];
  const importer=createNativeSourceImport(
   {boundSelection:async()=>({documentId:'bound-doc',changed:false})},
-  async doc=>{opened.push(doc.id);return 'opened'},
+  async doc=>{opened.push(doc.id);return {status:'opened'}},
  );
  const result=await importer.run([selection]);
  expect(result.status==='completed'&&result.items[0]?.status).toBe('focused');
@@ -69,8 +69,32 @@ it('reads an editable HTML file through the payload path, not as Markdown',async
  const payload=createNewDocument('可编辑.html');
  const encoded=btoa(encodeURIComponent(JSON.stringify(payload)));
  native.invoke.mockResolvedValueOnce(`<script id="markflow-source-payload" type="application/json">${encoded}</script>`);
- const importer=createNativeSourceImport({boundSelection:async()=>undefined},async()=>'opened');
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async()=>({status:'opened'}));
  const html:NativeSelection={...selection,name:'可编辑.html',size:10};
  const result=await importer.run([html]);
  expect(result.status==='completed'&&result.items[0]?.status).toBe('opened');
+});
+
+it('gives two different native files with the same name and content two documents',async()=>{
+ // **来源不同就是不同的文件** ✓ ⇒ ⇒ 同名同内容也不合并 ✓ ⇒ ⇒ 两个文件两个文档 ✓（§5.1 ✓）。
+ native.invoke.mockResolvedValue('# 同样的内容\n');
+ const opened:string[]=[];
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async doc=>{opened.push(doc.id);return {status:'opened'}});
+ const other:NativeSelection={...selection,key:'223e4567-e89b-42d3-a456-426614174000',identity:'333e4567-e89b-42d3-a456-426614174000'};
+ const result=await importer.run([selection,other]);
+ expect(result.status==='completed'&&result.items.map(item=>item.status)).toEqual(['opened','opened']);
+ expect(opened).toHaveLength(2);
+ // **两个文档** ✓ ⇒ ⇒ 归属按文件引用 ✓ ⇒ ⇒ 键里不看内容摘要 ✓（§5.3 ✓）。
+ expect(opened[0]).not.toBe(opened[1]);
+});
+
+it('gives the same native file one document',async()=>{
+ // **同一个文件恒对应同一份内容** ✓ ⇒ ⇒ 再次打开不新建 ✓（§5.3 ✓）。
+ native.invoke.mockResolvedValue('# 同样的内容\n');
+ const opened:string[]=[];
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async doc=>{opened.push(doc.id);return {status:'opened'}});
+ await importer.run([selection]);
+ await importer.run([selection]);
+ expect(opened).toHaveLength(2);
+ expect(opened[0]).toBe(opened[1]);
 });

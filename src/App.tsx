@@ -45,7 +45,7 @@ import {isNativeSynced,listenNativeDrop,releaseNativeFile,selectNativeOpen,type 
 import {isDesktopRuntime} from './core/platform/tauri/runtime';
 import {DocumentFileContexts,releaseDocumentFileContext} from './application/workspace/documentFileContext';
 import {DocumentOpener} from './application/workspace/documentOpen';
-import type {ImportItemResult} from './application/workspace/sourceImport';
+import type {ImportItemResult,OpenResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
 import {DOCUMENT_MARKDOWN_MAX} from './core/model/documentSchema';
@@ -58,7 +58,7 @@ export default function App() {
   const [actionError,setActionError]=useState('');
   const [importBusy,setImportBusy]=useState(false);
   const [importResults,setImportResults]=useState<ImportItemResult[]>([]);
-  const importOpen=useRef<(doc:DocumentRecord)=>Promise<'opened'|'focused'>>(async()=>{throw new Error('导入尚未就绪')});
+  const importOpen=useRef<(doc:DocumentRecord)=>Promise<OpenResult>>(async()=>{throw new Error('导入尚未就绪')});
   const openSaved=useRef<(doc:DocumentRecord)=>void>(()=>{});
   const importer=useRef<ReturnType<typeof createWebSourceImport>|null>(null);
   if(!importer.current)importer.current=createWebSourceImport(doc=>importOpen.current(doc));
@@ -82,6 +82,8 @@ export default function App() {
    identity:nativeFileIdentity,
    boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
    sameVersion:key=>isNativeSynced(key),
+   // **这一次没有成为绑定的凭据时才放** ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
+   releaseHandle:key=>releaseNativeFile(key),
   });
   const [storageWarnings,setStorageWarnings]=useState<string[]>([]);
   const [recoveryCount,setRecoveryCount]=useState(0);
@@ -337,14 +339,20 @@ export default function App() {
   };
 
   openSaved.current=(doc:DocumentRecord)=>{capturePosition();sessions.open(doc);setDocuments(previous=>[doc,...previous.filter(value=>value.id!==doc.id)]);setTabs(sessions.documentIds);setCurrentDocId(doc.id);setMathMode(doc.options.mathMode);setPreviewMode('flow');restorePreview.current=doc.id};
-  const addDocument=async(doc:DocumentRecord):Promise<'opened'|'focused'>=>{
-    const existing=documents.find(value=>value.id===doc.id);
-    if(sessions.documentIds.includes(doc.id)||existing){selectDocument(doc.id);return 'focused'}
+  const addDocument=async(doc:DocumentRecord):Promise<OpenResult>=>{
+    const inSession=sessions.documentIds.includes(doc.id);
+    const existing=inSession?sessions.read(doc.id).document:documents.find(value=>value.id===doc.id);
+    if(inSession||existing){
+      // **聚焦已有那一份** ✓ ⇒ ⇒ **不覆盖草稿** ✓ ⇒ ⇒ 把它给出去 ✓
+      // ⇒ ⇒ 好按内容比较基线 ✓（§2.3 ✓、§5.5 ✓）。
+      selectDocument(doc.id);
+      return {status:'focused',existing};
+    }
     if(sessions.documentIds.length>=32)throw new Error('最多同时打开32个文档，请先关闭一个标签页。');
     await saveDocument(doc);
     // Capture the currently displayed session when the write completes, not when file reading began.
     openSaved.current(doc);
-    return 'opened';
+    return {status:'opened'};
   };
   importOpen.current=addDocument;
   const handleCreateDoc=()=>{if(importBusy)return;setActionError('');void addDocument(createNewDocument('新建 Markdown 文档')).catch(error=>{setActionError('操作失败，原文档与编辑内容已保留：'+String(error));void reportFailure({category:'storage-write-failed',detail:String(error),cause:error})});};

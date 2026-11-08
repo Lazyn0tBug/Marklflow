@@ -1,4 +1,5 @@
 import {createSourceImport} from '../sourceImport';
+import type {OpenResult} from '../../../application/workspace/sourceImport';
 import type {DocumentRecord} from '../../model/document';
 /** Browser picker files are transient; native paths and permissions belong to a future Tauri adapter. */
 export function readSourceFile(file:File):Promise<string>{
@@ -10,12 +11,14 @@ export function readSourceFile(file:File):Promise<string>{
   reader.readAsArrayBuffer(file);
  });
 }
-export function createWebSourceImport(open:(doc:DocumentRecord,file:File)=>Promise<'opened'|'focused'>){
+export function createWebSourceImport(open:(doc:DocumentRecord,file:File)=>Promise<OpenResult>){
  return createSourceImport<File>({
   read:readSourceFile,
   // **浏览器这一侧没有文件身份** ✓ ⇒ ⇒ 命中不了既有绑定 ✓ ⇒ ⇒ 每次都是新文档 ✓。
   // **也没有原生授权** ✓ ⇒ ⇒ 没有可释放的东西 ✓ ⇒ ⇒ 这一步是空的 ✓。
   boundSelection:async()=>undefined,
   release:async()=>{},
+  // **浏览器这一侧没有引用** ✓ ⇒ ⇒ 键就是"同名 + 内容摘要" ✓ ⇒ ⇒ 沿用既有规则 ✓。
+  fileReference:()=>'',
  },open);
 }
