@@ -367,15 +367,28 @@ export default function App() {
    * **桌面端：选择器与拖放进同一个批次** ✓ ⇒ ⇒ 去重行为一致 ✓（M4-6 ✓）。
    */
   const runNativeBatch=async(files:readonly NativeSelection[])=>{
-    const service=nativeImporter.current;if(!service||service.busy)return;
+    const service=nativeImporter.current;
+    if(!service){
+      // **批次还没起来** ✓ ⇒ ⇒ 这一批不用 ✓ ⇒ ⇒ 原生侧已经为它们签发了句柄 ✓
+      // ⇒ ⇒ 放掉 ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
+      for(const file of files)void releaseNativeFile(file.key).catch(()=>{});
+      return;
+    }
+    if(service.busy){
+      // **上一批还没走完** ✓ ⇒ ⇒ 这一批不用 ✓ ⇒ ⇒ **交给批次去放掉** ✓
+      // ⇒ ⇒ 那条规则在应用层 ✓（§5.1 ✓）⇒ ⇒ 这里不碰忙碌状态 ✓。
+      await service.run(files);
+      return;
+    }
     setImportBusy(true);setImportResults([]);
     try{
       const result=await service.run(files);
       if(result.status==='completed'){
         setImportResults(result.items);
-        // **命中既有绑定 ⇒ ⇒ 聚焦那个标签页** ✓ ⇒ ⇒ 不新建、不覆盖 ✓（M4-4 ✓）。
-        const focus=result.items.find(item=>item.status==='focused'||item.status==='changed');
-        if(focus?.documentId)selectDocument(focus.documentId);
+        // **命中既有绑定的都聚焦** ✓ ⇒ ⇒ 不止第一个 ✓ ⇒ ⇒ 不新建、不覆盖 ✓（M4-4 ✓）。
+        for(const item of result.items){
+          if((item.status==='focused'||item.status==='changed')&&item.documentId)selectDocument(item.documentId);
+        }
       }
     }catch(error){setImportResults([{name:'打开',status:'failed',message:String(error)}]);void reportFailure({category:'import-rejected',detail:String(error),cause:error})}
     finally{setImportBusy(false)}
@@ -383,7 +396,15 @@ export default function App() {
   nativeFlow.current=runNativeBatch;
   const handleOpenNative=async()=>{
     if(importBusy)return;
-    const files=await selectNativeOpen();
+    let files:NativeSelection[]|undefined;
+    try{
+      files=await selectNativeOpen();
+    }catch(error){
+      // **对话框打不开** ✓ ⇒ ⇒ 按机器码说那句话 ✓ ⇒ ⇒ 不是"有个操作没能完成" ✓（§9 ✓）。
+      setImportResults([{name:'打开',status:'failed',message:error instanceof Error?error.message:String(error)}]);
+      void reportFailure({category:'import-rejected',detail:String(error),cause:error});
+      return;
+    }
     // **用户没选** ⇒ ⇒ 什么都不做 ✓ ⇒ ⇒ 不是失败 ✓（§9 ✓）。
     if(!files||!files.length)return;
     await runNativeBatch(files);

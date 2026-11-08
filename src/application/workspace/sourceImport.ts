@@ -69,7 +69,12 @@ export class SourceImport<F extends ImportFile> {
  constructor(private readonly ports:SourceImportPorts<F>){}
  get busy():boolean{return this.active}
  async run(selection:readonly F[]):Promise<ImportResult>{
-  if(this.active)return {status:'busy'};
+  if(this.active){
+   // **上一批还没走完 ⇒ ⇒ 这一批不用** ✓ ⇒ ⇒ 原生侧已经为它们签发了句柄 ✓
+   // ⇒ ⇒ 放掉 ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓、M4-5 ✓）。
+   for(const file of selection)await this.ports.release(file).catch(()=>{});
+   return {status:'busy'};
+  }
   this.active=true;const files=[...selection],items:ImportItemResult[]=[];
   try{
    for(const file of files){
