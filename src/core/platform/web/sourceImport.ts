@@ -17,5 +17,9 @@ export function createWebSourceImport(open:(doc:DocumentRecord)=>Promise<'opened
  return new SourceImport<File>({read:readSourceFile,decodeHtml:extractPayloadFromHtml,verify:doc=>verifyAssets(doc.assets),open,
   createMarkdown:(name,content)=>{const doc=createNewDocument(name.replace(/\.[^/.]+$/,''));return {...doc,markdown:content,meta:{...doc.meta,author:'Imported'}}},
   markdownKey:async(name,content)=>name+'\0'+await sha256Hex(new TextEncoder().encode(content)),
+  // **浏览器这一侧没有文件身份** ✓ ⇒ ⇒ 命中不了既有绑定 ✓ ⇒ ⇒ 每次都是新文档 ✓。
+  // **也没有原生授权** ✓ ⇒ ⇒ 没有可释放的东西 ✓ ⇒ ⇒ 这一步是空的 ✓。
+  boundSelection:async()=>undefined,
+  release:async()=>{},
  });
 }
