@@ -1,8 +1,5 @@
-import {SourceImport} from '../../../application/workspace/sourceImport';
+import {createSourceImport} from '../sourceImport';
 import type {DocumentRecord} from '../../model/document';
-import {createNewDocument,extractPayloadFromHtml} from '../../storage/storage';
-import {verifyAssets} from '../../export/documentAssets';
-import {sha256Hex} from '../crypto';
 /** Browser picker files are transient; native paths and permissions belong to a future Tauri adapter. */
 export function readSourceFile(file:File):Promise<string>{
  return new Promise((resolve,reject)=>{
@@ -13,13 +10,12 @@ export function readSourceFile(file:File):Promise<string>{
   reader.readAsArrayBuffer(file);
  });
 }
-export function createWebSourceImport(open:(doc:DocumentRecord)=>Promise<'opened'|'focused'>){
- return new SourceImport<File>({read:readSourceFile,decodeHtml:extractPayloadFromHtml,verify:doc=>verifyAssets(doc.assets),open,
-  createMarkdown:(name,content)=>{const doc=createNewDocument(name.replace(/\.[^/.]+$/,''));return {...doc,markdown:content,meta:{...doc.meta,author:'Imported'}}},
-  markdownKey:async(name,content)=>name+'\0'+await sha256Hex(new TextEncoder().encode(content)),
+export function createWebSourceImport(open:(doc:DocumentRecord,file:File)=>Promise<'opened'|'focused'>){
+ return createSourceImport<File>({
+  read:readSourceFile,
   // **浏览器这一侧没有文件身份** ✓ ⇒ ⇒ 命中不了既有绑定 ✓ ⇒ ⇒ 每次都是新文档 ✓。
   // **也没有原生授权** ✓ ⇒ ⇒ 没有可释放的东西 ✓ ⇒ ⇒ 这一步是空的 ✓。
   boundSelection:async()=>undefined,
   release:async()=>{},
- });
+ },open);
 }

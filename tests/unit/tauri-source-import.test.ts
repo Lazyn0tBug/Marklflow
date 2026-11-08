@@ -1,0 +1,76 @@
+import {beforeEach,expect,it,vi} from 'vitest';
+import {createNativeSourceImport} from '../../src/core/platform/tauri/sourceImport';
+import type {NativeSelection} from '../../src/core/platform/tauri/files';
+import {createNewDocument} from '../../src/core/storage/storage';
+
+/**
+ * 桌面端那一半 ✓：**读与释放都走授权** ✓ ⇒ ⇒ 路径不出原生侧 ✓。
+ *
+ * **"是不是已经绑在某个文档上"由应用侧答** ✓ ⇒ ⇒ 这里只转发 ✓ ⇒ ⇒ 绑定只有一处 ✓。
+ */
+
+const native=vi.hoisted(()=>({isTauri:vi.fn(),invoke:vi.fn()}));
+vi.mock('@tauri-apps/api/core',()=>native);
+
+const selection:NativeSelection={key:'123e4567-e89b-42d3-a456-426614174000',name:'文档.md',size:3,identity:'987e4567-e89b-42d3-a456-426614174000'};
+
+beforeEach(()=>{vi.resetAllMocks();native.isTauri.mockReturnValue(true)});
+
+it('reads through the grant and releases the grant it did not adopt',async()=>{
+ native.invoke.mockResolvedValueOnce('# 标题\n').mockResolvedValueOnce(undefined);
+ const opened:string[]=[];
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async doc=>{opened.push(doc.id);return 'opened'});
+ const result=await importer.run([selection]);
+ expect(result.status==='completed'&&result.items[0]?.status).toBe('opened');
+ expect(opened).toHaveLength(1);
+ // **读走授权** ✓ ⇒ ⇒ 前端只把不透明的 key 给原生侧 ✓。
+ expect(native.invoke).toHaveBeenNthCalledWith(1,'read_native_text',{key:selection.key});
+ // **打开成功的那一项不释放** ✓ ⇒ ⇒ 那个授权是绑定的命脉 ✓（M4-5 ✓）。
+ expect(native.invoke).toHaveBeenCalledTimes(1);
+});
+
+it('focuses the bound document and releases the selection it did not adopt',async()=>{
+ native.invoke.mockResolvedValueOnce(undefined);
+ const opened:string[]=[];
+ const importer=createNativeSourceImport(
+  {boundSelection:async()=>({documentId:'bound-doc',changed:false})},
+  async doc=>{opened.push(doc.id);return 'opened'},
+ );
+ const result=await importer.run([selection]);
+ expect(result.status==='completed'&&result.items[0]?.status).toBe('focused');
+ expect(result.status==='completed'&&result.items[0]?.documentId).toBe('bound-doc');
+ // **不读、不开** ✓ ⇒ ⇒ 没有覆盖草稿 ✓（M4-4 ✓）。
+ expect(opened).toHaveLength(0);
+ expect(native.invoke).not.toHaveBeenCalledWith('read_native_text',expect.anything());
+ // **这一项的授权用不上** ✓ ⇒ ⇒ 释放 ✓。
+ expect(native.invoke).toHaveBeenCalledWith('release_native_file',{key:selection.key});
+});
+
+it('reports the file as changed instead of overwriting the draft',async()=>{
+ native.invoke.mockResolvedValueOnce(undefined);
+ const importer=createNativeSourceImport({boundSelection:async()=>({documentId:'bound-doc',changed:true})},async()=>'opened');
+ const result=await importer.run([selection]);
+ // **变了就是变了** ✓ ⇒ ⇒ 交给用户决定 ✓ ⇒ ⇒ 不静默覆盖 ✓（M4-9 ✓）。
+ expect(result.status==='completed'&&result.items[0]?.status).toBe('changed');
+ expect(native.invoke).toHaveBeenCalledWith('release_native_file',{key:selection.key});
+});
+
+it('releases the grant of an item it could not read',async()=>{
+ native.invoke.mockRejectedValueOnce({code:'invalid-utf8'});
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async()=>'opened');
+ const result=await importer.run([selection]);
+ expect(result.status==='completed'&&result.items[0]?.status).toBe('failed');
+ // **失败项不建绑定** ✓ ⇒ ⇒ 它的授权要释放 ✓（M4-5 ✓）。
+ expect(native.invoke).toHaveBeenCalledWith('release_native_file',{key:selection.key});
+});
+
+it('reads an editable HTML file through the payload path, not as Markdown',async()=>{
+ // **可编辑 HTML 的载荷** ✓ ⇒ ⇒ 那条路径走载荷 ✓ ⇒ ⇒ 不按 Markdown 导入 ✓（M4-2 ✓）。
+ const payload=createNewDocument('可编辑.html');
+ const encoded=btoa(encodeURIComponent(JSON.stringify(payload)));
+ native.invoke.mockResolvedValueOnce(`<script id="markflow-source-payload" type="application/json">${encoded}</script>`);
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async()=>'opened');
+ const html:NativeSelection={...selection,name:'可编辑.html',size:10};
+ const result=await importer.run([html]);
+ expect(result.status==='completed'&&result.items[0]?.status).toBe('opened');
+});

@@ -21,7 +21,13 @@ export interface SourceImportPorts<F extends ImportFile> {
  createMarkdown(name:string,content:string):DocumentRecord;
  verify(doc:DocumentRecord):Promise<void>;
  markdownKey(name:string,content:string):Promise<string>;
- open(doc:DocumentRecord):Promise<'opened'|'focused'>;
+ /**
+  * 打开这份载荷 ✓。
+  *
+  * **文件也一并给** ✓ ⇒ ⇒ 打开与绑定是同一件事的两面 ✓ ⇒ ⇒ 桌面端据此建立绑定 ✓
+  * ⇒ ⇒ Web 端没有身份 ✓ ⇒ ⇒ 它不用这个参数 ✓。
+  */
+ open(doc:DocumentRecord,file:F):Promise<'opened'|'focused'>;
  /**
   * 这个文件是不是**已经绑在某个文档上** ✓ ⇒ ⇒ 命中就是聚焦 ✓ ⇒ ⇒ 不新建 ✓（§5.2 ✓）。
   *
@@ -73,7 +79,7 @@ export class SourceImport<F extends ImportFile> {
       const doc=documentSchema.parse(candidate);
       if(!Number.isSafeInteger(doc.revision)||new TextEncoder().encode(doc.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown 超过源文大小限制或修订无效');
       await this.ports.verify(doc);
-      const status=await this.ports.open(doc);
+      const status=await this.ports.open(doc,file);
       if(key)this.markdownIds.set(key,doc.id);
       item={name:file.name,status,documentId:doc.id,message:status==='focused'?'已聚焦工作区已有文档，导入内容未覆盖':'已导入并打开'};
      }
