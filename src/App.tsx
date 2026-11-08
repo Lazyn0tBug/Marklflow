@@ -40,6 +40,11 @@ import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {saveSource} from './application/workspace/sourceSave';
 import {createWebSourceImport} from './core/platform/web/sourceImport';
+import {createNativeSourceImport,nativeFileIdentity} from './core/platform/tauri/sourceImport';
+import {isNativeSynced,listenNativeDrop,releaseNativeFile,selectNativeOpen,type NativeSelection} from './core/platform/tauri/files';
+import {isDesktopRuntime} from './core/platform/tauri/runtime';
+import {DocumentFileContexts,releaseDocumentFileContext} from './application/workspace/documentFileContext';
+import {DocumentOpener} from './application/workspace/documentOpen';
 import type {ImportItemResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
 import { extractOutline } from './core/parse/markdown';
@@ -57,6 +62,27 @@ export default function App() {
   const openSaved=useRef<(doc:DocumentRecord)=>void>(()=>{});
   const importer=useRef<ReturnType<typeof createWebSourceImport>|null>(null);
   if(!importer.current)importer.current=createWebSourceImport(doc=>importOpen.current(doc));
+  /*
+   * **桌面端那一套** ✓：系统选择器 ✓、拖放 ✓、会话里的文件绑定 ✓。
+   *
+   * **回调都放在 ref 里** ✓ ⇒ ⇒ 订阅只订一次 ✓ ⇒ ⇒ 拿到的却是当下的那份 ✓
+   * ⇒ ⇒ 与 `importOpen` 同一形状 ✓ ⇒ ⇒ 不另立一种写法 ✓。
+   */
+  const [desktop,setDesktop]=useState(false);
+  const contexts=useRef(new DocumentFileContexts()).current;
+  const nativeFlow=useRef<(files:readonly NativeSelection[])=>Promise<void>>(async()=>{});
+  const nativeImporter=useRef<ReturnType<typeof createNativeSourceImport>|null>(null);
+  /*
+   * **打开与绑定是同一件事** ✓ ⇒ ⇒ 规则在应用层 ✓ ⇒ ⇒ 这里只是把它接起来 ✓。
+   * **端口的回调都稳** ✓ ⇒ ⇒ 这个对象建一次就够 ✓ ⇒ ⇒ 批次的状态不丢 ✓。
+   */
+  const nativeOpener=useRef<DocumentOpener<NativeSelection>|null>(null);
+  if(desktop&&!nativeOpener.current)nativeOpener.current=new DocumentOpener<NativeSelection>(contexts,{
+   open:doc=>importOpen.current(doc),
+   identity:nativeFileIdentity,
+   boundDocument:fileIdentity=>contexts.documentFor(fileIdentity),
+   sameVersion:key=>isNativeSynced(key),
+  });
   const [storageWarnings,setStorageWarnings]=useState<string[]>([]);
   const [recoveryCount,setRecoveryCount]=useState(0);
   const [loadComplete,setLoadComplete]=useState(false);
@@ -208,6 +234,11 @@ export default function App() {
     runtime.current?.forget(id);tabModes.current.delete(id);tabHeadings.current.delete(id);tabEditorGeometry.current.delete(id);setTabs(sessions.documentIds);
     if(active){const next=sessions.activeDocumentId;setCurrentDocId(next??'');setPreviewMode(next?tabModes.current.get(next)??'flow':'flow');if(next)setMathMode(sessions.read(next).document.options.mathMode);setActiveHeadingId(next?tabHeadings.current.get(next)??null:null);restorePreview.current=next;placements.current={editor:null,preview:null};pendingPreviewLine.current=undefined}
     if(!sessions.documentIds.length)runtime.current?.clear();
+    /*
+     * **关掉标签页 ⇒ ⇒ 授权释放** ✓ ⇒ ⇒ 绑定不留着 ✓ ⇒ ⇒ 原生侧不留可用的凭据 ✓（M4-8 ✓）。
+     * **没有绑定的文档** ⇒ ⇒ 没有授权可放 ✓ ⇒ ⇒ 这一步是空的 ✓。
+     */
+    void releaseDocumentFileContext(contexts,id,releaseNativeFile).catch(()=>{});
   };
   const closeTab=async(id:string)=>{
     if(!sessions.documentIds.includes(id))return;
@@ -324,6 +355,51 @@ export default function App() {
     catch(error){setImportResults([{name:'导入',status:'failed',message:String(error)}]);void reportFailure({category:'import-rejected',detail:String(error),cause:error})}
     finally{setImportBusy(false)}
   };
+  /*
+   * **桌面端：选择器与拖放进同一个批次** ✓ ⇒ ⇒ 去重行为一致 ✓（M4-6 ✓）。
+   */
+  const runNativeBatch=async(files:readonly NativeSelection[])=>{
+    const service=nativeImporter.current;if(!service||service.busy)return;
+    setImportBusy(true);setImportResults([]);
+    try{
+      const result=await service.run(files);
+      if(result.status==='completed'){
+        setImportResults(result.items);
+        // **命中既有绑定 ⇒ ⇒ 聚焦那个标签页** ✓ ⇒ ⇒ 不新建、不覆盖 ✓（M4-4 ✓）。
+        const focus=result.items.find(item=>item.status==='focused'||item.status==='changed');
+        if(focus?.documentId)selectDocument(focus.documentId);
+      }
+    }catch(error){setImportResults([{name:'打开',status:'failed',message:String(error)}]);void reportFailure({category:'import-rejected',detail:String(error),cause:error})}
+    finally{setImportBusy(false)}
+  };
+  nativeFlow.current=runNativeBatch;
+  const handleOpenNative=async()=>{
+    if(importBusy)return;
+    const files=await selectNativeOpen();
+    // **用户没选** ⇒ ⇒ 什么都不做 ✓ ⇒ ⇒ 不是失败 ✓（§9 ✓）。
+    if(!files||!files.length)return;
+    await runNativeBatch(files);
+  };
+  /*
+   * **桌面端才有的两件事** ✓：那个"打开"入口 ✓ 与拖放 ✓（§8.1 ✓、§5.4 ✓）。
+   *
+   * **拖放与选择器进同一个批次** ✓ ⇒ ⇒ 去重行为一致 ✓（M4-6 ✓）。
+   * **订阅只订一次** ✓ ⇒ ⇒ 回调走 ref ✓ ⇒ ⇒ 拿到的却是当下的那份 ✓。
+   */
+  useEffect(()=>{void isDesktopRuntime().then(setDesktop)},[]);
+  useEffect(()=>{
+    if(!desktop)return;
+    const opener=nativeOpener.current;
+    if(!opener)return;
+    if(!nativeImporter.current)nativeImporter.current=createNativeSourceImport({boundSelection:file=>opener.bound(file)},(doc,file)=>opener.open(doc,file));
+    let stop:(()=>void)|undefined;let cancelled=false;
+    void (async()=>{
+      const unlisten=await listenNativeDrop(files=>{void nativeFlow.current(files)});
+      if(cancelled){unlisten();return}
+      stop=unlisten;
+    })();
+    return()=>{cancelled=true;stop?.()};
+  },[desktop]);
   // 导入的忙碌与结果：**进右下消息区** ✓（设计 §3 ✓）⇒ ⇒ 归属还在这里 ✓
   // ⇒ ⇒ 只是换了个形状与位置 ✓ ⇒ ⇒ 文字与动作照旧 ✓。
   const importMessage=importBusy?
@@ -417,7 +493,7 @@ export default function App() {
   const handleToggleEditor=()=>{capturePosition();if(!showEditor||visibleCount>1)setShowEditor(v=>!v)};
   const handleTogglePreview=()=>{capturePosition();restorePreview.current=currentDocId;if(!showPreview&&syncScroll&&editorTextareaRef.current){pendingPreviewLine.current={documentId:currentDocId,line:editorLineAt(editorTextareaRef.current.scrollTop,editorGeometry(editorTextareaRef.current))};restorePreview.current=undefined}if(!showPreview||visibleCount>1)setShowPreview(v=>!v)};
 
-  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{messageRegion}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportFiles={files=>{void handleImportFiles(files)}} importBusy={importBusy} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
+  if(!currentDoc)return <div className="h-screen flex flex-col bg-neutral-950 text-neutral-300">{recoveryNotice}{messageRegion}{loadComplete?<div className="flex flex-1 min-h-0"><Sidebar documents={documents} currentDocId="" onSelectDoc={selectDocument} onCreateDoc={handleCreateDoc} onDeleteDoc={handleDeleteDoc} onImportFiles={files=>{void handleImportFiles(files)}} {...(desktop?{onOpenNative:()=>{void handleOpenNative()}}:{})} importBusy={importBusy} onScrollToHeading={()=>{}} currentMarkdown=""/><main className="flex-1 flex flex-col items-center justify-center gap-4"><p>选择文档以打开标签页，或新建文档。</p><button onClick={handleCreateDoc} className="px-4 py-2 rounded bg-teal-700 text-white">新建独立文档</button></main></div>:<p role="status">正在初始化 MarkFlow 墨流工作台...</p>}</div>;
 
   const lines = currentDoc.markdown.split('\n');
   const charCount = currentDoc.markdown.length;
@@ -470,7 +546,7 @@ export default function App() {
             onSelectDoc={selectDocument}
             onCreateDoc={handleCreateDoc}
             onDeleteDoc={handleDeleteDoc}
-            onImportFiles={files=>{void handleImportFiles(files)}} importBusy={importBusy}
+            onImportFiles={files=>{void handleImportFiles(files)}} {...(desktop?{onOpenNative:()=>{void handleOpenNative()}}:{})} importBusy={importBusy}
             onScrollToHeading={handleScrollToHeading}
             currentMarkdown={currentDoc.markdown}
             activeHeadingId={activeHeadingId}

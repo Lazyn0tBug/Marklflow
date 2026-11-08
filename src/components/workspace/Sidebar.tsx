@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect, useMemo, useReducer } from 'react';
 import {
   FileText,
   ListTree,
+  FolderOpen,
   Plus,
   SquarePlus,
   SquareMinus,
@@ -35,6 +36,8 @@ interface SidebarProps {
   onCreateDoc: () => void;
   onDeleteDoc: (id: string) => void;
   onImportFiles: (files: File[]) => void;
+  /** 桌面端的"打开"入口 ✓（§8.1 ✓）⇒ ⇒ Web 端没有这个入口 ✓ ⇒ ⇒ 不给就不渲染 ✓。 */
+  onOpenNative?: () => void;
   importBusy: boolean;
   onScrollToHeading: (headingId: string, line: number) => void;
   currentMarkdown: string;
@@ -173,6 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCreateDoc,
   onDeleteDoc,
   onImportFiles,
+  onOpenNative,
   importBusy,
   onScrollToHeading,
   currentMarkdown,
@@ -313,6 +317,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Plus className="w-3.5 h-3.5" />
                 新建文档
               </button>
+              {onOpenNative&&
+              <button
+                disabled={importBusy} aria-busy={importBusy} onClick={onOpenNative}
+                className="flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+                title="打开本地文件（系统选择器）"
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                打开
+              </button>}
               <button
                 disabled={importBusy} aria-busy={importBusy} onClick={() => fileInputRef.current?.click()}
                 className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
