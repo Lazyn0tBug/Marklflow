@@ -1244,6 +1244,11 @@ mod tests {
             failure_with_limit(FILE_TOO_LARGE.into(), WebCommand::WriteNativeBytes).limit_bytes,
             Some(WRITE_LIMIT as u64)
         );
+        // **写回原文件那条也有上限** ✓ ⇒ ⇒ 它与通用写入同上限 ✓ ⇒ ⇒ 说得出是多少 ✓。
+        assert_eq!(
+            failure_with_limit(FILE_TOO_LARGE.into(), WebCommand::WriteNativeSync).limit_bytes,
+            Some(WRITE_LIMIT as u64)
+        );
         // **别的失败不带上限** ✓ ⇒ ⇒ 前端不必猜 ✓。
         assert_eq!(
             failure_with_limit("native-io-failed".into(), WebCommand::ReadNativeText).limit_bytes,

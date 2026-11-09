@@ -1757,12 +1757,14 @@ mod tests {
         // 页面回传的命令名（serde 的 snake_case ✓）与日志里的命令名（`command_name` ✓）
         // 必须是**同一个字符串** ✓：不然跨侧配对就配不上 ✓，
         // 而配对不上时两侧各说各话 ✓，没人看得出来 ✓。
-        let cases:[(WebCommand,&str);7]=[
+        let cases:[(WebCommand,&str);9]=[
             (WebCommand::GetPlatformInfo,"get_platform_info"),
             (WebCommand::SelectNativeOpen,"select_native_open"),
             (WebCommand::SelectNativeSave,"select_native_save"),
             (WebCommand::ReadNativeText,"read_native_text"),
             (WebCommand::WriteNativeBytes,"write_native_bytes"),
+            (WebCommand::WriteNativeSync,"write_native_sync"),
+            (WebCommand::IsNativeSynced,"is_native_synced"),
             (WebCommand::ReleaseNativeFile,"release_native_file"),
             (WebCommand::PrintNativePdf,"print_native_pdf"),
         ];
