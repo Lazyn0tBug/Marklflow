@@ -90,8 +90,8 @@ describe('应用层同步', () => {
     const outcome = await syncer.save({document: doc, bytes});
     // **一个磁盘端口都不问** ✓ ⇒ ⇒ Web 形态就是这样 ✓ ⇒ ⇒ 整条同步逻辑不跑 ✓（§6.5 ✓）。
     expect(calls).toEqual(['persistDraft']);
-    // **保存这一次没有意义** ✓ ⇒ ⇒ 报"不适用" ✓ ⇒ ⇒ **界面据此提示要不要另存** ✓
-    // ⇒ ⇒ **不是自动变成另存为** ✓ ⇒ ⇒ 这里不问、也不自动做 ✓。
+    // **没有同步目标 ⇒ ⇒ 写回不适用** ✓ ⇒ ⇒ 报"不适用" ✓ ⇒ ⇒ **入口已经灰掉** ✓（§8.2 ✓）
+    // ⇒ ⇒ **走不到这一步** ✓ ⇒ ⇒ **不提示要不要另存** ✓ ⇒ ⇒ 这里不问、也不自动做 ✓。
     expect(outcome.writeBack).toEqual({kind: 'not-applicable'});
     expect(outcome.conflict).toBeUndefined();
     // **草稿那一半照样落** ✓ ⇒ ⇒ 草稿与写回是分开的两件事 ✓。
