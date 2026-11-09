@@ -57,7 +57,7 @@ it('reports the file as changed instead of overwriting the draft',async()=>{
 
 it('releases the grant of an item it could not read',async()=>{
  native.invoke.mockRejectedValueOnce({code:'invalid-utf8'});
- const importer=createNativeSourceImport({boundSelection:async()=>undefined},async()=>'opened');
+ const importer=createNativeSourceImport({boundSelection:async()=>undefined},async()=>({status:'opened'}));
  const result=await importer.run([selection]);
  expect(result.status==='completed'&&result.items[0]?.status).toBe('failed');
  // **失败项不建绑定** ✓ ⇒ ⇒ 它的授权要释放 ✓（M4-5 ✓）。
