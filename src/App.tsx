@@ -44,7 +44,7 @@ import {createWebSourceImport} from './core/platform/web/sourceImport';
 import {createNativeSourceImport,nativeFileReference} from './core/platform/tauri/sourceImport';
 import {isNativeSynced,listenNativeDrop,releaseNativeFile,selectNativeOpen,type NativeSelection} from './core/platform/tauri/files';
 import {isDesktopRuntime} from './core/platform/tauri/runtime';
-import {DocumentFileContexts,releaseDocumentFileContext} from './application/workspace/documentFileContext';
+import {DocumentFileContexts,releaseDocumentFileContext,syncStatus as syncStatusOf} from './application/workspace/documentFileContext';
 import {DocumentOpener} from './application/workspace/documentOpen';
 import type {ImportItemResult,OpenResult} from './application/workspace/sourceImport';
 import {WorkbenchPreviewRuntime,type PreviewView} from './core/platform/web/workbenchPreviewRuntime';
@@ -203,6 +203,12 @@ export default function App() {
   const currentSession=sessions.documentIds.includes(currentDocId)?sessions.read(currentDocId):undefined;
   const currentDoc=currentSession?.document;
   const isDirty=currentSession?.dirty??false;
+  /**
+   * **这个文档与磁盘的关系** ✓ ⇒ ⇒ 界面读它派生出来的那一个状态 ✓（§8.6 ✓）
+   * ⇒ ⇒ 界面不自己判断 ✓ ⇒ ⇒ 各处不各判一遍 ✓。
+   */
+  const currentContext=currentDoc?contexts.read(currentDoc.id):undefined;
+  const syncStatus=syncStatusOf(currentContext,currentDoc?.revision??0);
   const kind=previewMode==='a4'?'preview.a4':'preview.flow';
   const previewView:PreviewView=preview.documentId===currentDocId&&preview.kind===kind?preview:{documentId:currentDocId,kind,state:'pending'};
 
@@ -395,6 +401,39 @@ export default function App() {
     finally{setImportBusy(false)}
   };
   nativeFlow.current=runNativeBatch;
+  /**
+   * **重新关联** ✓（设计 §5.5 ✓）：把当前这份草稿指向另一个本地文件 ✓。
+   *
+   * **草稿一个字不动** ✓ ⇒ ⇒ 只把绑定指回那个文件 ✓ ⇒ ⇒ 基线记 null ⇒ ⇒ 按未同步显示 ✓。
+   * **取消 / 失败不改变草稿、修订或编辑状态** ✓（§5.5 ✓）。
+   */
+  const reassociateNative=async()=>{
+    const id=currentDocId;
+    if(!id||!desktop)return;
+    let files:NativeSelection[]|undefined;
+    try{files=await selectNativeOpen();}
+    catch(error){
+      setImportResults([{name:'重新关联',status:'failed',message:error instanceof Error?error.message:String(error)}]);
+      void reportFailure({category:'import-rejected',detail:String(error),cause:error});
+      return;
+    }
+    // **用户没选** ⇒ ⇒ 什么都不做 ✓ ⇒ ⇒ 不是失败 ✓（§9 ✓）。
+    if(!files||!files.length)return;
+    const file=files[0];
+    if(!file)return;
+    // **那个文件已经绑在别的文档上** ✓ ⇒ ⇒ 聚焦那个文档 ✓ ⇒ ⇒ 这次的句柄放掉 ✓（§5.5 ✓）。
+    const bound=contexts.documentFor(file.reference);
+    if(bound&&bound!==id){
+      await releaseNativeFile(file.key).catch(()=>{});
+      selectDocument(bound);
+      return;
+    }
+    // **换绑** ✓ ⇒ ⇒ 旧句柄放掉 ✓ ⇒ ⇒ 新句柄成为绑定的凭据 ✓。
+    const previous=contexts.release(id);
+    if(previous)await releaseNativeFile(previous.handle).catch(()=>{});
+    contexts.reAssociate(id,nativeFileReference(file));
+    sessionChanged(value=>value+1);
+  };
   const handleOpenNative=async()=>{
     if(importBusy)return;
     let files:NativeSelection[]|undefined;
@@ -560,6 +599,10 @@ export default function App() {
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
         onOpenMessages={import.meta.env.DEV?()=>setMessageGalleryOpen(true):undefined}
         documentTitle={currentDoc.meta.title}
+        fileName={currentContext?.file.displayName}
+        filePath={currentContext?.file.displayPath}
+        syncStatus={syncStatus}
+        {...(desktop?{onReassociate:()=>{void reassociateNative()}}:{})}
       />
 
       {/* Main Workbench Layout */}
@@ -650,6 +693,7 @@ export default function App() {
         mathMode={mathMode}
         revision={currentDoc.revision}
         isDirty={isDirty}
+        syncStatus={syncStatus}
       />
 
       {/* Export Modal */}

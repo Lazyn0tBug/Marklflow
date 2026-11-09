@@ -6,7 +6,7 @@ function goodDocument(){return {schemaVersion:1,id:'review-good',revision:1,mark
 test('keeps existing fallback data visible when an empty IDB becomes available',async({page})=>{
  await host(page);await page.evaluate(doc=>localStorage.setItem('markflow_docs',JSON.stringify([doc])),goodDocument());
  await page.goto('/');await expect(page.locator('textarea')).toHaveValue('# FALLBACK_KEEP');await expect(page.getByRole('alert')).toContainText('保留原后端');
- await page.locator('textarea').fill('# FALLBACK_UPDATED');await expect(page.getByText('已保存',{exact:true})).toBeVisible();
+ await page.locator('textarea').fill('# FALLBACK_UPDATED');await expect(page.getByText('草稿已保存',{exact:true})).toBeVisible();
  await page.reload();await expect(page.locator('textarea')).toHaveValue('# FALLBACK_UPDATED');
 });
 test('salvages a malformed IDB recovery entry without hiding other documents',async({page},info)=>{

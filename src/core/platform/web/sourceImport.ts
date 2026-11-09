@@ -1,8 +1,12 @@
 import {createSourceImport} from '../sourceImport';
+import {messageText} from '../../../application/messages';
+import {IMPORT_BYTE_LIMIT} from '../../model/limits';
 import type {OpenResult} from '../../../application/workspace/sourceImport';
 import type {DocumentRecord} from '../../model/document';
 /** Browser picker files are transient; native paths and permissions belong to a future Tauri adapter. */
-export function readSourceFile(file:File):Promise<string>{
+export async function readSourceFile(file:File):Promise<string>{
+ // **Web 侧自己守上限** ✓ ⇒ ⇒ 与原生侧刻意一致 ✓（设计 §5.1 ✓）⇒ ⇒ 说得出是多少 ✓。
+ if(file.size>IMPORT_BYTE_LIMIT)throw new Error(messageText('file-too-large',{limitBytes:IMPORT_BYTE_LIMIT}));
  return new Promise((resolve,reject)=>{
   const reader=new FileReader();
   reader.onerror=()=>reject(new Error('文件读取失败：'+file.name));

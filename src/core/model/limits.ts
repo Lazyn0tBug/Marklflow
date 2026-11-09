@@ -3,6 +3,7 @@
  *
  * **一处事实** ✓ ⇒ ⇒ 文案里的数字从这里来 ✓ ⇒ ⇒ 不在文案里手写 ✓。
  * **原生侧的上限由它自己给出** ✓（随机器码带出 ✓）⇒ ⇒ 这里只放**应用自己**守的那些 ✓。
+ * **纯模块** ✓ ⇒ ⇒ 纯的批次与平台层都能用 ✓（`src/core/model/` 是纯的根 ✓）。
  */
 
 /**
@@ -18,3 +19,9 @@ export const IMPORT_BYTE_LIMIT=50*1024*1024;
  * ⇒ ⇒ 原生侧改动时两边一起改 ✓。
  */
 export const NATIVE_WRITE_BYTE_LIMIT=100*1024*1024;
+
+/** 字节数 ⇒ 人读的 ✓：整 MiB 就写整数 ✓ ⇒ ⇒ 不是就留一位小数 ✓。 */
+export function formatBytes(bytes:number):string{
+ const mib=bytes/(1024*1024);
+ return `${Number.isInteger(mib)?mib:Math.round(mib*10)/10}MiB`;
+}

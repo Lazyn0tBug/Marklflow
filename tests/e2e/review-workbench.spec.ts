@@ -24,7 +24,7 @@ test('opens hidden width settings as a real dialog and closes with Escape',async
 test('saves undo and redo revisions and restores the selected document math preference',async({page})=>{
  await page.goto('/');const editor=page.locator('textarea');await expect(editor).toBeVisible();
  await editor.fill('# 最初');await page.getByRole('button',{name:'保存',exact:true}).click();await editor.fill('# 更新');await editor.press('Control+z');
- await expect(editor).toHaveValue('# 最初');await expect(page.getByText('已保存', {exact:true})).toBeVisible();await page.reload();await expect(page.locator('textarea')).toHaveValue('# 最初');
+ await expect(editor).toHaveValue('# 最初');await expect(page.getByText('草稿已保存', {exact:true})).toBeVisible();await page.reload();await expect(page.locator('textarea')).toHaveValue('# 最初');
  await page.getByRole('button',{name:'MathML',exact:true}).click();await page.getByRole('button',{name:'新建文档',exact:true}).click();
  await expect(page.getByRole('button',{name:'MathML',exact:true})).toBeVisible();
 });

@@ -6,6 +6,8 @@
 
 import React from 'react';
 import { Database, CheckCircle, Clock, Cpu } from 'lucide-react';
+import { DRAFT_STATUS_TEXTS, SYNC_STATUS_TEXTS} from '../../application/messages';
+import type {SyncStatus} from '../../application/workspace/documentFileContext';
 
 interface StatusBarProps {
   charCount: number;
@@ -14,6 +16,12 @@ interface StatusBarProps {
   mathMode: 'mathml' | 'svg';
   revision: number;
   isDirty: boolean;
+  /**
+   * 同步维度 ✓（设计 §8.4 ✓）。
+   *
+   * **没有同步目标时是 'none'** ✓ ⇒ ⇒ **那一行不显示** ✓ ⇒ ⇒ 只剩草稿那一行 ✓。
+   */
+  syncStatus: SyncStatus;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -23,27 +31,42 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   mathMode,
   revision,
   isDirty,
+  syncStatus,
 }) => {
   const estimatedReadingMinutes = Math.max(Math.ceil(charCount / 400), 1);
 
   return (
-    <footer className="h-7 bg-neutral-950 border-t border-neutral-800/80 px-3 flex items-center justify-between text-[11px] text-neutral-400 font-mono select-none shrink-0 no-print">
-      {/* Left: Storage & Dirty State */}
-      <div className="flex items-center gap-3">
+    <footer className="h-9 bg-neutral-950 border-t border-neutral-800/80 px-3 flex items-center justify-between text-[11px] text-neutral-400 font-mono select-none shrink-0 no-print">
+      {/* Left: 两个维度（草稿 / 同步）✓：各说各的 ✓（设计 §2.2 ✓、§8.4 ✓）✓ */}
+      <div className="flex flex-col gap-0.5 leading-tight">
         <div className="flex items-center gap-1.5">
-          <Database className="w-3 h-3 text-teal-400" />
-          <span>IndexedDB</span>
+          <div className="flex items-center gap-1.5">
+            <Database className="w-3 h-3 text-teal-400" />
+            <span>IndexedDB</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {isDirty ? (
+              <span className="text-amber-400">{DRAFT_STATUS_TEXTS.updated}</span>
+            ) : (
+              <span className="text-neutral-500 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-teal-500" />
+                {DRAFT_STATUS_TEXTS.saved}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          {isDirty ? (
-            <span className="text-amber-400">● 内存已修改 (自动防抖保存中)</span>
-          ) : (
-            <span className="text-neutral-500 flex items-center gap-1">
-              <CheckCircle className="w-3 h-3 text-teal-500" />
-              已保存
-            </span>
-          )}
-        </div>
+        {syncStatus!=='none'&&(
+          <div className="flex items-center gap-1">
+            {syncStatus==='synced'?(
+              <span className="text-teal-400 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                {SYNC_STATUS_TEXTS.synced}
+              </span>
+            ):(
+              <span className="text-amber-400">● {SYNC_STATUS_TEXTS.unsynced}</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Center: Reading time */}

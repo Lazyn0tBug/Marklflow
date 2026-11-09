@@ -329,17 +329,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 disabled={importBusy} aria-busy={importBusy} onClick={() => fileInputRef.current?.click()}
                 className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
-                title="导入 .md 文件或含有载荷的可编辑 .html"
+                title={onOpenNative?'导入含自包含载荷的可编辑 .html':'打开本地文件（浏览器选择器）：载入工作区副本'}
               >
                 <Upload className="w-3.5 h-3.5" />
-                {importBusy?'导入中…':'导入'}
+                {importBusy?'处理中…':(onOpenNative?'导入':'打开文件')}
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
                 disabled={importBusy}
                 multiple
-                accept=".md,.markdown,.txt,.html,.htm"
+                accept={onOpenNative?'.html,.htm':'.md,.markdown,.txt,.html,.htm'}
                 onChange={handleFileChange}
                 className="hidden"
               />

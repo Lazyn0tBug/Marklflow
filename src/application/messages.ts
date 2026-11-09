@@ -9,7 +9,13 @@
  * ⇒ ⇒ 两侧对不上就红 ✓ ⇒ ⇒ 词表不会烂掉 ✓。
  *
  * **成功不是失败** ⇒ ⇒ 成功不在这张表里 ✓（成功的分流由回执与 result 枚举承载 ✓）。
+ *
+ * **状态那一维的文案也在这里** ✓ ⇒ ⇒ 界面不自己拼句子 ✓ ⇒ ⇒ 一处改，处处改 ✓。
  */
+
+import type {SyncStatus} from './workspace/documentFileContext';
+import {formatBytes} from '../core/model/limits';
+export {formatBytes};
 
 /**
  * 消息类别（封闭）✓：**页面侧与应用侧共用这一份** ✓。
@@ -126,11 +132,26 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,MessageText>>={
 /** 通用文案：不属于"用户可行动"那一类的失败 ⇒ 用户看到这一句 ✓。 */
 export const GENERIC_FAILURE_TEXT='文件操作失败';
 
-/** 字节数 ⇒ 人读的 ✓：整 MiB 就写整数 ✓ ⇒ ⇒ 不是就留一位小数 ✓。 */
-export function formatBytes(bytes:number):string{
- const mib=bytes/(1024*1024);
- return `${Number.isInteger(mib)?mib:Math.round(mib*10)/10}MiB`;
-}
+/**
+ * 草稿维度 ⇒ 文案 ✓（§2.2 ✓）。
+ *
+ * **说草稿就说草稿** ✓ ⇒ ⇒ 不写没有主语的"已更新 / 已保存" ✓。
+ */
+export const DRAFT_STATUS_TEXTS:{updated:string;saved:string}={
+ updated:'草稿已更新',
+ saved:'草稿已保存',
+};
+
+/**
+ * 同步维度 ⇒ 文案 ✓（§2.2 ✓）。
+ *
+ * **说文件就说文件** ✓ ⇒ ⇒ 不与草稿那一行混着说 ✓。
+ */
+export const SYNC_STATUS_TEXTS:Record<SyncStatus,string>={
+ none:'无同步目标',
+ synced:'已同步',
+ unsynced:'未同步',
+};
 
 /** 类别 → 文案。认不出的类别给通用的一句 ✓：不猜它意味着什么 ✓。 */
 export function messageText(category:string,params?:MessageParams):string{

@@ -1,8 +1,7 @@
 import type {DocumentRecord} from '../../core/model/document';
 import {documentSchema} from '../../core/model/documentSchema';
 import {taskBudget} from '../tasks/budget';
-import {formatBytes,messageText} from '../messages';
-import {IMPORT_BYTE_LIMIT} from '../limits';
+import {formatBytes} from '../../core/model/limits';
 export interface ImportFile {name:string;size:number}
 
 /**
@@ -96,9 +95,9 @@ export class SourceImport<F extends ImportFile> {
        : {name:file.name,status:'focused',documentId:bound.documentId,message:'已聚焦工作区已有文档，导入内容未覆盖'};
      }else{
       if(!/\.(md|markdown|txt|html|htm)$/i.test(file.name))throw new Error('仅支持 .md、.markdown、.txt 和可编辑 .html/.htm');
+      // **大小上限由各平台自己守** ✓ ⇒ ⇒ 原生侧随机器码带出上限 ✓ ⇒ ⇒ Web 侧用自己的 ✓
+      // ⇒ ⇒ 这里只管"大小无效" ✓ ⇒ ⇒ 纯模块不引文案表 ✓（边界规则 ✓）。
       if(!Number.isSafeInteger(file.size)||file.size<0)throw new Error('导入文件的大小无效');
-      // **上限由应用自己守** ✓ ⇒ ⇒ 说得出是多少 ✓ ⇒ ⇒ 不在文案里手写数字 ✓（§8.5 ✓）。
-      if(file.size>IMPORT_BYTE_LIMIT)throw new Error(messageText('file-too-large',{limitBytes:IMPORT_BYTE_LIMIT}));
       const content=await this.ports.read(file);
       if(content.includes('\0'))throw new Error('文件含二进制空字节，不能按文本导入');
       const html=/\.html?$/i.test(file.name);let key:string|undefined;

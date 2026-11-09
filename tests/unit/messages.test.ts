@@ -1,7 +1,9 @@
 import {it,expect} from 'vitest';
 import {
+ DRAFT_STATUS_TEXTS,
  GENERIC_FAILURE_TEXT,
  MESSAGE_CATEGORIES,
+ SYNC_STATUS_TEXTS,
  formatBytes,
  hasOwnText,
  messageText,
@@ -76,4 +78,15 @@ it('formats the byte limits the way a person reads them',()=>{
   expect(formatBytes(50*1024*1024)).toBe('50MiB');
   expect(formatBytes(100*1024*1024)).toBe('100MiB');
   expect(formatBytes(1536*1024)).toBe('1.5MiB');
+});
+
+it('gives each status dimension its own wording',()=>{
+  // **两行各说各的** ✓（§2.2 ✓）⇒ ⇒ 草稿那一行说草稿 ✓ ⇒ ⇒ 同步那一行说文件 ✓。
+  expect(DRAFT_STATUS_TEXTS.updated).toBe('草稿已更新');
+  expect(DRAFT_STATUS_TEXTS.saved).toBe('草稿已保存');
+  expect(SYNC_STATUS_TEXTS.none).toBe('无同步目标');
+  expect(SYNC_STATUS_TEXTS.synced).toBe('已同步');
+  expect(SYNC_STATUS_TEXTS.unsynced).toBe('未同步');
+  // **状态维度的那一套也有三类** ✓ ⇒ ⇒ 与派生出的那个状态一一对应 ✓。
+  expect(Object.keys(SYNC_STATUS_TEXTS)).toEqual(['none','synced','unsynced']);
 });

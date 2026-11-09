@@ -23,7 +23,10 @@ import {
   ChevronDown,
   Check,
   MessageSquare,
+  Link2,
 } from 'lucide-react';
+import { SYNC_STATUS_TEXTS } from '../../application/messages';
+import type { SyncStatus } from '../../application/workspace/documentFileContext';
 
 export type ViewMode = 'split' | 'edit' | 'reading' | 'a4';
 
@@ -61,6 +64,18 @@ export interface TopBarProps {
    */
   onOpenMessages: (() => void)|undefined;
   documentTitle: string;
+  /**
+   * 已关联的文件名 ✓（设计 §8.3 ✓）⇒ ⇒ **没有就显示文档标题** ✓ ⇒ ⇒ 不显示路径占位 ✓。
+   */
+  fileName?: string|undefined;
+  /** 人类可读的定位串 ✓：**可选** ✓ ⇒ ⇒ 次要样式 ✓。 */
+  filePath?: string|undefined;
+  /** 同步维度 ✓：标题旁的未同步标记 ✓（设计 §8.3 ✓）。 */
+  syncStatus: SyncStatus;
+  /**
+   * 重新关联 ✓（设计 §5.5 ✓）⇒ ⇒ **只有桌面端有** ✓（Web 端没有本地文件 ✓）。
+   */
+  onReassociate?: (() => void)|undefined;
 }
 
 const WIDTH_OPTIONS: { label: string; value: number | 'full'; desc: string }[] = [
@@ -94,6 +109,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenRoadmap,
   onOpenMessages,
   documentTitle,
+  fileName,
+  filePath,
+  syncStatus,
+  onReassociate,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
   const settingsRef=useRef<HTMLDialogElement>(null);
@@ -127,7 +146,19 @@ export const TopBar: React.FC<TopBarProps> = ({
         </a>
 
         <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-neutral-800 text-xs text-neutral-400 max-w-xs truncate">
-          <span className="truncate">{documentTitle || '未命名技术文档'}</span>
+          {fileName ? (
+            <span className="truncate" title={filePath ? `${fileName} · ${filePath}` : fileName}>{fileName}</span>
+          ) : (
+            <span className="truncate">{documentTitle || '未命名技术文档'}</span>
+          )}
+          {syncStatus==='unsynced' && (
+            <span
+              className="shrink-0 rounded border border-amber-500/60 px-1 py-px text-[10px] text-amber-300"
+              title="本地文件有未同步的修改（Ctrl/Cmd+S）"
+            >
+              {SYNC_STATUS_TEXTS.unsynced}
+            </span>
+          )}
           {isDirty && (
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="有未写入草稿修改" />
           )}
@@ -265,6 +296,17 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
         </button>
+
+        {onReassociate && (
+          <button
+            onClick={onReassociate}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer"
+            title="把这份草稿指向另一个本地文件（草稿内容不变）"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            <span>重新关联</span>
+          </button>
+        )}
 
         <button
           onClick={onSave}
