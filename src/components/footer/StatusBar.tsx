@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { Database, CheckCircle, Clock, Cpu } from 'lucide-react';
-import { DRAFT_STATUS_TEXTS, SYNC_STATUS_TEXTS} from '../../application/messages';
+import {Database, CheckCircle, Clock, Cpu} from 'lucide-react';
+import {DRAFT_STATUS_TEXTS, SYNC_STATUS_TEXTS} from '../../application/messages';
 import type {SyncStatus} from '../../application/workspace/documentFileContext';
 
 interface StatusBarProps {
@@ -55,14 +55,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             )}
           </div>
         </div>
-        {syncStatus!=='none'&&(
+        {syncStatus !== 'none' && (
           <div className="flex items-center gap-1">
-            {syncStatus==='synced'?(
+            {syncStatus === 'synced' ? (
               <span className="text-teal-400 flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" />
                 {SYNC_STATUS_TEXTS.synced}
               </span>
-            ):(
+            ) : (
               <span className="text-amber-400">● {SYNC_STATUS_TEXTS.unsynced}</span>
             )}
           </div>
@@ -90,9 +90,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <span>{mathMode === 'mathml' ? 'MathML 原生' : 'SVG 矢量'}</span>
         </div>
 
-        <div className="text-neutral-500 font-mono">
-          Rev {revision} · UTF-8
-        </div>
+        <div className="text-neutral-500 font-mono">Rev {revision} · UTF-8</div>
       </div>
     </footer>
   );

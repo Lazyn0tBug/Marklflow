@@ -27,7 +27,14 @@ export interface ThemeSpec {
   };
 }
 
-export interface DocumentAsset {source:string;mime:string;bytes:number;sha256:string;data:string;license?:string}
+export interface DocumentAsset {
+  source: string;
+  mime: string;
+  bytes: number;
+  sha256: string;
+  data: string;
+  license?: string;
+}
 
 export interface DocumentRecord {
   assets?: DocumentAsset[];
@@ -44,10 +51,10 @@ export interface DocumentRecord {
 }
 
 /** 文档标题取首个一级标题；超出存储上限时截断，避免写入被 schema 拒绝。 */
-export function deriveDocumentTitle(markdown:string):string|null{
-  const title=markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  if(!title)return null;
-  return title.length>DOCUMENT_TITLE_MAX?title.slice(0,DOCUMENT_TITLE_MAX):title;
+export function deriveDocumentTitle(markdown: string): string | null {
+  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if (!title) return null;
+  return title.length > DOCUMENT_TITLE_MAX ? title.slice(0, DOCUMENT_TITLE_MAX) : title;
 }
 
 export const DEFAULT_THEME: ThemeSpec = {

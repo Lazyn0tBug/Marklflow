@@ -282,7 +282,7 @@ interface DocumentRecord {
   meta: {title: string; author?: string; createdAt: string; updatedAt: string};
   theme: ThemeSpec;
   assets: AssetRef[];
-  options: {syntaxProfile: "commonmark-gfm-v1"; pluginOptions: Record<string, unknown>};
+  options: {syntaxProfile: 'commonmark-gfm-v1'; pluginOptions: Record<string, unknown>};
 }
 interface AssetRef {
   id: string; // a_ + SHA-256；内容寻址
@@ -356,19 +356,19 @@ YAML front matter 后续可通过显式启用支持，导入时明确元数据�
 以下为建议接口骨架，开发第一阶段需落实为可编译类型与 conformance 测试。
 
 ```ts
-type Format = "html" | "docx" | "epub" | "png" | "svg" | "pptx" | "pdf";
+type Format = 'html' | 'docx' | 'epub' | 'png' | 'svg' | 'pptx' | 'pdf';
 interface PluginManifest {
   id: string;
   version: string;
   apiVersion: 1;
-  kind: "syntax" | "editor" | "renderer" | "exporter";
+  kind: 'syntax' | 'editor' | 'renderer' | 'exporter';
   requires: string[]; // 插件依赖，注册时检测缺失和循环
   offline: boolean;
   resources: string[]; // 构建资源 ID，生成离线清单
 }
 interface Diagnostic {
   code: string;
-  severity: "info" | "warning" | "error";
+  severity: 'info' | 'warning' | 'error';
   message: string;
   nodeId?: string;
 }
@@ -404,8 +404,8 @@ interface ExportPlugin {
   export(snapshot: ExportSnapshot, signal: AbortSignal): Promise<ExportResult>;
 }
 type ExportResult =
-  | {kind: "download"; files: {name: string; blob: Blob}[]; diagnostics: Diagnostic[]}
-  | {kind: "print-request"; diagnostics: Diagnostic[]};
+  | {kind: 'download'; files: {name: string; blob: Blob}[]; diagnostics: Diagnostic[]}
+  | {kind: 'print-request'; diagnostics: Diagnostic[]};
 ```
 
 IRNode、ThemeSpec、ExportSnapshot 定义在核心模型模块。浏览器打印返回 print-request，不能伪装成已经生成 PDF 文件。插件返回的 HTML/SVG 在平台层清理后使用，不能通过接口直接获得任意应用 DOM 或文件系统权限。

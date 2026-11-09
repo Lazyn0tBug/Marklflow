@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import {test, expect} from './fixtures';
 
 /**
  * 页面抛出的未捕获错误：**被捕获**（机制可断言 ✓）⇒ 且**不判失败** ✓。
@@ -11,20 +11,24 @@ import { test, expect } from './fixtures';
  * 应用侧读同一个事件的另一个出口（`window.onerror` ✓）⇒ ⇒
  * 控制台里那条 `[message] unhandled` 就是应用自己报的 ✓ ⇒ ⇒ 捕获点装上了 ✓。
  */
-test('records the page errors without failing the test', async ({ page, pageErrors }) => {
-  const reported:string[]=[];
-  page.on('console', message => {
-    if (message.type()==='error')reported.push(message.text());
+test('records the page errors without failing the test', async ({page, pageErrors}) => {
+  const reported: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') reported.push(message.text());
   });
   await page.goto('/');
   await page.evaluate(() => {
-    setTimeout(() => { throw new Error('页面里的错误'); }, 0);
+    setTimeout(() => {
+      throw new Error('页面里的错误');
+    }, 0);
   });
   await expect.poll(() => pageErrors.length).toBeGreaterThan(0);
   expect(pageErrors.join('\n')).toContain('页面里的错误');
   // 应用自己也报了一条 ⇒ 类别是"未捕获的脚本错误" ✓。
-  await expect.poll(() => reported.filter(text => text.includes('[message]')).length).toBeGreaterThan(0);
-  expect(reported.some(text => text.includes('[message] unhandled'))).toBe(true);
+  await expect
+    .poll(() => reported.filter((text) => text.includes('[message]')).length)
+    .toBeGreaterThan(0);
+  expect(reported.some((text) => text.includes('[message] unhandled'))).toBe(true);
 });
 
 /**
@@ -32,13 +36,17 @@ test('records the page errors without failing the test', async ({ page, pageErro
  *
  * 两个抛出点 ⇒ 两个来源 ⇒ ⇒ 两条通知 ⇒ ⇒ 后一条不盖掉前一条 ✓ ⇒ ⇒ 各自可关 ✓。
  */
-test('keeps one notice per problem and lets each one be closed', async ({ page }) => {
+test('keeps one notice per problem and lets each one be closed', async ({page}) => {
   await page.goto('/');
   await page.evaluate(() => {
-    setTimeout(() => { throw new Error('第一个错误'); }, 0);
-    setTimeout(() => { throw new Error('第二个错误'); }, 10);
+    setTimeout(() => {
+      throw new Error('第一个错误');
+    }, 0);
+    setTimeout(() => {
+      throw new Error('第二个错误');
+    }, 10);
   });
-  await expect(page.getByRole('status',{name:'通知'})).toHaveCount(2);
-  await page.getByRole('button',{name:'关闭通知'}).first().click();
-  await expect(page.getByRole('status',{name:'通知'})).toHaveCount(1);
+  await expect(page.getByRole('status', {name: '通知'})).toHaveCount(2);
+  await page.getByRole('button', {name: '关闭通知'}).first().click();
+  await expect(page.getByRole('status', {name: '通知'})).toHaveCount(1);
 });

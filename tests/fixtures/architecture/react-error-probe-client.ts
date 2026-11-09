@@ -1,4 +1,4 @@
-import {createElement,type ReactNode} from 'react';
+import {createElement, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import {ErrorBoundary} from '../../../src/components/ErrorBoundary';
 
@@ -11,31 +11,34 @@ import {ErrorBoundary} from '../../../src/components/ErrorBoundary';
  */
 
 /** 一个渲染期就崩的组件 ✓。 */
-function Boom():ReactNode{
- throw new Error('探针：渲染崩了');
+function Boom(): ReactNode {
+  throw new Error('探针：渲染崩了');
 }
 
 /** 另一个崩点 ✓：来源标识要不同 ⇒ ⇒ 两条报告各归各的 ✓。 */
-function Crack():ReactNode{
- throw new Error('探针：又崩了');
+function Crack(): ReactNode {
+  throw new Error('探针：又崩了');
 }
 
-const outer=document.querySelector<HTMLElement>('[data-react-probe]');
-const inner=document.querySelector<HTMLElement>('[data-react-nested]');
-if(!outer||!inner)throw new Error('Missing react probe containers');
+const outer = document.querySelector<HTMLElement>('[data-react-probe]');
+const inner = document.querySelector<HTMLElement>('[data-react-nested]');
+if (!outer || !inner) throw new Error('Missing react probe containers');
 
 createRoot(outer).render(
- createElement(
-  ErrorBoundary,
-  {root:true,fallback:createElement('p',{'data-react-fallback':'root'},'工作台没能完整显示')},
-  createElement(Boom),
- ),
+  createElement(
+    ErrorBoundary,
+    {
+      root: true,
+      fallback: createElement('p', {'data-react-fallback': 'root'}, '工作台没能完整显示'),
+    },
+    createElement(Boom),
+  ),
 );
 
 createRoot(inner).render(
- createElement(
-  ErrorBoundary,
-  {fallback:createElement('p',{'data-react-fallback':'nested'},'这一部分没能显示')},
-  createElement(Crack),
- ),
+  createElement(
+    ErrorBoundary,
+    {fallback: createElement('p', {'data-react-fallback': 'nested'}, '这一部分没能显示')},
+    createElement(Crack),
+  ),
 );

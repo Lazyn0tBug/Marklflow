@@ -1,8 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "typescript"
-  ],
+  "plugins": ["typescript"],
   "categories": {
     "correctness": "off"
   },
@@ -24,10 +22,5 @@
     "constructor-super": "error",
     "valid-typeof": "error"
   },
-  "ignorePatterns": [
-    "public/vendor/**",
-    "dist/**",
-    "test-results/**",
-    "playwright-report/**"
-  ]
+  "ignorePatterns": ["public/vendor/**", "dist/**", "test-results/**", "playwright-report/**"]
 }

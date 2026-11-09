@@ -1,11 +1,11 @@
-import { test as base, expect, type Page, type TestInfo } from '@playwright/test';
+import {test as base, expect, type Page, type TestInfo} from '@playwright/test';
 
 /** 这一轮用例额外拿到的东西：页面抛出的未捕获错误。 */
 export interface MessageFixtures {
   /** 页面抛出的未捕获错误（按发生顺序）。 */
-  pageErrors:string[];
+  pageErrors: string[];
   /** 控制台里的错误输出 ✓（失败时能对上根因 ✓）。 */
-  consoleErrors:string[];
+  consoleErrors: string[];
 }
 
 /**
@@ -13,9 +13,12 @@ export interface MessageFixtures {
  *
  * 弹窗一律**自动收掉** ✓ ⇒ ⇒ 弹窗不会把流程卡住 ✓ ⇒ ⇒ 用例的其余断言照常跑 ✓。
  */
-export function recordDialogs(page:Page):string[]{
-  const messages:string[]=[];
-  page.on('dialog',dialog=>{messages.push(dialog.message());void dialog.accept()});
+export function recordDialogs(page: Page): string[] {
+  const messages: string[] = [];
+  page.on('dialog', (dialog) => {
+    messages.push(dialog.message());
+    void dialog.accept();
+  });
   return messages;
 }
 
@@ -33,27 +36,27 @@ export function recordDialogs(page:Page):string[]{
  * 这是同一个信号的两个消费者，不是两套机制 ✓（见设计 §5 测试侧）。
  */
 export const test = base.extend<MessageFixtures>({
-  pageErrors: async ({}, use, testInfo:TestInfo) => {
-    const errors:string[]=[];
+  pageErrors: async ({}, use, testInfo: TestInfo) => {
+    const errors: string[] = [];
     await use(errors);
-    if(errors.length){
-      const text=errors.join('\n---\n');
-      console.log('[pageerror]\n'+text);
-      await testInfo.attach('page-errors', { body:text, contentType:'text/plain' });
+    if (errors.length) {
+      const text = errors.join('\n---\n');
+      console.log('[pageerror]\n' + text);
+      await testInfo.attach('page-errors', {body: text, contentType: 'text/plain'});
     }
   },
   consoleErrors: async ({}, use) => {
-    const errors:string[]=[];
+    const errors: string[] = [];
     await use(errors);
   },
-  page: async ({ page, pageErrors, consoleErrors }, use) => {
-    page.on('pageerror', error=>pageErrors.push(String(error?.stack??error)));
-    page.on('console', message => {
-      if(message.type()==='error')consoleErrors.push(message.text());
+  page: async ({page, pageErrors, consoleErrors}, use) => {
+    page.on('pageerror', (error) => pageErrors.push(String(error?.stack ?? error)));
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
     });
     await use(page);
   },
 });
 
-export { expect };
-export type { Page, TestInfo };
+export {expect};
+export type {Page, TestInfo};

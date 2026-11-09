@@ -7,4 +7,4 @@
  *
  * **收走这件事由外面做** ✓ ⇒ ⇒ 组件只说"我正在退场" ✓ ⇒ ⇒ 计时在这里 ✓。
  */
-export const MESSAGE_LEAVE_MS=200;
+export const MESSAGE_LEAVE_MS = 200;

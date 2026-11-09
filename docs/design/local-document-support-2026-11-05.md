@@ -214,17 +214,17 @@ interface DocumentFileContext {
     handle: string; // 访问句柄（原生侧给出；读与写都用它）
     displayName: string; // 文件名（原生侧给出）
     displayPath?: string; // 人类可读的定位串（可选，仅展示）
-    sourceFormat: "markdown" | "editable-html";
+    sourceFormat: 'markdown' | 'editable-html';
   };
   sync: {
     lastSyncedRevision: number | null; // 上次与文件一致时的修订；无法证明一致时为 null
     conflict: null | {
       // 同步时发现文件已被外部改动
-      kind: "diverged";
+      kind: 'diverged';
     };
     failure: null | {
       // 上一次写回没成功（§2.2 的"同步失败" ✓）
-      kind: "write-failed";
+      kind: 'write-failed';
     };
   };
 }

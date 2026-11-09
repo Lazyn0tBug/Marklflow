@@ -1,49 +1,104 @@
 import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {loadPagedAdapter} from './pagedJsAdapter';
-import {parse,walk,generate} from 'css-tree';
+import {parse, walk, generate} from 'css-tree';
 import {variableStyleAttribute} from './documentPresentation';
 import {pageCss} from './pagePresentation';
 import {waitForLayout} from '../export/documentPrint';
-import {sharedDom,type DomScheduling} from '../platform/web/sharedDom';
+import {sharedDom, type DomScheduling} from '../platform/web/sharedDom';
 import {throwIfAborted} from './renderCancellation';
-export interface PaginatedDocument {html:string;css:string;total:number}
-export type HtmlLayoutInput=Pick<ExportHtmlArtifact,'html'|'presentation'>;
+export interface PaginatedDocument {
+  html: string;
+  css: string;
+  total: number;
+}
+export type HtmlLayoutInput = Pick<ExportHtmlArtifact, 'html' | 'presentation'>;
 /** Layout only; input content and resource bytes were already generated and frozen. */
-export function paginatePreparedContent(input:HtmlLayoutInput,signal?:AbortSignal,scheduling:Omit<DomScheduling,'signal'>={}):Promise<PaginatedDocument>{
- const content=input.html;throwIfAborted(signal);
-  return sharedDom.step(scheduling.priority??'foreground','pagination',signal??new AbortController().signal,async({resources,signal:stepSignal})=>{
-   throwIfAborted(stepSignal);
-   const stage=document.createElement('div');stage.className='mf-pagination';
-   const nativeStyle=document.createElement('style');
-   resources.register('pagination-stage','host',0,()=>{stage.remove()});
-   resources.register('pagination-style','host',0,()=>{nativeStyle.remove()});
-   stage.style.cssText='position:fixed;left:-20000px;top:0;width:794px;visibility:hidden;pointer-events:none';
-   const source=document.createElement('div'),target=document.createElement('div');
-   source.innerHTML='<article class="mf-document-shell mf-doc" style="'+variableStyleAttribute(input.presentation.variables)+'">'+content+'</article>';
-   for(const item of source.querySelectorAll('details'))item.setAttribute('open','');
-   stage.append(source,target);document.body.append(stage);
-   // 分页样式只带页面几何：文档样式由 nativeStyle 提供一次。
-   // 若把 presentation.css 也塞进分页样式，同一批规则会在导出 CSS 里出现两遍，
-   // 而第二遍经 Paged.js 转换后缺 @container，层叠上反盖掉容器查询（两栏不塌成单栏）。
-   const printTree=parse(pageCss(input.presentation.page.margins));
-   walk(printTree,{visit:'Rule',enter(node,item,list){if(node.prelude.type==='SelectorList'&&item&&list){let hidesUI=false;walk(node.prelude,n=>{if(n.type==='ClassSelector'&&n.name==='no-print')hidesUI=true});if(hidesUI)list.remove(item)}}});
-   // The page margins replace the content padding: a paged page must not carry both.
-   const paginationCss=generate(printTree)+'\n.mf-doc{padding:0}';
-   await waitForLayout(source);throwIfAborted(stepSignal);
-   const paged=await loadPagedAdapter(undefined,resources);throwIfAborted(stepSignal);
-   nativeStyle.textContent=input.presentation.css+'\n.mf-pagination .mf-doc pre{white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere}.mf-pagination .mf-doc .mf-table-scroll,.mf-pagination .mf-doc .mf-math,.mf-pagination .mf-doc .mf-diagram{overflow:visible}.mf-pagination .mf-doc{--mf-paper:#fff;--mf-ink:#1f2937}';
-   const style=nativeStyle;
-   paged.beforeParsed(()=>{document.head.append(style)});
-   const guard=()=>{throwIfAborted(stepSignal)};
-   paged.beforePageLayout(guard);paged.afterPageLayout(guard);
-   guard();
-   const flow=await paged.preview(source.innerHTML,[{[location.href]:paginationCss}],target);
-   guard();
-   // Paged.js 把自己注入的样式标记为 data-pagedjs-inserted-styles：只收这些，
-   // 免得把分页期间并发加入的样式写进交付文档。
-   const pagedCss=Array.from(document.querySelectorAll('style[data-pagedjs-inserted-styles]')).map(s=>s.textContent||'').join('\n');
-   const pages=target.querySelector('.pagedjs_pages');if(!pages||pages.querySelectorAll('.pagedjs_page').length!==flow.total)throw new Error('分页页面数量与结果不一致');
-   // Keep all content, including page fragments with their data-line mappings.
-   return {html:pages.outerHTML,css:nativeStyle.textContent+pagedCss,total:flow.total};
-  });
+export function paginatePreparedContent(
+  input: HtmlLayoutInput,
+  signal?: AbortSignal,
+  scheduling: Omit<DomScheduling, 'signal'> = {},
+): Promise<PaginatedDocument> {
+  const content = input.html;
+  throwIfAborted(signal);
+  return sharedDom.step(
+    scheduling.priority ?? 'foreground',
+    'pagination',
+    signal ?? new AbortController().signal,
+    async ({resources, signal: stepSignal}) => {
+      throwIfAborted(stepSignal);
+      const stage = document.createElement('div');
+      stage.className = 'mf-pagination';
+      const nativeStyle = document.createElement('style');
+      resources.register('pagination-stage', 'host', 0, () => {
+        stage.remove();
+      });
+      resources.register('pagination-style', 'host', 0, () => {
+        nativeStyle.remove();
+      });
+      stage.style.cssText =
+        'position:fixed;left:-20000px;top:0;width:794px;visibility:hidden;pointer-events:none';
+      const source = document.createElement('div'),
+        target = document.createElement('div');
+      source.innerHTML =
+        '<article class="mf-document-shell mf-doc" style="' +
+        variableStyleAttribute(input.presentation.variables) +
+        '">' +
+        content +
+        '</article>';
+      for (const item of source.querySelectorAll('details')) item.setAttribute('open', '');
+      stage.append(source, target);
+      document.body.append(stage);
+      // 分页样式只带页面几何：文档样式由 nativeStyle 提供一次。
+      // 若把 presentation.css 也塞进分页样式，同一批规则会在导出 CSS 里出现两遍，
+      // 而第二遍经 Paged.js 转换后缺 @container，层叠上反盖掉容器查询（两栏不塌成单栏）。
+      const printTree = parse(pageCss(input.presentation.page.margins));
+      walk(printTree, {
+        visit: 'Rule',
+        enter(node, item, list) {
+          if (node.prelude.type === 'SelectorList' && item && list) {
+            let hidesUI = false;
+            walk(node.prelude, (n) => {
+              if (n.type === 'ClassSelector' && n.name === 'no-print') hidesUI = true;
+            });
+            if (hidesUI) list.remove(item);
+          }
+        },
+      });
+      // The page margins replace the content padding: a paged page must not carry both.
+      const paginationCss = generate(printTree) + '\n.mf-doc{padding:0}';
+      await waitForLayout(source);
+      throwIfAborted(stepSignal);
+      const paged = await loadPagedAdapter(undefined, resources);
+      throwIfAborted(stepSignal);
+      nativeStyle.textContent =
+        input.presentation.css +
+        '\n.mf-pagination .mf-doc pre{white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere}.mf-pagination .mf-doc .mf-table-scroll,.mf-pagination .mf-doc .mf-math,.mf-pagination .mf-doc .mf-diagram{overflow:visible}.mf-pagination .mf-doc{--mf-paper:#fff;--mf-ink:#1f2937}';
+      const style = nativeStyle;
+      paged.beforeParsed(() => {
+        document.head.append(style);
+      });
+      const guard = () => {
+        throwIfAborted(stepSignal);
+      };
+      paged.beforePageLayout(guard);
+      paged.afterPageLayout(guard);
+      guard();
+      const flow = await paged.preview(
+        source.innerHTML,
+        [{[location.href]: paginationCss}],
+        target,
+      );
+      guard();
+      // Paged.js 把自己注入的样式标记为 data-pagedjs-inserted-styles：只收这些，
+      // 免得把分页期间并发加入的样式写进交付文档。
+      const pagedCss = Array.from(document.querySelectorAll('style[data-pagedjs-inserted-styles]'))
+        .map((s) => s.textContent || '')
+        .join('\n');
+      const pages = target.querySelector('.pagedjs_pages');
+      if (!pages || pages.querySelectorAll('.pagedjs_page').length !== flow.total)
+        throw new Error('分页页面数量与结果不一致');
+      // Keep all content, including page fragments with their data-line mappings.
+      return {html: pages.outerHTML, css: nativeStyle.textContent + pagedCss, total: flow.total};
+    },
+  );
 }

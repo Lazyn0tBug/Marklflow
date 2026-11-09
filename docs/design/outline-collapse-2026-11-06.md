@@ -97,11 +97,11 @@ interface OutlineState {
 
 ```ts
 type OutlineAction =
-  | {type: "sync"; docId: string; items: readonly HeadingItem[]}
-  | {type: "filter"; value: string}
-  | {type: "toggle"; key: string}
-  | {type: "toggle-all"}
-  | {type: "jump"; itemId: string};
+  | {type: 'sync'; docId: string; items: readonly HeadingItem[]}
+  | {type: 'filter'; value: string}
+  | {type: 'toggle'; key: string}
+  | {type: 'toggle-all'}
+  | {type: 'jump'; itemId: string};
 ```
 
 外部世界对组件只有"我变了"这一件事，所以只有一条 `sync`：换文档与内容变化都由它进入，reducer 内部判断是哪一种。

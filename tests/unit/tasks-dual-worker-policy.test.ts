@@ -1,5 +1,30 @@
 // @vitest-environment node
-import {it,expect} from 'vitest';
-import {dualWorkerPolicy,dualWorkerPolicySchema,backgroundPendingCapacity} from '../../src/application/tasks/dualWorkerPolicy';
-it('fixes two independent serial workers and rejects obsolete reservation policies',()=>{expect(dualWorkerPolicy.workers).toEqual({foreground:1,background:1,maxActivePerWorker:1,maxLiveComputeWorkers:2,sharedDomLanes:1});expect(()=>dualWorkerPolicySchema.parse({...dualWorkerPolicy,schemaVersion:3})).toThrow();expect(()=>dualWorkerPolicySchema.parse({...dualWorkerPolicy,memory:{...dualWorkerPolicy.memory,reservedRuntimeBytesPerWorker:16777216}})).toThrow();expect(Object.isFrozen(dualWorkerPolicy.workers)).toBe(true)});
-it('bounds lightweight waiting demand by open sessions with one foreground demand',()=>{expect(backgroundPendingCapacity(32)).toBe(64);expect(backgroundPendingCapacity(1)).toBe(2);expect(()=>backgroundPendingCapacity(33)).toThrow();expect(dualWorkerPolicy.queue.foregroundPending).toBe(1)});
+import {it, expect} from 'vitest';
+import {
+  dualWorkerPolicy,
+  dualWorkerPolicySchema,
+  backgroundPendingCapacity,
+} from '../../src/application/tasks/dualWorkerPolicy';
+it('fixes two independent serial workers and rejects obsolete reservation policies', () => {
+  expect(dualWorkerPolicy.workers).toEqual({
+    foreground: 1,
+    background: 1,
+    maxActivePerWorker: 1,
+    maxLiveComputeWorkers: 2,
+    sharedDomLanes: 1,
+  });
+  expect(() => dualWorkerPolicySchema.parse({...dualWorkerPolicy, schemaVersion: 3})).toThrow();
+  expect(() =>
+    dualWorkerPolicySchema.parse({
+      ...dualWorkerPolicy,
+      memory: {...dualWorkerPolicy.memory, reservedRuntimeBytesPerWorker: 16777216},
+    }),
+  ).toThrow();
+  expect(Object.isFrozen(dualWorkerPolicy.workers)).toBe(true);
+});
+it('bounds lightweight waiting demand by open sessions with one foreground demand', () => {
+  expect(backgroundPendingCapacity(32)).toBe(64);
+  expect(backgroundPendingCapacity(1)).toBe(2);
+  expect(() => backgroundPendingCapacity(33)).toThrow();
+  expect(dualWorkerPolicy.queue.foregroundPending).toBe(1);
+});

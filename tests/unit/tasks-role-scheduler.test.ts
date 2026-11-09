@@ -1,71 +1,431 @@
 // @vitest-environment node
-import {it,expect,vi} from 'vitest';
-import {RoleTaskScheduler,type RoleSchedulerHooks} from '../../src/application/tasks/roleScheduler';
+import {it, expect, vi} from 'vitest';
+import {
+  RoleTaskScheduler,
+  type RoleSchedulerHooks,
+} from '../../src/application/tasks/roleScheduler';
 import type {PreviewReader} from '../../src/application/tasks/roleQueue';
 import {IdentityGate} from '../../src/application/tasks/identity';
-import type {WorkerAdapter,ExecutionIdentity} from '../../src/application/tasks/contracts';
-import {request,previewRequest,artifact,FakeClock} from './task-fixtures';
-const flush=async()=>{for(let i=0;i<30;i++)await Promise.resolve()};
-function setup(prepareDom?:RoleSchedulerHooks['prepareDom']){
- const gate=new IdentityGate();gate.open('A');gate.open('B');gate.open('C');gate.activate('A');const sources=new Map<string,ReturnType<PreviewReader>>();const clock=new FakeClock(),generated=vi.fn<RoleSchedulerHooks['generated']>(()=>undefined),scheduler=new RoleTaskScheduler(gate,clock,doc=>sources.get(doc),{generated,...(prepareDom?{prepareDom}:{})});
- const runs:Record<'foreground'|'background',{identity:ExecutionIdentity;send:(input:unknown)=>void}[]>={foreground:[],background:[]};
- const cleanup={foreground:vi.fn(()=>{}),background:vi.fn(()=>{})};
- const port=(role:'foreground'|'background',generation=1):WorkerAdapter=>({id:role,generation,cancellation:'cooperative',supportedKinds:['preview.flow','preview.a4'],start:(_request,identity,send,resources)=>{resources.register('host-'+identity.task.taskId,'host',8,cleanup[role]);runs[role].push({identity,send})},stop:vi.fn()});
- scheduler.install('foreground',port('foreground'));scheduler.install('background',port('background'));
- const preview=(doc='B',revision=1)=>{const r=request('intent',doc,'preview.flow',revision);sources.set(doc,{document:r.document,renderConfigVersion:1});return previewRequest(r,doc==='A'?'foreground':'background',1)};
- const enqueue=(doc='B',revision=1)=>{const result=scheduler.enqueuePreview(preview(doc,revision));if(result.status!=='accepted')throw new Error(result.status);return result.taskId};
- const send=(role:'foreground'|'background',type:'result'|'stop-ack',index=runs[role].length-1)=>{const run=runs[role][index]!;run.send(type==='result'?{protocolVersion:1,execution:run.identity,type,artifact:artifact()}:{protocolVersion:1,execution:run.identity,type,proof:'cooperative'})};
- return {gate,clock,sources,scheduler,generated,runs,cleanup,port,preview,enqueue,send};
+import type {WorkerAdapter, ExecutionIdentity} from '../../src/application/tasks/contracts';
+import {request, previewRequest, artifact, FakeClock} from './task-fixtures';
+const flush = async () => {
+  for (let i = 0; i < 30; i++) await Promise.resolve();
+};
+function setup(prepareDom?: RoleSchedulerHooks['prepareDom']) {
+  const gate = new IdentityGate();
+  gate.open('A');
+  gate.open('B');
+  gate.open('C');
+  gate.activate('A');
+  const sources = new Map<string, ReturnType<PreviewReader>>();
+  const clock = new FakeClock(),
+    generated = vi.fn<RoleSchedulerHooks['generated']>(() => undefined),
+    scheduler = new RoleTaskScheduler(gate, clock, (doc) => sources.get(doc), {
+      generated,
+      ...(prepareDom ? {prepareDom} : {}),
+    });
+  const runs: Record<
+    'foreground' | 'background',
+    {identity: ExecutionIdentity; send: (input: unknown) => void}[]
+  > = {foreground: [], background: []};
+  const cleanup = {foreground: vi.fn(() => {}), background: vi.fn(() => {})};
+  const port = (role: 'foreground' | 'background', generation = 1): WorkerAdapter => ({
+    id: role,
+    generation,
+    cancellation: 'cooperative',
+    supportedKinds: ['preview.flow', 'preview.a4'],
+    start: (_request, identity, send, resources) => {
+      resources.register('host-' + identity.task.taskId, 'host', 8, cleanup[role]);
+      runs[role].push({identity, send});
+    },
+    stop: vi.fn(),
+  });
+  scheduler.install('foreground', port('foreground'));
+  scheduler.install('background', port('background'));
+  const preview = (doc = 'B', revision = 1) => {
+    const r = request('intent', doc, 'preview.flow', revision);
+    sources.set(doc, {document: r.document, renderConfigVersion: 1});
+    return previewRequest(r, doc === 'A' ? 'foreground' : 'background', 1);
+  };
+  const enqueue = (doc = 'B', revision = 1) => {
+    const result = scheduler.enqueuePreview(preview(doc, revision));
+    if (result.status !== 'accepted') throw new Error(result.status);
+    return result.taskId;
+  };
+  const send = (
+    role: 'foreground' | 'background',
+    type: 'result' | 'stop-ack',
+    index = runs[role].length - 1,
+  ) => {
+    const run = runs[role][index]!;
+    run.send(
+      type === 'result'
+        ? {protocolVersion: 1, execution: run.identity, type, artifact: artifact()}
+        : {protocolVersion: 1, execution: run.identity, type, proof: 'cooperative'},
+    );
+  };
+  return {gate, clock, sources, scheduler, generated, runs, cleanup, port, preview, enqueue, send};
 }
-it('runs one task per role independently while preserving background FIFO',async()=>{const s=setup();s.enqueue('A');const b=s.enqueue();s.enqueue('C');for(let i=2;i<=100;i++)s.enqueue('B',i);expect(s.runs.foreground).toHaveLength(1);expect(s.runs.background).toHaveLength(1);expect(s.scheduler.snapshot().queue.active).toHaveLength(2);s.send('background','result');await flush();expect(s.scheduler.status(b)?.state).toBe('cancelled');expect(s.runs.background[1]?.identity.task.documentId).toBe('C');s.send('background','result',1);await flush();expect(s.runs.background[2]?.identity.task.documentId).toBe('B');expect(s.runs.background[2]?.identity.task.taskId).toBe(s.scheduler.snapshot().queue.active.find(entry=>entry.role==='background')?.id);expect(s.runs.foreground).toHaveLength(1)});
-it('does not release a cancelled worker until stop and asynchronous host cleanup finish',async()=>{const s=setup();let settle=()=>{};s.cleanup.background.mockImplementation(()=>new Promise<void>(resolve=>{settle=resolve}));const id=s.enqueue();s.enqueue('C');s.scheduler.cancel(id);expect(s.scheduler.status(id)?.state).toBe('stopRequested');s.send('background','stop-ack');await flush();expect(s.runs.background).toHaveLength(1);expect(s.scheduler.snapshot().queue.active).toHaveLength(1);settle();await flush();expect(s.scheduler.status(id)?.state).toBe('cancelled');expect(s.runs.background).toHaveLength(2)});
-it('keeps a timed-out role occupied and lets other-role work proceed',async()=>{const s=setup(),id=s.enqueue();s.clock.advance(21000);expect(s.scheduler.status(id)?.state).toBe('failed');expect(s.scheduler.snapshot().executors.background?.blocked).toBe(true);expect(()=>s.scheduler.install('background',s.port('background',2))).toThrow('released');s.enqueue('A');expect(s.runs.foreground).toHaveLength(1);s.send('background','result',0);await flush();expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.snapshot().executors.background?.blocked).toBe(true)});
-it('does not cancel unrelated active background work after context activation changes',()=>{const s=setup(),id=s.enqueue();s.gate.activate('C');s.enqueue('B',2);expect(s.scheduler.status(id)?.state).toBe('running');expect(s.runs.background).toHaveLength(1)});
-it('isolates cleanup failure and starts no next job until cleanup/rebuild are explicit',async()=>{const s=setup(),id=s.enqueue();s.enqueue('C');s.cleanup.background.mockImplementation(()=>{throw new Error('cleanup failed')});s.send('background','result');await flush();expect(s.scheduler.status(id)?.state).toBe('failed');expect(s.runs.background).toHaveLength(1);s.cleanup.background.mockImplementation(()=>{});await s.scheduler.retryCleanup('background');await flush();expect(s.scheduler.snapshot().queue.active).toHaveLength(0);s.scheduler.install('background',s.port('background',2));expect(s.runs.background).toHaveLength(2)});
-
-it('rejects a queued kind after executor capability changes without stranding its role claim',async()=>{const s=setup();s.enqueue();const waiting=s.enqueue('C');s.clock.advance(21000);s.send('background','result',0);await flush();expect(()=>s.scheduler.install('background',{...s.port('background',2),supportedKinds:['preview.a4']})).not.toThrow();expect(s.scheduler.status(waiting)?.state).toBe('failed');expect(s.scheduler.snapshot().queue.active).toHaveLength(0)});
-it('keeps queued previews after long waits and starts execution timing only at dispatch',async()=>{const s=setup();s.enqueue();const waiting=s.enqueue('C');s.clock.advance(3600000);expect(s.scheduler.snapshot().queue.pending.background).toHaveLength(1);expect(s.scheduler.status(waiting)).toBeUndefined();s.send('background','result',0);await flush();s.scheduler.install('background',s.port('background',2));expect(s.scheduler.status(waiting)?.state).toBe('running');s.send('background','result',1);await flush();expect(s.scheduler.status(waiting)?.state).toBe('generated');expect(s.clock.pending).toBe(0)});
-it('keeps reservations and host allocations inside one shared budget',async()=>{const s=setup();expect(()=>s.scheduler.install('background',s.port('foreground',2))).toThrow('independent');expect(()=>s.scheduler.install('background',s.port('background',2),201326593)).toThrow('budget');const original=s.port('background',2);s.scheduler.install('background',{...original,start:(...args)=>{original.start(...args);args[3].register('too-large','buffer',201326592,()=>{})}});const id=s.enqueue();expect(s.scheduler.status(id)?.state).toBe('failed');expect(s.scheduler.snapshot().resources).toHaveLength(1);s.send('background','stop-ack');await flush();expect(s.scheduler.snapshot().resources).toHaveLength(0);expect(s.scheduler.snapshot().memory.accepted).toBe(true)});
-it('ignores late old callbacks after the next background claim has started',async()=>{const s=setup();s.enqueue();const second=s.enqueue('C');s.send('background','result',0);await flush();s.send('background','result',0);await flush();expect(s.scheduler.status(second)?.state).toBe('running');expect(s.runs.background).toHaveLength(2);s.send('background','result',1);await flush();expect(s.scheduler.status(second)?.state).toBe('generated')});
-it('cleans 50 pairs of foreground/background runs without increasing slots, resources or timers',async()=>{const s=setup();for(let i=1;i<=50;i++){const front=s.enqueue('A',i);s.enqueue('B',i);expect(s.scheduler.snapshot().queue.active).toHaveLength(2);if(i%2){s.scheduler.cancel(front);s.send('foreground','stop-ack')}else s.send('foreground','result');s.send('background','result');await flush();const stats=s.scheduler.snapshot();expect(stats.queue.active).toHaveLength(0);expect(stats.queue.ownedBytes).toBe(0);expect(stats.resources).toHaveLength(0);expect(s.clock.pending).toBe(0);expect(stats.memory.estimatedBytes).toBe(0)}expect(s.scheduler.snapshot().history).toHaveLength(16)});
-it('records a handoff exception and still permits the next stopped-and-clean role job',async()=>{const s=setup(),first=s.enqueue();const second=s.enqueue('C');s.generated.mockImplementation(()=>{throw new Error('consumer rejected')});s.send('background','result');await flush();expect(s.scheduler.status(first)?.state).toBe('failed');expect(s.scheduler.status(second)?.state).toBe('running')});
-
-it('accepts class-based executor adapters with prototype getters and methods',()=>{const s=setup(),provider=s.port('foreground',2);const adapter=new class implements WorkerAdapter{
- get id(){return provider.id}get generation(){return provider.generation}get cancellation(){return provider.cancellation}get supportedKinds(){return provider.supportedKinds}
- start(...args:Parameters<WorkerAdapter['start']>){provider.start(...args)}stop(...args:Parameters<WorkerAdapter['stop']>){provider.stop(...args)}
-};expect(()=>s.scheduler.install('foreground',adapter)).not.toThrow();s.enqueue('A');expect(s.runs.foreground).toHaveLength(1)});
-
-it('does not hand off a closed document result after its session reopens',async()=>{const s=setup(),id=s.enqueue('A');s.gate.close('A');s.gate.open('A');s.gate.activate('A');s.send('foreground','result');await flush();expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.status(id)?.state).toBe('cancelled')});
-it('does not reuse task ids across queue/scheduler instances',()=>{const a=setup(),b=setup();expect(a.enqueue('A')).not.toBe(b.enqueue('A'))});
-it('hands off only the latest document snapshot after an edit replaces in-flight input',async()=>{const s=setup(),old=s.enqueue('A');const next=s.enqueue('A',2);s.send('foreground','result',0);await flush();expect(s.scheduler.status(old)?.state).toBe('cancelled');expect(s.generated).not.toHaveBeenCalled();s.send('foreground','result',1);await flush();expect(s.scheduler.status(next)?.state).toBe('generated');const claim=s.generated.mock.calls[0]?.[0];expect(claim?.work.kind==='preview'&&claim.work.submission.document.revision).toBe(2)});
-
-it('records a document read failure and continues with the next background task',async()=>{const s=setup();s.enqueue();const broken=s.enqueue('C');s.sources.delete('C');s.send('background','result');await flush();expect(s.scheduler.status(broken)?.state).toBe('failed');expect(s.scheduler.snapshot().queue.active).toHaveLength(0);expect(s.scheduler.snapshot().queue.ownedBytes).toBe(0)});
-
-it('counts each local allocation once with no runtime floor or JSON multiplier',async()=>{const s=setup();expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(0);s.enqueue('A');const stats=s.scheduler.snapshot();expect(stats.resources).toHaveLength(1);expect(stats.memory.estimatedBytes).toBe(stats.queue.ownedBytes+8);expect(s.clock.pending).toBe(1);s.scheduler.cancel(stats.queue.active[0]!.id);expect(s.clock.pending).toBe(1);s.send('foreground','stop-ack');await flush();expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(0)});
-it('uses the same admission rule for supplied runtime estimates and queue input',()=>{const s=setup();expect(()=>s.scheduler.install('foreground',s.port('foreground',2),-1)).toThrow('Invalid');s.scheduler.install('foreground',s.port('foreground',2),201326592);expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(201326592);expect(s.scheduler.enqueuePreview(s.preview('A')).status).toBe('capacity');expect(s.scheduler.snapshot().queue.active).toHaveLength(0)});
-
-it('reports timeout as failure with a reason and cannot be changed by late results',async()=>{const s=setup(),id=s.enqueue('A');s.clock.advance(20000);expect(s.scheduler.status(id)).toMatchObject({state:'failed',reason:'Timed out: stage'});s.send('foreground','result');await flush();expect(s.scheduler.status(id)).toMatchObject({state:'failed',reason:'Timed out: stage'});expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.snapshot().queue.active).toHaveLength(0)});
-
-it('holds the logical role during DOM wait and cancellation until the step settles',async()=>{
- let done=()=>{};let signal:AbortSignal|undefined;
- const s=setup((_claim,value,abort)=>{signal=abort;return new Promise(resolve=>{done=()=>resolve(value)})});
- const id=s.enqueue('A');s.send('foreground','result');await flush();
- s.enqueue('A',2);expect(s.runs.foreground).toHaveLength(1);expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
- s.scheduler.cancel(id);expect(signal?.aborted).toBe(true);await flush();expect(s.runs.foreground).toHaveLength(1);
- done();await flush();expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.status(id)?.state).toBe('cancelled');expect(s.runs.foreground).toHaveLength(2);
+it('runs one task per role independently while preserving background FIFO', async () => {
+  const s = setup();
+  s.enqueue('A');
+  const b = s.enqueue();
+  s.enqueue('C');
+  for (let i = 2; i <= 100; i++) s.enqueue('B', i);
+  expect(s.runs.foreground).toHaveLength(1);
+  expect(s.runs.background).toHaveLength(1);
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(2);
+  s.send('background', 'result');
+  await flush();
+  expect(s.scheduler.status(b)?.state).toBe('cancelled');
+  expect(s.runs.background[1]?.identity.task.documentId).toBe('C');
+  s.send('background', 'result', 1);
+  await flush();
+  expect(s.runs.background[2]?.identity.task.documentId).toBe('B');
+  expect(s.runs.background[2]?.identity.task.taskId).toBe(
+    s.scheduler.snapshot().queue.active.find((entry) => entry.role === 'background')?.id,
+  );
+  expect(s.runs.foreground).toHaveLength(1);
 });
-it('keeps the original total deadline while waiting for DOM and rejects late completion',async()=>{
- let done=()=>{};const s=setup((_claim,value)=>new Promise(resolve=>{done=()=>resolve(value)}));
- const id=s.enqueue('A');s.clock.advance(10000);s.send('foreground','result');await flush();s.clock.advance(90000);
- expect(s.scheduler.status(id)?.state).toBe('failed');expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
- done();await flush();expect(s.generated).not.toHaveBeenCalled();expect(s.scheduler.snapshot().queue.active).toHaveLength(0);expect(s.clock.pending).toBe(0);
+it('does not release a cancelled worker until stop and asynchronous host cleanup finish', async () => {
+  const s = setup();
+  let settle = () => {};
+  s.cleanup.background.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        settle = resolve;
+      }),
+  );
+  const id = s.enqueue();
+  s.enqueue('C');
+  s.scheduler.cancel(id);
+  expect(s.scheduler.status(id)?.state).toBe('stopRequested');
+  s.send('background', 'stop-ack');
+  await flush();
+  expect(s.runs.background).toHaveLength(1);
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
+  settle();
+  await flush();
+  expect(s.scheduler.status(id)?.state).toBe('cancelled');
+  expect(s.runs.background).toHaveLength(2);
 });
-it('validates DOM output and only hands off successful current results',async()=>{
- const s=setup(async(_claim,value)=>({...value,content:'<p>DOM</p>'}));const id=s.enqueue('A');s.send('foreground','result');await flush();expect(s.scheduler.status(id)?.state).toBe('generated');expect(s.generated.mock.calls[0]?.[1].content).toBe('<p>DOM</p>');
- const invalid=setup(async(_claim,value)=>({...value,encoding:'invalid' as 'utf8'}));const bad=invalid.enqueue('A');invalid.send('foreground','result');await flush();expect(invalid.scheduler.status(bad)?.state).toBe('failed');expect(invalid.generated).not.toHaveBeenCalled();
+it('keeps a timed-out role occupied and lets other-role work proceed', async () => {
+  const s = setup(),
+    id = s.enqueue();
+  s.clock.advance(21000);
+  expect(s.scheduler.status(id)?.state).toBe('failed');
+  expect(s.scheduler.snapshot().executors.background?.blocked).toBe(true);
+  expect(() => s.scheduler.install('background', s.port('background', 2))).toThrow('released');
+  s.enqueue('A');
+  expect(s.runs.foreground).toHaveLength(1);
+  s.send('background', 'result', 0);
+  await flush();
+  expect(s.generated).not.toHaveBeenCalled();
+  expect(s.scheduler.snapshot().executors.background?.blocked).toBe(true);
+});
+it('does not cancel unrelated active background work after context activation changes', () => {
+  const s = setup(),
+    id = s.enqueue();
+  s.gate.activate('C');
+  s.enqueue('B', 2);
+  expect(s.scheduler.status(id)?.state).toBe('running');
+  expect(s.runs.background).toHaveLength(1);
+});
+it('isolates cleanup failure and starts no next job until cleanup/rebuild are explicit', async () => {
+  const s = setup(),
+    id = s.enqueue();
+  s.enqueue('C');
+  s.cleanup.background.mockImplementation(() => {
+    throw new Error('cleanup failed');
+  });
+  s.send('background', 'result');
+  await flush();
+  expect(s.scheduler.status(id)?.state).toBe('failed');
+  expect(s.runs.background).toHaveLength(1);
+  s.cleanup.background.mockImplementation(() => {});
+  await s.scheduler.retryCleanup('background');
+  await flush();
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+  s.scheduler.install('background', s.port('background', 2));
+  expect(s.runs.background).toHaveLength(2);
 });
 
-it('isolates DOM callback changes from the owned task identity and claim',async()=>{
- const s=setup(async(claim,value)=>{claim.id='changed';claim.work.submission.document.id='changed';return value});
- const id=s.enqueue('A');s.send('foreground','result');await flush();expect(s.scheduler.status(id)?.state).toBe('generated');expect(s.generated.mock.calls[0]?.[0].id).toBe(id);expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+it('rejects a queued kind after executor capability changes without stranding its role claim', async () => {
+  const s = setup();
+  s.enqueue();
+  const waiting = s.enqueue('C');
+  s.clock.advance(21000);
+  s.send('background', 'result', 0);
+  await flush();
+  expect(() =>
+    s.scheduler.install('background', {...s.port('background', 2), supportedKinds: ['preview.a4']}),
+  ).not.toThrow();
+  expect(s.scheduler.status(waiting)?.state).toBe('failed');
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+});
+it('keeps queued previews after long waits and starts execution timing only at dispatch', async () => {
+  const s = setup();
+  s.enqueue();
+  const waiting = s.enqueue('C');
+  s.clock.advance(3600000);
+  expect(s.scheduler.snapshot().queue.pending.background).toHaveLength(1);
+  expect(s.scheduler.status(waiting)).toBeUndefined();
+  s.send('background', 'result', 0);
+  await flush();
+  s.scheduler.install('background', s.port('background', 2));
+  expect(s.scheduler.status(waiting)?.state).toBe('running');
+  s.send('background', 'result', 1);
+  await flush();
+  expect(s.scheduler.status(waiting)?.state).toBe('generated');
+  expect(s.clock.pending).toBe(0);
+});
+it('keeps reservations and host allocations inside one shared budget', async () => {
+  const s = setup();
+  expect(() => s.scheduler.install('background', s.port('foreground', 2))).toThrow('independent');
+  expect(() => s.scheduler.install('background', s.port('background', 2), 201326593)).toThrow(
+    'budget',
+  );
+  const original = s.port('background', 2);
+  s.scheduler.install('background', {
+    ...original,
+    start: (...args) => {
+      original.start(...args);
+      args[3].register('too-large', 'buffer', 201326592, () => {});
+    },
+  });
+  const id = s.enqueue();
+  expect(s.scheduler.status(id)?.state).toBe('failed');
+  expect(s.scheduler.snapshot().resources).toHaveLength(1);
+  s.send('background', 'stop-ack');
+  await flush();
+  expect(s.scheduler.snapshot().resources).toHaveLength(0);
+  expect(s.scheduler.snapshot().memory.accepted).toBe(true);
+});
+it('ignores late old callbacks after the next background claim has started', async () => {
+  const s = setup();
+  s.enqueue();
+  const second = s.enqueue('C');
+  s.send('background', 'result', 0);
+  await flush();
+  s.send('background', 'result', 0);
+  await flush();
+  expect(s.scheduler.status(second)?.state).toBe('running');
+  expect(s.runs.background).toHaveLength(2);
+  s.send('background', 'result', 1);
+  await flush();
+  expect(s.scheduler.status(second)?.state).toBe('generated');
+});
+it('cleans 50 pairs of foreground/background runs without increasing slots, resources or timers', async () => {
+  const s = setup();
+  for (let i = 1; i <= 50; i++) {
+    const front = s.enqueue('A', i);
+    s.enqueue('B', i);
+    expect(s.scheduler.snapshot().queue.active).toHaveLength(2);
+    if (i % 2) {
+      s.scheduler.cancel(front);
+      s.send('foreground', 'stop-ack');
+    } else s.send('foreground', 'result');
+    s.send('background', 'result');
+    await flush();
+    const stats = s.scheduler.snapshot();
+    expect(stats.queue.active).toHaveLength(0);
+    expect(stats.queue.ownedBytes).toBe(0);
+    expect(stats.resources).toHaveLength(0);
+    expect(s.clock.pending).toBe(0);
+    expect(stats.memory.estimatedBytes).toBe(0);
+  }
+  expect(s.scheduler.snapshot().history).toHaveLength(16);
+});
+it('records a handoff exception and still permits the next stopped-and-clean role job', async () => {
+  const s = setup(),
+    first = s.enqueue();
+  const second = s.enqueue('C');
+  s.generated.mockImplementation(() => {
+    throw new Error('consumer rejected');
+  });
+  s.send('background', 'result');
+  await flush();
+  expect(s.scheduler.status(first)?.state).toBe('failed');
+  expect(s.scheduler.status(second)?.state).toBe('running');
+});
+
+it('accepts class-based executor adapters with prototype getters and methods', () => {
+  const s = setup(),
+    provider = s.port('foreground', 2);
+  const adapter = new (class implements WorkerAdapter {
+    get id() {
+      return provider.id;
+    }
+    get generation() {
+      return provider.generation;
+    }
+    get cancellation() {
+      return provider.cancellation;
+    }
+    get supportedKinds() {
+      return provider.supportedKinds;
+    }
+    start(...args: Parameters<WorkerAdapter['start']>) {
+      provider.start(...args);
+    }
+    stop(...args: Parameters<WorkerAdapter['stop']>) {
+      provider.stop(...args);
+    }
+  })();
+  expect(() => s.scheduler.install('foreground', adapter)).not.toThrow();
+  s.enqueue('A');
+  expect(s.runs.foreground).toHaveLength(1);
+});
+
+it('does not hand off a closed document result after its session reopens', async () => {
+  const s = setup(),
+    id = s.enqueue('A');
+  s.gate.close('A');
+  s.gate.open('A');
+  s.gate.activate('A');
+  s.send('foreground', 'result');
+  await flush();
+  expect(s.generated).not.toHaveBeenCalled();
+  expect(s.scheduler.status(id)?.state).toBe('cancelled');
+});
+it('does not reuse task ids across queue/scheduler instances', () => {
+  const a = setup(),
+    b = setup();
+  expect(a.enqueue('A')).not.toBe(b.enqueue('A'));
+});
+it('hands off only the latest document snapshot after an edit replaces in-flight input', async () => {
+  const s = setup(),
+    old = s.enqueue('A');
+  const next = s.enqueue('A', 2);
+  s.send('foreground', 'result', 0);
+  await flush();
+  expect(s.scheduler.status(old)?.state).toBe('cancelled');
+  expect(s.generated).not.toHaveBeenCalled();
+  s.send('foreground', 'result', 1);
+  await flush();
+  expect(s.scheduler.status(next)?.state).toBe('generated');
+  const claim = s.generated.mock.calls[0]?.[0];
+  expect(claim?.work.kind === 'preview' && claim.work.submission.document.revision).toBe(2);
+});
+
+it('records a document read failure and continues with the next background task', async () => {
+  const s = setup();
+  s.enqueue();
+  const broken = s.enqueue('C');
+  s.sources.delete('C');
+  s.send('background', 'result');
+  await flush();
+  expect(s.scheduler.status(broken)?.state).toBe('failed');
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+  expect(s.scheduler.snapshot().queue.ownedBytes).toBe(0);
+});
+
+it('counts each local allocation once with no runtime floor or JSON multiplier', async () => {
+  const s = setup();
+  expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(0);
+  s.enqueue('A');
+  const stats = s.scheduler.snapshot();
+  expect(stats.resources).toHaveLength(1);
+  expect(stats.memory.estimatedBytes).toBe(stats.queue.ownedBytes + 8);
+  expect(s.clock.pending).toBe(1);
+  s.scheduler.cancel(stats.queue.active[0]!.id);
+  expect(s.clock.pending).toBe(1);
+  s.send('foreground', 'stop-ack');
+  await flush();
+  expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(0);
+});
+it('uses the same admission rule for supplied runtime estimates and queue input', () => {
+  const s = setup();
+  expect(() => s.scheduler.install('foreground', s.port('foreground', 2), -1)).toThrow('Invalid');
+  s.scheduler.install('foreground', s.port('foreground', 2), 201326592);
+  expect(s.scheduler.snapshot().memory.estimatedBytes).toBe(201326592);
+  expect(s.scheduler.enqueuePreview(s.preview('A')).status).toBe('capacity');
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+});
+
+it('reports timeout as failure with a reason and cannot be changed by late results', async () => {
+  const s = setup(),
+    id = s.enqueue('A');
+  s.clock.advance(20000);
+  expect(s.scheduler.status(id)).toMatchObject({state: 'failed', reason: 'Timed out: stage'});
+  s.send('foreground', 'result');
+  await flush();
+  expect(s.scheduler.status(id)).toMatchObject({state: 'failed', reason: 'Timed out: stage'});
+  expect(s.generated).not.toHaveBeenCalled();
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+});
+
+it('holds the logical role during DOM wait and cancellation until the step settles', async () => {
+  let done = () => {};
+  let signal: AbortSignal | undefined;
+  const s = setup((_claim, value, abort) => {
+    signal = abort;
+    return new Promise((resolve) => {
+      done = () => resolve(value);
+    });
+  });
+  const id = s.enqueue('A');
+  s.send('foreground', 'result');
+  await flush();
+  s.enqueue('A', 2);
+  expect(s.runs.foreground).toHaveLength(1);
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
+  s.scheduler.cancel(id);
+  expect(signal?.aborted).toBe(true);
+  await flush();
+  expect(s.runs.foreground).toHaveLength(1);
+  done();
+  await flush();
+  expect(s.generated).not.toHaveBeenCalled();
+  expect(s.scheduler.status(id)?.state).toBe('cancelled');
+  expect(s.runs.foreground).toHaveLength(2);
+});
+it('keeps the original total deadline while waiting for DOM and rejects late completion', async () => {
+  let done = () => {};
+  const s = setup(
+    (_claim, value) =>
+      new Promise((resolve) => {
+        done = () => resolve(value);
+      }),
+  );
+  const id = s.enqueue('A');
+  s.clock.advance(10000);
+  s.send('foreground', 'result');
+  await flush();
+  s.clock.advance(90000);
+  expect(s.scheduler.status(id)?.state).toBe('failed');
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(1);
+  done();
+  await flush();
+  expect(s.generated).not.toHaveBeenCalled();
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
+  expect(s.clock.pending).toBe(0);
+});
+it('validates DOM output and only hands off successful current results', async () => {
+  const s = setup(async (_claim, value) => ({...value, content: '<p>DOM</p>'}));
+  const id = s.enqueue('A');
+  s.send('foreground', 'result');
+  await flush();
+  expect(s.scheduler.status(id)?.state).toBe('generated');
+  expect(s.generated.mock.calls[0]?.[1].content).toBe('<p>DOM</p>');
+  const invalid = setup(async (_claim, value) => ({...value, encoding: 'invalid' as 'utf8'}));
+  const bad = invalid.enqueue('A');
+  invalid.send('foreground', 'result');
+  await flush();
+  expect(invalid.scheduler.status(bad)?.state).toBe('failed');
+  expect(invalid.generated).not.toHaveBeenCalled();
+});
+
+it('isolates DOM callback changes from the owned task identity and claim', async () => {
+  const s = setup(async (claim, value) => {
+    claim.id = 'changed';
+    claim.work.submission.document.id = 'changed';
+    return value;
+  });
+  const id = s.enqueue('A');
+  s.send('foreground', 'result');
+  await flush();
+  expect(s.scheduler.status(id)?.state).toBe('generated');
+  expect(s.generated.mock.calls[0]?.[0].id).toBe(id);
+  expect(s.scheduler.snapshot().queue.active).toHaveLength(0);
 });

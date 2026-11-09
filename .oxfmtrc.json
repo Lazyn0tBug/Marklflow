@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "semicolons": "always",
+  "indentStyle": "space",
+  "indentWidth": 2,
+  "lineWidth": 120,
+  "bracketSpacing": false,
+  "trailingCommas": "all",
+  "ignorePatterns": [
+    "public/vendor/**",
+    "dist/**",
+    "test-results/**",
+    "playwright-report/**",
+    "node_modules/**",
+    "src-tauri/**",
+    "docs/acceptance/**",
+    "docs/reviews/**"
+  ]
+}

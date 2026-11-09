@@ -29,10 +29,7 @@
   "negative": {
     "id": "failures",
     "file": "failures.md",
-    "expectedDiagnostics": [
-      "canvas",
-      "公式"
-    ],
+    "expectedDiagnostics": ["canvas", "公式"],
     "sha256": "f78d5729857eb28558d0b117de6d0b0eba6ee71d9b9608955d826c615de7da9c"
   }
 }

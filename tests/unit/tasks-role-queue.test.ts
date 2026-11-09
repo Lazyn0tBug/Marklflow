@@ -1,45 +1,200 @@
 // @vitest-environment node
-import {it,expect,vi} from 'vitest';
+import {it, expect, vi} from 'vitest';
 import hash from 'hash.js';
-import {RoleTaskQueue,requestOf,type PreviewReader,type WorkerRole} from '../../src/application/tasks/roleQueue';
+import {
+  RoleTaskQueue,
+  requestOf,
+  type PreviewReader,
+  type WorkerRole,
+} from '../../src/application/tasks/roleQueue';
 import {IdentityGate} from '../../src/application/tasks/identity';
 import type {PreviewSubmission} from '../../src/application/tasks/previewIdentity';
-import {request,previewRequest,FakeClock} from './task-fixtures';
-function preview(doc='B',revision=1,kind:'preview.flow'|'preview.a4'='preview.flow'){return previewRequest(request('intent',doc,kind,revision),doc==='A'?'foreground':'background',1)}
-function setup(){
- const gate=new IdentityGate();for(const doc of ['A','B','C'])gate.open(doc);gate.activate('A');const clock=new FakeClock();
- const sources=new Map<string,ReturnType<PreviewReader>>();const queue=new RoleTaskQueue(gate,doc=>sources.get(doc));
- const enqueue=(input:PreviewSubmission)=>{sources.set(input.document.id,{document:input.document,renderConfigVersion:input.cacheKey.renderConfigVersion});return queue.enqueuePreview(input)};
- return {gate,clock,queue,sources,enqueue};
+import {request, previewRequest, FakeClock} from './task-fixtures';
+function preview(doc = 'B', revision = 1, kind: 'preview.flow' | 'preview.a4' = 'preview.flow') {
+  return previewRequest(
+    request('intent', doc, kind, revision),
+    doc === 'A' ? 'foreground' : 'background',
+    1,
+  );
 }
-function claim(queue:RoleTaskQueue,role:WorkerRole){const value=queue.claim(role);if(!value||'error'in value)throw new Error(value&&'error'in value?value.error:'Missing claim');return value}
-it('keeps only the latest foreground demand across modes',()=>{const s=setup();s.enqueue(preview('A'));const a4=s.enqueue(preview('A',2,'preview.a4'));const latest=s.enqueue(preview('A',3));expect(s.queue.snapshot().pending.foreground).toHaveLength(1);expect(latest.status==='accepted'&&latest.replaced).toEqual(a4.status==='accepted'?[a4.taskId]:[]);expect(requestOf(claim(s.queue,'foreground').work).document.revision).toBe(3)});
-it('merges background document/mode intents at their original FIFO position',()=>{const s=setup();s.enqueue(preview());s.enqueue(preview('C'));s.enqueue(preview('B',2));s.enqueue(preview('B',2,'preview.a4'));const b=claim(s.queue,'background');expect(requestOf(b.work).document.id).toBe('B');expect(requestOf(b.work).document.revision).toBe(2);expect(s.queue.claim('background')).toBeUndefined();s.queue.release('background',b.id);const c=claim(s.queue,'background');expect(requestOf(c.work).document.id).toBe('C');s.queue.release('background',c.id);expect(requestOf(claim(s.queue,'background').work).kind).toBe('preview.a4')});
-it('stores no Markdown, configuration snapshot or closure in background pending entries',()=>{const s=setup(),input=preview();input.document.markdown='large-source-'.repeat(10000);s.enqueue(input);const entry=s.queue.snapshot().pending.background[0];expect(entry?.kind).toBe('background-preview');expect(entry).not.toHaveProperty('work');expect(entry).not.toHaveProperty('document');expect(entry).not.toHaveProperty('submission');expect(entry).not.toHaveProperty('cacheKey');expect(s.queue.ownedBytes).toBeLessThan(1024)});
-it('reads current content and configuration only when the background worker claims it',()=>{const s=setup();s.enqueue(preview());s.sources.set('B',{document:{...request().document,id:'B',revision:9,markdown:'latest source'},renderConfigVersion:7});const work=claim(s.queue,'background').work;expect(work.kind==='preview'&&work.submission.document.markdown).toBe('latest source');expect(work.kind==='preview'&&work.submission.cacheKey.renderConfigVersion).toBe(7)});
-it('never expires waiting previews and creates no queue timers',()=>{const s=setup();s.enqueue(preview());s.clock.advance(3600000);expect(s.queue.snapshot().pending.background).toHaveLength(1);expect(claim(s.queue,'background').work.kind).toBe('preview');expect(s.clock.pending).toBe(0)});
-it('allows one independent active claim per role and requires matching release ids',()=>{const s=setup();s.enqueue(preview('A'));s.enqueue(preview());const a=claim(s.queue,'foreground'),b=claim(s.queue,'background');expect(s.queue.snapshot().active).toHaveLength(2);expect(s.queue.claim('foreground')).toBeUndefined();expect(s.queue.release('background',a.id)).toBe(false);expect(s.queue.release('background',b.id)).toBe(true);expect(s.queue.release('background',b.id)).toBe(false)});
-it('removes closed-document pending work without disturbing unrelated active work',()=>{const s=setup();s.enqueue(preview());const b=claim(s.queue,'background');s.enqueue(preview('C'));s.gate.close('C');expect(s.queue.snapshot().pending.background).toEqual([]);expect(s.queue.snapshot().active[0]?.id).toBe(b.id);s.queue.release('background',b.id);expect(s.queue.claim('background')).toBeUndefined()});
-it('reports missing or broken document reads and can claim the next FIFO item',()=>{const s=setup();const bad=s.enqueue(preview());s.enqueue(preview('C'));s.sources.delete('B');expect(s.queue.claim('background')).toMatchObject({id:bad.status==='accepted'?bad.taskId:'',error:expect.stringContaining('source unavailable')});expect(requestOf(claim(s.queue,'background').work).document.id).toBe('C')});
-it('reports dispatch capacity failures without taking an active slot or losing later intents',()=>{const s=setup();let allow=true;const queue=new RoleTaskQueue(s.gate,doc=>s.sources.get(doc),()=>allow);s.sources.set('B',{document:preview().document,renderConfigVersion:1});expect(queue.enqueuePreview(preview()).status).toBe('accepted');allow=false;expect(queue.claim('background')).toHaveProperty('error');expect(queue.snapshot().active).toEqual([]);allow=true;expect(queue.enqueuePreview(preview()).status).toBe('accepted');expect(claim(queue,'background').work.kind).toBe('preview')});
-it('owns foreground input without rehashing it during admission, claim or inspection',()=>{const input=preview('A'),s=setup();const digest=vi.spyOn(hash,'sha256');try{s.enqueue(input);input.document.markdown='external mutation';s.queue.snapshot();expect(requestOf(claim(s.queue,'foreground').work).document.markdown).toBe('# Test');expect(digest).not.toHaveBeenCalled()}finally{digest.mockRestore()}});
-
-it('measures foreground Markdown UTF-8 budget once before owning its private queue snapshot',()=>{
- const input=preview('A'),s=setup(),encode=vi.spyOn(TextEncoder.prototype,'encode');
- try{
-  s.enqueue(input);const measured=encode.mock.calls.filter(([value])=>value===input.document.markdown);
-  expect(measured).toHaveLength(1);expect(requestOf(claim(s.queue,'foreground').work).document.markdown).toBe('# Test');
-  expect(encode.mock.calls.filter(([value])=>value===input.document.markdown)).toHaveLength(1);
- }finally{encode.mockRestore()}
+function setup() {
+  const gate = new IdentityGate();
+  for (const doc of ['A', 'B', 'C']) gate.open(doc);
+  gate.activate('A');
+  const clock = new FakeClock();
+  const sources = new Map<string, ReturnType<PreviewReader>>();
+  const queue = new RoleTaskQueue(gate, (doc) => sources.get(doc));
+  const enqueue = (input: PreviewSubmission) => {
+    sources.set(input.document.id, {
+      document: input.document,
+      renderConfigVersion: input.cacheKey.renderConfigVersion,
+    });
+    return queue.enqueuePreview(input);
+  };
+  return {gate, clock, queue, sources, enqueue};
+}
+function claim(queue: RoleTaskQueue, role: WorkerRole) {
+  const value = queue.claim(role);
+  if (!value || 'error' in value)
+    throw new Error(value && 'error' in value ? value.error : 'Missing claim');
+  return value;
+}
+it('keeps only the latest foreground demand across modes', () => {
+  const s = setup();
+  s.enqueue(preview('A'));
+  const a4 = s.enqueue(preview('A', 2, 'preview.a4'));
+  const latest = s.enqueue(preview('A', 3));
+  expect(s.queue.snapshot().pending.foreground).toHaveLength(1);
+  expect(latest.status === 'accepted' && latest.replaced).toEqual(
+    a4.status === 'accepted' ? [a4.taskId] : [],
+  );
+  expect(requestOf(claim(s.queue, 'foreground').work).document.revision).toBe(3);
 });
-it('keeps the claim-time UTF-8 budget for the document read lazily by a background entry',()=>{
- const s=setup(),input=preview('B');input.document.markdown='🙂'.repeat(Math.floor(10*1024*1024/4)+1);
- expect(s.enqueue(input).status).toBe('accepted');
- expect(s.queue.claim('background')).toMatchObject({error:expect.stringContaining('UTF-8 budget exceeded')});
- expect(s.queue.snapshot().active).toEqual([]);
+it('merges background document/mode intents at their original FIFO position', () => {
+  const s = setup();
+  s.enqueue(preview());
+  s.enqueue(preview('C'));
+  s.enqueue(preview('B', 2));
+  s.enqueue(preview('B', 2, 'preview.a4'));
+  const b = claim(s.queue, 'background');
+  expect(requestOf(b.work).document.id).toBe('B');
+  expect(requestOf(b.work).document.revision).toBe(2);
+  expect(s.queue.claim('background')).toBeUndefined();
+  s.queue.release('background', b.id);
+  const c = claim(s.queue, 'background');
+  expect(requestOf(c.work).document.id).toBe('C');
+  s.queue.release('background', c.id);
+  expect(requestOf(claim(s.queue, 'background').work).kind).toBe('preview.a4');
+});
+it('stores no Markdown, configuration snapshot or closure in background pending entries', () => {
+  const s = setup(),
+    input = preview();
+  input.document.markdown = 'large-source-'.repeat(10000);
+  s.enqueue(input);
+  const entry = s.queue.snapshot().pending.background[0];
+  expect(entry?.kind).toBe('background-preview');
+  expect(entry).not.toHaveProperty('work');
+  expect(entry).not.toHaveProperty('document');
+  expect(entry).not.toHaveProperty('submission');
+  expect(entry).not.toHaveProperty('cacheKey');
+  expect(s.queue.ownedBytes).toBeLessThan(1024);
+});
+it('reads current content and configuration only when the background worker claims it', () => {
+  const s = setup();
+  s.enqueue(preview());
+  s.sources.set('B', {
+    document: {...request().document, id: 'B', revision: 9, markdown: 'latest source'},
+    renderConfigVersion: 7,
+  });
+  const work = claim(s.queue, 'background').work;
+  expect(work.kind === 'preview' && work.submission.document.markdown).toBe('latest source');
+  expect(work.kind === 'preview' && work.submission.cacheKey.renderConfigVersion).toBe(7);
+});
+it('never expires waiting previews and creates no queue timers', () => {
+  const s = setup();
+  s.enqueue(preview());
+  s.clock.advance(3600000);
+  expect(s.queue.snapshot().pending.background).toHaveLength(1);
+  expect(claim(s.queue, 'background').work.kind).toBe('preview');
+  expect(s.clock.pending).toBe(0);
+});
+it('allows one independent active claim per role and requires matching release ids', () => {
+  const s = setup();
+  s.enqueue(preview('A'));
+  s.enqueue(preview());
+  const a = claim(s.queue, 'foreground'),
+    b = claim(s.queue, 'background');
+  expect(s.queue.snapshot().active).toHaveLength(2);
+  expect(s.queue.claim('foreground')).toBeUndefined();
+  expect(s.queue.release('background', a.id)).toBe(false);
+  expect(s.queue.release('background', b.id)).toBe(true);
+  expect(s.queue.release('background', b.id)).toBe(false);
+});
+it('removes closed-document pending work without disturbing unrelated active work', () => {
+  const s = setup();
+  s.enqueue(preview());
+  const b = claim(s.queue, 'background');
+  s.enqueue(preview('C'));
+  s.gate.close('C');
+  expect(s.queue.snapshot().pending.background).toEqual([]);
+  expect(s.queue.snapshot().active[0]?.id).toBe(b.id);
+  s.queue.release('background', b.id);
+  expect(s.queue.claim('background')).toBeUndefined();
+});
+it('reports missing or broken document reads and can claim the next FIFO item', () => {
+  const s = setup();
+  const bad = s.enqueue(preview());
+  s.enqueue(preview('C'));
+  s.sources.delete('B');
+  expect(s.queue.claim('background')).toMatchObject({
+    id: bad.status === 'accepted' ? bad.taskId : '',
+    error: expect.stringContaining('source unavailable'),
+  });
+  expect(requestOf(claim(s.queue, 'background').work).document.id).toBe('C');
+});
+it('reports dispatch capacity failures without taking an active slot or losing later intents', () => {
+  const s = setup();
+  let allow = true;
+  const queue = new RoleTaskQueue(
+    s.gate,
+    (doc) => s.sources.get(doc),
+    () => allow,
+  );
+  s.sources.set('B', {document: preview().document, renderConfigVersion: 1});
+  expect(queue.enqueuePreview(preview()).status).toBe('accepted');
+  allow = false;
+  expect(queue.claim('background')).toHaveProperty('error');
+  expect(queue.snapshot().active).toEqual([]);
+  allow = true;
+  expect(queue.enqueuePreview(preview()).status).toBe('accepted');
+  expect(claim(queue, 'background').work.kind).toBe('preview');
+});
+it('owns foreground input without rehashing it during admission, claim or inspection', () => {
+  const input = preview('A'),
+    s = setup();
+  const digest = vi.spyOn(hash, 'sha256');
+  try {
+    s.enqueue(input);
+    input.document.markdown = 'external mutation';
+    s.queue.snapshot();
+    expect(requestOf(claim(s.queue, 'foreground').work).document.markdown).toBe('# Test');
+    expect(digest).not.toHaveBeenCalled();
+  } finally {
+    digest.mockRestore();
+  }
 });
 
-it('rejects an over-budget foreground Markdown before queuing or cloning it',()=>{
- const s=setup(),input=preview('A');input.document.markdown='🙂'.repeat(Math.floor(10*1024*1024/4)+1);
- expect(()=>s.enqueue(input)).toThrow('Markdown UTF-8 budget exceeded');expect(s.queue.snapshot().pending.foreground).toEqual([]);
+it('measures foreground Markdown UTF-8 budget once before owning its private queue snapshot', () => {
+  const input = preview('A'),
+    s = setup(),
+    encode = vi.spyOn(TextEncoder.prototype, 'encode');
+  try {
+    s.enqueue(input);
+    const measured = encode.mock.calls.filter(([value]) => value === input.document.markdown);
+    expect(measured).toHaveLength(1);
+    expect(requestOf(claim(s.queue, 'foreground').work).document.markdown).toBe('# Test');
+    expect(encode.mock.calls.filter(([value]) => value === input.document.markdown)).toHaveLength(
+      1,
+    );
+  } finally {
+    encode.mockRestore();
+  }
+});
+it('keeps the claim-time UTF-8 budget for the document read lazily by a background entry', () => {
+  const s = setup(),
+    input = preview('B');
+  input.document.markdown = '🙂'.repeat(Math.floor((10 * 1024 * 1024) / 4) + 1);
+  expect(s.enqueue(input).status).toBe('accepted');
+  expect(s.queue.claim('background')).toMatchObject({
+    error: expect.stringContaining('UTF-8 budget exceeded'),
+  });
+  expect(s.queue.snapshot().active).toEqual([]);
+});
+
+it('rejects an over-budget foreground Markdown before queuing or cloning it', () => {
+  const s = setup(),
+    input = preview('A');
+  input.document.markdown = '🙂'.repeat(Math.floor((10 * 1024 * 1024) / 4) + 1);
+  expect(() => s.enqueue(input)).toThrow('Markdown UTF-8 budget exceeded');
+  expect(s.queue.snapshot().pending.foreground).toEqual([]);
 });

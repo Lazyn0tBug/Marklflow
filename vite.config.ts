@@ -2,9 +2,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {createRequire} from 'node:module';
-import {defineConfig,type UserConfig} from 'vite';
+import {defineConfig, type UserConfig} from 'vite';
 
-export default defineConfig(():UserConfig=>{
+export default defineConfig((): UserConfig => {
   return {
     plugins: [react(), tailwindcss()],
     build: {
@@ -32,7 +32,9 @@ export default defineConfig(():UserConfig=>{
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
         // Its browser conditional entry uses document; pin the same package's DOM-free default.
-        'decode-named-character-reference': createRequire(import.meta.url).resolve('decode-named-character-reference'),
+        'decode-named-character-reference': createRequire(import.meta.url).resolve(
+          'decode-named-character-reference',
+        ),
       },
     },
     server: {

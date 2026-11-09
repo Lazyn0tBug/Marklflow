@@ -1,26 +1,39 @@
-import { documentSchema } from '../model/documentSchema';
+import {documentSchema} from '../model/documentSchema';
 /**
  * MarkFlow (墨流) 存储与源载荷管理器
  * 遵循无后端、无云端上传、本地 IndexedDB 持久化与单文件 HTML 往返导入规范
  */
 
-import { DocumentRecord, DEFAULT_THEME, INITIAL_SAMPLE_MARKDOWN } from '../model/document';
+import {DocumentRecord, DEFAULT_THEME, INITIAL_SAMPLE_MARKDOWN} from '../model/document';
 
-import {webDocumentRepository,recoveryJson} from '../platform/web/documentRepository';
+import {webDocumentRepository, recoveryJson} from '../platform/web/documentRepository';
 import {createRenderNonce} from '../platform/crypto';
 import {reportFailure} from '../platform/failures';
 export {recoveryJson};
-export async function loadDocuments(){
- const loaded=await webDocumentRepository.load();
- if(loaded.canInitialize){const doc=createInitialDocument();await saveDocument(doc);return {...loaded,documents:[doc]}}
- return loaded;
+export async function loadDocuments() {
+  const loaded = await webDocumentRepository.load();
+  if (loaded.canInitialize) {
+    const doc = createInitialDocument();
+    await saveDocument(doc);
+    return {...loaded, documents: [doc]};
+  }
+  return loaded;
 }
-export async function getAllDocuments():Promise<DocumentRecord[]>{return (await loadDocuments()).documents}
-export async function saveDocument(doc:DocumentRecord):Promise<void>{
- await webDocumentRepository.save({...doc,meta:{...doc.meta,updatedAt:new Date().toISOString()}});
+export async function getAllDocuments(): Promise<DocumentRecord[]> {
+  return (await loadDocuments()).documents;
 }
-export async function deleteDocument(id:string):Promise<void>{await webDocumentRepository.delete(id)}
-export function getStorageRecoveries(){return webDocumentRepository.recoveries()}
+export async function saveDocument(doc: DocumentRecord): Promise<void> {
+  await webDocumentRepository.save({
+    ...doc,
+    meta: {...doc.meta, updatedAt: new Date().toISOString()},
+  });
+}
+export async function deleteDocument(id: string): Promise<void> {
+  await webDocumentRepository.delete(id);
+}
+export function getStorageRecoveries() {
+  return webDocumentRepository.recoveries();
+}
 
 /**
  * 创建新空白或模板文档
@@ -38,7 +51,7 @@ export function createNewDocument(title: string = '未命名技术文档'): Docu
       createdAt: now,
       updatedAt: now,
     },
-    theme: { ...DEFAULT_THEME, margins: {...DEFAULT_THEME.margins} },
+    theme: {...DEFAULT_THEME, margins: {...DEFAULT_THEME.margins}},
     options: {
       syntaxProfile: 'commonmark-gfm-v1',
       mathMode: 'mathml',
@@ -60,7 +73,7 @@ export function createInitialDocument(): DocumentRecord {
       updatedAt: now,
       tags: ['物理', '量子计算', '系统工程'],
     },
-    theme: { ...DEFAULT_THEME, margins: {...DEFAULT_THEME.margins} },
+    theme: {...DEFAULT_THEME, margins: {...DEFAULT_THEME.margins}},
     options: {
       syntaxProfile: 'commonmark-gfm-v1',
       mathMode: 'mathml',
@@ -83,12 +96,15 @@ export function encodeSourcePayload(doc: DocumentRecord): string {
 export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | null {
   try {
     if (htmlContent.length > 50 * 1024 * 1024) return null;
-    const template=document.createElement('template');template.innerHTML=htmlContent;
-    const payloads=template.content.querySelectorAll('script[id="markflow-source-payload"]');
-    const payload=payloads[0];
-    if(payloads.length!==1||!payload)return null;
-    if(payload.hasAttribute('type')&&payload.getAttribute('type')!=='application/json')return null;
-    const base64Data=payload.textContent?.trim();if(!base64Data)return null;
+    const template = document.createElement('template');
+    template.innerHTML = htmlContent;
+    const payloads = template.content.querySelectorAll('script[id="markflow-source-payload"]');
+    const payload = payloads[0];
+    if (payloads.length !== 1 || !payload) return null;
+    if (payload.hasAttribute('type') && payload.getAttribute('type') !== 'application/json')
+      return null;
+    const base64Data = payload.textContent?.trim();
+    if (!base64Data) return null;
     const jsonStr = decodeURIComponent(atob(base64Data));
     const result = documentSchema.safeParse(JSON.parse(jsonStr));
     if (!result.success) return null;
@@ -107,7 +123,11 @@ export function extractPayloadFromHtml(htmlContent: string): DocumentRecord | nu
   } catch (err) {
     // **不再直连 console** ✓ ⇒ ⇒ 走消息端口 ✓ ⇒ ⇒ 日志里有一条带类别的记录 ✓
     // ⇒ ⇒ 而原文只进控制台 ✓ ⇒ ⇒ 类别是"导入被拒" ✓。
-    void reportFailure({category:'import-rejected',detail:'Failed to parse embedded MarkFlow payload',cause:err});
+    void reportFailure({
+      category: 'import-rejected',
+      detail: 'Failed to parse embedded MarkFlow payload',
+      cause: err,
+    });
   }
   return null;
 }

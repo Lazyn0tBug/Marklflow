@@ -1,5 +1,5 @@
-import {messageText,type MessageCategory} from '../../application/messages';
-import {noticeStore,notifiesUser,type NoticeTone} from '../../application/notices';
+import {messageText, type MessageCategory} from '../../application/messages';
+import {noticeStore, notifiesUser, type NoticeTone} from '../../application/notices';
 import {resolveMessagePort} from './messages';
 
 /**
@@ -19,17 +19,17 @@ import {resolveMessagePort} from './messages';
  */
 
 /** 一次失败的输入 ✓。 */
-export interface FailureInput{
- /** 机器码 ✓（封闭词表里的 ✓）。 */
- category:MessageCategory;
- /** 原始文本 ✓：只进控制台 ✓，不进日志、不进用户面 ✓。 */
- detail?:string;
- /** 原始异常 ✓：控制台按它打 ✓。 */
- cause?:unknown;
- /** 给用户的那句话 ✓：不给就用这个类别自己的文案 ✓（一处事实 ✓）。 */
- message?:string;
- /** 语气 ✓：默认是失败 ✓；被挡住这类是提醒 ✓。 */
- tone?:NoticeTone;
+export interface FailureInput {
+  /** 机器码 ✓（封闭词表里的 ✓）。 */
+  category: MessageCategory;
+  /** 原始文本 ✓：只进控制台 ✓，不进日志、不进用户面 ✓。 */
+  detail?: string;
+  /** 原始异常 ✓：控制台按它打 ✓。 */
+  cause?: unknown;
+  /** 给用户的那句话 ✓：不给就用这个类别自己的文案 ✓（一处事实 ✓）。 */
+  message?: string;
+  /** 语气 ✓：默认是失败 ✓；被挡住这类是提醒 ✓。 */
+  tone?: NoticeTone;
 }
 
 /**
@@ -37,18 +37,18 @@ export interface FailureInput{
  *
  * **返回诊断 id** ✓：用户面与控制台都有它 ✓ ⇒ ⇒ 拿它对上那一条 ✓。
  */
-export async function reportFailure(input:FailureInput):Promise<string>{
- const diagnosticId=noticeStore.nextDiagnosticId();
- await reportToPort(input.category,diagnosticId,input.detail,input.cause);
- if(notifiesUser(input.category)){
-  noticeStore.push({
-   tone:input.tone??'error',
-   message:input.message??messageText(input.category),
-   category:input.category,
-   diagnosticId,
-  });
- }
- return diagnosticId;
+export async function reportFailure(input: FailureInput): Promise<string> {
+  const diagnosticId = noticeStore.nextDiagnosticId();
+  await reportToPort(input.category, diagnosticId, input.detail, input.cause);
+  if (notifiesUser(input.category)) {
+    noticeStore.push({
+      tone: input.tone ?? 'error',
+      message: input.message ?? messageText(input.category),
+      category: input.category,
+      diagnosticId,
+    });
+  }
+  return diagnosticId;
 }
 
 /**
@@ -56,11 +56,21 @@ export async function reportFailure(input:FailureInput):Promise<string>{
  *
  * **通道自己失败不递归** ✓：失败就吞掉 ✓ ⇒ ⇒ 应用不因此崩 ✓（P-4 ✓）。
  */
-async function reportToPort(category:MessageCategory,diagnosticId:string,detail?:string,cause?:unknown):Promise<void>{
- try{
-  const port=await resolveMessagePort();
-  await port.report({category,diagnosticId,...(detail===undefined?{}:{detail}),...(cause===undefined?{}:{cause})});
- }catch{
-  // 报告通道自己失败 ⇒ 就这样 ✓：再报一次就是递归 ✓。
- }
+async function reportToPort(
+  category: MessageCategory,
+  diagnosticId: string,
+  detail?: string,
+  cause?: unknown,
+): Promise<void> {
+  try {
+    const port = await resolveMessagePort();
+    await port.report({
+      category,
+      diagnosticId,
+      ...(detail === undefined ? {} : {detail}),
+      ...(cause === undefined ? {} : {cause}),
+    });
+  } catch {
+    // 报告通道自己失败 ⇒ 就这样 ✓：再报一次就是递归 ✓。
+  }
 }

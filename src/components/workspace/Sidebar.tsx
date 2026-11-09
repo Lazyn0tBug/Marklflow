@@ -3,7 +3,7 @@
  * 对应设计方案第 4.5.2 节：多文档列表、批量导入、可编辑 HTML 还原与实时大纲树
  */
 
-import React, { useState, useRef, useEffect, useMemo, useReducer } from 'react';
+import React, {useState, useRef, useEffect, useMemo, useReducer} from 'react';
 import {
   FileText,
   ListTree,
@@ -19,8 +19,8 @@ import {
   Search,
   PanelLeftClose,
 } from 'lucide-react';
-import { DocumentRecord } from '../../core/model/document';
-import { extractOutline } from '../../core/parse/markdown';
+import {DocumentRecord} from '../../core/model/document';
+import {extractOutline} from '../../core/parse/markdown';
 import {
   outlineReducer,
   outlineView,
@@ -102,14 +102,14 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
 
     {view.rows.length > 0 ? (
       <div className="space-y-1">
-        {view.rows.map((row,index) => {
-          const { item, foldable, collapsed: isCollapsed, marked } = row;
+        {view.rows.map((row, index) => {
+          const {item, foldable, collapsed: isCollapsed, marked} = row;
           const indent = (item.level - 1) * 10;
           const isActive = item.id === activeHeadingId;
           return (
             <div
               key={row.key}
-              style={{ paddingLeft: `${indent}px` }}
+              style={{paddingLeft: `${indent}px`}}
               className={`flex items-center rounded transition-colors ${
                 isActive
                   ? 'bg-teal-950/80 border border-teal-500/60 shadow-sm ring-1 ring-teal-500/30'
@@ -118,7 +118,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
             >
               {foldable ? (
                 <button
-                  ref={index===0?setSlot:undefined}
+                  ref={index === 0 ? setSlot : undefined}
                   onClick={() => onToggle(row.key)}
                   aria-expanded={!isCollapsed}
                   data-contains-active={marked ? 'true' : undefined}
@@ -130,27 +130,34 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                 >
                   {/* 图标比文字的光学对齐偏移，随字号走（见 index.css 的 --mf-icon-optical-offset）。 */}
                   {isCollapsed ? (
-                    <SquarePlus className="w-3.5 h-3.5" style={{ transform: 'translateY(var(--mf-icon-optical-offset))' }} />
+                    <SquarePlus
+                      className="w-3.5 h-3.5"
+                      style={{transform: 'translateY(var(--mf-icon-optical-offset))'}}
+                    />
                   ) : (
-                    <SquareMinus className="w-3.5 h-3.5" style={{ transform: 'translateY(var(--mf-icon-optical-offset))' }} />
+                    <SquareMinus
+                      className="w-3.5 h-3.5"
+                      style={{transform: 'translateY(var(--mf-icon-optical-offset))'}}
+                    />
                   )}
                 </button>
               ) : (
-                <span ref={index===0?setSlot:undefined} className="shrink-0 w-6 h-6" />
+                <span ref={index === 0 ? setSlot : undefined} className="shrink-0 w-6 h-6" />
               )}
               <button
                 aria-current={isActive ? 'location' : undefined}
                 ref={isActive ? activeItemRef : row.entry ? entryItemRef : null}
                 onClick={() => onJump(item.id, item.line)}
-                style={{ paddingLeft: '8px' }}
+                style={{paddingLeft: '8px'}}
                 className={`flex-1 min-w-0 text-left py-1.5 pr-2 rounded text-xs truncate transition-all flex items-center gap-1.5 ${
-                  isActive
-                    ? 'text-teal-200 font-semibold'
-                    : 'text-neutral-400 hover:text-teal-300'
+                  isActive ? 'text-teal-200 font-semibold' : 'text-neutral-400 hover:text-teal-300'
                 }`}
                 title={`${item.text} (第 ${item.line} 行)`}
               >
-                <span ref={index===0?textRef:null} className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}>
+                <span
+                  ref={index === 0 ? textRef : null}
+                  className={`truncate ${isActive ? 'text-teal-100 font-medium' : ''}`}
+                >
                   {item.text}
                 </span>
                 {isActive && (
@@ -190,69 +197,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const outlinePanelRef = useRef<HTMLDivElement | null>(null);
   const outlineTextRef = useRef<HTMLSpanElement | null>(null);
   const outlineSlotRef = useRef<HTMLElement | null>(null);
-  const setOutlineSlot=React.useCallback((element:HTMLElement|null)=>{outlineSlotRef.current=element;},[]);
-  const listRef=useRef<HTMLDivElement>(null);
+  const setOutlineSlot = React.useCallback((element: HTMLElement | null) => {
+    outlineSlotRef.current = element;
+  }, []);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const outline = useMemo(() => extractOutline(currentMarkdown), [currentMarkdown]);
   // 大纲的状态机：文档、标题、搜索词与显式覆盖都在这里（§3.2）。
-  const [outlineState, dispatch] = useReducer(
-    outlineReducer,
-    undefined,
-    (): OutlineState => ({
-      docId: currentDocId,
-      items: outline,
-      filter: '',
-      overrides: new Map(),
-      duplicates: new Set(),
-      previousDuplicates: new Set(),
-    })
-  );
+  const [outlineState, dispatch] = useReducer(outlineReducer, undefined, (): OutlineState => ({
+    docId: currentDocId,
+    items: outline,
+    filter: '',
+    overrides: new Map(),
+    duplicates: new Set(),
+    previousDuplicates: new Set(),
+  }));
   // 外部世界只有"我变了"这一件事：换文档或内容变化，都走同一条 sync。
   // 在渲染期派发，React 会立刻以新状态重渲染，不会有旧文档的标题闪一帧。
   if (outlineState.docId !== currentDocId || outlineState.items !== outline) {
-    dispatch({ type: 'sync', docId: currentDocId, items: outline });
+    dispatch({type: 'sync', docId: currentDocId, items: outline});
   }
   const view = useMemo(
     () => outlineView(outlineState, currentDocId, activeHeadingId),
-    [outlineState, currentDocId, activeHeadingId]
+    [outlineState, currentDocId, activeHeadingId],
   );
 
   // 光学对齐：量出图标相对文字该上移多少，写进 CSS 变量。数值来自字体度量，
   // 不写死常数——换引擎、换字号、换字体都对。字体加载完要重量一次。
-  const applyInkOffset=React.useCallback(()=>{
-    const text=outlineTextRef.current,slot=outlineSlotRef.current;
-    if(!text||!slot)return;
-    const shift=measureOpticalShift(text,slot);
-    const value=`${Math.round(shift*100)/100}px`;
-    if(document.documentElement.style.getPropertyValue('--mf-icon-optical-offset')!==value)
-      document.documentElement.style.setProperty('--mf-icon-optical-offset',value);
-  },[]);
+  const applyInkOffset = React.useCallback(() => {
+    const text = outlineTextRef.current,
+      slot = outlineSlotRef.current;
+    if (!text || !slot) return;
+    const shift = measureOpticalShift(text, slot);
+    const value = `${Math.round(shift * 100) / 100}px`;
+    if (document.documentElement.style.getPropertyValue('--mf-icon-optical-offset') !== value)
+      document.documentElement.style.setProperty('--mf-icon-optical-offset', value);
+  }, []);
   // 光学对齐的测量只依赖**字体度量**与**第一行标题的文本** ✓：
   // 跟着整份大纲走 ⇒ 每次击键都要重测一次（一次样式重算 + 一次 canvas 量测 +
   // 一次探针的强制布局 + 一次全局样式失效）✗，而结果并不会因此更准 ✓。
-  const outlineSample=view.rows[0]?.item.text??'';
-  React.useEffect(()=>{
+  const outlineSample = view.rows[0]?.item.text ?? '';
+  React.useEffect(() => {
     // 大纲面板只在"大纲"页签渲染，页签没切过来时量不到元素。
-    if(activeTab!=='outline')return;
+    if (activeTab !== 'outline') return;
     applyInkOffset();
     void document.fonts?.ready.then(applyInkOffset);
-  },[activeTab,outlineSample,applyInkOffset]);
+  }, [activeTab, outlineSample, applyInkOffset]);
 
   // Only scroll the outline list; highlighting must never move the horizontal workbench.
   // 高亮可见就滚到高亮行；高亮被收起的分支挡住，就滚到那个分支的入口行（§6.1）。
   // 依赖带上入口行：手动收起或展开会换掉目标，位置必须跟着重算。
-  const entranceKey=view.entrance;
-  React.useEffect(()=>{
-    const item=activeItemRef.current??entryItemRef.current,list=listRef.current;
-    if(!item||!list||item.closest('[inert]')||activeTab!=='outline')return;
-    const target=item.getBoundingClientRect(),viewport=list.getBoundingClientRect();
-    if(target.top<viewport.top)list.scrollTop+=target.top-viewport.top;
-    else if(target.bottom>viewport.bottom)list.scrollTop+=target.bottom-viewport.bottom;
-  },[activeHeadingId,activeTab,entranceKey]);
+  const entranceKey = view.entrance;
+  React.useEffect(() => {
+    const item = activeItemRef.current ?? entryItemRef.current,
+      list = listRef.current;
+    if (!item || !list || item.closest('[inert]') || activeTab !== 'outline') return;
+    const target = item.getBoundingClientRect(),
+      viewport = list.getBoundingClientRect();
+    if (target.top < viewport.top) list.scrollTop += target.top - viewport.top;
+    else if (target.bottom > viewport.bottom) list.scrollTop += target.bottom - viewport.bottom;
+  }, [activeHeadingId, activeTab, entranceKey]);
 
-  const handleFileChange=(event:React.ChangeEvent<HTMLInputElement>)=>{
-    const files=Array.from(event.target.files??[]);event.target.value='';
-    if(files.length&&!importBusy)onImportFiles(files);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length && !importBusy) onImportFiles(files);
   };
 
   return (
@@ -310,36 +319,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Action Bar */}
             <div className="flex items-center gap-1.5 mb-2 px-1">
               <button
-                disabled={importBusy} onClick={onCreateDoc}
+                disabled={importBusy}
+                onClick={onCreateDoc}
                 className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-teal-600/90 hover:bg-teal-600 text-white text-xs font-medium transition-colors"
                 title="创建新空白 Markdown 文档"
               >
                 <Plus className="w-3.5 h-3.5" />
                 新建文档
               </button>
-              {onOpenNative&&
+              {onOpenNative && (
+                <button
+                  disabled={importBusy}
+                  aria-busy={importBusy}
+                  onClick={onOpenNative}
+                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+                  title="打开本地文件（系统选择器）"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  打开
+                </button>
+              )}
               <button
-                disabled={importBusy} aria-busy={importBusy} onClick={onOpenNative}
-                className="flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
-                title="打开本地文件（系统选择器）"
-              >
-                <FolderOpen className="w-3.5 h-3.5" />
-                打开
-              </button>}
-              <button
-                disabled={importBusy} aria-busy={importBusy} onClick={() => fileInputRef.current?.click()}
+                disabled={importBusy}
+                aria-busy={importBusy}
+                onClick={() => fileInputRef.current?.click()}
                 className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
-                title={onOpenNative?'导入含自包含载荷的可编辑 .html':'打开本地文件（浏览器选择器）：载入工作区副本'}
+                title={
+                  onOpenNative
+                    ? '导入含自包含载荷的可编辑 .html'
+                    : '打开本地文件（浏览器选择器）：载入工作区副本'
+                }
               >
                 <Upload className="w-3.5 h-3.5" />
-                {importBusy?'处理中…':(onOpenNative?'导入':'打开文件')}
+                {importBusy ? '处理中…' : onOpenNative ? '导入' : '打开文件'}
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
                 disabled={importBusy}
                 multiple
-                accept={onOpenNative?'.html,.htm':'.md,.markdown,.txt,.html,.htm'}
+                accept={onOpenNative ? '.html,.htm' : '.md,.markdown,.txt,.html,.htm'}
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -372,7 +391,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         {new Date(doc.meta.updatedAt).toLocaleTimeString('zh-CN', {
                           hour: '2-digit',
                           minute: '2-digit',
-                        })} · Rev {doc.revision}
+                        })}{' '}
+                        · Rev {doc.revision}
                       </div>
                     </div>
                   </div>
@@ -400,12 +420,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <OutlinePanel
             view={view}
             filter={outlineState.filter}
-            onFilter={(value) => dispatch({ type: 'filter', value })}
-            onToggle={(key) => dispatch({ type: 'toggle', key })}
-            onToggleAll={() => dispatch({ type: 'toggle-all' })}
+            onFilter={(value) => dispatch({type: 'filter', value})}
+            onToggle={(key) => dispatch({type: 'toggle', key})}
+            onToggleAll={() => dispatch({type: 'toggle-all'})}
             onJump={(itemId, line) => {
               // 主动跳转才展开路径；滚动引起的高亮变化不展开。
-              dispatch({ type: 'jump', itemId });
+              dispatch({type: 'jump', itemId});
               onScrollToHeading(itemId, line);
             }}
             activeHeadingId={activeHeadingId}

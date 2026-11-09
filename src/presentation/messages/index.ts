@@ -14,6 +14,6 @@ export type {MessageCardProps} from './MessageCard';
 export {MessageStatusBar} from './MessageStatusBar';
 export type {MessageStatusBarProps} from './MessageStatusBar';
 export {MessageResult} from './MessageResult';
-export type {MessageResultItem,MessageResultProps} from './MessageResult';
-export type {MessageAction,MessageTone} from './types';
+export type {MessageResultItem, MessageResultProps} from './MessageResult';
+export type {MessageAction, MessageTone} from './types';
 export {MESSAGE_LEAVE_MS} from './timing';

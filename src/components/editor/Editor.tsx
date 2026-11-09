@@ -4,10 +4,17 @@
  * 支持与 HTML 渲染视窗双向精准同步滚动与联动锁保护
  */
 
-import React, { useRef,useLayoutEffect,useState } from 'react';
-import {editorGeometry,invalidateEditorGeometry,setEditorComposing,sourceAnchorAt,sourceAnchorTop,type EditorGeometry} from '../workspace/sourceScroll';
+import React, {useRef, useLayoutEffect, useState} from 'react';
+import {
+  editorGeometry,
+  invalidateEditorGeometry,
+  setEditorComposing,
+  sourceAnchorAt,
+  sourceAnchorTop,
+  type EditorGeometry,
+} from '../workspace/sourceScroll';
 import type {SourceAnchor} from '../../core/model/sourceLayout';
-import { generateMarkdownTable } from '../../core/parse/markdown';
+import {generateMarkdownTable} from '../../core/parse/markdown';
 
 interface EditorProps {
   sessionId?: string;
@@ -28,7 +35,7 @@ interface EditorProps {
 export const Editor: React.FC<EditorProps> = ({
   value,
   sessionId,
-  softWrap=true,
+  softWrap = true,
   onChange,
   onUndo,
   onRedo,
@@ -40,51 +47,104 @@ export const Editor: React.FC<EditorProps> = ({
   const activeTextareaRef = externalTextareaRef || internalTextareaRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
 
-  const composing=useRef(false);
-  const [composition,setComposition]=useState<string|null>(null);
-  const directScroll=useRef(false);
-  const refreshLayout=useRef<()=>void>(()=>{});
-  useLayoutEffect(()=>{const editor=activeTextareaRef.current;setComposition(null);return()=>{composing.current=false;directScroll.current=false;if(editor)setEditorComposing(editor,false)}},[sessionId,activeTextareaRef]);
-  const lastLayout=useRef<{value:string;geometry:EditorGeometry;sessionId:string|undefined;anchor:SourceAnchor}|undefined>(undefined);
-  useLayoutEffect(()=>{
-    const textarea=activeTextareaRef.current,gutter=lineNumbersRef.current;if(!textarea||!gutter)return;
-    let frame:number|undefined;
-    const update=()=>{
-      frame=undefined;if(composing.current)return;directScroll.current=false;const previous=lastLayout.current,geometry=editorGeometry(textarea);
-      const style=getComputedStyle(textarea);
-      gutter.style.height=textarea.clientHeight+'px';
-      gutter.style.paddingTop=geometry.paddingTop+'px';
-      gutter.style.paddingBottom=(parseFloat(style.paddingBottom)||0)+'px';
-      if(previous?.sessionId===sessionId&&previous?.geometry===geometry)return;
-      if(previous?.sessionId===sessionId&&previous?.value===value)textarea.scrollTop=sourceAnchorTop(previous.anchor,geometry);
-      lastLayout.current={value,geometry,sessionId,anchor:sourceAnchorAt(textarea.scrollTop,geometry)};
-      Array.from(gutter.children).forEach((row,index)=>{if(row instanceof HTMLElement){row.style.height=((geometry.lineTops?.[index+1]??0)-(geometry.lineTops?.[index]??0))+'px';row.style.lineHeight=geometry.lineHeight+'px'}});
-      gutter.scrollTop=textarea.scrollTop;
+  const composing = useRef(false);
+  const [composition, setComposition] = useState<string | null>(null);
+  const directScroll = useRef(false);
+  const refreshLayout = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    const editor = activeTextareaRef.current;
+    setComposition(null);
+    return () => {
+      composing.current = false;
+      directScroll.current = false;
+      if (editor) setEditorComposing(editor, false);
     };
-    const schedule=()=>{if(frame===undefined)frame=requestAnimationFrame(update)};
-    refreshLayout.current=schedule;update();const observer=new ResizeObserver(schedule);observer.observe(textarea);
-    const attributes=new MutationObserver(schedule);attributes.observe(textarea,{attributes:true,attributeFilter:['style','class']});
-    const fontsChanged=()=>{invalidateEditorGeometry(textarea);schedule()};
-    document.fonts?.addEventListener('loadingdone',fontsChanged);
-    return()=>{refreshLayout.current=()=>{};observer.disconnect();attributes.disconnect();document.fonts?.removeEventListener('loadingdone',fontsChanged);if(frame!==undefined)cancelAnimationFrame(frame)};
-  },[value,maxWidth,activeTextareaRef,sessionId,softWrap]);
+  }, [sessionId, activeTextareaRef]);
+  const lastLayout = useRef<
+    | {value: string; geometry: EditorGeometry; sessionId: string | undefined; anchor: SourceAnchor}
+    | undefined
+  >(undefined);
+  useLayoutEffect(() => {
+    const textarea = activeTextareaRef.current,
+      gutter = lineNumbersRef.current;
+    if (!textarea || !gutter) return;
+    let frame: number | undefined;
+    const update = () => {
+      frame = undefined;
+      if (composing.current) return;
+      directScroll.current = false;
+      const previous = lastLayout.current,
+        geometry = editorGeometry(textarea);
+      const style = getComputedStyle(textarea);
+      gutter.style.height = textarea.clientHeight + 'px';
+      gutter.style.paddingTop = geometry.paddingTop + 'px';
+      gutter.style.paddingBottom = (parseFloat(style.paddingBottom) || 0) + 'px';
+      if (previous?.sessionId === sessionId && previous?.geometry === geometry) return;
+      if (previous?.sessionId === sessionId && previous?.value === value)
+        textarea.scrollTop = sourceAnchorTop(previous.anchor, geometry);
+      lastLayout.current = {
+        value,
+        geometry,
+        sessionId,
+        anchor: sourceAnchorAt(textarea.scrollTop, geometry),
+      };
+      Array.from(gutter.children).forEach((row, index) => {
+        if (row instanceof HTMLElement) {
+          row.style.height =
+            (geometry.lineTops?.[index + 1] ?? 0) - (geometry.lineTops?.[index] ?? 0) + 'px';
+          row.style.lineHeight = geometry.lineHeight + 'px';
+        }
+      });
+      gutter.scrollTop = textarea.scrollTop;
+    };
+    const schedule = () => {
+      if (frame === undefined) frame = requestAnimationFrame(update);
+    };
+    refreshLayout.current = schedule;
+    update();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(textarea);
+    const attributes = new MutationObserver(schedule);
+    attributes.observe(textarea, {attributes: true, attributeFilter: ['style', 'class']});
+    const fontsChanged = () => {
+      invalidateEditorGeometry(textarea);
+      schedule();
+    };
+    document.fonts?.addEventListener('loadingdone', fontsChanged);
+    return () => {
+      refreshLayout.current = () => {};
+      observer.disconnect();
+      attributes.disconnect();
+      document.fonts?.removeEventListener('loadingdone', fontsChanged);
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, [value, maxWidth, activeTextareaRef, sessionId, softWrap]);
 
   const lines = value.split('\n');
   const lineCount = lines.length;
 
-  const markScrollIntent=()=>{directScroll.current=true;refreshLayout.current()};
+  const markScrollIntent = () => {
+    directScroll.current = true;
+    refreshLayout.current();
+  };
 
   // 同步行号及向外通知编辑器滚动进度
   const handleScroll = () => {
     const textarea = activeTextareaRef.current;
     if (textarea && lineNumbersRef.current) {
-      if(composing.current)return;
-      const geometry=editorGeometry(textarea),layout=lastLayout.current;
-      if(layout&&layout.geometry!==geometry){
-        if(directScroll.current){layout.anchor=sourceAnchorAt(textarea.scrollTop,geometry);const max=textarea.scrollHeight-textarea.clientHeight;onScroll?.(max>0?textarea.scrollTop/max:0,textarea.scrollTop)}
-        refreshLayout.current();return;
+      if (composing.current) return;
+      const geometry = editorGeometry(textarea),
+        layout = lastLayout.current;
+      if (layout && layout.geometry !== geometry) {
+        if (directScroll.current) {
+          layout.anchor = sourceAnchorAt(textarea.scrollTop, geometry);
+          const max = textarea.scrollHeight - textarea.clientHeight;
+          onScroll?.(max > 0 ? textarea.scrollTop / max : 0, textarea.scrollTop);
+        }
+        refreshLayout.current();
+        return;
       }
-      if(layout)layout.anchor=sourceAnchorAt(textarea.scrollTop,geometry);
+      if (layout) layout.anchor = sourceAnchorAt(textarea.scrollTop, geometry);
       lineNumbersRef.current.scrollTop = textarea.scrollTop;
       if (onScroll) {
         const maxScroll = textarea.scrollHeight - textarea.clientHeight;
@@ -114,12 +174,18 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if(composing.current||e.nativeEvent.isComposing)return;
-    if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End'].includes(e.key))markScrollIntent();
+    if (composing.current || e.nativeEvent.isComposing) return;
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key))
+      markScrollIntent();
     // 快捷键支持: Ctrl/Cmd + B, Ctrl/Cmd + I, Ctrl/Cmd + Z
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'Home'||e.key === 'End')) {
-      e.preventDefault();const textarea=activeTextareaRef.current;if(!textarea)return;
-      const end=e.key==='End',position=end?value.length:0;textarea.setSelectionRange(position,position);textarea.scrollTo({top:end?textarea.scrollHeight:0,behavior:'instant'});
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'Home' || e.key === 'End')) {
+      e.preventDefault();
+      const textarea = activeTextareaRef.current;
+      if (!textarea) return;
+      const end = e.key === 'End',
+        position = end ? value.length : 0;
+      textarea.setSelectionRange(position, position);
+      textarea.scrollTo({top: end ? textarea.scrollHeight : 0, behavior: 'instant'});
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
       e.preventDefault();
       insertTextAtCursor('**', '**', '粗体文本');
@@ -164,9 +230,9 @@ export const Editor: React.FC<EditorProps> = ({
             ref={lineNumbersRef}
             data-line-numbers
             className="text-right select-none bg-neutral-950 text-neutral-600 font-mono text-xs border-r border-neutral-900 overflow-hidden leading-6 shrink-0"
-            style={{width:`calc(${String(lineCount).length}ch + 0.5rem)`}}
+            style={{width: `calc(${String(lineCount).length}ch + 0.5rem)`}}
           >
-            {Array.from({ length: lineCount }).map((_, i) => (
+            {Array.from({length: lineCount}).map((_, i) => (
               <div key={i}>{i + 1}</div>
             ))}
           </div>
@@ -175,20 +241,42 @@ export const Editor: React.FC<EditorProps> = ({
           <textarea
             ref={activeTextareaRef as React.RefObject<HTMLTextAreaElement>}
             value={composition ?? value}
-            onChange={(e)=>{
+            onChange={(e) => {
               // 合成中的文本先留在本地，合成结束才提交：否则一次输入会变成多次修订。
-              if(composing.current){setComposition(e.target.value);return}
+              if (composing.current) {
+                setComposition(e.target.value);
+                return;
+              }
               onChange(e.target.value);
             }}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
             onWheel={markScrollIntent}
             onPointerDown={markScrollIntent}
-            onPointerMove={event=>{if(event.buttons===1)markScrollIntent()}}
-            wrap={softWrap?'soft':'off'}
-            style={{whiteSpace:softWrap?'pre-wrap':'pre',overflowWrap:softWrap?'anywhere':'normal',wordBreak:'normal',overflowY:'scroll',minWidth:0}}
-            onCompositionStart={()=>{composing.current=true;const editor=activeTextareaRef.current;if(editor)setEditorComposing(editor,true)}}
-            onCompositionEnd={(e)=>{composing.current=false;setComposition(null);const editor=activeTextareaRef.current;if(editor)setEditorComposing(editor,false);onChange(e.currentTarget.value);refreshLayout.current()}}
+            onPointerMove={(event) => {
+              if (event.buttons === 1) markScrollIntent();
+            }}
+            wrap={softWrap ? 'soft' : 'off'}
+            style={{
+              whiteSpace: softWrap ? 'pre-wrap' : 'pre',
+              overflowWrap: softWrap ? 'anywhere' : 'normal',
+              wordBreak: 'normal',
+              overflowY: 'scroll',
+              minWidth: 0,
+            }}
+            onCompositionStart={() => {
+              composing.current = true;
+              const editor = activeTextareaRef.current;
+              if (editor) setEditorComposing(editor, true);
+            }}
+            onCompositionEnd={(e) => {
+              composing.current = false;
+              setComposition(null);
+              const editor = activeTextareaRef.current;
+              if (editor) setEditorComposing(editor, false);
+              onChange(e.currentTarget.value);
+              refreshLayout.current();
+            }}
             aria-label="Markdown 编辑器"
             spellCheck={false}
             autoCapitalize="off"

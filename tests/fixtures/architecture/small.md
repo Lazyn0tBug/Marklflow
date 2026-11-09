@@ -22,12 +22,12 @@ $E=mc^2$ 与 $\frac{a}{b}$。
 | 5   | TABLE_0_5 |
 
 ```typescript
-const value0 = "CODE_0_0";
-const value1 = "CODE_0_1";
-const value2 = "CODE_0_2";
-const value3 = "CODE_0_3";
-const value4 = "CODE_0_4";
-const value5 = "CODE_0_5";
+const value0 = 'CODE_0_0';
+const value1 = 'CODE_0_1';
+const value2 = 'CODE_0_2';
+const value3 = 'CODE_0_3';
+const value4 = 'CODE_0_4';
+const value5 = 'CODE_0_5';
 ```
 
 ## Section 1
@@ -50,12 +50,12 @@ $E=mc^2$ 与 $\frac{a}{b}$。
 | 5   | TABLE_1_5 |
 
 ```typescript
-const value0 = "CODE_1_0";
-const value1 = "CODE_1_1";
-const value2 = "CODE_1_2";
-const value3 = "CODE_1_3";
-const value4 = "CODE_1_4";
-const value5 = "CODE_1_5";
+const value0 = 'CODE_1_0';
+const value1 = 'CODE_1_1';
+const value2 = 'CODE_1_2';
+const value3 = 'CODE_1_3';
+const value4 = 'CODE_1_4';
+const value5 = 'CODE_1_5';
 ```
 
 ```mermaid
