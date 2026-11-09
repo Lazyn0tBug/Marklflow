@@ -19,3 +19,11 @@ it('rejects layer violations including re-exports and computed imports',()=>{
  expect(checkModuleSource('src/App.tsx',"import fs from 'node:fs'; process.exit();").length).toBeGreaterThan(0);
  expect(checkModuleSource('src/core/model/good.ts',"import {z} from 'zod'; import type {DocumentRecord} from './document';")).toEqual([]);
 });
+it('lets a pure module read a shared contract and still refuses anything else under docs',()=>{
+ // **契约是数据，不是层** ✓ ⇒ ⇒ 两端读的是同一份事实 ✓ ⇒ ⇒ 纯模块可以读它 ✓。
+ expect(checkModuleSource('src/core/model/good.ts',"import contract from '../../../docs/contracts/file-read.json'")).toEqual([]);
+ expect(checkModuleSource('src/application/tasks/good.ts',"import budget from '../../../docs/contracts/architecture-runtime-budget.json'")).toEqual([]);
+ // **放行的只是契约** ✓ ⇒ ⇒ docs 下的别的东西仍然越界 ✓ ⇒ ⇒ 这条豁免不是个洞 ✓。
+ expect(checkModuleSource('src/core/model/bad.ts',"import x from '../../../docs/design/local-document-support-2026-11-05.md'").length).toBeGreaterThan(0);
+ expect(checkModuleSource('src/core/model/bad.ts',"import x from '../../../docs/contracts/notes.txt'").length).toBeGreaterThan(0);
+});

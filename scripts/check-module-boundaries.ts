@@ -13,6 +13,12 @@ const applicationLayerRoot='src/application/';
 /** 平台层：端口住在这儿 ✓ ⇒ ⇒ 它的 console 是**出口本身** ✓ ⇒ ⇒ 规则不管它 ✓。 */
 const platformLayerRoot='src/core/platform/';
 const cacheRoot='src/application/previewcache/';
+/**
+ * **契约是数据，不是层** ✓ ⇒ ⇒ 纯模块可以读 `docs/contracts/*.json` ✓
+ * ⇒ ⇒ 两端读的是同一份事实 ✓ ⇒ ⇒ 某一层不必再抄一份 ✓ ⇒ ⇒ 抄的那份才是漂移的来源 ✓。
+ */
+const contractRoot='docs/contracts/';
+function isContract(target:string){return target.startsWith(contractRoot)&&target.endsWith('.json')}
 const builtins=new Set(builtinModules.map(name=>name.replace(/^node:/,'')));
 const hostGlobals=new Set(['process','Buffer','NodeJS','Bun','require']);
 const domGlobals=new Set(['window','document','HTMLElement','DOMParser','localStorage','indexedDB']);
@@ -32,7 +38,7 @@ export function checkModuleSource(file:string,source:string,root=process.cwd()):
   if(!pure)return;
   if(name.startsWith('.')){
    const target=portable(relative(root,resolve(root,dirname(file),name))).toLowerCase();
-   if(!pureRoots.some(p=>target.startsWith(p))&&!(workspacePure&&[workspaceRoot,sessionRoot,taskRoot,cacheRoot].some(p=>target.startsWith(p)))&&!(sessionPure&&(target.startsWith(sessionRoot)||target===cacheRoot+'contracts'))&&!(cachePure&&(target.startsWith(cacheRoot)||['src/application/tasks/contracts','src/application/tasks/previewidentity','src/application/tasks/budget'].includes(target)))&&!(exportPure&&target.startsWith(exportRoot))&&!(taskPure&&(target.startsWith(taskRoot)||['docs/contracts/architecture-runtime-budget.json','docs/contracts/architecture-dual-worker-budget.json'].includes(target))))failures.push('pure module cannot import '+name);
+   if(!isContract(target)&&!pureRoots.some(p=>target.startsWith(p))&&!(workspacePure&&[workspaceRoot,sessionRoot,taskRoot,cacheRoot].some(p=>target.startsWith(p)))&&!(sessionPure&&(target.startsWith(sessionRoot)||target===cacheRoot+'contracts'))&&!(cachePure&&(target.startsWith(cacheRoot)||['src/application/tasks/contracts','src/application/tasks/previewidentity','src/application/tasks/budget'].includes(target)))&&!(exportPure&&target.startsWith(exportRoot))&&!(taskPure&&target.startsWith(taskRoot)))failures.push('pure module cannot import '+name);
   }else if(!allowed.has(name)&&!(path==='src/application/exports/exportfile.ts'&&name==='filenamify/browser')&&!(path==='src/application/tasks/previewidentity.ts'&&name==='hash.js')&&!(typeOnly&&['mdast','hast','unist'].includes(name)))failures.push('pure dependency not approved: '+name);
  }
  function literal(value:unknown):string|undefined{
