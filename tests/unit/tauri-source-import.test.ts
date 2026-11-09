@@ -48,7 +48,7 @@ it('focuses the bound document and releases the selection it did not adopt',asyn
 
 it('reports the file as changed instead of overwriting the draft',async()=>{
  native.invoke.mockResolvedValueOnce(undefined);
- const importer=createNativeSourceImport({boundSelection:async()=>({documentId:'bound-doc',changed:true})},async()=>'opened');
+ const importer=createNativeSourceImport({boundSelection:async()=>({documentId:'bound-doc',changed:true})},async()=>({status:'opened'}));
  const result=await importer.run([selection]);
  // **变了就是变了** ✓ ⇒ ⇒ 交给用户决定 ✓ ⇒ ⇒ 不静默覆盖 ✓（M4-9 ✓）。
  expect(result.status==='completed'&&result.items[0]?.status).toBe('changed');

@@ -24,7 +24,7 @@ it('says that a closed dialog cannot be told apart from a failed dialog',()=>{
 });
 
 it('describes what the picker returned without leaking the session key',()=>{
- const selection=describeSelection([{key:'0f3c2a1e-0000-4000-8000-000000000000',name:'sample.md',size:42,identity:'1f3c2a1e-0000-4000-8000-000000000000'}]);
+ const selection=describeSelection([{key:'0f3c2a1e-0000-4000-8000-000000000000',name:'sample.md',size:42,reference:'1f3c2a1e-0000-4000-8000-000000000000'}]);
  expect(selection).toEqual({count:1,files:[{name:'sample.md',size:42}]});
  expect(JSON.stringify(selection)).not.toContain('0f3c2a1e');
 });
