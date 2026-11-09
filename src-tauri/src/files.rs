@@ -1123,6 +1123,63 @@ mod tests {
         assert_eq!(value.get("limitBytes").and_then(|v| v.as_u64()), Some(READ_LIMIT));
     }
 
+    /// **同一批字节 ⇒ 同一个标识** ✓。
+    ///
+    /// **样本是两端共用的那一份** ✓（`docs/contracts/file-read-cases.json` ✓）
+    /// ⇒ ⇒ 浏览器侧在同一个文件上断言 ✓ ⇒ ⇒ 两端对同一批字节给出不同的结果时
+    /// ⇒ ⇒ **两边各有一条红** ✓ ⇒ ⇒ 漂移无处藏 ✓（§9 ✓）。
+    #[test]
+    fn the_read_port_gives_the_same_result_as_the_browser_side() {
+        let contract = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../docs/contracts/file-read-cases.json"
+        ))
+        .expect("the shared read cases must be readable");
+        let value: serde_json::Value =
+            serde_json::from_str(&contract).expect("the shared read cases must be valid json");
+        let cases = value["cases"].as_array().expect("cases must be an array");
+        assert!(!cases.is_empty(), "the shared read cases must not be empty");
+        for case in cases {
+            let id = case["id"].as_str().expect("a case needs an id");
+            let hex = case["bytes"].as_str().expect("a case needs bytes");
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("sample.md");
+            std::fs::write(&path, decode_hex(hex)).unwrap();
+            let outcome = read_content(&path);
+            match case["expect"]["kind"].as_str() {
+                Some("text") => {
+                    let expected = case["expect"]["text"]
+                        .as_str()
+                        .expect("a text case needs text");
+                    assert_eq!(
+                        outcome.map(|content| content.text).unwrap_or_default(),
+                        expected,
+                        "case {}",
+                        id
+                    );
+                }
+                Some("code") => {
+                    let expected = case["expect"]["code"]
+                        .as_str()
+                        .expect("a code case needs code");
+                    assert_eq!(outcome.unwrap_err(), expected, "case {}", id);
+                }
+                other => panic!("a case needs an expectation, got {:?}", other),
+            }
+        }
+    }
+
+    /// 十六进制 ⇒ 字节 ✓。
+    fn decode_hex(hex: &str) -> Vec<u8> {
+        hex.as_bytes()
+            .chunks(2)
+            .map(|pair| {
+                let text = std::str::from_utf8(pair).expect("hex pairs are ascii");
+                u8::from_str_radix(text, 16).expect("hex pairs are hex")
+            })
+            .collect()
+    }
+
     #[test]
     fn the_same_file_gets_the_same_reference_within_the_session() {
         let dir = tempfile::tempdir().unwrap();
