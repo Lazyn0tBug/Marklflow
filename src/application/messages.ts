@@ -49,6 +49,7 @@ export const MESSAGE_CATEGORIES=[
  'not-a-file',
  'not-a-regular-target',
  'unknown-file-key',
+ 'write-target-changed',
  'print-failed',
  // 内部失活（不是用户的错）
  'file-capability-mismatch',
@@ -110,6 +111,7 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,MessageText>>={
  'not-a-file':'目标不是一个普通文件',
  'not-a-regular-target':'目标不是一个普通文件',
  'unknown-file-key':'这个文件已经不再可访问',
+ 'write-target-changed':'这个文件又被改动了，这次没有写进去',
  'print-failed':'打印失败',
  'app-internal-failed':'应用内部出了点问题，这次操作没有生效',
  'document-open-failed':'这个文档没能打开',

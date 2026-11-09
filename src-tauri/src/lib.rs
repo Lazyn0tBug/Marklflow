@@ -92,6 +92,7 @@ pub fn run() {
             files::read_native_text,
             files::print_native_pdf,
             files::write_native_bytes,
+            files::write_native_sync,
             files::is_native_synced,
             files::release_native_file
         ]);

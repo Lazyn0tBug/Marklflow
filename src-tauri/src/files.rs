@@ -104,6 +104,7 @@ fn limit_for(command: WebCommand) -> Option<u64> {
     match command {
         WebCommand::ReadNativeText => Some(READ_LIMIT),
         WebCommand::WriteNativeBytes => Some(WRITE_LIMIT as u64),
+        WebCommand::WriteNativeSync => Some(WRITE_LIMIT as u64),
         _ => None,
     }
 }
@@ -280,6 +281,18 @@ impl FileAccess {
         let bytes = std::fs::read(&path).map_err(|e| io_error(&e))?;
         Ok(crate::hash::sha256_hex(&bytes) == digest)
     }
+    /// **写回要复核的那一份** ✓：授权里记的"应用手上那一版" ✓。
+    ///
+    /// **原生侧自己取** ✓ ⇒ ⇒ 前端不传期望摘要 ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
+    /// **没有记过版本 ⇒ ⇒ 复核不了** ✓ ⇒ ⇒ 那是内部状态不可用 ✓ ⇒ ⇒ 不是"变了" ✓。
+    fn expected_digest(&self, key: &str) -> Result<String, String> {
+        let grants = self.0.lock().map_err(internal_error)?;
+        let grant = grants.get(key).ok_or("unknown-file-key")?;
+        grant
+            .digest
+            .clone()
+            .ok_or_else(|| "native-internal-failed".to_string())
+    }
 }
 /// **读到的内容与它的版本** ✓：一次读，两样东西 ✓。
 ///
@@ -322,7 +335,15 @@ pub fn read_content(path: &Path) -> Result<ReadContent, String> {
     let text = decode_text(bytes)?;
     Ok(ReadContent { text, digest })
 }
-pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
+/// **写回一份文件** ✓：同目录临时文件 + rename ✓（原子替换 ✓）。
+///
+/// **复核在临时文件写完之后、最终替换之前** ✓ ⇒ ⇒ 检查与替换的间隔最短 ✓
+/// ⇒ ⇒ 外部进程想插进来得挤进这两步之间 ✓。
+///
+/// **期望摘要是可选的** ✓ ⇒ ⇒ **不给**就是无条件写 ✓（新文件 ✓、另存为选的新目标 ✓）
+/// ⇒ ⇒ **给了**就是"只在这个版本上写" ✓ ⇒ ⇒ 匹配才提交 ✓ ⇒ ⇒ 不匹配 ⇒ 清理临时文件 ✓
+/// ⇒ ⇒ 报 `write-target-changed` ✓ ⇒ ⇒ **调用方自己决定下一步** ✓。
+pub fn commit_bytes(path: &Path, bytes: &[u8], expected: Option<&str>) -> Result<(), String> {
     if bytes.len() > WRITE_LIMIT {
         return Err(FILE_TOO_LARGE.into());
     }
@@ -345,6 +366,15 @@ pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
     }
     temp.write_all(bytes).map_err(|e| io_error(&e))?;
     temp.as_file().sync_all().map_err(|e| io_error(&e))?;
+    // **临时文件已就位、还没替换** ✓ ⇒ ⇒ 这是复核的最后一刻 ✓。
+    // **比对的是目标当前的摘要** ✓ ⇒ ⇒ 外部改过就答"变了" ✓ ⇒ ⇒ 不动它 ✓。
+    if let Some(expected) = expected {
+        let current = std::fs::read(path).map_err(|e| io_error(&e))?;
+        if crate::hash::sha256_hex(&current) != expected {
+            // **临时文件随这一句一起被丢掉** ✓ ⇒ ⇒ 目录不留残骸 ✓。
+            return Err("write-target-changed".into());
+        }
+    }
     temp.persist(path).map_err(|e| io_error(&e.error))?;
     // The rename is only durable once the directory entry reaches the disk.
     #[cfg(unix)]
@@ -544,6 +574,57 @@ pub async fn read_native_text(
         }
     })
 }
+/// **写回原文件** ✓：**与通用字节写入分开** ✓（§3.2 ✓）。
+///
+/// **通用入口只写选择器刚给的新目标** ✓ ⇒ ⇒ 那里没有"应用手上那一版" ✓
+/// ⇒ ⇒ 无从复核 ✓。**原文件写回必须走这里** ✓ ⇒ ⇒ 复核是这条命令自带的 ✓
+/// ⇒ ⇒ 前端不能选择不复核 ✓。
+///
+/// **期望摘要由原生侧取** ✓ ⇒ ⇒ 前端不传 ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
+///
+/// **复核在提交前** ✓ ⇒ ⇒ 目标被外部改过 ⇒ ⇒ 报 `write-target-changed` ✓
+/// ⇒ ⇒ **不写它** ✓ ⇒ ⇒ 草稿与文件两边都不动 ✓ ⇒ ⇒ 交给用户决定 ✓（§6.1 ✓）。
+#[tauri::command]
+pub async fn write_native_sync(
+    webview: tauri::Webview,
+    access: tauri::State<'_, FileAccess>,
+    key: String,
+    bytes: Vec<u8>,
+) -> Result<(), NativeFailure> {
+    in_command_span(WebCommand::WriteNativeSync, &webview, |started, cmd| {
+        let outcome = access.path(&key, true).and_then(|path| {
+            // **要复核的那一份** ✓：授权里记的"应用手上那一版" ✓（§6.1 ✓）。
+            let expected = access.expected_digest(&key)?;
+            commit_bytes(&path, &bytes, Some(&expected))?;
+            // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
+            access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
+            Ok(())
+        });
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(()) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = cmd,
+                    bytes = bytes.len(),
+                    elapsed_ms = elapsed,
+                );
+                Ok(())
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = cmd,
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
+}
 #[tauri::command]
 pub async fn write_native_bytes(
     webview: tauri::Webview,
@@ -553,7 +634,9 @@ pub async fn write_native_bytes(
 ) -> Result<(), NativeFailure> {
     in_command_span(WebCommand::WriteNativeBytes, &webview, |started, cmd| {
         let outcome = access.path(&key, true).and_then(|path| {
-            commit_bytes(&path, &bytes)?;
+            // **通用入口不复核** ✓ ⇒ ⇒ 它写的是选择器刚给的目标 ✓ ⇒ ⇒ 那里没有基线 ✓。
+            // **原文件写回走 `write_native_sync`** ✓ ⇒ ⇒ 那条才复核 ✓（§3.2 ✓）。
+            commit_bytes(&path, &bytes, None)?;
             // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
             access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
             Ok(())
@@ -872,15 +955,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("saved.md");
         std::fs::write(&path, b"old bytes").unwrap();
-        commit_bytes(&path, "新🙂内容".as_bytes()).unwrap();
+        commit_bytes(&path, "新🙂内容".as_bytes(), None).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), "新🙂内容".as_bytes());
         let new_path = dir.path().join("new.md");
-        commit_bytes(&new_path, b"new target").unwrap();
+        commit_bytes(&new_path, b"new target", None).unwrap();
         assert_eq!(std::fs::read(&new_path).unwrap(), b"new target");
         let empty_path = dir.path().join("empty.md");
         std::fs::write(&empty_path, b"").unwrap();
         assert_eq!(read_content(&empty_path).unwrap().text, "");
-        commit_bytes(&empty_path, b"").unwrap();
+        commit_bytes(&empty_path, b"", None).unwrap();
         assert_eq!(std::fs::read(&empty_path).unwrap(), b"");
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 3);
     }
@@ -892,7 +975,7 @@ mod tests {
         std::fs::create_dir(&path).unwrap();
         std::fs::write(path.join("keep"), b"intact").unwrap();
         assert_eq!(
-            commit_bytes(&path, b"replacement").unwrap_err(),
+            commit_bytes(&path, b"replacement", None).unwrap_err(),
             "not-a-regular-target"
         );
         assert_eq!(std::fs::read(path.join("keep")).unwrap(), b"intact");
@@ -905,7 +988,7 @@ mod tests {
         let path = dir.path().join("target.md");
         std::fs::write(&path, b"original").unwrap();
         assert_eq!(
-            commit_bytes(&path, &vec![0; WRITE_LIMIT + 1]).unwrap_err(),
+            commit_bytes(&path, &vec![0; WRITE_LIMIT + 1], None).unwrap_err(),
             "file-too-large"
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"original");
@@ -991,7 +1074,7 @@ mod tests {
         std::fs::write(&path, b"second").unwrap();
         assert!(!access.synced(&grant.key).unwrap());
         // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ⇒ ⇒ 之后答"是" ✓。
-        commit_bytes(&path, b"third").unwrap();
+        commit_bytes(&path, b"third", None).unwrap();
         access
             .record_digest(&grant.key, &crate::hash::sha256_hex(b"third"))
             .unwrap();
@@ -1024,10 +1107,68 @@ mod tests {
         let path = dir.path().join("mode.md");
         std::fs::write(&path, b"old").unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
-        commit_bytes(&path, b"new").unwrap();
+        commit_bytes(&path, b"new", None).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"new");
         let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o644);
+    }
+
+    /// **写回前复核** ✓：目标没变 ⇒ ⇒ 写进去 ✓；变了 ⇒ ⇒ **不写它** ✓（§6.1 ✓）。
+    #[test]
+    fn a_write_is_refused_when_the_target_changed_underneath() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("sync.md");
+        std::fs::write(&path, b"base").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+
+        // **目标还是那一版** ⇒ ⇒ 复核通过 ⇒ ⇒ 写进去 ✓ ⇒ ⇒ 基线跟着更新 ✓。
+        let expected = access.expected_digest(&grant.key).unwrap();
+        commit_bytes(&path, b"draft", Some(&expected)).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"draft");
+
+        // **应用外改过** ⇒ ⇒ 复核不匹配 ⇒ ⇒ **不写它** ✓ ⇒ ⇒ 文件内容原样 ✓。
+        std::fs::write(&path, b"external").unwrap();
+        let stale = access.expected_digest(&grant.key).unwrap();
+        assert_eq!(
+            commit_bytes(&path, b"draft again", Some(&stale)).unwrap_err(),
+            "write-target-changed"
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), b"external");
+        // **临时文件不留残骸** ✓ ⇒ ⇒ 目录干净 ✓。
+        let leftovers = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_name() != "sync.md")
+            .count();
+        assert_eq!(leftovers, 0);
+    }
+
+    /// **期望摘要由原生侧取** ✓ ⇒ ⇒ 前端不传 ✓ ⇒ ⇒ 没记过版本就复核不了 ✓。
+    #[test]
+    fn the_expected_digest_comes_from_the_grant() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("expected.md");
+        std::fs::write(&path, b"base").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        // **没记过版本 ⇒ ⇒ 复核不了** ✓ ⇒ ⇒ 那是内部状态不可用 ✓ ⇒ ⇒ 不是"变了" ✓。
+        assert_eq!(
+            access.expected_digest(&grant.key).unwrap_err(),
+            "native-internal-failed"
+        );
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+        // **取到的那份就是磁盘上那一版** ✓ ⇒ ⇒ 与问答用的是同一个比较 ✓。
+        assert_eq!(access.expected_digest(&grant.key).unwrap(), content.digest);
+        assert!(access.synced(&grant.key).unwrap());
+        // **不认识的 key** ✓ ⇒ ⇒ 稳定码 ✓。
+        assert_eq!(
+            access.expected_digest("not-a-key").unwrap_err(),
+            "unknown-file-key"
+        );
     }
 
     #[cfg(unix)]
@@ -1261,7 +1402,7 @@ mod tests {
             .unwrap();
         // 写不进被占用的文件 ⇒ IO 家族的码 ✓：具体归到"权限"还是"其余"，
         // 取决于操作系统对共享冲突的归类 ✓，这里只断言它是 IO 失败 ✓。
-        let code = commit_bytes(&path, b"replacement").unwrap_err();
+        let code = commit_bytes(&path, b"replacement", None).unwrap_err();
         assert!(
             code == "native-permission-denied" || code == "native-io-failed",
             "unexpected code {code}"

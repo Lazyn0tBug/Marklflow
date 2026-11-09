@@ -104,6 +104,10 @@ pub enum WebCommand {
     SelectNativeSave,
     ReadNativeText,
     WriteNativeBytes,
+    /// **写回原文件** ✓：**与通用字节写入分开** ✓ ⇒ ⇒ 复核是这条命令自带的 ✓。
+    ///
+    /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    WriteNativeSync,
     /// 问一句"这个文件还是应用手上那一版吗" ✓（§3.1 ✓）。
     ///
     /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
@@ -171,6 +175,8 @@ web_error_categories! {
     NotAFile => "not-a-file",
     NotARegularTarget => "not-a-regular-target",
     UnknownFileKey => "unknown-file-key",
+    // 写回前复核发现目标又变了：不写它，交给用户决定。
+    WriteTargetChanged => "write-target-changed",
     PrintFailed => "print-failed",
     FileCapabilityMismatch => "file-capability-mismatch",
     NativeInternalFailed => "native-internal-failed",
@@ -1333,6 +1339,7 @@ pub(crate) fn command_name(command: WebCommand) -> &'static str {
         WebCommand::SelectNativeSave => "select_native_save",
         WebCommand::ReadNativeText => "read_native_text",
         WebCommand::WriteNativeBytes => "write_native_bytes",
+        WebCommand::WriteNativeSync => "write_native_sync",
         WebCommand::IsNativeSynced => "is_native_synced",
         WebCommand::ReleaseNativeFile => "release_native_file",
         WebCommand::PrintNativePdf => "print_native_pdf",
