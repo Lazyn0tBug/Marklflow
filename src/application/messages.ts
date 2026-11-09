@@ -159,6 +159,7 @@ export const SYNC_STATUS_TEXTS: Record<SyncStatus, string> = {
   none: '无同步目标',
   synced: '已同步',
   unsynced: '未同步',
+  failed: '同步失败',
 };
 
 /** 类别 → 文案。认不出的类别给通用的一句 ✓：不猜它意味着什么 ✓。 */

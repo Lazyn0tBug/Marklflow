@@ -98,6 +98,7 @@ it('gives each status dimension its own wording', () => {
   expect(SYNC_STATUS_TEXTS.none).toBe('无同步目标');
   expect(SYNC_STATUS_TEXTS.synced).toBe('已同步');
   expect(SYNC_STATUS_TEXTS.unsynced).toBe('未同步');
-  // **状态维度的那一套也有三类** ✓ ⇒ ⇒ 与派生出的那个状态一一对应 ✓。
-  expect(Object.keys(SYNC_STATUS_TEXTS)).toEqual(['none', 'synced', 'unsynced']);
+  expect(SYNC_STATUS_TEXTS.failed).toBe('同步失败');
+  // **状态维度的那一套有四类** ✓ ⇒ ⇒ 与派生出的那个状态一一对应 ✓（§2.3 ✓ ⇒ ⇒ 失败优先于基线 ✓）。
+  expect(Object.keys(SYNC_STATUS_TEXTS)).toEqual(['none', 'synced', 'unsynced', 'failed']);
 });

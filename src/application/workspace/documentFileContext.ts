@@ -39,8 +39,12 @@ export interface SyncState {
    * **null = 无法证明一致** ✓ ⇒ ⇒ 按未同步显示 ✓（§2.3 ✓、§4.3 re-associate ✓）。
    */
   lastSyncedRevision: number | null;
-  /** 冲突 ✓：文件在应用外被改过 ✓ ⇒ ⇒ 只有这一种 ✓ ⇒ ⇒ 解法在 M5 ✓。 */
-  conflict: null | {kind: 'diverged'};
+  /**
+   * 上一次写回没成功 ✓（§2.2 的"同步失败" ✓、§6.5 的 `failed` ✓）。
+   *
+   * **只有写回失败才有** ✓ ⇒ ⇒ **取消不算失败** ✓ ⇒ ⇒ 成功写回或反向同步把它清掉 ✓。
+   */
+  failure: null | {kind: 'write-failed'};
 }
 
 /** 上下文 ✓：一个文档与磁盘的关系 ✓。 */
@@ -56,10 +60,11 @@ export interface DocumentFileContext {
 /**
  * 界面读的那一个状态 ✓（§2.2 ✓、§8.6 ✓）。
  *
- * **"同步失败"这一态还没有** ✓ ⇒ ⇒ 它来自 M5 的同步转移 ✓ ⇒ ⇒ 出了那次转移才有 ✓
- * ⇒ ⇒ 这一版只表达得出来三种 ✓。
+ * **四种说法** ✓ ⇒ ⇒ 派生顺序按 §2.3 ✓：**先问有没有同步目标** ✓ ⇒ ⇒ 没有就是 `none` ✓；
+ * **再问上一次写回是不是失败了** ✓ ⇒ ⇒ 是就是 `failed` ✓（**失败优先于基线** ✓）；
+ * **最后比基线** ✓ ⇒ ⇒ 相等 `synced` ✓、不等 `unsynced` ✓。
  */
-export type SyncStatus = 'none' | 'synced' | 'unsynced';
+export type SyncStatus = 'none' | 'synced' | 'unsynced' | 'failed';
 
 /** 打开的结果 ✓：要么新绑定 ✓，要么这个文件已经绑在别处 ✓。 */
 export type OpenOutcome =
@@ -111,7 +116,7 @@ export class DocumentFileContexts {
     const context: DocumentFileContext = {
       documentId,
       file,
-      sync: {lastSyncedRevision: revision, conflict: null},
+      sync: {lastSyncedRevision: revision, failure: null},
     };
     this.byDocument.set(documentId, context);
     this.byReference.set(file.reference, documentId);
@@ -131,11 +136,48 @@ export class DocumentFileContexts {
     const context: DocumentFileContext = {
       documentId,
       file,
-      sync: {lastSyncedRevision: null, conflict: null},
+      sync: {lastSyncedRevision: null, failure: null},
     };
     this.byDocument.set(documentId, context);
     this.byReference.set(file.reference, documentId);
     return context;
+  }
+
+  /**
+   * **写回成功** ✓（§4.3 sync ✓、§6.5 `written` ✓）。
+   *
+   * **读**：写出的冻结修订 ✓。
+   * **写**：`lastSyncedRevision` = 该修订 ✓；`failure` 清掉 ✓（成功就是没有失败 ✓）。
+   * **不变量**：**草稿不动** ✓ ⇒ ⇒ 只记基线 ✓。
+   */
+  markWritten(documentId: string, revision: number): void {
+    const context = this.byDocument.get(documentId);
+    if (context === undefined) return;
+    context.sync = {lastSyncedRevision: revision, failure: null};
+  }
+
+  /**
+   * **反向同步成功** ✓（§4.3 pull ✓、§6.5 `reloaded` ✓）。
+   *
+   * **写**：`lastSyncedRevision` = 草稿取的那一版 ✓；`failure` 清掉 ✓。
+   * **不变量**：**不能记作已写回** ✓ ⇒ ⇒ 它是这一条自己的转移 ✓。
+   */
+  markPulled(documentId: string, revision: number): void {
+    const context = this.byDocument.get(documentId);
+    if (context === undefined) return;
+    context.sync = {lastSyncedRevision: revision, failure: null};
+  }
+
+  /**
+   * **写回失败** ✓（§6.5 `failed` ✓）。
+   *
+   * **写**：`failure` 写下 ✓。
+   * **不变量**：**草稿不动** ✓ ⇒ ⇒ **绑定不变** ✓ ⇒ ⇒ 基线不变 ✓ ⇒ ⇒ 仍是未同步 ✓。
+   */
+  markFailed(documentId: string): void {
+    const context = this.byDocument.get(documentId);
+    if (context === undefined) return;
+    context.sync = {...context.sync, failure: {kind: 'write-failed'}};
   }
 
   /**
@@ -173,11 +215,20 @@ export async function releaseDocumentFileContext(
  *
  * **界面不自己判断** ✓ ⇒ ⇒ 只读这里派生出来的 ✓ ⇒ ⇒ 各处不各判一遍 ✓。
  *
+ * **派生按这个顺序问** ✓（§2.3 ✓）：
+ *
+ * 1. **有没有同步目标** ✓ ⇒ ⇒ 没有就是 `none` ✓（那一行整行不显示 ✓）。
+ * 2. **上一次写回是不是失败了** ✓ ⇒ ⇒ 是就是 `failed` ✓ ⇒ ⇒ **失败优先于基线** ✓
+ *    ⇒ ⇒ 失败时即便基线恰好相等也不说"已同步" ✓ ⇒ ⇒ 因为文件里确实没有那一版 ✓。
+ * 3. **比基线** ✓：当前修订 ≠ `lastSyncedRevision` ⇒ ⇒ `unsynced` ✓ ⇒ ⇒ 相等 `synced` ✓。
+ *
  * **未同步的判定** ✓：当前修订 ≠ `lastSyncedRevision` ✓（§2.3 ✓）
  * ⇒ ⇒ 与会话里那份 `dirty` 同形 ✓ ⇒ ⇒ 不另造第二套"脏"语义 ✓。
  */
 export function syncStatus(context: DocumentFileContext | undefined, revision: number): SyncStatus {
   if (context === undefined) return 'none';
+  // **取消不算失败** ✓ ⇒ ⇒ 它不写这个字段 ✓ ⇒ ⇒ 这里只看写回失败 ✓。
+  if (context.sync.failure !== null) return 'failed';
   if (context.sync.lastSyncedRevision === null) return 'unsynced';
   return context.sync.lastSyncedRevision === revision ? 'synced' : 'unsynced';
 }

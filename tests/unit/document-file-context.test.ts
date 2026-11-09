@@ -88,4 +88,43 @@ describe('文档-文件上下文', () => {
     const text = JSON.stringify(context);
     expect(text).not.toMatch(/digest|sha|hash|摘要/i);
   });
+
+  it('写回失败优先于基线：基线相等也说失败', () => {
+    const contexts = new DocumentFileContexts();
+    contexts.open('d1', binding('f1'), 7);
+    // **还没失败** ⇒ ⇒ 基线相等就是已同步 ✓。
+    expect(syncStatus(contexts.read('d1'), 7)).toBe('synced');
+    contexts.markFailed('d1');
+    // **失败优先于基线** ✓ ⇒ ⇒ 基线恰好相等也不说"已同步" ✓（§2.3 ✓、M5-17 ✓）。
+    expect(syncStatus(contexts.read('d1'), 7)).toBe('failed');
+    // **失败不改基线** ✓ ⇒ ⇒ 草稿不动 ✓ ⇒ ⇒ 绑定不变 ✓。
+    expect(contexts.read('d1')?.sync.lastSyncedRevision).toBe(7);
+  });
+
+  it('写回成功或反向同步都把失败清掉', () => {
+    const contexts = new DocumentFileContexts();
+    contexts.open('d1', binding('f1'), 7);
+    contexts.markFailed('d1');
+    contexts.markWritten('d1', 9);
+    // **成功 ⇒ ⇒ 没有失败** ✓ ⇒ ⇒ 基线走到写出的那一版 ✓。
+    expect(contexts.read('d1')?.sync.failure).toBeNull();
+    expect(contexts.read('d1')?.sync.lastSyncedRevision).toBe(9);
+    expect(syncStatus(contexts.read('d1'), 9)).toBe('synced');
+    contexts.markFailed('d1');
+    contexts.markPulled('d1', 11);
+    // **反向同步 ⇒ ⇒ 也清掉失败** ✓ ⇒ ⇒ 基线跟着那一版 ✓。
+    expect(contexts.read('d1')?.sync.failure).toBeNull();
+    expect(contexts.read('d1')?.sync.lastSyncedRevision).toBe(11);
+  });
+
+  it('上下文里没有"冲突待决定"', () => {
+    const contexts = new DocumentFileContexts();
+    contexts.open('d1', binding('f1'), 7);
+    // **冲突不是状态** ✓ ⇒ ⇒ sync 面只有基线与失败两样 ✓（§4.1 ✓、M5-16 ✓）。
+    expect(Object.keys(contexts.read('d1')?.sync ?? {}).sort()).toEqual([
+      'failure',
+      'lastSyncedRevision',
+    ]);
+    expect(contexts.read('d1')?.sync.failure).toBeNull();
+  });
 });
