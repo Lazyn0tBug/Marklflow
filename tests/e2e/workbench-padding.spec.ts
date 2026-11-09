@@ -110,7 +110,8 @@ test('the exported HTML carries the margin once and drops it for print',async({p
  await page.getByRole('button',{name:'导出',exact:true}).click();
  const event=page.waitForEvent('download');await page.getByRole('button',{name:'立即导出并保存',exact:true}).click();
  const html=await readFile((await (await event).path())!, 'utf8');
- expect(html).toContain('--mf-content-padding:clamp(1rem,4cqi,3.5rem)');
- expect(html.match(/padding:var\(--mf-content-padding\)/g)).toHaveLength(1);
- expect(html).toContain('.mf-doc{padding:0!important}');
+ // **按语义比，不按字面比** ✓ ⇒ ⇒ 排版怎么变都不影响 ✓ ⇒ ⇒ 空格可选 ✓。
+ expect(html).toMatch(/--mf-content-padding:\s*clamp\(1rem,\s*4cqi,\s*3\.5rem\)/);
+ expect(html.match(/padding:\s*var\(--mf-content-padding\)/g)).toHaveLength(1);
+ expect(html).toMatch(/\.mf-doc\s*\{\s*padding:\s*0\s*!important\s*;?\s*\}/);
 });

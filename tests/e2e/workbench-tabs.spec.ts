@@ -45,9 +45,10 @@ test('closing saved tabs preserves workspace files including when the last tab i
 test('save failure while closing a dirty tab keeps its draft and tab available',async({page})=>{
  await boot(page);await create(page,'Beta');await page.evaluate(()=>{IDBObjectStore.prototype.put=function(){throw new Error('u6e controlled save failure')}});// **不再弹窗** ✓ ⇒ ⇒ 原文只进控制台 ✓ ⇒ ⇒ 用户看到的是一条可关闭的通知 ✓。
 const dialogs=recordDialogs(page);await page.locator('textarea').fill(source('UNSAVED'));await page.getByRole('button',{name:'关闭 UNSAVED',exact:true}).click();
-await expect(page.getByText(/（save-failed · e-\d+）/)).toBeVisible();
+// **这一条是草稿没存住** ✓ ⇒ ⇒ 类别是 `storage-write-failed` ✓ ⇒ ⇒ 不是"保存失败" ✓ ⇒ ⇒ **"保存"现在指写回文件** ✓（设计 §6.4 ✓）⇒ ⇒ 写回失败才是那一条 ✓。
+await expect(page.getByText(/（storage-write-failed · e-\d+）/)).toBeVisible();
 // 那个"还没保存，要先保存吗"的**确认**弹窗还在 ✓ ⇒ ⇒ 但**失败**不再用弹窗告知 ✓ ⇒ ⇒ 通知面给 ✓。
-expect(dialogs.some(value=>value.includes('保存失败'))).toBe(false);await expect(tab(page,'UNSAVED')).toBeVisible();await expect(page.locator('textarea')).toHaveValue(source('UNSAVED'));await expect(tab(page,'UNSAVED')).toHaveAttribute('title',/未保存/);
+expect(dialogs.some(value=>value.includes('没能存下来'))).toBe(false);await expect(tab(page,'UNSAVED')).toBeVisible();await expect(page.locator('textarea')).toHaveValue(source('UNSAVED'));await expect(tab(page,'UNSAVED')).toHaveAttribute('title',/未保存/);
 });
 
 test('production tabs and their compute pipeline run on ordinary HTTP',async({page})=>{
