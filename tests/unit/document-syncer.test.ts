@@ -224,6 +224,20 @@ describe('应用层同步', () => {
     expect(syncStatus(contexts.read(doc.id), doc.revision)).toBe('failed');
   });
 
+  it('端口抛了就是失败，不会甩出这次保存', async () => {
+    const {syncer, contexts} = setup({
+      write: async () => {
+        throw new Error('通道断了');
+      },
+    });
+    const doc = createNewDocument('端口抛了.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    // **一次失败不许甩出去** ✓ ⇒ ⇒ 保存这一趟自己收住 ✓ ⇒ ⇒ 记下失败 ✓。
+    const outcome = await syncer.save({document: doc, bytes});
+    expect(outcome.writeBack.kind).toBe('failed');
+    expect(contexts.read(doc.id)?.sync.failure).toEqual({kind: 'write-failed'});
+  });
+
   it('答不了"还是不是那一版"时按失败算', async () => {
     const {syncer, contexts} = setup({
       sameVersion: async () => {

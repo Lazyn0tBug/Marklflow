@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
 import {FileFailure} from '../fileFailure';
+import type {WriteOutcome} from '../../../application/workspace/documentSyncer';
 import {NATIVE_WRITE_BYTE_LIMIT, formatBytes} from '../../model/limits';
 const selectedSchema = z
   .object({
@@ -63,6 +64,33 @@ export async function readNativeText(file: NativeSelection): Promise<string> {
  */
 export async function isNativeSynced(key: string): Promise<boolean> {
   return z.boolean().parse(await invoke('is_native_synced', {key}));
+}
+/**
+ * **写回原文件** ✓：走受保护的同步入口 ✓ ⇒ ⇒ **复核在命令内部** ✓（§3.1 ✓、§6.1 ✓）。
+ *
+ * **前端只说"这次是覆盖"** ✓ ⇒ ⇒ **基准由原生侧选** ✓ ⇒ ⇒ 前端拿不到摘要值 ✓（§3.4 ✓）。
+ * **前端不能选择不复核** ✓ ⇒ ⇒ 两条路都复核 ✓ ⇒ ⇒ 目标变了就是 `write-target-changed` ✓。
+ *
+ * **机器码从共享词表来** ✓ ⇒ ⇒ 这里只认这一个码 ✓ ⇒ ⇒ 其余的失败原样带出去 ✓（§9 ✓）。
+ */
+export async function writeNativeSync(
+  key: string,
+  bytes: Uint8Array,
+  overwrite: boolean,
+): Promise<WriteOutcome> {
+  try {
+    await invoke('write_native_sync', {key, bytes: Array.from(bytes), overwrite});
+    return {kind: 'written'};
+  } catch (error) {
+    // **目标又变了** ✓ ⇒ ⇒ 那是**重新提示**的信号 ✓ ⇒ ⇒ **不是失败** ✓（§8.6 ✓）。
+    if (error instanceof FileFailure && error.code === 'write-target-changed')
+      return {kind: 'target-changed'};
+    return {kind: 'failed', error};
+  }
+}
+/** 按句柄读文本 ✓：**反向同步要它** ✓（§6.5 ✓）。 */
+export async function readNativeTextByKey(key: string): Promise<string> {
+  return z.string().parse(await invoke('read_native_text', {key}));
 }
 export interface NativeSaveTarget extends ByteSaveTarget {
   /** 授权的 key ✓ —— 路径只在原生侧可见 ✓，前端只拿得到它 ✓。 */

@@ -197,7 +197,7 @@ export class DocumentSyncer {
       }
 
       if (same) {
-        const outcome = await this.ports.write(binding.handle, bytes, 'sync');
+        const outcome = await this.write(binding, bytes, 'sync');
         if (outcome.kind === 'written') {
           this.applied(documentId, binding, () => this.contexts.markWritten(documentId, revision));
           return {writeBack: {kind: 'written', revision}};
@@ -224,7 +224,7 @@ export class DocumentSyncer {
         return {writeBack: await this.reload(documentId, binding), conflict: choice};
 
       // **覆盖 = 正向写回** ✓ ⇒ ⇒ 草稿胜出 ✓ ⇒ ⇒ 带基准复核在端口内部 ✓（§6.1 ✓）。
-      const outcome = await this.ports.write(binding.handle, bytes, 'overwrite');
+      const outcome = await this.write(binding, bytes, 'overwrite');
       if (outcome.kind === 'written') {
         this.applied(documentId, binding, () => this.contexts.markWritten(documentId, revision));
         return {writeBack: {kind: 'written', revision}, conflict: choice};
@@ -232,6 +232,23 @@ export class DocumentSyncer {
       // **覆盖期间目标又变了** ⇒ ⇒ 重新提示而不是覆盖 ✓（§6.1 ✓、M5-19 ✓）。
       if (outcome.kind === 'target-changed') continue;
       return {writeBack: this.failed(documentId, binding, outcome.error)};
+    }
+  }
+
+  /**
+   * **写回** ✓：**端口抛了就当失败** ✓ ⇒ ⇒ 一次失败不会甩出这次保存 ✓。
+   *
+   * **端口自己答"目标又变了"** ✓ ⇒ ⇒ 那不是失败 ✓ ⇒ ⇒ 重新分流 ✓（§8.6 ✓）。
+   */
+  private async write(
+    binding: Binding,
+    bytes: Uint8Array,
+    intent: WriteIntent,
+  ): Promise<WriteOutcome> {
+    try {
+      return await this.ports.write(binding.handle, bytes, intent);
+    } catch (error) {
+      return {kind: 'failed', error};
     }
   }
 
