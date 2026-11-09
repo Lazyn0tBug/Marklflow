@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
-import {messageText,type MessageParams} from '../../../application/messages';
+import {FileFailure} from '../fileFailure';
 import {NATIVE_WRITE_BYTE_LIMIT,formatBytes} from '../../model/limits';
 const selectedSchema=z.object({
  key:z.string().uuid(),
@@ -24,18 +24,6 @@ const nativeFailureSchema=z.object({code:z.string().min(1),limitBytes:z.number()
  * 与[本地文档支持设计](../../../docs/design/local-document-support-2026-11-05.md) §9 ✓。
  */
 
-/** 码 → 文案。认不出的码给一句通用的话 ✓：不猜它意味着什么 ✓。 */
-export function nativeFailureMessage(code:string,params?:MessageParams):string{
- return messageText(code,params);
-}
-
-/** 原生失败：机器码留着分流 ✓，用户看到的是文案 ✓。 */
-export class NativeFileError extends Error {
- readonly code:string;
- /** 原生侧给出的上限 ✓：**只有"超过大小上限"那一类有** ✓ ⇒ ⇒ 其余是没有 ✓。 */
- readonly limitBytes?:number|undefined;
- constructor(code:string,limitBytes?:number|undefined){super(nativeFailureMessage(code,{limitBytes}));this.name='NativeFileError';this.code=code;this.limitBytes=limitBytes;}
-}
 
 export type NativeSelection=z.infer<typeof selectedSchema>;
 async function invoke(command:string,args?:Record<string,unknown>):Promise<unknown>{
@@ -46,7 +34,8 @@ async function invoke(command:string,args?:Record<string,unknown>):Promise<unkno
   // 原生侧给的是结构化的机器码 ✓：拒绝不再靠子串匹配 ✓（§9）。
   // 探针要机器码取证 ✓：错误对象上留着码 ✓。
   const failure=nativeFailureSchema.safeParse(error);
-  if(failure.success)throw new NativeFileError(failure.data.code,failure.data.limitBytes);
+  // **与浏览器侧同一个失败类型** ✓ ⇒ ⇒ 同一批机器码 ✓ ⇒ ⇒ 应用不问来源 ✓。
+  if(failure.success)throw new FileFailure(failure.data.code,{limitBytes:failure.data.limitBytes});
   throw error;
  }
 }
