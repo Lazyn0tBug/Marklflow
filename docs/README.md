@@ -12,6 +12,7 @@
 
 ## 当前方案与开发规范
 
+- [设计原则与决策索引](design/design-principles.md)：判定依据（每条观点带问句、反例与落点）与已定决策的检索表；**先看它，再看各设计文档**。
 - [统一输出与桌面交付完整方案](design/export-outputs-formula-and-print-plan-2026-10-30.md)：当前代码事实、独立PDF回执、授权释放及剩余D0—D8范围。
 - [Tauri迁移路线](design/tauri-migration-plan-2026-10-29.md)与[平台接口契约](design/tauri-migration-m0-contract-2026-10-29.md)：会话绑定、双平台组合及已有阶段/待验边界。
 - [本地文档支持设计](design/local-document-support-2026-11-05.md)：M4/M5/M6 的语义、授权与绑定模型、UI规格与验收条目；设计稿，未实施。
