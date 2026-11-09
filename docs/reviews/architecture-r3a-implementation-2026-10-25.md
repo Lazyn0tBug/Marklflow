@@ -22,5 +22,4 @@ WorkerAdapter替换TaskExecutor，删除lane、requiresDOM/isolation/rebuildable
 
 相关28项适配器/角色调度测试通过。bun run check通过：四环境类型覆盖106受管文件、source/boundaries/lint、167项单元（29文件）及生产构建；开发/构建后的真实Worker导入烟测2项通过。未重跑完整应用E2E，未验证生产双Worker。测试覆盖停止后异步清理、未确认停止不复用、旧实例同taskId、同实例旧taskId、畸形消息、外部停止回执、迟到资源及停止抛错；保留并新增编译负例，禁止泛化lane与attempt协议回流。
 
-
 自审与修改前散列对比确认生产入口、依赖/锁文件、冻结预算及历史证据不变，所有Git引用在提交前不变。git diff --check通过；既有Vite __dirname及大分块警告保留，没有新增依赖或忽略规则。证据：[R3a验证记录](../acceptance/architecture-r3a-evidence.json)。本轮到R3a为止，R3b尚未实施。

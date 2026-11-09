@@ -12,12 +12,12 @@
 
 ## 2. 位置
 
-| 项 | 位置 | 说明 |
-| --- | --- | --- |
-| **读的位置** | `<当前目录>\conf\markflow.toml` | 当前目录是**运行期的根** ✓ —— 不是编译期的仓库路径 ✓（那在别的机器上不存在 ✓） |
-| 开发期 | `<仓库>\conf\markflow.toml` | 开发期当前目录恒为仓库根 ✓，故这份文件**随仓库管理** ✓（改用例就是改文件 ✓，改动看得见 ✓） |
-| 发布后 | 用户自备 `<当前目录>\conf\markflow.toml` | 仓库里那份**改名成 `markflow.toml.example`** ✓ —— 发布出去的是**形状** ✓，不是某台机器上的取值 ✓ |
-| 日志目录 | `<当前目录>\log\` | 与配置同一个根 ✓：配置在 `conf\` ✓、日志在 `log\` ✓ |
+| 项           | 位置                                     | 说明                                                                                             |
+| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **读的位置** | `<当前目录>\conf\markflow.toml`          | 当前目录是**运行期的根** ✓ —— 不是编译期的仓库路径 ✓（那在别的机器上不存在 ✓）                   |
+| 开发期       | `<仓库>\conf\markflow.toml`              | 开发期当前目录恒为仓库根 ✓，故这份文件**随仓库管理** ✓（改用例就是改文件 ✓，改动看得见 ✓）       |
+| 发布后       | 用户自备 `<当前目录>\conf\markflow.toml` | 仓库里那份**改名成 `markflow.toml.example`** ✓ —— 发布出去的是**形状** ✓，不是某台机器上的取值 ✓ |
+| 日志目录     | `<当前目录>\log\`                        | 与配置同一个根 ✓：配置在 `conf\` ✓、日志在 `log\` ✓                                              |
 
 **当前目录**由进程的工作目录决定 ✓（`std::env::current_dir()` ✓）。**跑之前先站对地方** ✓ —— 站在哪儿，配置与日志就在那儿 ✓。
 
@@ -25,11 +25,11 @@
 
 ```toml
 [log]
-level = "info"        # error / warn / info / debug / trace / off
-format = "json"       # json / text
+level = "info" # error / warn / info / debug / trace / off
+format = "json" # json / text
 
 [export]
-root = "web"          # web（浏览器打印对话框）或 native（Windows 静默路径）
+root = "web" # web（浏览器打印对话框）或 native（Windows 静默路径）
 
 [probe]
 sample = "docs/acceptance/pdf-probe/frozen-sample.html"
@@ -43,29 +43,29 @@ report_timeout_seconds = 600
 
 ## 4. 字段
 
-| 字段 | 类型 | 默认 | 作用 |
-| --- | --- | --- | --- |
-| `log.level` | 字符串 | 空 → 按构建形态（debug 构建 `info` ✓，发布构建 `warn` ✓） | 全局日志级别 ✓ |
-| `log.format` | 字符串 | `text` | 记录形态 ✓：`json` 是机器验收用的形态 ✓ |
-| `probe.sample` | 字符串 | `docs/acceptance/pdf-probe/frozen-sample.html` | 受控样本的归档原件 ✓（相对路径按当前目录解析 ✓） |
-| `probe.pdf_output` | 字符串 | `docs/acceptance/pdf-probe/probe-pdf-output.pdf` | 静默 PDF 的输出目标 ✓ |
-| `export.root` | 字符串 | `web` | 导出的根 ✓：`web`（浏览器打印对话框 ✓）或 `native`（Windows 的静默路径 ✓）。**平台没有静默 PDF 而选了它 ⇒ 不回落 ✓**，导出明说 ✓ ✓ |
-| `probe.product_print` | 布尔 | `false` | 探针页是否做一次产品形态的打印 ✓（会弹原生保存对话框 ✓） |
-| `probe.page_ready_timeout_seconds` | 整数 | `60` | 页面就绪的护栏 ✓（**护栏不是需求** ✓） |
-| `probe.report_timeout_seconds` | 整数 | `600` | 读报告的总数上限 ✓（探针请了人来选目标 ✓，得容得下人的时间 ✓） |
+| 字段                               | 类型   | 默认                                                      | 作用                                                                                                                               |
+| ---------------------------------- | ------ | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `log.level`                        | 字符串 | 空 → 按构建形态（debug 构建 `info` ✓，发布构建 `warn` ✓） | 全局日志级别 ✓                                                                                                                     |
+| `log.format`                       | 字符串 | `text`                                                    | 记录形态 ✓：`json` 是机器验收用的形态 ✓                                                                                            |
+| `probe.sample`                     | 字符串 | `docs/acceptance/pdf-probe/frozen-sample.html`            | 受控样本的归档原件 ✓（相对路径按当前目录解析 ✓）                                                                                   |
+| `probe.pdf_output`                 | 字符串 | `docs/acceptance/pdf-probe/probe-pdf-output.pdf`          | 静默 PDF 的输出目标 ✓                                                                                                              |
+| `export.root`                      | 字符串 | `web`                                                     | 导出的根 ✓：`web`（浏览器打印对话框 ✓）或 `native`（Windows 的静默路径 ✓）。**平台没有静默 PDF 而选了它 ⇒ 不回落 ✓**，导出明说 ✓ ✓ |
+| `probe.product_print`              | 布尔   | `false`                                                   | 探针页是否做一次产品形态的打印 ✓（会弹原生保存对话框 ✓）                                                                           |
+| `probe.page_ready_timeout_seconds` | 整数   | `60`                                                      | 页面就绪的护栏 ✓（**护栏不是需求** ✓）                                                                                             |
+| `probe.report_timeout_seconds`     | 整数   | `600`                                                     | 读报告的总数上限 ✓（探针请了人来选目标 ✓，得容得下人的时间 ✓）                                                                     |
 
 **探针那一节是开发期夹具的形状** ✓，不进产品路径 ✓。
 
 ## 5. 取值纪律
 
-| 情况 | 行为 |
-| --- | --- |
-| 文件缺失 | 全部默认值 ✓；来源记 `config_source=missing` ✓ |
-| 文件存在但解析不了 | **同样走默认值** ✓；来源记 `config_source=invalid` ✓。**配置坏掉不该让应用起不来** ✓ —— 配置是输入 ✓，不是启动条件 ✓ |
-| 已知字段给了不对的类型 | 那个文件整体按 `invalid` 处理 ✓ |
-| 未知字段 | 忽略 ✓（多写的键不该让应用起不来 ✓） |
-| 超时给了 0 | 按默认值走 ✓ —— 这条规矩原来属于环境变量 ✓（给的不是正整数就按默认值 ✓），**改输入的通道换了，输入的约束不该跟着换** ✓ |
-| 路径字段给了空串 | 按默认值走 ✓ |
+| 情况                   | 行为                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 文件缺失               | 全部默认值 ✓；来源记 `config_source=missing` ✓                                                                         |
+| 文件存在但解析不了     | **同样走默认值** ✓；来源记 `config_source=invalid` ✓。**配置坏掉不该让应用起不来** ✓ —— 配置是输入 ✓，不是启动条件 ✓   |
+| 已知字段给了不对的类型 | 那个文件整体按 `invalid` 处理 ✓                                                                                        |
+| 未知字段               | 忽略 ✓（多写的键不该让应用起不来 ✓）                                                                                   |
+| 超时给了 0             | 按默认值走 ✓ —— 这条规矩原来属于环境变量 ✓（给的不是正整数就按默认值 ✓），**改输入的通道换了，输入的约束不该跟着换** ✓ |
+| 路径字段给了空串       | 按默认值走 ✓                                                                                                           |
 
 **来源、有效级别、有效形态都写进 `run_start`** ✓（`config_source` ✓、`log_level` ✓、`log_format` ✓）—— 记的是**有效值** ✓，不是文件里的原文 ✓。
 
@@ -85,28 +85,28 @@ report_timeout_seconds = 600
 
 ## 8. 被移除的环境变量
 
-| 原来的变量 | 现在在哪 | 为什么 |
-| --- | --- | --- |
-| `MARKFLOW_LOG` | `log.level` ✓ | 隐式输入 ✓ |
-| `MARKFLOW_LOG_FORMAT` | `log.format` ✓ | 同上 ✓；且"漏设 → 证据作废"那类事故不再可能发生 ✓ |
-| `MARKFLOW_PROBE_SAMPLE` | `probe.sample` ✓ | 同上 ✓ |
-| `MARKFLOW_PROBE_PDF` | `probe.pdf_output` ✓ | 同上 ✓ |
-| `MARKFLOW_PROBE_PRODUCT_PRINT` | `probe.product_print` ✓ | 同上 ✓；且**探针页 URL 的构造改回纯函数** ✓ —— 开关是参数 ✓，不是读环境得来的 ✓ |
-| `MARKFLOW_PROBE_PAGE_READY_TIMEOUT` | `probe.page_ready_timeout_seconds` ✓ | 同上 ✓ |
-| `MARKFLOW_PROBE_REPORT_TIMEOUT` | `probe.report_timeout_seconds` ✓ | 同上 ✓ |
+| 原来的变量                          | 现在在哪                             | 为什么                                                                          |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------- |
+| `MARKFLOW_LOG`                      | `log.level` ✓                        | 隐式输入 ✓                                                                      |
+| `MARKFLOW_LOG_FORMAT`               | `log.format` ✓                       | 同上 ✓；且"漏设 → 证据作废"那类事故不再可能发生 ✓                               |
+| `MARKFLOW_PROBE_SAMPLE`             | `probe.sample` ✓                     | 同上 ✓                                                                          |
+| `MARKFLOW_PROBE_PDF`                | `probe.pdf_output` ✓                 | 同上 ✓                                                                          |
+| `MARKFLOW_PROBE_PRODUCT_PRINT`      | `probe.product_print` ✓              | 同上 ✓；且**探针页 URL 的构造改回纯函数** ✓ —— 开关是参数 ✓，不是读环境得来的 ✓ |
+| `MARKFLOW_PROBE_PAGE_READY_TIMEOUT` | `probe.page_ready_timeout_seconds` ✓ | 同上 ✓                                                                          |
+| `MARKFLOW_PROBE_REPORT_TIMEOUT`     | `probe.report_timeout_seconds` ✓     | 同上 ✓                                                                          |
 
 **脚本里的环境变量不动** ✓：`RUST_TOOLCHAIN` 是 CI 钉工具链的标准通道 ✓，`BASELINE_URL`／`BASELINE_OUTPUT` 是脚本自己的旋钮 ✓ —— 它们不是应用的输入面 ✓。
 
 ## 9. 验证
 
-| 项 | 怎么验 | 结果 |
-| --- | --- | --- |
-| 配置解析 | `cargo test`（`config::tests` 8 条 ✓） | 缺失／损坏／覆盖／归一／相对路径／导出的根各一条 ✓ |
-| 探针 URL | `cargo test`（`the_product_print_switch_is_a_parameter_and_not_an_ambient_one` ✓） | 开关是参数 ✓，环境里有没有那个变量都一样 ✓ |
-| 用例总数 | `cargo test --features pdf-probe` | 全仓 62 条 ✓：macOS 60 条 ✓（3 条 unix only 除外 ✓），Windows 59 条 ✓（2 条 windows only 除外 ✓） |
-| 静态检查 | `cargo clippy --all-targets --features pdf-probe -- -D warnings` | 无告警 ✓ |
-| Windows 分支 | `bun scripts/check-windows-com.ts` | 配置模块也进夹具 ✓ —— 它在 Windows 上一样要编 ✓ |
-| 前端 | `bun run lint` ✓ `bun run typecheck` ✓ `bun run test:unit`（542 条 ✓） `bun run test:e2e`（143 通过 ✓） | 全绿 ✓ |
+| 项           | 怎么验                                                                                                  | 结果                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 配置解析     | `cargo test`（`config::tests` 8 条 ✓）                                                                  | 缺失／损坏／覆盖／归一／相对路径／导出的根各一条 ✓                                                |
+| 探针 URL     | `cargo test`（`the_product_print_switch_is_a_parameter_and_not_an_ambient_one` ✓）                      | 开关是参数 ✓，环境里有没有那个变量都一样 ✓                                                        |
+| 用例总数     | `cargo test --features pdf-probe`                                                                       | 全仓 62 条 ✓：macOS 60 条 ✓（3 条 unix only 除外 ✓），Windows 59 条 ✓（2 条 windows only 除外 ✓） |
+| 静态检查     | `cargo clippy --all-targets --features pdf-probe -- -D warnings`                                        | 无告警 ✓                                                                                          |
+| Windows 分支 | `bun scripts/check-windows-com.ts`                                                                      | 配置模块也进夹具 ✓ —— 它在 Windows 上一样要编 ✓                                                   |
+| 前端         | `bun run lint` ✓ `bun run typecheck` ✓ `bun run test:unit`（542 条 ✓） `bun run test:e2e`（143 通过 ✓） | 全绿 ✓                                                                                            |
 
 ## 10. 关联文档
 

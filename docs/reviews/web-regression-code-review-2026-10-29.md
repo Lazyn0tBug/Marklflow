@@ -26,7 +26,6 @@ Luna完整check通过：197受管源/配置、57个测试文件、377项单元�
 
 EX-W0及原生保存手动验收仍待补，不宣称完整验收通过。不推送、不移动标签，不升级MathJax、不替换Paged.js，不引入Chromium/Puppeteer或截图方案。
 
-
 运行器输出：测试前后test-results/worker-probe-dist的132个文件均由Luna逐项核对并原字节还原。gitignore内playwright-report正常更新为本轮20项的可再生报告；W3a历史115项仍以D:/codex/ex-w3a-e2e.log和稳定归档为准，不将新HTML报告当作历史全量报告。66项稳定归档的字节数/SHA-256、清单和helper散列未变；package.json、bun.lock和用户补丁未变。
 
 证据导航：[本轮验收JSON](../acceptance/web-regression-code-review-2026-10-29.json)、[支持与待验表](../design/web-export-support-2026-10-29.md)、[历史阶段汇总](../acceptance/web-regression-closeout-2026-10-29.json)、[W3a历史全量记录](../acceptance/web-regression-auto-2026-10-29.json)、[实际产物记录](../acceptance/web-regression-artifacts-2026-10-29.json)、[原执行记录](web-regression-closeout-2026-10-29.md)。历史documentHashesLF必须按documentSnapshotCommit=b33978f核对，而非将后续措辞修订的工作区字节套入历史快照。

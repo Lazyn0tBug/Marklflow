@@ -68,30 +68,30 @@ IR 指内部文档结构，不要求写入本地中间文件。除显式保存�
 
 以下是建议选型，具体小版本在项目启动时锁定到 lockfile，不在设计中凭空指定未经验证的版本组合。
 
-| 领域 | 建议 | 用途与边界 |
-|---|---|---|
-| 语言 | TypeScript，严格模式 | 核心、插件、应用共用类型 |
-| 开发运行时 | 活跃 LTS Node.js | 仅开发、构建和 CI 需要；桌面版内部运行时随包发布 |
-| 包管理 | npm + package-lock.json | 使用 npm ci 复现；单仓库起步，不先建立复杂 monorepo |
-| 构建 | Vite | 静态部署、代码分割、Worker 和 WASM 资源打包 [S1] |
-| UI | React | 管理面板与视图；正文编辑不走 React 逐字符重建 |
-| 编辑 | CodeMirror 6 | Markdown 高亮、编辑事务、快捷键、选区和语言扩展；先验证中文输入与嵌套代码语言 [S2] |
-| Markdown | unified / remark-parse / remark-gfm / remark-math | 建立可扩展语法树；保留源位置，不用正则实现通用解析 [S3] |
-| HTML 转换 | remark-rehype 或 IR 到 hast 适配器 | 首版采用 IR 到 hast 的统一出口；remark-rehype 用作生态适配参考，避免两套正文渲染逻辑 [S3] |
-| 样式 | Tailwind CSS v4 + 语义化文档 CSS | 编译后发布；应用 UI 与文档主题隔离；颜色主要使用 OKLCH [S4] |
-| 公式 | MathJax 单一主引擎，LaTeX 输入，MathML/SVG 双输出 | MathML 为优先验证方向；显示默认值由 P0 决定，不以输出格式限制大多数公式的正确显示；不需要 TeX 程序 [S5][S17][S18][S19] |
-| Mermaid | mermaid | 图表转 SVG；异步完成后才允许进入导出快照 [S6] |
-| Graphviz | @viz-js/viz | 使用 WASM Graphviz；不安装 dot；首版限定常用布局与 SVG 输出 [S7] |
-| 分页 | Paged.js，经可行性验证后接入 | 封装 Paginator；不承诺完整 CSS Paged Media 或直接下载 PDF [S8] |
-| Word | docx | 浏览器生成原生 OOXML 和 Blob；不经过 Word/LibreOffice [S9] |
-| PPTX | PptxGenJS，后续阶段 | 原生文本/形状/图片；不能自动复现任意 HTML [S10] |
-| 资源容器 | fflate + 自定义版本化清单 | 可选项目 ZIP 和 EPUB ZIP；需验证 EPUB 打包约束 |
-| 校验 | Zod | 导入配置、插件选项、版本化文档的运行时校验 |
-| 安全清理 | DOMPurify + URL/CSS 策略 | HTML/SVG 清理；不能把它视为任意 CSS 或 JS 的沙箱 [S11] |
-| 存储 | IndexedDB，使用 idb 薄封装 | 草稿、资源、快照；浏览器数据不等于已下载文件 |
-| 离线 | vite-plugin-pwa / Workbox | 资源预缓存与升级；大型 WASM、字体必须进入缓存检查 [S12] |
-| 测试 | Vitest + Playwright | 模型、插件、编辑交互、离线与导出验证 |
-| 可选桌面 | Electron + Forge | 复用 TS/Node 技术栈与固定 Chromium；代价是体积增加 [S13] |
+| 领域       | 建议                                              | 用途与边界                                                                                                             |
+| ---------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 语言       | TypeScript，严格模式                              | 核心、插件、应用共用类型                                                                                               |
+| 开发运行时 | 活跃 LTS Node.js                                  | 仅开发、构建和 CI 需要；桌面版内部运行时随包发布                                                                       |
+| 包管理     | npm + package-lock.json                           | 使用 npm ci 复现；单仓库起步，不先建立复杂 monorepo                                                                    |
+| 构建       | Vite                                              | 静态部署、代码分割、Worker 和 WASM 资源打包 [S1]                                                                       |
+| UI         | React                                             | 管理面板与视图；正文编辑不走 React 逐字符重建                                                                          |
+| 编辑       | CodeMirror 6                                      | Markdown 高亮、编辑事务、快捷键、选区和语言扩展；先验证中文输入与嵌套代码语言 [S2]                                     |
+| Markdown   | unified / remark-parse / remark-gfm / remark-math | 建立可扩展语法树；保留源位置，不用正则实现通用解析 [S3]                                                                |
+| HTML 转换  | remark-rehype 或 IR 到 hast 适配器                | 首版采用 IR 到 hast 的统一出口；remark-rehype 用作生态适配参考，避免两套正文渲染逻辑 [S3]                              |
+| 样式       | Tailwind CSS v4 + 语义化文档 CSS                  | 编译后发布；应用 UI 与文档主题隔离；颜色主要使用 OKLCH [S4]                                                            |
+| 公式       | MathJax 单一主引擎，LaTeX 输入，MathML/SVG 双输出 | MathML 为优先验证方向；显示默认值由 P0 决定，不以输出格式限制大多数公式的正确显示；不需要 TeX 程序 [S5][S17][S18][S19] |
+| Mermaid    | mermaid                                           | 图表转 SVG；异步完成后才允许进入导出快照 [S6]                                                                          |
+| Graphviz   | @viz-js/viz                                       | 使用 WASM Graphviz；不安装 dot；首版限定常用布局与 SVG 输出 [S7]                                                       |
+| 分页       | Paged.js，经可行性验证后接入                      | 封装 Paginator；不承诺完整 CSS Paged Media 或直接下载 PDF [S8]                                                         |
+| Word       | docx                                              | 浏览器生成原生 OOXML 和 Blob；不经过 Word/LibreOffice [S9]                                                             |
+| PPTX       | PptxGenJS，后续阶段                               | 原生文本/形状/图片；不能自动复现任意 HTML [S10]                                                                        |
+| 资源容器   | fflate + 自定义版本化清单                         | 可选项目 ZIP 和 EPUB ZIP；需验证 EPUB 打包约束                                                                         |
+| 校验       | Zod                                               | 导入配置、插件选项、版本化文档的运行时校验                                                                             |
+| 安全清理   | DOMPurify + URL/CSS 策略                          | HTML/SVG 清理；不能把它视为任意 CSS 或 JS 的沙箱 [S11]                                                                 |
+| 存储       | IndexedDB，使用 idb 薄封装                        | 草稿、资源、快照；浏览器数据不等于已下载文件                                                                           |
+| 离线       | vite-plugin-pwa / Workbox                         | 资源预缓存与升级；大型 WASM、字体必须进入缓存检查 [S12]                                                                |
+| 测试       | Vitest + Playwright                               | 模型、插件、编辑交互、离线与导出验证                                                                                   |
+| 可选桌面   | Electron + Forge                                  | 复用 TS/Node 技术栈与固定 Chromium；代价是体积增加 [S13]                                                               |
 
 选择 CodeMirror 而非从 textarea 自建编辑器；选择 AST 生态而非从已渲染 HTML 恢复 Word 语义。Graphviz WASM 先采用一个实现，不同时引入多个同类运行时。
 
@@ -139,13 +139,13 @@ interface DocumentRecord {
   id: string;
   revision: number;
   markdown: string;
-  meta: { title: string; author?: string; createdAt: string; updatedAt: string };
+  meta: {title: string; author?: string; createdAt: string; updatedAt: string};
   theme: ThemeSpec;
   assets: AssetRef[];
-  options: { syntaxProfile: "commonmark-gfm-v1"; pluginOptions: Record<string, unknown> };
+  options: {syntaxProfile: "commonmark-gfm-v1"; pluginOptions: Record<string, unknown>};
 }
 interface AssetRef {
-  id: string;             // a_ + SHA-256；内容寻址
+  id: string; // a_ + SHA-256；内容寻址
   sha256: string;
   mime: string;
   byteLength: number;
@@ -179,13 +179,13 @@ YAML front matter 后续可通过显式启用支持，导入时明确元数据�
 
 ### 5.4 用户可见文件
 
-| 文件 | 内容 | 用途与保证 |
-|---|---|---|
-| .md | Markdown 原文 | 与通用工具交换；单独下载不保证携带图片和主题 |
-| Markdown ZIP | .md + 相对路径资源 | 可迁移、可在其他编辑器打开；转换资源引用时不修改会话原文 |
-| 阅读 HTML | 已渲染正文、原生 MathML 或 SVG、内嵌 CSS/图片、打印脚本 | 双击即可阅读和打印；不包含源编辑数据 |
-| 可编辑文档 HTML | 阅读 HTML + 嵌入的版本化源数据和资源 | 单文件保存；导入工具后可继续编辑；不在每份文档中嵌入整个编辑器 |
-| 项目 ZIP，可选 | manifest.json、document.md、theme.json、assets/ | 大文档备份和开发调试；不是默认强制格式 |
+| 文件            | 内容                                                    | 用途与保证                                                     |
+| --------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| .md             | Markdown 原文                                           | 与通用工具交换；单独下载不保证携带图片和主题                   |
+| Markdown ZIP    | .md + 相对路径资源                                      | 可迁移、可在其他编辑器打开；转换资源引用时不修改会话原文       |
+| 阅读 HTML       | 已渲染正文、原生 MathML 或 SVG、内嵌 CSS/图片、打印脚本 | 双击即可阅读和打印；不包含源编辑数据                           |
+| 可编辑文档 HTML | 阅读 HTML + 嵌入的版本化源数据和资源                    | 单文件保存；导入工具后可继续编辑；不在每份文档中嵌入整个编辑器 |
+| 项目 ZIP，可选  | manifest.json、document.md、theme.json、assets/         | 大文档备份和开发调试；不是默认强制格式                         |
 
 可编辑 HTML 默认明确标注“包含 Markdown 源内容和配置”；用户选择阅读 HTML 时去除源数据与历史。两者均不包含编辑历史、凭证或浏览器内部状态，历史仅在用户选择备份时包含。
 
@@ -201,13 +201,13 @@ YAML front matter 后续可通过显式启用支持，导入时明确元数据�
 
 ### 6.1 插件类别
 
-| 类别 | 负责内容 | 首批实例 |
-|---|---|---|
-| 语法插件 | 解析扩展、规范化 IR | 数学、图表围栏、分页指令 |
-| 编辑扩展 | CodeMirror 语言、命令、补全与诊断 | DOT 高亮、图表模板 |
-| 渲染插件 | 将特定 IR 节点渲染为可复用资源 | MathJax、Mermaid、Graphviz |
-| 导出插件 | 消费 IR、主题、资源和快照生成文件 | HTML、DOCX、EPUB |
-| 分页/平台适配器 | 页面布局、文件保存与平台能力 | Paged.js、Browser、Electron |
+| 类别            | 负责内容                          | 首批实例                    |
+| --------------- | --------------------------------- | --------------------------- |
+| 语法插件        | 解析扩展、规范化 IR               | 数学、图表围栏、分页指令    |
+| 编辑扩展        | CodeMirror 语言、命令、补全与诊断 | DOT 高亮、图表模板          |
+| 渲染插件        | 将特定 IR 节点渲染为可复用资源    | MathJax、Mermaid、Graphviz  |
+| 导出插件        | 消费 IR、主题、资源和快照生成文件 | HTML、DOCX、EPUB            |
+| 分页/平台适配器 | 页面布局、文件保存与平台能力      | Paged.js、Browser、Electron |
 
 首版插件为仓库内受信任代码，通过注册表在构建时注册、运行时动态 import。禁用远程 JS 插件和文档内嵌插件。插件机制的目的首先是隔离变化，而非建立市场。
 
@@ -222,9 +222,9 @@ interface PluginManifest {
   version: string;
   apiVersion: 1;
   kind: "syntax" | "editor" | "renderer" | "exporter";
-  requires: string[];        // 插件依赖，注册时检测缺失和循环
+  requires: string[]; // 插件依赖，注册时检测缺失和循环
   offline: boolean;
-  resources: string[];       // 构建资源 ID，生成离线清单
+  resources: string[]; // 构建资源 ID，生成离线清单
 }
 interface Diagnostic {
   code: string;
@@ -240,13 +240,13 @@ interface RenderContext {
 }
 interface RenderArtifact {
   nodeId: string;
-  mathml?: string;          // MathJax 序列化输出；验证并清理后使用
+  mathml?: string; // MathJax 序列化输出；验证并清理后使用
   svgAssetId?: string;
   pngAssetId?: string;
   htmlFragment?: string;
   widthPx: number;
   heightPx: number;
-  baselinePx?: number;     // 行内公式实际布局基线指标
+  baselinePx?: number; // 行内公式实际布局基线指标
   alt: string;
   diagnostics: Diagnostic[];
 }
@@ -263,8 +263,8 @@ interface ExportPlugin {
   export(snapshot: ExportSnapshot, signal: AbortSignal): Promise<ExportResult>;
 }
 type ExportResult =
-  | { kind: "download"; files: { name: string; blob: Blob }[]; diagnostics: Diagnostic[] }
-  | { kind: "print-request"; diagnostics: Diagnostic[] };
+  | {kind: "download"; files: {name: string; blob: Blob}[]; diagnostics: Diagnostic[]}
+  | {kind: "print-request"; diagnostics: Diagnostic[]};
 ```
 
 IRNode、ThemeSpec、ExportSnapshot 定义在核心模型模块。浏览器打印返回 print-request，不能伪装成已经生成 PDF 文件。插件返回的 HTML/SVG 在平台层清理后使用，不能通过接口直接获得任意应用 DOM 或文件系统权限。
@@ -318,10 +318,10 @@ Paged.js 通过适配器接入，先验证长表格、代码、中文、SVG、�
 
 显示采用文档级模式，不自动猜测单个公式是否应切换格式：
 
-| 模式 | 路径 | 使用与验收原则 |
-|---|---|---|
+| 模式        | 路径                                              | 使用与验收原则                                                                                   |
+| ----------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | 原生 MathML | LaTeX → MathJax 解析 → MathML 序列化 → 浏览器布局 | 优先验证方向；验证编号、多行对齐、字体变体、行内基线及打印；不能仅凭输出合法 MathML 判定显示正确 |
-| MathJax SVG | LaTeX → MathJax SVG 输出 → 自包含资源 | 优先排版完整性与固定视觉输出；作为复杂公式和正式交付可选模式 |
+| MathJax SVG | LaTeX → MathJax SVG 输出 → 自包含资源             | 优先排版完整性与固定视觉输出；作为复杂公式和正式交付可选模式                                     |
 
 MathJax 提供 tex2mmlPromise 等转换方法，但原生 MathML 不是 MathJax v4 的内置输出渲染器。其序列化结果与浏览器 MathML Core 在部分表格对齐属性、编号和字体变体上存在差异；适配层需要规范化并测试，不能通过“只支持现代浏览器”跳过这项验证。[S19][S20]
 
@@ -335,18 +335,18 @@ P0 在选定目标浏览器运行同一公式集，对照 MathJax SVG 的排版�
 
 ## 8. 各类格式导出路径
 
-| 格式 | 路径 | 是否需要用户额外环境 | 阶段 |
-|---|---|---|---|
-| MD / MD ZIP | Markdown → 文本；资源引用重写 → ZIP | 无 | 首版 |
-| HTML | IR + 已完成渲染资源 + 主题 → 静态 HTML → 内嵌资源和可选源载荷 | 浏览器 | 首版 |
-| PDF，打印方式 | 同一 A4 页面 DOM → window.print() → 用户保存 PDF | 浏览器打印功能 | 首版 |
-| DOCX | IR + 主题映射 + 公式/图表资源 → docx → Blob | 无需 Word 即可生成；兼容性验收需实际阅读器 | 首版 |
-| EPUB | IR → 分章 XHTML、目录、资源、OPF → EPUB ZIP | 生成无额外环境；验收需阅读器 | 后续 |
-| SVG | 指定图表/公式 → 清理、自包含 SVG | 无 | 后续 |
-| PNG | 图表 SVG → Canvas；页面 HTML → 经验证的截图适配器 | 浏览器；有字体、跨域和 Canvas 尺寸限制 | 后续 |
-| PPTX，视觉模式 | 显式幻灯片布局 → 页面图像 → PptxGenJS | 无 | 后续 |
-| PPTX，可编辑模式 | IR → 幻灯片模型 → 原生文字、表格、形状及图表图片 | 无 | 后续 |
-| PDF，自动下载 | 固定桌面 Chromium → printToPDF → 文件 | 桌面发行包自带运行时 | 桌面阶段 |
+| 格式             | 路径                                                          | 是否需要用户额外环境                       | 阶段     |
+| ---------------- | ------------------------------------------------------------- | ------------------------------------------ | -------- |
+| MD / MD ZIP      | Markdown → 文本；资源引用重写 → ZIP                           | 无                                         | 首版     |
+| HTML             | IR + 已完成渲染资源 + 主题 → 静态 HTML → 内嵌资源和可选源载荷 | 浏览器                                     | 首版     |
+| PDF，打印方式    | 同一 A4 页面 DOM → window.print() → 用户保存 PDF              | 浏览器打印功能                             | 首版     |
+| DOCX             | IR + 主题映射 + 公式/图表资源 → docx → Blob                   | 无需 Word 即可生成；兼容性验收需实际阅读器 | 首版     |
+| EPUB             | IR → 分章 XHTML、目录、资源、OPF → EPUB ZIP                   | 生成无额外环境；验收需阅读器               | 后续     |
+| SVG              | 指定图表/公式 → 清理、自包含 SVG                              | 无                                         | 后续     |
+| PNG              | 图表 SVG → Canvas；页面 HTML → 经验证的截图适配器             | 浏览器；有字体、跨域和 Canvas 尺寸限制     | 后续     |
+| PPTX，视觉模式   | 显式幻灯片布局 → 页面图像 → PptxGenJS                         | 无                                         | 后续     |
+| PPTX，可编辑模式 | IR → 幻灯片模型 → 原生文字、表格、形状及图表图片              | 无                                         | 后续     |
+| PDF，自动下载    | 固定桌面 Chromium → printToPDF → 文件                         | 桌面发行包自带运行时                       | 桌面阶段 |
 
 ### 8.1 HTML
 
@@ -484,15 +484,15 @@ Codex 可作为主要开发工具；本项目不需要调用 OpenAI API 才能�
 
 ## 13. 实施阶段与退出条件
 
-| 阶段 | 工作 | 完成条件 |
-|---|---|---|
-| P0 技术验证 | CodeMirror 中文、AST 映射、MathJax MathML/SVG 对照、Mermaid/DOT、Paged.js、docx、资源打包 | 混合样例完成真实浏览器渲染、A4 打印预览与 DOCX 打开检查；公式支持与显示测试确定默认模式；提交选型结果与依赖边界 |
-| P1 编辑闭环 | 编辑、高亮、撤销、搜索、大纲、文件与草稿恢复、基础阅读预览 | 导入→编辑→保存→刷新恢复→下载→重开通过；中文和 emoji 源定位正确 |
-| P2 内容与插件 | IR、资源库、插件注册、公式、Mermaid、Graphviz、缓存与诊断 | 三种渲染插件按同一契约接入；取消、超时、未知语法和修订竞争通过 |
-| P3 排版与 HTML/PDF | 主题、A4、分页、单文件 HTML、源载荷恢复、打印 | 收件人断网打开 HTML 可读可打印；源数据往返恢复；A4 实际预览检查通过 |
-| P4 DOCX 与首版发行 | 原生文档映射、能力检查、PWA 完整离线与发布包 | 在干净用户环境不装开发工具即可编辑、渲染和导出；DOCX 目标阅读器验收通过 |
-| P5 扩展格式 | EPUB、SVG/PNG、PPTX | 每种格式独立能力矩阵、异常回退及阅读器验证，不以“生成 ZIP 成功”为验收 |
-| P6 可选桌面 | 文件关联、原文件写回、固定 Chromium PDF | 不装 Node 即可启动；自动 PDF、权限边界、崩溃恢复和签名发行验证 |
+| 阶段               | 工作                                                                                      | 完成条件                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| P0 技术验证        | CodeMirror 中文、AST 映射、MathJax MathML/SVG 对照、Mermaid/DOT、Paged.js、docx、资源打包 | 混合样例完成真实浏览器渲染、A4 打印预览与 DOCX 打开检查；公式支持与显示测试确定默认模式；提交选型结果与依赖边界 |
+| P1 编辑闭环        | 编辑、高亮、撤销、搜索、大纲、文件与草稿恢复、基础阅读预览                                | 导入→编辑→保存→刷新恢复→下载→重开通过；中文和 emoji 源定位正确                                                  |
+| P2 内容与插件      | IR、资源库、插件注册、公式、Mermaid、Graphviz、缓存与诊断                                 | 三种渲染插件按同一契约接入；取消、超时、未知语法和修订竞争通过                                                  |
+| P3 排版与 HTML/PDF | 主题、A4、分页、单文件 HTML、源载荷恢复、打印                                             | 收件人断网打开 HTML 可读可打印；源数据往返恢复；A4 实际预览检查通过                                             |
+| P4 DOCX 与首版发行 | 原生文档映射、能力检查、PWA 完整离线与发布包                                              | 在干净用户环境不装开发工具即可编辑、渲染和导出；DOCX 目标阅读器验收通过                                         |
+| P5 扩展格式        | EPUB、SVG/PNG、PPTX                                                                       | 每种格式独立能力矩阵、异常回退及阅读器验证，不以“生成 ZIP 成功”为验收                                           |
+| P6 可选桌面        | 文件关联、原文件写回、固定 Chromium PDF                                                   | 不装 Node 即可启动；自动 PDF、权限边界、崩溃恢复和签名发行验证                                                  |
 
 P0 是决定性门槛。若分页、离线 WASM 或 Word 兼容出现阻碍，先调整能力范围并记录决策，不通过增加用户手动安装软件绕过约束。
 

@@ -67,6 +67,7 @@ warning: unused import: `crate::print_com::PrintOutcome`
 **为什么本机没拦住**：那次调用在 `#[cfg(target_os = "windows")]` 分支里 → macOS 的 clippy **编不到那一段** → 本地全绿、Windows 上才炸。与 §1.1 同类：**出错的文件不在本地能编的范围里**。
 
 **修法**：
+
 1. 胶水恢复成独立模块 `print_host.rs` ✓；`print_com.rs` 保持**无 tauri 依赖** ✓（交叉验证要的就是这一点 ✓）。
 2. **交叉检查的覆盖面从"两个文件"扩到整条 Windows 链路** ✓：`print_com`／`print_host`／`pdf_print`／`output_host`／`logging`／`source_guard` ✓ —— 编排层的 Windows 分支从此在本机被真正类型检查 ✓（§5 ✓）。
 
@@ -76,14 +77,14 @@ warning: unused import: `crate::print_com::PrintOutcome`
 
 ### 2.1 前置
 
-| 项 | 要求 |
-| --- | --- |
-| 代码 | 确认 `D:\code\Marklflow` 的 `architecture-refactor` 分支及待验提交；先记录工作区状态，不自动pull覆盖本地工作 |
-| 工具链 | Rust 1.94.0（MSVC），与 CI 一致 |
-| WebView2 | 运行时 156.0.4314.58（已装） |
-| dev server | **必须在跑**（探针页要与应用同源）：另开终端 `bun run dev:desktop` |
-| 当前目录 | **恒为仓库根** ✓：`cd /d D:\code\Marklflow` ✓。配置在 `<仓库>\conf\markflow.toml` ✓，日志在 `<仓库>\log\` ✓ —— 站错地方就两样都找不到 ✓ |
-| 配置 | **改行为改这个文件** ✓（2026-11-05 起不再设环境变量 ✓）：`conf\markflow.toml` ✓ |
+| 项         | 要求                                                                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 代码       | 确认 `D:\code\Marklflow` 的 `architecture-refactor` 分支及待验提交；先记录工作区状态，不自动pull覆盖本地工作                            |
+| 工具链     | Rust 1.94.0（MSVC），与 CI 一致                                                                                                         |
+| WebView2   | 运行时 156.0.4314.58（已装）                                                                                                            |
+| dev server | **必须在跑**（探针页要与应用同源）：另开终端 `bun run dev:desktop`                                                                      |
+| 当前目录   | **恒为仓库根** ✓：`cd /d D:\code\Marklflow` ✓。配置在 `<仓库>\conf\markflow.toml` ✓，日志在 `<仓库>\log\` ✓ —— 站错地方就两样都找不到 ✓ |
+| 配置       | **改行为改这个文件** ✓（2026-11-05 起不再设环境变量 ✓）：`conf\markflow.toml` ✓                                                         |
 
 ### 2.2 编译
 
@@ -115,10 +116,10 @@ cargo run --manifest-path src-tauri\Cargo.toml --locked --no-default-features --
 
 ### 2.4 取产物
 
-| 产物 | 位置 |
-| --- | --- |
-| 日志 | `<仓库>\log\markflow.<pid>.log` ✓（当前目录下的 log 子目录 ✓；2026-11-05 起不再是 `%LOCALAPPDATA%` ✓） |
-| PDF | 默认 `D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\probe-pdf-output.pdf`（可用配置 `probe.pdf_output` 改 ✓） |
+| 产物 | 位置                                                                                                              |
+| ---- | ----------------------------------------------------------------------------------------------------------------- |
+| 日志 | `<仓库>\log\markflow.<pid>.log` ✓（当前目录下的 log 子目录 ✓；2026-11-05 起不再是 `%LOCALAPPDATA%` ✓）            |
+| PDF  | 默认 `D:\\code\\Marklflow\\docs\\acceptance\\pdf-probe\\probe-pdf-output.pdf`（可用配置 `probe.pdf_output` 改 ✓） |
 
 **若 PDF 旁边还留着 `*.tmp-<pid>-*`**（临时名按调用唯一 ✓，带序号 ✓）：只能证明存在残留，不能直接推出打印成功或提交失败。结合本次运行的打印回调、字节数和提交日志判断；正常提交失败路径会尝试删除临时文件，残留也可能来自超时、迟到写入、清理失败或非正常退出。目标是否保留须检查，不能仅凭残留认定保护已验。
 
@@ -140,7 +141,7 @@ bun scripts/pdf-probe-check.ts <日志>
 
 ```toml
 [probe]
-product_print = true          # 让探针页做一次产品形态的打印 ✓
+product_print = true # 让探针页做一次产品形态的打印 ✓
 # 探针层的两个界（可选 ✓，覆盖默认值 ✓）：
 #   页面须在 60 秒内产出读数 ✓；读报告的总数上限 600 秒 ✓
 # page_ready_timeout_seconds = 60
@@ -157,12 +158,12 @@ cargo run --manifest-path src-tauri\Cargo.toml --locked --no-default-features --
 
 **慢慢选也没关系** ✓：读报告的总数上限默认 600 秒 ✓，覆盖得到 ✓；产品形态那一步本身**没有上限** ✓（原生保存对话框是阻塞调用 ✓，取消即止 ✓）—— 上限只存在于探针这一层 ✓。
 
-| 要验的 | 怎么看 |
-| --- | --- |
-| **命名** | 保存对话框里的默认名是 `probe-product-shape.pdf` ✓；保存后目标文件名就是它 ✓ |
-| **取消** | 在对话框里按**取消** ✓ → 日志里 `page_report_observed` 的 `product_print=cancelled` ✓，且**没有新文件** ✓ |
-| **打印成功** | 保存后日志里 `product_print=saved` ✓，目标目录里出现那个 PDF ✓ |
-| **失败保留旧文件** | 先在目标放一个同名旧文件 ✓ → 制造失败（把目标目录改成不可写 ✓）→ 旧文件内容不变 ✓ |
+| 要验的             | 怎么看                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| **命名**           | 保存对话框里的默认名是 `probe-product-shape.pdf` ✓；保存后目标文件名就是它 ✓                              |
+| **取消**           | 在对话框里按**取消** ✓ → 日志里 `page_report_observed` 的 `product_print=cancelled` ✓，且**没有新文件** ✓ |
+| **打印成功**       | 保存后日志里 `product_print=saved` ✓，目标目录里出现那个 PDF ✓                                            |
+| **失败保留旧文件** | 先在目标放一个同名旧文件 ✓ → 制造失败（把目标目录改成不可写 ✓）→ 旧文件内容不变 ✓                         |
 
 **不设这个开关时**探针页不做产品形态的打印 ✓（那轮只做 D1b／D1c 的证据 ✓）✓，已归档的证据不受影响 ✓。
 
@@ -185,20 +186,20 @@ bun scripts/check-command-admission.ts
 bun scripts/check-native-isolation.ts
 ```
 
-| 命令 | 期望输出 |
-| --- | --- |
-| ① | `test result: ok. 59 passed` —— 全仓 62 条 ✓，其中 3 条是 `#[cfg(unix)]` 的 ✓、2 条是 `#[cfg(windows)]` 的 ✓ → **Windows 上 59** ✓（macOS 上 60 ✓）。用例数会随改动变 ✓，红了以输出为准 ✓ |
-| ② | `命令面准入成立：注册 8 个，受保护 6 个，不受守卫 2 个（各有准入方式），页面可回传 7 个` |
-| ③ | 无输出即通过 ✓（有输出就是前提被破坏 ✓） |
+| 命令 | 期望输出                                                                                                                                                                                  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ①    | `test result: ok. 59 passed` —— 全仓 62 条 ✓，其中 3 条是 `#[cfg(unix)]` 的 ✓、2 条是 `#[cfg(windows)]` 的 ✓ → **Windows 上 59** ✓（macOS 上 60 ✓）。用例数会随改动变 ✓，红了以输出为准 ✓ |
+| ②    | `命令面准入成立：注册 8 个，受保护 6 个，不受守卫 2 个（各有准入方式），页面可回传 7 个`                                                                                                  |
+| ③    | 无输出即通过 ✓（有输出就是前提被破坏 ✓）                                                                                                                                                  |
 
 ### 2.7.2 四条用例各自要证明什么
 
-| # | 改动 | 用例（机器） | 用例（跑一次看日志） |
-| --- | --- | --- | --- |
-| 1 | **命令名只有一处拼写** ✓：受保护命令的入口收 `WebCommand` 枚举 ✓，名字由 `command_name()` 给出 ✓ | `cargo test` 的 `the_log_name_of_a_command_is_the_name_the_page_sends` ✓——**日志里的命令名与页面发的名字必须是同一个字符串** ✓，否则跨侧配对配不上 ✓ | 跑 §2.6 那轮 ✓ → 日志里 `operation_result` 的 `command=print_native_pdf` ✓；页面侧的 `call_started`／`call_finished` 也是 `print_native_pdf` ✓；`bun scripts/pdf-probe-check.ts` 的跨侧配对**不报**"关联不匹配" ✓ |
-| 2 | **临时名按调用唯一** ✓：暂存文件与目标的临时文件都带序号 ✓ | `cargo test` 的 `every_staged_document_gets_its_own_file` ✓ 与 `every_call_gets_its_own_temporary_file_next_to_the_target` ✓——**两次调用拿到两个名字，两份内容互不覆盖** ✓ | 目标同目录的临时文件名叫 `*.tmp-<pid>-<序号>` ✓（不再是 `*.tmp-<pid>` ✓）；跑完后目录里**没有残留** ✓ |
-| 3 | **清理结果进证据** ✓：`pdf_temp_removed` 说删掉了没有 ✓ | `cargo test` 的 `a_locked_temp_file_cannot_be_cleaned_and_that_is_reported` ✓——**只有 Windows 上才跑** ✓（Windows 上被打开的文件删不掉 ✓，macOS 上锁不住 ✓） | 跑一轮失败（把目标目录改成不可写 ✓）→ 日志里 `probe_pdf` 带 `pdf_temp_removed` ✓；正常跑完的那轮是 `pdf_temp_removed=true` ✓。**产品形态那条路径也有** ✓：`operation_result`（`command=print_native_pdf` ✓）带 `pdf_temp_removed` ✓——那是原生侧的观测 ✓，不是页面自述 ✓ |
-| 4 | **命令面有准入清单** ✓：六个受保护 ✓，两个刻意不受守卫但各有准入方式 ✓ | `bun scripts/check-command-admission.ts` ✓ + `cargo test` 之外的 `tests/unit/check-command-admission.test.ts` ✓ | 同上 ✓ |
+| #   | 改动                                                                                             | 用例（机器）                                                                                                                                                               | 用例（跑一次看日志）                                                                                                                                                                                                                                                    |
+| --- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **命令名只有一处拼写** ✓：受保护命令的入口收 `WebCommand` 枚举 ✓，名字由 `command_name()` 给出 ✓ | `cargo test` 的 `the_log_name_of_a_command_is_the_name_the_page_sends` ✓——**日志里的命令名与页面发的名字必须是同一个字符串** ✓，否则跨侧配对配不上 ✓                       | 跑 §2.6 那轮 ✓ → 日志里 `operation_result` 的 `command=print_native_pdf` ✓；页面侧的 `call_started`／`call_finished` 也是 `print_native_pdf` ✓；`bun scripts/pdf-probe-check.ts` 的跨侧配对**不报**"关联不匹配" ✓                                                       |
+| 2   | **临时名按调用唯一** ✓：暂存文件与目标的临时文件都带序号 ✓                                       | `cargo test` 的 `every_staged_document_gets_its_own_file` ✓ 与 `every_call_gets_its_own_temporary_file_next_to_the_target` ✓——**两次调用拿到两个名字，两份内容互不覆盖** ✓ | 目标同目录的临时文件名叫 `*.tmp-<pid>-<序号>` ✓（不再是 `*.tmp-<pid>` ✓）；跑完后目录里**没有残留** ✓                                                                                                                                                                   |
+| 3   | **清理结果进证据** ✓：`pdf_temp_removed` 说删掉了没有 ✓                                          | `cargo test` 的 `a_locked_temp_file_cannot_be_cleaned_and_that_is_reported` ✓——**只有 Windows 上才跑** ✓（Windows 上被打开的文件删不掉 ✓，macOS 上锁不住 ✓）               | 跑一轮失败（把目标目录改成不可写 ✓）→ 日志里 `probe_pdf` 带 `pdf_temp_removed` ✓；正常跑完的那轮是 `pdf_temp_removed=true` ✓。**产品形态那条路径也有** ✓：`operation_result`（`command=print_native_pdf` ✓）带 `pdf_temp_removed` ✓——那是原生侧的观测 ✓，不是页面自述 ✓ |
+| 4   | **命令面有准入清单** ✓：六个受保护 ✓，两个刻意不受守卫但各有准入方式 ✓                           | `bun scripts/check-command-admission.ts` ✓ + `cargo test` 之外的 `tests/unit/check-command-admission.test.ts` ✓                                                            | 同上 ✓                                                                                                                                                                                                                                                                  |
 
 ### 2.7.3 第 3 条的"删不掉"怎么看
 
@@ -208,12 +209,12 @@ bun scripts/check-native-isolation.ts
 
 ### 2.7.4 跑完交回什么
 
-| 要交回的 | 在哪 |
-| --- | --- |
-| `cargo test` 的完整输出 ✓（含 59 passed ✓） | 终端 |
-| `bun scripts/check-command-admission.ts` 的输出 ✓ | 终端 |
-| §2.6 那轮的日志 ✓ | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` ✓ |
-| 目标目录的清空截图或 `dir` 输出 ✓（证明没有 `*.tmp-<pid>-*` 残留 ✓） | 手工 |
+| 要交回的                                                             | 在哪                                                            |
+| -------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `cargo test` 的完整输出 ✓（含 59 passed ✓）                          | 终端                                                            |
+| `bun scripts/check-command-admission.ts` 的输出 ✓                    | 终端                                                            |
+| §2.6 那轮的日志 ✓                                                    | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` ✓ |
+| 目标目录的清空截图或 `dir` 输出 ✓（证明没有 `*.tmp-<pid>-*` 残留 ✓） | 手工                                                            |
 
 ## 2.8 删掉能力清单文件（2026-11-04 新增）
 
@@ -241,12 +242,12 @@ del D:\code\Marklflow\src-tauri\capabilities\default.json
 
 ### 2.8.2 怎么算"一样"
 
-| 比什么 | 期望 |
-| --- | --- |
-| 校验器对两个日志的判定 ✓ | **逐条一致** ✓（D1b-1—D1b-6 ✓、D1c-1 ✓、D1c-2 ✓ 全是同样的结论 ✓） |
-| 页面侧回传的事件条数 ✓ | **一致** ✓（`web_event` 的条数 ✓）—— 少一条就说明 **IPC 没注进去** ✓ |
-| 守卫的判定 ✓ | 主窗口放行 ✓、输出宿主被拒 ✓，两边一样 ✓ |
-| `log_health` ✓ | `rejected=0` ✓、`dropped=0` ✓，两边一样 ✓ |
+| 比什么                   | 期望                                                                 |
+| ------------------------ | -------------------------------------------------------------------- |
+| 校验器对两个日志的判定 ✓ | **逐条一致** ✓（D1b-1—D1b-6 ✓、D1c-1 ✓、D1c-2 ✓ 全是同样的结论 ✓）   |
+| 页面侧回传的事件条数 ✓   | **一致** ✓（`web_event` 的条数 ✓）—— 少一条就说明 **IPC 没注进去** ✓ |
+| 守卫的判定 ✓             | 主窗口放行 ✓、输出宿主被拒 ✓，两边一样 ✓                             |
+| `log_health` ✓           | `rejected=0` ✓、`dropped=0` ✓，两边一样 ✓                            |
 
 ### 2.8.3 不一样怎么办
 
@@ -260,14 +261,14 @@ del D:\code\Marklflow\src-tauri\capabilities\default.json
 **宿主上跑完了四步 ✓**：删前两轮 ✓（`markflow.22696.log` 探针轮 ✓、`markflow.12032.log` 产品形态轮 ✓），
 删后两轮 ✓（`markflow.28600.log`、`markflow.27996.log` ✓）。
 
-| 比什么 | 探针轮 | 产品形态轮 |
-| --- | --- | --- |
-| 记录条数 | 52 = 52 ✓ | 61 = 61 ✓ |
-| 页面侧 web 事件条数 | 22 = 22 ✓ | 26 = 26 ✓ |
-| **整份日志逐条**（去掉时间、run/span/call id、sha256、耗时）✓ | **完全一致 ✓** | **完全一致 ✓** |
-| 守卫判定 | 主窗口 allow ✓、输出宿主 deny ✓ | 同 ✓ |
-| `log_health` | `dropped=0` ✓、`rejected=0` ✓ | 同 ✓ |
-| 校验器判定 | D1b-1/2/3/4/6 ✓、D1c-1/2 ✓ | 同 ✓ |
+| 比什么                                                        | 探针轮                          | 产品形态轮     |
+| ------------------------------------------------------------- | ------------------------------- | -------------- |
+| 记录条数                                                      | 52 = 52 ✓                       | 61 = 61 ✓      |
+| 页面侧 web 事件条数                                           | 22 = 22 ✓                       | 26 = 26 ✓      |
+| **整份日志逐条**（去掉时间、run/span/call id、sha256、耗时）✓ | **完全一致 ✓**                  | **完全一致 ✓** |
+| 守卫判定                                                      | 主窗口 allow ✓、输出宿主 deny ✓ | 同 ✓           |
+| `log_health`                                                  | `dropped=0` ✓、`rejected=0` ✓   | 同 ✓           |
+| 校验器判定                                                    | D1b-1/2/3/4/6 ✓、D1c-1/2 ✓      | 同 ✓           |
 
 **原生保存对话框在删后照常弹** ✓（`select_native_save granted=true elapsed_ms=10941` ✓）✓ →
 删掉 capability 没有影响 Rust 侧调对话框 ✓。
@@ -280,12 +281,12 @@ del D:\code\Marklflow\src-tauri\capabilities\default.json
 
 ### 2.8.4 交回什么
 
-| 要交回的 | 在哪 |
-| --- | --- |
-| ① 的两个日志 ✓（删之前 ✓） | `%LOCALAPPDATA%\com.markflow.desktop\logs\` ✓ |
-| ③ 的两个日志 ✓（删之后 ✓） | 同上 ✓ |
-| 两个日志各自的校验器输出 ✓ | 终端 ✓ |
-| ② 那一步的确认 ✓（文件确实没了 ✓） | 终端 ✓ |
+| 要交回的                           | 在哪                                          |
+| ---------------------------------- | --------------------------------------------- |
+| ① 的两个日志 ✓（删之前 ✓）         | `%LOCALAPPDATA%\com.markflow.desktop\logs\` ✓ |
+| ③ 的两个日志 ✓（删之后 ✓）         | 同上 ✓                                        |
+| 两个日志各自的校验器输出 ✓         | 终端 ✓                                        |
+| ② 那一步的确认 ✓（文件确实没了 ✓） | 终端 ✓                                        |
 
 **删文件本身是一个单独的提交** ✓，**在两轮日志回来之前不动它** ✓ ——
 文档已经写了它该被删 ✓，但删它的前提是宿主上证明它不管事 ✓。
@@ -304,6 +305,7 @@ cd /d D:\code\AI\Marklflow
 git pull --ff-only origin architecture-refactor
 git log --oneline -1
 ```
+
 期望最新提交含 `feat: the native root is wired into the export` ✓。
 
 **当前目录必须是仓库根** ✓ —— 配置在 `<仓库>\conf\markflow.toml` ✓，日志在 `<仓库>\log\` ✓ ✓。
@@ -315,6 +317,7 @@ git log --oneline -1
 cd /d E:\code\AI\Marklflow
 cargo build --manifest-path src-tauri\Cargo.toml --locked
 ```
+
 **默认构建即可** ✓ —— 静默打印随产品构建走 ✓（原先在 `pdf-probe` 特性后面 ✓，产品够不着 ✓）✓ ✓。
 
 ### 2.9.3 三轮导出
@@ -323,12 +326,14 @@ cargo build --manifest-path src-tauri\Cargo.toml --locked
 :: ① 原生根：conf\markflow.toml 里 export.root = "native" ✓
 cargo run --manifest-path src-tauri\Cargo.toml --locked
 ```
+
 在应用的**导出面板**里选「浏览器打印 A4 PDF」✓ → 弹**原生保存对话框** ✓ → 选一个你知道的目录 ✓ → 记下文件名 ✓（应是文档标题 ✓）✓ → **正常退出应用** ✓（关窗口 ✓ —— 不正常退出就没有 `run_end` ✓）✓。
 
 ```bat
 :: ② Web 根：把 export.root 改回 "web" ✓
 cargo run --manifest-path src-tauri\Cargo.toml --locked
 ```
+
 同样导一份 ✓ → 这次弹**浏览器打印对话框** ✓ → 目标选「另存为 PDF」✓ → 存到**同一个目录** ✓ ✓。
 
 ```bat
@@ -339,26 +344,27 @@ cargo run --manifest-path src-tauri\Cargo.toml --locked
 ::          powershell -NoProfile -Command "$f=[System.IO.File]::Open('D:\probe-out\<那个文件名>','Open','ReadWrite','None'); Write-Host 'locked'; while($true){Start-Sleep 60}"
 ::          然后照 ① 再导一次 ✓（保存到同一目录同一名 ✓，问是否替换点"是" ✓）
 ```
+
 **注意** ✓：原生根下**字节格式也走原生保存对话框** ✓（名字落在用户选的位置上 ✓）—— 那是设计如此 ✓ ✓。
 
 ### 2.9.4 期望
 
-| 轮次 | 期望 |
-| --- | --- |
+| 轮次     | 期望                                                                                                                                                                                          |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 原生根 ✓ | 弹**原生**保存对话框 ✓（不是浏览器那个 ✓）；日志里有 `select_native_save` ✓ 与 `print_native_pdf` ✓（`result=ok` ✓ `committed=true` ✓ `pdf_temp_removed=true` ✓）；**没有**任何打印对话框 ✓ ✓ |
-| Web 根 ✓ | 弹**浏览器**打印对话框 ✓；日志里**没有** `print_native_pdf` ✓ ✓ |
-| 取消 ✓ | 目录里**没有新文件** ✓ ✓ |
-| 失败 ✓ | 日志里 `result=error` ✓ + `reason_code=print-not-committed` ✓ + `committed=false` ✓；**旧文件哈希不变** ✓ ✓ |
+| Web 根 ✓ | 弹**浏览器**打印对话框 ✓；日志里**没有** `print_native_pdf` ✓ ✓                                                                                                                               |
+| 取消 ✓   | 目录里**没有新文件** ✓ ✓                                                                                                                                                                      |
+| 失败 ✓   | 日志里 `result=error` ✓ + `reason_code=print-not-committed` ✓ + `committed=false` ✓；**旧文件哈希不变** ✓ ✓                                                                                   |
 
 ### 2.9.5 两份 PDF 的并排比对
 
 **这是 M9 的价值证明 ✓** —— 同一份文档 ✓，两个根 ✓：
 
-| | 原生那份 ✓ | Web 那份 ✓ |
-| --- | --- | --- |
+|                       | 原生那份 ✓                        | Web 那份 ✓                                |
+| --------------------- | --------------------------------- | ----------------------------------------- |
 | 写出器（`/Producer`） | `Skia/PDF` ✓（WebView2 自己的 ✓） | `Microsoft: Print To PDF` ✓（打印驱动 ✓） |
-| 字体（`/BaseFont`） | 有 ✓ 且 `/FontFile2` 嵌入 ✓ | **无** ✓ |
-| 文本层 | **有** ✓（正文可提取 ✓） | **无** ✓ |
+| 字体（`/BaseFont`）   | 有 ✓ 且 `/FontFile2` 嵌入 ✓       | **无** ✓                                  |
+| 文本层                | **有** ✓（正文可提取 ✓）          | **无** ✓                                  |
 
 读法 ✓：`/Producer` ✓、`/BaseFont` ✓、`/FontFile2` ✓、`/Type /Page` 的个数 ✓、`/MediaBox` ✓、`/ToUnicode` ✓ ✓ —— 都是读字节就能定的事实 ✓ ✓（不需要装任何工具 ✓ ✓）。
 
@@ -373,56 +379,57 @@ bun scripts\pdf-probe-check.ts docs\acceptance\pdf-probe
 :: ② M9 那六份 ✓（你拷到哪就写哪 ✓）
 bun scripts\pdf-probe-check.ts <六个日志的目录>
 ```
+
 **期望** ✓：① D1b-1—D1b-6 ✓ 与 D1c-1 ✓、D1c-2 全通过 ✓，诊断 **错误 0 ✓、告警 0 ✓、提示 1 ✓** ✓；
 ② 诊断 **错误 0 ✓、告警 0 ✓、提示 0 ✓** ✓（D1b-5 通过 ✓，其余判「未能确认」✓ —— 它们不是探针轮 ✓ ✓）。
 
 **只想看其中几份** ✓ ⇒ 用 cmd 的循环 ✓ ✓（cmd 的 `for` 会展开通配符 ✓ ✓）：
+
 ```bat
 for %f in (<目录>\*.log) do bun scripts\pdf-probe-check.ts %f
 ```
 
 ### 2.9.7 交回
 
-| 交回 | 在哪 |
-| --- | --- |
-| 两份 PDF ✓（原生一份 ✓、Web 一份 ✓） | 目标目录 ✓ |
-| 各轮日志 ✓ | `<仓库>\log\markflow.<pid>.log` ✓ |
-| 目标目录的 `dir` ✓ | 终端 ✓ |
-| 失败那轮旧文件的前后哈希 ✓ | 手工 ✓ |
-
+| 交回                                 | 在哪                              |
+| ------------------------------------ | --------------------------------- |
+| 两份 PDF ✓（原生一份 ✓、Web 一份 ✓） | 目标目录 ✓                        |
+| 各轮日志 ✓                           | `<仓库>\log\markflow.<pid>.log` ✓ |
+| 目标目录的 `dir` ✓                   | 终端 ✓                            |
+| 失败那轮旧文件的前后哈希 ✓           | 手工 ✓                            |
 
 ## 3. 逐项检查表
 
-| # | 检查项 | 怎么看 | 期望 |
-| --- | --- | --- | --- |
-| 1 | 编译 | `cargo build --locked --features pdf-probe` | 0 error 0 warning |
-| 2 | 探针跑完 | 日志里有 `probe_cleanup` | 有 |
-| 3 | 就绪成立 | `probe_readiness` | `eval_ok=true`、`is_expected_document=true`、`ready=true`、`page_box_count=3`、`first_page_box_size=794x1123`、`images_loaded=images_total` |
-| 4 | 打印成功 | `probe_pdf` | `ok=true`、`bytes>0`、`committed=true`、`sha256` 非空 ✓ |
-| 5 | PDF 产出 | 目标文件存在 | 页数 3、页面尺寸 A4（210×297mm） |
-| 6 | 无残留临时文件 | 目标同目录 | 无 `*.tmp-<pid>-*` |
-| 7 | 无弹框 | 跑探针期间盯着屏幕 | 无原生对话框、无打印面板（D1c-5，人工） |
-| 8 | 日志完整 | 日志末尾 | 有 `run_end` |
-| 9 | 健康计数 | `log_health` | `dropped=0`、`rejected=0`、`write_failures=0`、`file_unavailable=false` |
-| 10 | 机器核对 | 校验器 | 六条 D1b + 两条 D1c 全通过、错误级诊断 0 |
+| #   | 检查项         | 怎么看                                      | 期望                                                                                                                                        |
+| --- | -------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 编译           | `cargo build --locked --features pdf-probe` | 0 error 0 warning                                                                                                                           |
+| 2   | 探针跑完       | 日志里有 `probe_cleanup`                    | 有                                                                                                                                          |
+| 3   | 就绪成立       | `probe_readiness`                           | `eval_ok=true`、`is_expected_document=true`、`ready=true`、`page_box_count=3`、`first_page_box_size=794x1123`、`images_loaded=images_total` |
+| 4   | 打印成功       | `probe_pdf`                                 | `ok=true`、`bytes>0`、`committed=true`、`sha256` 非空 ✓                                                                                     |
+| 5   | PDF 产出       | 目标文件存在                                | 页数 3、页面尺寸 A4（210×297mm）                                                                                                            |
+| 6   | 无残留临时文件 | 目标同目录                                  | 无 `*.tmp-<pid>-*`                                                                                                                          |
+| 7   | 无弹框         | 跑探针期间盯着屏幕                          | 无原生对话框、无打印面板（D1c-5，人工）                                                                                                     |
+| 8   | 日志完整       | 日志末尾                                    | 有 `run_end`                                                                                                                                |
+| 9   | 健康计数       | `log_health`                                | `dropped=0`、`rejected=0`、`write_failures=0`、`file_unavailable=false`                                                                     |
+| 10  | 机器核对       | 校验器                                      | 六条 D1b + 两条 D1c 全通过、错误级诊断 0                                                                                                    |
 
 ---
 
 ## 4. 出问题时按这个顺序查
 
-| 症状 | 先看哪里 | 通常是什么 |
-| --- | --- | --- |
-| 编译报 E0521 之类 | 报错文件与行号 | 本文档 §1 有同类问题的说明；新的错误贴出来再判 |
-| `probe_source_check reachable=false` | dev server 是否在跑、端口是否 3000 | dev server 没起或端口不对 |
-| `probe_navigation navigated=false` | 探针页是否可取 | dev server 没提供探针页 |
-| `probe_readiness eval_ok=false` | 页面是否加载 | 原生求值拿不到内容：页面没加载或执行被挡 |
-| `probe_readiness is_expected_document=false` | 导航是否换了文档 | 求值落在了别的文档上 |
-| `probe_readiness ready=false` | `ready_state` 与 `fonts_status` 字段 | 文档未达就绪条件 |
-| `probe_pdf ok=false` | `reason` 字段 | 带 HRESULT（原生错误码）或超时 |
-| `probe_pdf ok=true committed=false` | 目标同目录 | 提交未成功；结合错误及目标前后状态检查，不以日志字段代替文件核验 |
-| PDF 是空白页 | 见 §4.1 | 输入、就绪判据、打印参数或隐藏宿主行为均需排查 |
-| `log_health dropped/rejected > 0` | 队列与限流计数 | 有记录没落盘，证据可能不全 → 记"未能确认"，**不要当作通过** |
-| 没有 `run_end` | 是否强杀退出 | 不宣称日志完整 |
+| 症状                                         | 先看哪里                             | 通常是什么                                                       |
+| -------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------- |
+| 编译报 E0521 之类                            | 报错文件与行号                       | 本文档 §1 有同类问题的说明；新的错误贴出来再判                   |
+| `probe_source_check reachable=false`         | dev server 是否在跑、端口是否 3000   | dev server 没起或端口不对                                        |
+| `probe_navigation navigated=false`           | 探针页是否可取                       | dev server 没提供探针页                                          |
+| `probe_readiness eval_ok=false`              | 页面是否加载                         | 原生求值拿不到内容：页面没加载或执行被挡                         |
+| `probe_readiness is_expected_document=false` | 导航是否换了文档                     | 求值落在了别的文档上                                             |
+| `probe_readiness ready=false`                | `ready_state` 与 `fonts_status` 字段 | 文档未达就绪条件                                                 |
+| `probe_pdf ok=false`                         | `reason` 字段                        | 带 HRESULT（原生错误码）或超时                                   |
+| `probe_pdf ok=true committed=false`          | 目标同目录                           | 提交未成功；结合错误及目标前后状态检查，不以日志字段代替文件核验 |
+| PDF 是空白页                                 | 见 §4.1                              | 输入、就绪判据、打印参数或隐藏宿主行为均需排查                   |
+| `log_health dropped/rejected > 0`            | 队列与限流计数                       | 有记录没落盘，证据可能不全 → 记"未能确认"，**不要当作通过**      |
+| 没有 `run_end`                               | 是否强杀退出                         | 不宣称日志完整                                                   |
 
 ### 4.1 PDF 是空白页
 
@@ -447,6 +454,7 @@ bun scripts/check-windows-com.ts
 **前提**：rustup 工具链 + `rustup target add x86_64-pc-windows-msvc`。缺了会**跳过并说明**（不是失败——那是环境缺件）。
 
 **它验不到什么**：
+
 - 只验**类型与 lint**，不验运行行为（COM 调用是否成功、隐藏窗口是否排版，都得上真机）。
 - `pdf_print.rs` 里的 `#[cfg(target_os = "windows")]` 分支**现在在里面** ✓（§1.6 ✓）；但 `probe.rs` 的探针接线与 `files.rs` 的 Windows 专属测试仍要靠真机 ✓。
 
@@ -456,15 +464,15 @@ bun scripts/check-windows-com.ts
 
 基线`7f0dbe58906e6f286a24acb116ea3248431b7e76`加本轮未提交修复；由GPT-6 Luna执行定向检查。首次失败与修复后证据分别保留在`D:\codex\.codex\tmp\windows-build-check-20261103`，摘要为`summary.md`，不以复跑覆盖首次结果。
 
-| 范围 | 实际结果 |
-| --- | --- |
-| 环境 | Windows x86_64；本机Rust/Cargo 1.98.1，未验证文档要求的1.94.0，不将本机结果视作CI工具链结果 |
-| feature构建 | `cargo build --locked --features pdf-probe`成功；无Rust代码错误，但MSVC创建import library/.exp的stdout被Cargo `linker_messages`记为1条警告，未屏蔽，不称零警告 |
-| 正常退出修复 | 默认run_id `8b1a1543-6f58-4489-8a87-d67ef941adbb`及修复后探针运行均经精确PID请求正常关窗，run_end和shutdown健康摘要存在，计数全零；首次缺run_end的记录仍保留 |
-| 探针运行 | 主窗口读取允许、输出宿主拒绝、选择器机器部分及授权清理成立；错误角色读取是刻意负例，不与成功读取混为同请求 |
-| 就绪与PDF | 目标文档complete、fonts loaded、3个794×1123页面盒、图片1/1；原生输出ok、committed；`probe-output-r2.pdf`为208593字节、3页A4（594.96×841.92pt） |
-| 修复后机器校验 | 合并默认和feature日志：D1b-1至4、D1b-6、D1c-1/2通过；错误0、告警0、内容匹配来源提示1。退出码2，原因是D1b-5仍未能确认，不能称全项通过 |
-| 定向回归 | `pdf-probe-check.test.ts` 21项通过；tools和integration两个tsconfig类型检查通过；修改的TS脚本/测试定向oxlint通过 |
+| 范围           | 实际结果                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 环境           | Windows x86_64；本机Rust/Cargo 1.98.1，未验证文档要求的1.94.0，不将本机结果视作CI工具链结果                                                                    |
+| feature构建    | `cargo build --locked --features pdf-probe`成功；无Rust代码错误，但MSVC创建import library/.exp的stdout被Cargo `linker_messages`记为1条警告，未屏蔽，不称零警告 |
+| 正常退出修复   | 默认run_id `8b1a1543-6f58-4489-8a87-d67ef941adbb`及修复后探针运行均经精确PID请求正常关窗，run_end和shutdown健康摘要存在，计数全零；首次缺run_end的记录仍保留   |
+| 探针运行       | 主窗口读取允许、输出宿主拒绝、选择器机器部分及授权清理成立；错误角色读取是刻意负例，不与成功读取混为同请求                                                     |
+| 就绪与PDF      | 目标文档complete、fonts loaded、3个794×1123页面盒、图片1/1；原生输出ok、committed；`probe-output-r2.pdf`为208593字节、3页A4（594.96×841.92pt）                 |
+| 修复后机器校验 | 合并默认和feature日志：D1b-1至4、D1b-6、D1c-1/2通过；错误0、告警0、内容匹配来源提示1。退出码2，原因是D1b-5仍未能确认，不能称全项通过                           |
+| 定向回归       | `pdf-probe-check.test.ts` 21项通过；tools和integration两个tsconfig类型检查通过；修改的TS脚本/测试定向oxlint通过                                                |
 
 首次默认权限构建因`.cargo-build-lock`访问被拒（OS error 5）失败；授权权限后继续构建，该环境失败保留，不归为代码失败。完整命令、日志及哈希见外部摘要。
 

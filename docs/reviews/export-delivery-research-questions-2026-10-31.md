@@ -12,16 +12,16 @@
 
 ## 0. 已确认的事实（不必再查）
 
-| # | 事实 | 出处 |
-| --- | --- | --- |
-| F1 | 我们的写入序列是：`showSaveFilePicker`（用户手势内）→ **[间隔数秒：prepare + DOCX 兼容性确认 + 生成 DOCX]** → `createWritable` → `write(blob)` → `close()` → 回执 `'saved'` | `src/core/platform/web/byteDelivery.ts`、`src/application/exports/exportService.ts` |
-| F2 | `close()` resolve 之后我们**回读** `handle.getFile()` 比对大小；读不到或大小不符即判「写丢了」，改投浏览器下载（回执 `'recovered-download'`）。**这只是检测与兜底，不修复写入本身** | 同上（2026-10-31 改动） |
-| F3 | 写出的**字节是对的**：e2e 探针把写入流的内容解包为 zip，`word/document.xml` 含源文本、公式为原生 `m:oMath` | `tests/e2e/web-unified-save.spec.ts`、`tests/e2e/docx-diagnostics.spec.ts` |
-| F4 | PDF 打印用的是**已分页的静态 HTML**（分页在父窗口由 `paginatePreparedContent` 完成），iframe 只负责承载与打印；iframe 的 CSP 为 `default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:`，字体与图片均为 `data:` 内联 | `src/core/export/pdfExporter.ts`、`src/core/platform/web/pdfDelivery.ts` |
-| F5 | 打印前在 **iframe 自己的 window** 内等待：图片 `decode()`、`document.fonts.ready`、**两帧 rAF**（`waitForLayout` 用 `doc.defaultView.requestAnimationFrame`） | `src/core/export/documentPrint.ts` |
-| F6 | 打印宿主 iframe 的几何是 `position:fixed;left:-20000px;top:0;width:794px;height:1123px`，即**完全在视口之外**；`sandbox="allow-same-origin allow-modals"`（**无** `allow-scripts`） | `src/core/platform/web/pdfDelivery.ts` |
-| F7 | `print()` 调用在 iframe 的 `contentWindow` 上（打印的是子框架文档），宿主在 `afterprint` 后延迟 1500 ms 才移除 | 同上 |
-| F8 | 现场结论：第一次打印为空白/无内容，第二次打印正常；PDF 的「另存为」是浏览器打印对话框自身的能力 | 用户现场（Windows 11 + Edge） |
+| #   | 事实                                                                                                                                                                                                                                        | 出处                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| F1  | 我们的写入序列是：`showSaveFilePicker`（用户手势内）→ **[间隔数秒：prepare + DOCX 兼容性确认 + 生成 DOCX]** → `createWritable` → `write(blob)` → `close()` → 回执 `'saved'`                                                                 | `src/core/platform/web/byteDelivery.ts`、`src/application/exports/exportService.ts` |
+| F2  | `close()` resolve 之后我们**回读** `handle.getFile()` 比对大小；读不到或大小不符即判「写丢了」，改投浏览器下载（回执 `'recovered-download'`）。**这只是检测与兜底，不修复写入本身**                                                         | 同上（2026-10-31 改动）                                                             |
+| F3  | 写出的**字节是对的**：e2e 探针把写入流的内容解包为 zip，`word/document.xml` 含源文本、公式为原生 `m:oMath`                                                                                                                                  | `tests/e2e/web-unified-save.spec.ts`、`tests/e2e/docx-diagnostics.spec.ts`          |
+| F4  | PDF 打印用的是**已分页的静态 HTML**（分页在父窗口由 `paginatePreparedContent` 完成），iframe 只负责承载与打印；iframe 的 CSP 为 `default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:`，字体与图片均为 `data:` 内联 | `src/core/export/pdfExporter.ts`、`src/core/platform/web/pdfDelivery.ts`            |
+| F5  | 打印前在 **iframe 自己的 window** 内等待：图片 `decode()`、`document.fonts.ready`、**两帧 rAF**（`waitForLayout` 用 `doc.defaultView.requestAnimationFrame`）                                                                               | `src/core/export/documentPrint.ts`                                                  |
+| F6  | 打印宿主 iframe 的几何是 `position:fixed;left:-20000px;top:0;width:794px;height:1123px`，即**完全在视口之外**；`sandbox="allow-same-origin allow-modals"`（**无** `allow-scripts`）                                                         | `src/core/platform/web/pdfDelivery.ts`                                              |
+| F7  | `print()` 调用在 iframe 的 `contentWindow` 上（打印的是子框架文档），宿主在 `afterprint` 后延迟 1500 ms 才移除                                                                                                                              | 同上                                                                                |
+| F8  | 现场结论：第一次打印为空白/无内容，第二次打印正常；PDF 的「另存为」是浏览器打印对话框自身的能力                                                                                                                                             | 用户现场（Windows 11 + Edge）                                                       |
 
 ---
 

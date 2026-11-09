@@ -12,7 +12,6 @@ P2：原名称仅限120码点及UTF-16长度，未限UTF-8字节。可编辑HTML
 
 已确认历史4025491的九个Git LF源文件哈希及五份PDF预检哈希均吻合；原始PDF已按字节复制至D:/codex/ex-w2-acceptance-archive，避免后续test-results清理覆盖历史证据，不把归档视为新增系统验收。
 
-
 P2：历史PDF路径位于会被Playwright清理的test-results，后续回归会使验收JSON失去文件引用。已在重跑前确认五份原始哈希，原样归档并将JSON的path改为稳定归档路径；originalPath保存旧路径，所有原哈希/页数/验证计数不变。九个源文件哈希匹配4025491，补sourceSnapshotCommit明确历史口径；本轮结果另记，不用新文件冒充旧产物。
 
 审查结论：

@@ -20,11 +20,9 @@ Luna负责TS协议测试、Rust真实临时文件夹具、严格类型/lint/模�
 
 待补：系统选择器交互、跨OS真实替换/权限/文件系统差异、生产打开/原位保存/导出接入、远端CI与安装包；EX-W0系统PDF文件和默认名、原生保存/WordWPS等既有门槛继续保留，完整发布未通过。不开始M4，不推送，不升级MathJax或替换Paged.js。
 
-
 ## 本轮结果
 
 - bun run check退出0：204受管源/配置、61单元文件、443项单元，含7项新增TS协议测试；类型、lint、模块边界和生产构建通过。构建保留既有chunk体积/hash.js动态导入提示，未扩大优化范围。
 - cargo fmt --check、cargo check --locked、cargo test --locked均退出0，7项Rust真实临时文件测试通过，包括新建/覆盖/空文件、50MiB边界/超限、UTF-8/BOM、读写授权隔离/撤销及Windows锁定目标的真实persist失败清理。未注入所有write/flush故障，不宣称全故障覆盖或断电保证。
 - Cargo.lock新增dialog 2.8.4、tempfile 3.27.0及必要传递项；dialog引入的tauri-plugin-fs 2.7.1只作为传递依赖，无JS filesystem权限或生产调用。Cargo解算合并部分Windows重复传递版本，未升级现有直接依赖；bun.lock/package.json未改。
 - Luna确认两份预存architecture索引SHA-256与M0一致，未纳入提交。原始日志归档D:/codex/m3-review-2026-10-30/，详见[验收JSON](../acceptance/tauri-migration-m3-2026-10-30.json)。
-

@@ -4,16 +4,16 @@
 
 ## 实施结果与模块边界
 
-| 模块/边界 | 实际变化 | 证据 |
-| --- | --- | --- |
-| model/themeSchema、policy/htmlRules | schema、HEX/RGB、URL/CSS/引用规则脱离DOMPurify和window；保留旧浏览器模块兼容导出 | Worker纯层编译、node无DOM导入、既有策略回归 |
-| parse/markdown | 纯语法树、outline、公式提取及带UTF-16 offset/行列的块源范围；原文保留，结果可structuredClone | node测试、Worker真实导入及实体解码 |
-| render/markdownHtml、htmlPolicy | 语义到HTML与公式/DOT生成留在浏览器渲染层，净化实例首次使用时创建；旧parser模块仅兼容门面，纯调用点已改用parse | 既有内容/公式/分页/导出回归 |
-| DocumentRepository端口/Web实现 | unknown输入校验；既有文档v1/数组兼容读取，支持storageVersion=1封装，未知版本隔离不猜迁移；IDB保持v1，恢复备份使用metadata内的markflow-recovery命名空间 | 版本与损坏数据单元测试、真实IDB兼容/恢复E2E |
-| 损坏恢复 | 原记录/字符串不删除、不覆盖；稳定内容指纹备份，界面可下载恢复JSON；配额失败保留原数据及瞬时备份 | 原件字节/对象断言、备份下载E2E、配额/损坏备份索引测试 |
-| 写入正确性 | 入队前校验与快照，修改串行，拒绝较旧修订覆盖新数据；失败不污染后续写入；克隆嵌套默认主题 | 并发、迟到保存及主题隔离测试 |
-| 类型环境与依赖门禁 | browser/worker-pure/tools/integration配置分别检查；边界脚本覆盖静态导入、再导出、type import、动态导入及宿主全局；负例防止Worker环境获得Window/Node | 四套typecheck、check:boundaries、负例/违规导入测试 |
-| CI入口 | 既有CI调用统一typecheck/lint，增加architecture-refactor触发分支；Worker烟测使用独立dev宿主，其余用生产preview | 本地完整回归；没有远端运行声明 |
+| 模块/边界                           | 实际变化                                                                                                                                               | 证据                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| model/themeSchema、policy/htmlRules | schema、HEX/RGB、URL/CSS/引用规则脱离DOMPurify和window；保留旧浏览器模块兼容导出                                                                       | Worker纯层编译、node无DOM导入、既有策略回归           |
+| parse/markdown                      | 纯语法树、outline、公式提取及带UTF-16 offset/行列的块源范围；原文保留，结果可structuredClone                                                           | node测试、Worker真实导入及实体解码                    |
+| render/markdownHtml、htmlPolicy     | 语义到HTML与公式/DOT生成留在浏览器渲染层，净化实例首次使用时创建；旧parser模块仅兼容门面，纯调用点已改用parse                                          | 既有内容/公式/分页/导出回归                           |
+| DocumentRepository端口/Web实现      | unknown输入校验；既有文档v1/数组兼容读取，支持storageVersion=1封装，未知版本隔离不猜迁移；IDB保持v1，恢复备份使用metadata内的markflow-recovery命名空间 | 版本与损坏数据单元测试、真实IDB兼容/恢复E2E           |
+| 损坏恢复                            | 原记录/字符串不删除、不覆盖；稳定内容指纹备份，界面可下载恢复JSON；配额失败保留原数据及瞬时备份                                                        | 原件字节/对象断言、备份下载E2E、配额/损坏备份索引测试 |
+| 写入正确性                          | 入队前校验与快照，修改串行，拒绝较旧修订覆盖新数据；失败不污染后续写入；克隆嵌套默认主题                                                               | 并发、迟到保存及主题隔离测试                          |
+| 类型环境与依赖门禁                  | browser/worker-pure/tools/integration配置分别检查；边界脚本覆盖静态导入、再导出、type import、动态导入及宿主全局；负例防止Worker环境获得Window/Node    | 四套typecheck、check:boundaries、负例/违规导入测试    |
+| CI入口                              | 既有CI调用统一typecheck/lint，增加architecture-refactor触发分支；Worker烟测使用独立dev宿主，其余用生产preview                                          | 本地完整回归；没有远端运行声明                        |
 
 Worker烟测暴露了真实传递依赖问题：decode-named-character-reference的browser入口在模块导入时调用document.createElement。现在用Vite别名解析同一1.3.0包的无DOM默认入口，不伪造window/document。测试额外检查©及组合数学实体，保留语义。此前首次运行还被依赖预构建HMR刷新打断；测试宿主改为无HMR页面，仍执行真实Worker。
 

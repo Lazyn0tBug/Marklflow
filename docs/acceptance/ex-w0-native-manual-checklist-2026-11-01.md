@@ -33,17 +33,17 @@ http://127.0.0.1:3000/tests/fixtures/architecture/web-native-pdf-probe.html
 
 页面下方的 JSON 面板（`<pre data-state>`）在每次导出后给出：
 
-| 字段 | 含义 | 记录 |
-| --- | --- | --- |
-| `jobTitle` | 打印宿主的标题 | 待填 |
-| `expectedPages` / `actualPages` | 冻结产物声明的页数 / 宿主里排出的页数 | 待填 |
-| `missingRows` / `missingParagraphs` | 宿主中缺失的 `ROW_xxx` / `PARA_xxx` 标记 | 待填（应为空） |
-| `finalMarker` / `laterSourcePresent` | `EXW0_FINAL_MARKER` 是否在 / `EXW0_LATER_SOURCE` 是否误入 | 待填 |
-| `svgCount` / `imageCount` | 矢量与位图对象数量 | 待填 |
-| `links` | 宿主里的链接（外链与页内锚点） | 待填 |
-| `beforeprintObserved` / `exportBusyAtNativeCall` / `domAtNativeCall` | 打印请求离开浏览器瞬间的状态（宿主已就绪、业务仍忙、DOM 快照） | 待填 |
-| `afterprintObserved` / `pagehideObserved` / `remainingFrames` / `settledFrames` | 打印宿主是否被释放、延迟后是否归零 | 待填 |
-| `htmlSha256` | 宿主 HTML 的摘要（两次导出应一致） | 待填 |
+| 字段                                                                            | 含义                                                           | 记录           |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------- |
+| `jobTitle`                                                                      | 打印宿主的标题                                                 | 待填           |
+| `expectedPages` / `actualPages`                                                 | 冻结产物声明的页数 / 宿主里排出的页数                          | 待填           |
+| `missingRows` / `missingParagraphs`                                             | 宿主中缺失的 `ROW_xxx` / `PARA_xxx` 标记                       | 待填（应为空） |
+| `finalMarker` / `laterSourcePresent`                                            | `EXW0_FINAL_MARKER` 是否在 / `EXW0_LATER_SOURCE` 是否误入      | 待填           |
+| `svgCount` / `imageCount`                                                       | 矢量与位图对象数量                                             | 待填           |
+| `links`                                                                         | 宿主里的链接（外链与页内锚点）                                 | 待填           |
+| `beforeprintObserved` / `exportBusyAtNativeCall` / `domAtNativeCall`            | 打印请求离开浏览器瞬间的状态（宿主已就绪、业务仍忙、DOM 快照） | 待填           |
+| `afterprintObserved` / `pagehideObserved` / `remainingFrames` / `settledFrames` | 打印宿主是否被释放、延迟后是否归零                             | 待填           |
+| `htmlSha256`                                                                    | 宿主 HTML 的摘要（两次导出应一致）                             | 待填           |
 
 ## 3. 保存矩阵
 
@@ -51,21 +51,21 @@ http://127.0.0.1:3000/tests/fixtures/architecture/web-native-pdf-probe.html
 
 ### 3.1 macOS
 
-| 公式模式 | 输出目标 | 归档名 | 实际路径 | 未修改前默认名 | 结果 |
-| --- | --- | --- | --- | --- | --- |
-| MathML | 浏览器「打印 → 存储为 PDF」 | macos-mathml.pdf | 待填 | 待填 | 待验 |
-| SVG | 浏览器「打印 → 存储为 PDF」 | macos-svg.pdf | 待填 | 待填 | 待验 |
+| 公式模式 | 输出目标                    | 归档名           | 实际路径 | 未修改前默认名 | 结果 |
+| -------- | --------------------------- | ---------------- | -------- | -------------- | ---- |
+| MathML   | 浏览器「打印 → 存储为 PDF」 | macos-mathml.pdf | 待填     | 待填           | 待验 |
+| SVG      | 浏览器「打印 → 存储为 PDF」 | macos-svg.pdf    | 待填     | 待填           | 待验 |
 
 macOS 默认**没有**与「Microsoft Print to PDF」等价的系统打印设备 ⇒ 该行按「不可用/未验证」记，不要求额外安装设备；浏览器路径的结果不外推到系统设备路径。
 
 ### 3.2 Windows
 
-| 公式模式 | 输出目标 | 归档名 | 实际路径 | 未修改前默认名 | 结果 |
-| --- | --- | --- | --- | --- | --- |
-| MathML | 浏览器另存为 PDF | edge-mathml.pdf | 待填 | 待填 | 待验 |
-| SVG | 浏览器另存为 PDF | edge-svg.pdf | 待填 | 待填 | 待验 |
-| MathML | Microsoft Print to PDF | driver-mathml.pdf | 待填 | 待填 | 待验 |
-| SVG | Microsoft Print to PDF | driver-svg.pdf | 待填 | 待填 | 待验 |
+| 公式模式 | 输出目标               | 归档名            | 实际路径 | 未修改前默认名 | 结果 |
+| -------- | ---------------------- | ----------------- | -------- | -------------- | ---- |
+| MathML   | 浏览器另存为 PDF       | edge-mathml.pdf   | 待填     | 待填           | 待验 |
+| SVG      | 浏览器另存为 PDF       | edge-svg.pdf      | 待填     | 待填           | 待验 |
+| MathML   | Microsoft Print to PDF | driver-mathml.pdf | 待填     | 待填           | 待验 |
+| SVG      | Microsoft Print to PDF | driver-svg.pdf    | 待填     | 待填           | 待验 |
 
 其它 OS 用其实际系统设备另开记录，不由 Windows 推断 macOS。
 
@@ -97,11 +97,11 @@ bun scripts/check-pdf-file.ts <文件.pdf> CJK_CHECK EXW0_FINAL_MARKER ROW_000 R
 
 每个输出目标各取消一次，分别记录：
 
-| 项 | 记录 |
-| --- | --- |
-| 取消位置（原生打印界面 / 保存框） | 待填 |
+| 项                                         | 记录 |
+| ------------------------------------------ | ---- |
+| 取消位置（原生打印界面 / 保存框）          | 待填 |
 | 是否产生文件（磁盘实际检查，不看应用提示） | 待填 |
-| 取消后能否重新导出 | 待填 |
+| 取消后能否重新导出                         | 待填 |
 
 取消后的应用反馈只表示「已交由浏览器处理」，**不能**当作「已保存」；也不要把 `afterprint` 标志当作保存成功。
 

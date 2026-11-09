@@ -14,16 +14,16 @@
 
 ## 背景事实（仓库侧，已核对）
 
-| 事实 | 出处 |
-| --- | --- |
-| 草稿落盘已经是自动的：每次编辑后 700ms 去抖写 IndexedDB | `src/App.tsx` 的 `queueSave` |
-| 顶栏"保存"按钮在 Web 形态下做的事与自动落盘**是同一件事**（只是提前） | `src/App.tsx` 的 `handleSaveImmediately` → `persist` |
-| `beforeunload` 守卫只 `preventDefault()` + `returnValue=''`，**不落盘** | `src/App.tsx` 的 `useEffect` |
-| 守卫的判据是"有待落盘的定时器 **或** 有 dirty 的文档" | 同上 |
-| Web 形态**没有服务端**：纯静态 + IndexedDB | `docs/design/local-document-support-2026-11-05.md` §6.5 |
-| Web 形态**没有原生句柄**：没有文件引用、不能写回磁盘 | 同上 |
-| e2e 跑在 `http://127.0.0.1:4173` 等**普通 HTTP** 地址上 | `playwright.config.ts` |
-| 桌面端是 Tauri（`tauri://` 协议） | `src-tauri/` |
+| 事实                                                                    | 出处                                                    |
+| ----------------------------------------------------------------------- | ------------------------------------------------------- |
+| 草稿落盘已经是自动的：每次编辑后 700ms 去抖写 IndexedDB                 | `src/App.tsx` 的 `queueSave`                            |
+| 顶栏"保存"按钮在 Web 形态下做的事与自动落盘**是同一件事**（只是提前）   | `src/App.tsx` 的 `handleSaveImmediately` → `persist`    |
+| `beforeunload` 守卫只 `preventDefault()` + `returnValue=''`，**不落盘** | `src/App.tsx` 的 `useEffect`                            |
+| 守卫的判据是"有待落盘的定时器 **或** 有 dirty 的文档"                   | 同上                                                    |
+| Web 形态**没有服务端**：纯静态 + IndexedDB                              | `docs/design/local-document-support-2026-11-05.md` §6.5 |
+| Web 形态**没有原生句柄**：没有文件引用、不能写回磁盘                    | 同上                                                    |
+| e2e 跑在 `http://127.0.0.1:4173` 等**普通 HTTP** 地址上                 | `playwright.config.ts`                                  |
+| 桌面端是 Tauri（`tauri://` 协议）                                       | `src-tauri/`                                            |
 
 ---
 
