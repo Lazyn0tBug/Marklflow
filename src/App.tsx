@@ -18,6 +18,7 @@ import {DemoMessageView,MessageGallery} from './components/message/MessageGaller
 import {useDemoMessages} from './components/message/useDemoMessages';
 import {MessageCard,MessageResult} from './presentation/messages';
 import {noticeStore,type NoticeTone} from './application/notices';
+import {messageText} from './application/messages';
 import {reportFailure} from './core/platform/failures';
 import { RoadmapModal } from './components/roadmap/RoadmapModal';
 import { WorkbenchToolbar } from './components/toolbar/WorkbenchToolbar';
@@ -299,7 +300,7 @@ export default function App() {
   const applyDocument=(doc:DocumentRecord)=>{sessions.update(doc);setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);queueSave(doc)};
   const handleMarkdownChange=useCallback((markdown:string)=>{
     if(!currentDoc)return;
-    if(markdown.length>DOCUMENT_MARKDOWN_MAX){setActionError('文档超过源文大小上限，本次输入未应用');void reportFailure({category:'input-too-large'});return}
+    if(markdown.length>DOCUMENT_MARKDOWN_MAX){setActionError(messageText('input-too-large',{limitChars:DOCUMENT_MARKDOWN_MAX}));void reportFailure({category:'input-too-large'});return}
     const doc={...currentDoc,revision:currentDoc.revision+1,markdown};const title=deriveDocumentTitle(markdown);if(title)doc.meta={...doc.meta,title};applyDocument(doc);
   },[currentDoc]);
   const history=(direction:'undo'|'redo')=>{if(!currentDoc)return;if(sessions[direction](currentDoc.id)){const doc=sessions.read(currentDoc.id).document;setDocuments(previous=>previous.map(value=>value.id===doc.id?doc:value));sessionChanged(value=>value+1);setMathMode(doc.options.mathMode);queueSave(doc)}};

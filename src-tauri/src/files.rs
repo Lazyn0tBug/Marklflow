@@ -81,8 +81,31 @@ fn in_command_span<T>(
             );
             return Err(NativeFailure::from_code(code));
         }
-        body(started, name).map_err(NativeFailure::from_code)
+        body(started, name).map_err(|code| failure_with_limit(code, command))
     })
+}
+
+/// **这一类失败带上上限** ✓ ⇒ ⇒ 前端能说清"多少" ✓（§8.5 ✓）。
+///
+/// **只有"超过大小上限"这一类带** ✓ ⇒ ⇒ 其余不带 ✓ ⇒ ⇒ 前端不必猜 ✓。
+fn failure_with_limit(code: String, command: WebCommand) -> NativeFailure {
+    let limit_bytes = if code == FILE_TOO_LARGE {
+        limit_for(command)
+    } else {
+        None
+    };
+    NativeFailure { code, limit_bytes }
+}
+
+/// **这条命令的上限** ✓：**谁拥有这个事实，谁给出这个参数** ✓（§8.5 ✓）。
+///
+/// **没有上限的命令是 None** ✓ ⇒ ⇒ 那类失败不带参数 ✓。
+fn limit_for(command: WebCommand) -> Option<u64> {
+    match command {
+        WebCommand::ReadNativeText => Some(READ_LIMIT),
+        WebCommand::WriteNativeBytes => Some(WRITE_LIMIT as u64),
+        _ => None,
+    }
 }
 
 pub const READ_LIMIT: u64 = 50 * 1024 * 1024;
@@ -122,10 +145,21 @@ pub struct SelectedFile {
 pub struct NativeFailure {
     /// 稳定机器码。
     pub code: String,
+    /// **可展示的上限** ✓：**只有"超过大小上限"这一类有** ✓ ⇒ ⇒ 其余是没有 ✓。
+    ///
+    /// **谁拥有这个事实，谁给出这个参数** ✓（§8.5 ✓）⇒ ⇒ 前端能说清"多少" ✓
+    /// ⇒ ⇒ 文案里不用猜 ✓。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_bytes: Option<u64>,
 }
+/// **超过大小上限**这一类的机器码 ✓：一处定义 ✓ ⇒ ⇒ 命令体据此把上限带出去 ✓。
+const FILE_TOO_LARGE: &str = "file-too-large";
 impl NativeFailure {
     fn from_code(code: String) -> Self {
-        NativeFailure { code }
+        NativeFailure {
+            code,
+            limit_bytes: None,
+        }
     }
 }
 
@@ -270,7 +304,7 @@ pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
         .read_to_end(&mut bytes)
         .map_err(|e| io_error(&e))?;
     if bytes.len() as u64 > READ_LIMIT {
-        return Err("file-too-large".into());
+        return Err(FILE_TOO_LARGE.into());
     }
     Ok(bytes)
 }
@@ -290,7 +324,7 @@ pub fn read_content(path: &Path) -> Result<ReadContent, String> {
 }
 pub fn commit_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if bytes.len() > WRITE_LIMIT {
-        return Err("file-too-large".into());
+        return Err(FILE_TOO_LARGE.into());
     }
     // Reject symbolic links rather than silently replacing their directory entry.
     match std::fs::symlink_metadata(path) {
@@ -1056,6 +1090,37 @@ mod tests {
         assert!(is_openable(Path::new("a.htm")));
         assert!(!is_openable(Path::new("a.png")));
         assert!(!is_openable(Path::new("a")));
+    }
+
+    #[test]
+    fn the_size_failure_carries_the_limit_of_its_command() {
+        // **读与写各有各的上限** ✓ ⇒ ⇒ 谁拥有这个事实谁给出 ✓（§8.5 ✓）。
+        assert_eq!(
+            failure_with_limit(FILE_TOO_LARGE.into(), WebCommand::ReadNativeText).limit_bytes,
+            Some(READ_LIMIT)
+        );
+        assert_eq!(
+            failure_with_limit(FILE_TOO_LARGE.into(), WebCommand::WriteNativeBytes).limit_bytes,
+            Some(WRITE_LIMIT as u64)
+        );
+        // **别的失败不带上限** ✓ ⇒ ⇒ 前端不必猜 ✓。
+        assert_eq!(
+            failure_with_limit("native-io-failed".into(), WebCommand::ReadNativeText).limit_bytes,
+            None
+        );
+        // **没有上限的命令也不带** ✓。
+        assert_eq!(limit_for(WebCommand::SelectNativeOpen), None);
+        // **不带上限时载荷里没有这一项** ✓ ⇒ ⇒ 前端拿到的是可选字段 ✓。
+        let value = serde_json::to_value(NativeFailure::from_code("native-io-failed".to_owned()))
+            .unwrap();
+        assert!(value.get("limitBytes").is_none());
+        // **带上限时载荷里就有** ✓ ⇒ ⇒ 前端能说清是多少 ✓。
+        let value = serde_json::to_value(failure_with_limit(
+            FILE_TOO_LARGE.into(),
+            WebCommand::ReadNativeText,
+        ))
+        .unwrap();
+        assert_eq!(value.get("limitBytes").and_then(|v| v.as_u64()), Some(READ_LIMIT));
     }
 
     #[test]

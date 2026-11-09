@@ -1,6 +1,8 @@
 import type {DocumentRecord} from '../../core/model/document';
 import {documentSchema} from '../../core/model/documentSchema';
 import {taskBudget} from '../tasks/budget';
+import {formatBytes,messageText} from '../messages';
+import {IMPORT_BYTE_LIMIT} from '../limits';
 export interface ImportFile {name:string;size:number}
 
 /**
@@ -94,15 +96,17 @@ export class SourceImport<F extends ImportFile> {
        : {name:file.name,status:'focused',documentId:bound.documentId,message:'已聚焦工作区已有文档，导入内容未覆盖'};
      }else{
       if(!/\.(md|markdown|txt|html|htm)$/i.test(file.name))throw new Error('仅支持 .md、.markdown、.txt 和可编辑 .html/.htm');
-      if(!Number.isSafeInteger(file.size)||file.size<0||file.size>50*1024*1024)throw new Error('导入文件超过50MB限制或大小无效');
+      if(!Number.isSafeInteger(file.size)||file.size<0)throw new Error('导入文件的大小无效');
+      // **上限由应用自己守** ✓ ⇒ ⇒ 说得出是多少 ✓ ⇒ ⇒ 不在文案里手写数字 ✓（§8.5 ✓）。
+      if(file.size>IMPORT_BYTE_LIMIT)throw new Error(messageText('file-too-large',{limitBytes:IMPORT_BYTE_LIMIT}));
       const content=await this.ports.read(file);
       if(content.includes('\0'))throw new Error('文件含二进制空字节，不能按文本导入');
       const html=/\.html?$/i.test(file.name);let key:string|undefined;
       let candidate:DocumentRecord;
       if(html){const parsed=this.ports.decodeHtml(content);if(!parsed)throw new Error('HTML 没有有效源载荷或结构不受支持；不会按 Markdown 导入');candidate=parsed}
-      else{if(new TextEncoder().encode(content).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown 超过源文大小限制');key=await this.ports.documentKey(file,file.name,content);candidate=this.ports.createMarkdown(file.name,content);const id=this.markdownIds.get(key);if(id)candidate={...candidate,id}}
+      else{if(new TextEncoder().encode(content).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error(`Markdown 超过源文上限（${formatBytes(taskBudget.input.markdownUtf8Bytes)}）`);key=await this.ports.documentKey(file,file.name,content);candidate=this.ports.createMarkdown(file.name,content);const id=this.markdownIds.get(key);if(id)candidate={...candidate,id}}
       const doc=documentSchema.parse(candidate);
-      if(!Number.isSafeInteger(doc.revision)||new TextEncoder().encode(doc.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error('Markdown 超过源文大小限制或修订无效');
+      if(!Number.isSafeInteger(doc.revision)||new TextEncoder().encode(doc.markdown).byteLength>taskBudget.input.markdownUtf8Bytes)throw new Error(`Markdown 超过源文上限（${formatBytes(taskBudget.input.markdownUtf8Bytes)}）或修订无效`);
       await this.ports.verify(doc);
       const result=await this.ports.open(doc,file);
       const status=result.status;

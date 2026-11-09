@@ -72,19 +72,34 @@ export const MESSAGE_CATEGORIES=[
 export type MessageCategory=typeof MESSAGE_CATEGORIES[number];
 
 /**
+ * 文案要的参数 ✓：**上限这类事实由拥有它的那一侧给出** ✓（§8.5 ✓）
+ * ⇒ ⇒ 表里不写死数字 ✓ ⇒ ⇒ 用户看得到"多少" ✓。
+ */
+export interface MessageParams{
+ /** 字节上限 ✓：原生侧随机器码给出 ✓，或应用侧的常量给出 ✓。 */
+ limitBytes?:number|undefined;
+ /** 字符上限 ✓：编辑器那份源文上限 ✓。 */
+ limitChars?:number|undefined;
+}
+
+/** 一条文案 ✓：要么是一句 ✓，要么是"参数 ⇒ 一句" ✓。 */
+export type MessageText=string|((params:MessageParams)=>string);
+
+/**
  * 类别 → 用户可见的文案。
  *
  * **只收"用户可行动或可理解"的那些** ✓；其余的（应用自己用错了句柄、句柄已失效、
  * 内部状态不可用、路径或名字不可用）**不是用户造成的** ⇒ ⇒ 用户看一句通用失败即可 ✓，
  * 机器码仍留在报告里给日志与诊断 ✓。
  */
-const MESSAGE_TEXTS:Partial<Record<MessageCategory,string>>={
+const MESSAGE_TEXTS:Partial<Record<MessageCategory,MessageText>>={
  'native-source-denied':'当前窗口无权使用原生文件能力',
  'native-target-missing':'文件已被移走或重命名',
  'native-permission-denied':'没有权限访问这个文件',
  'native-io-failed':'文件读写失败',
  'native-dialog-failed':'系统文件对话框打不开',
- 'file-too-large':'文件超过可处理的大小上限',
+ // **上限由拒绝它的那一侧给出** ✓ ⇒ ⇒ 说得出是多少 ✓ ⇒ ⇒ 没有就退回一句 ✓。
+ 'file-too-large':({limitBytes})=>limitBytes===undefined?'文件超过可处理的大小上限':`文件超过 ${formatBytes(limitBytes)} 的上限`,
  'invalid-utf8':'文件不是合法的 UTF-8 文本',
  'not-a-file':'目标不是一个普通文件',
  'not-a-regular-target':'目标不是一个普通文件',
@@ -99,7 +114,7 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,string>>={
  'storage-unreadable':'存储读不出来，原始数据未改写',
  'preview-unavailable':'这一份预览没能生成',
  'import-rejected':'这个文件没能导入',
- 'input-too-large':'文档超过源文大小上限，本次输入未应用',
+ 'input-too-large':({limitChars})=>limitChars===undefined?'文档超过源文大小上限，本次输入未应用':`文档超过 ${limitChars} 个字符的源文上限，本次输入未应用`,
  'storage-write-failed':'这次改动没能存下来，原数据未动',
  'render':'这一部分没能显示',
  'unhandled':'有个操作没能完成',
@@ -111,9 +126,17 @@ const MESSAGE_TEXTS:Partial<Record<MessageCategory,string>>={
 /** 通用文案：不属于"用户可行动"那一类的失败 ⇒ 用户看到这一句 ✓。 */
 export const GENERIC_FAILURE_TEXT='文件操作失败';
 
+/** 字节数 ⇒ 人读的 ✓：整 MiB 就写整数 ✓ ⇒ ⇒ 不是就留一位小数 ✓。 */
+export function formatBytes(bytes:number):string{
+ const mib=bytes/(1024*1024);
+ return `${Number.isInteger(mib)?mib:Math.round(mib*10)/10}MiB`;
+}
+
 /** 类别 → 文案。认不出的类别给通用的一句 ✓：不猜它意味着什么 ✓。 */
-export function messageText(category:string):string{
- return MESSAGE_TEXTS[category as MessageCategory]??GENERIC_FAILURE_TEXT;
+export function messageText(category:string,params?:MessageParams):string{
+ const text=MESSAGE_TEXTS[category as MessageCategory];
+ if(text===undefined)return GENERIC_FAILURE_TEXT;
+ return typeof text==='string'?text:text(params??{});
 }
 
 /** 这个类别有没有自己的文案（= 用户可行动或可理解）✓。 */

@@ -32,6 +32,18 @@ it('maps a native machine code to a friendly message and keeps the code for evid
  // 机器码留在错误对象上 ✓：探针与诊断要它 ✓。
  expect((error as {code?:string}).code).toBe('native-source-denied');
 });
+it('states the real limit when the native side gives one',async()=>{
+ // **上限由原生侧给出** ✓ ⇒ ⇒ 文案说得出是多少 ✓ ⇒ ⇒ 不猜 ✓（§8.5 ✓）。
+ native.invoke.mockRejectedValueOnce({code:'file-too-large',limitBytes:52428800});
+ const error=await selectNativeOpen().catch(failure=>failure);
+ expect(String(error)).toContain('文件超过 50MiB 的上限');
+ // **上限留在错误对象上** ✓ ⇒ ⇒ 诊断与日志要它 ✓。
+ expect((error as {limitBytes?:number}).limitBytes).toBe(52428800);
+ // **没有上限就不编数字** ✓ ⇒ ⇒ 退回一句概括的 ✓。
+ native.invoke.mockRejectedValueOnce({code:'file-too-large'});
+ const plain=await selectNativeOpen().catch(failure=>failure);
+ expect(String(plain)).toContain('文件超过可处理的大小上限');
+});
 it('tells the reasons apart: a file that moved is not a file that cannot be written',async()=>{
  native.invoke.mockRejectedValueOnce({code:'native-target-missing'});
  const missing=await selectNativeOpen().catch(failure=>failure);

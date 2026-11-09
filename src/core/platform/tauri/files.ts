@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
-import {messageText} from '../../../application/messages';
+import {messageText,formatBytes,type MessageParams} from '../../../application/messages';
+import {NATIVE_WRITE_BYTE_LIMIT} from '../../../application/limits';
 const selectedSchema=z.object({
  key:z.string().uuid(),
  name:z.string().min(1),
@@ -8,8 +9,8 @@ const selectedSchema=z.object({
  /** 文件引用（会话内）✓：同一文件被多次选中时相同 ✓，只用于归属与聚焦 ✓（§3.3）。 */
  reference:z.string().uuid(),
 }).strict();
-/** 原生失败的形态：稳定的机器码 ✓（与 Rust 侧 files.rs 一一对应 ✓）。 */
-const nativeFailureSchema=z.object({code:z.string().min(1)}).strict();
+/** 原生失败的形态：稳定的机器码 ✓（与 Rust 侧 files.rs 一一对应 ✓）+ **可展示的上限** ✓。 */
+const nativeFailureSchema=z.object({code:z.string().min(1),limitBytes:z.number().int().nonnegative().optional()}).strict();
 
 /**
  * 机器码 → 用户可见的文案。
@@ -24,14 +25,16 @@ const nativeFailureSchema=z.object({code:z.string().min(1)}).strict();
  */
 
 /** 码 → 文案。认不出的码给一句通用的话 ✓：不猜它意味着什么 ✓。 */
-export function nativeFailureMessage(code:string):string{
- return messageText(code);
+export function nativeFailureMessage(code:string,params?:MessageParams):string{
+ return messageText(code,params);
 }
 
 /** 原生失败：机器码留着分流 ✓，用户看到的是文案 ✓。 */
 export class NativeFileError extends Error {
  readonly code:string;
- constructor(code:string){super(nativeFailureMessage(code));this.name='NativeFileError';this.code=code;}
+ /** 原生侧给出的上限 ✓：**只有"超过大小上限"那一类有** ✓ ⇒ ⇒ 其余是没有 ✓。 */
+ readonly limitBytes?:number|undefined;
+ constructor(code:string,limitBytes?:number|undefined){super(nativeFailureMessage(code,{limitBytes}));this.name='NativeFileError';this.code=code;this.limitBytes=limitBytes;}
 }
 
 export type NativeSelection=z.infer<typeof selectedSchema>;
@@ -43,7 +46,7 @@ async function invoke(command:string,args?:Record<string,unknown>):Promise<unkno
   // 原生侧给的是结构化的机器码 ✓：拒绝不再靠子串匹配 ✓（§9）。
   // 探针要机器码取证 ✓：错误对象上留着码 ✓。
   const failure=nativeFailureSchema.safeParse(error);
-  if(failure.success)throw new NativeFileError(failure.data.code);
+  if(failure.success)throw new NativeFileError(failure.data.code,failure.data.limitBytes);
   throw error;
  }
 }
@@ -72,7 +75,7 @@ export async function selectNativeSave(name:string):Promise<NativeSaveTarget|und
  const file=selectedSchema.parse(value);
  return {
   key:file.key,
-  async save(blob){if(blob.size>100*1024*1024)throw new Error('导出文件超过100MiB原生写入限制');await invoke('write_native_bytes',{key:file.key,bytes:Array.from(new Uint8Array(await blob.arrayBuffer()))});return 'saved'},
+  async save(blob){if(blob.size>NATIVE_WRITE_BYTE_LIMIT)throw new Error(`导出文件超过 ${formatBytes(NATIVE_WRITE_BYTE_LIMIT)} 原生写入限制`);await invoke('write_native_bytes',{key:file.key,bytes:Array.from(new Uint8Array(await blob.arrayBuffer()))});return 'saved'},
   release:()=>releaseNativeFile(file.key),
  };
 }

@@ -2,6 +2,7 @@ import {it,expect} from 'vitest';
 import {
  GENERIC_FAILURE_TEXT,
  MESSAGE_CATEGORIES,
+ formatBytes,
  hasOwnText,
  messageText,
  type MessageCategory,
@@ -60,4 +61,19 @@ it('carries the categories the capture path needs',()=>{
   for(const category of ['no-tauri-internals','invoke-rejected','invalid-payload','rate-limited','timeout','unknown']){
     expect(MESSAGE_CATEGORIES).toContain(category as MessageCategory);
   }
+});
+
+it('states the actual limit when the caller gives one',()=>{
+  // **上限由拥有它的那一侧给出** ✓ ⇒ ⇒ 文案说得出是多少 ✓ ⇒ ⇒ 不猜 ✓（§8.5 ✓）。
+  expect(messageText('file-too-large',{limitBytes:50*1024*1024})).toBe('文件超过 50MiB 的上限');
+  expect(messageText('input-too-large',{limitChars:1024})).toBe('文档超过 1024 个字符的源文上限，本次输入未应用');
+  // **没有上限就说一句概括的** ✓ ⇒ ⇒ 不编数字 ✓。
+  expect(messageText('file-too-large')).toBe('文件超过可处理的大小上限');
+  expect(messageText('input-too-large')).toBe('文档超过源文大小上限，本次输入未应用');
+});
+
+it('formats the byte limits the way a person reads them',()=>{
+  expect(formatBytes(50*1024*1024)).toBe('50MiB');
+  expect(formatBytes(100*1024*1024)).toBe('100MiB');
+  expect(formatBytes(1536*1024)).toBe('1.5MiB');
 });
