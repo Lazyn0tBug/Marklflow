@@ -1123,6 +1123,35 @@ mod tests {
         assert_eq!(value.get("limitBytes").and_then(|v| v.as_u64()), Some(READ_LIMIT));
     }
 
+    /// **两端共用的那份契约** ✓（`docs/contracts/file-read.json` ✓）。
+    fn shared_contract() -> serde_json::Value {
+        let raw = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../docs/contracts/file-read.json"
+        ))
+        .expect("the shared file-read contract must be readable");
+        serde_json::from_str(&raw).expect("the shared file-read contract must be valid json")
+    }
+
+    /// **两个上限与契约相等** ✓。
+    ///
+    /// **原生侧各有一份常量** ✓ ⇒ ⇒ 契约是那一份事实 ✓ ⇒ ⇒ 这里盯住它 ✓
+    /// ⇒ ⇒ 改契约而忘了改这边 ⇒ ⇒ **红** ✓（§5.1 ✓：两端不会给出不同的可导入集合 ✓）。
+    #[test]
+    fn the_limits_match_the_shared_contract() {
+        let contract = shared_contract();
+        assert_eq!(
+            contract["limits"]["importBytes"].as_u64(),
+            Some(READ_LIMIT),
+            "the import limit must match the shared contract"
+        );
+        assert_eq!(
+            contract["limits"]["nativeWriteBytes"].as_u64(),
+            Some(WRITE_LIMIT as u64),
+            "the native write limit must match the shared contract"
+        );
+    }
+
     /// **同一批字节 ⇒ 同一个标识** ✓。
     ///
     /// **样本是两端共用的那一份** ✓（`docs/contracts/file-read-cases.json` ✓）
@@ -1130,13 +1159,7 @@ mod tests {
     /// ⇒ ⇒ **两边各有一条红** ✓ ⇒ ⇒ 漂移无处藏 ✓（§9 ✓）。
     #[test]
     fn the_read_port_gives_the_same_result_as_the_browser_side() {
-        let contract = std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../docs/contracts/file-read-cases.json"
-        ))
-        .expect("the shared read cases must be readable");
-        let value: serde_json::Value =
-            serde_json::from_str(&contract).expect("the shared read cases must be valid json");
+        let value = shared_contract();
         let cases = value["cases"].as_array().expect("cases must be an array");
         assert!(!cases.is_empty(), "the shared read cases must not be empty");
         for case in cases {

@@ -1,12 +1,12 @@
 import {it,expect} from 'vitest';
-import contract from '../../docs/contracts/file-read-cases.json';
+import contract from '../../docs/contracts/file-read.json';
 import {readSourceFile} from '../../src/core/platform/web/sourceImport';
 import {FileFailure} from '../../src/core/platform/fileFailure';
 
 /**
  * **同一批字节 ⇒ 同一个标识** ✓。
  *
- * **样本是两端共用的那一份** ✓（`docs/contracts/file-read-cases.json` ✓）
+ * **样本是两端共用的那一份** ✓（`docs/contracts/file-read.json` ✓）
  * ⇒ ⇒ 浏览器侧在这里断言 ✓ ⇒ ⇒ 原生侧在同一个文件上断言 ✓（`files.rs` ✓）
  * ⇒ ⇒ 两端对同一批字节给出不同的结果时 ⇒ ⇒ **两边各有一条红** ✓ ⇒ ⇒ 漂移无处藏 ✓。
  *
