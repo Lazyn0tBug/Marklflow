@@ -112,3 +112,23 @@ it('the rejection source points at the place and keeps the message out', () => {
   // **同一个抛出点每次都一样** ✓ ⇒ ⇒ 循环收敛成一条 ✓。
   expect(rejectionSource(error)).toBe(source);
 });
+
+it('the rejection source leaves a user path out and still finds our own frame', () => {
+  const error = new TypeError('Cannot read properties of undefined');
+  error.stack =
+    'TypeError: Cannot read properties of undefined\n    at read (file:///C:/Users/someone/notes.md:12:5)\n    at saveTo (http://tauri.localhost/assets/index.js:1204:17)';
+  const source = rejectionSource(error);
+  // **用户路径不进定位串** ✓ ⇒ ⇒ 日志里不落用户数据 ✓（基座 §5.2 ✓）。
+  // **这不是假设，是约束** ✓ ⇒ ⇒ 别的来源的帧一律不取 ✓。
+  expect(source).not.toContain('notes.md');
+  expect(source).not.toContain('Users');
+  // **它仍然指出我们自己的代码** ✓ ⇒ ⇒ 定位串没白算 ✓。
+  expect(source).toContain('index.js:1204');
+});
+
+it('the rejection source says only the kind when no frame of ours is there', () => {
+  const error = new TypeError('boom');
+  error.stack = 'TypeError: boom\n    at read (file:///C:/Users/someone/notes.md:12:5)';
+  // **没有我们的帧就只说种类** ✓ ⇒ ⇒ 不拿用户路径凑数 ✓ ⇒ ⇒ 日志仍然说得清是哪种错 ✓。
+  expect(rejectionSource(error)).toBe('TypeError');
+});

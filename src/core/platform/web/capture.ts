@@ -84,14 +84,30 @@ export function rejectionSource(reason: unknown): string {
 /**
  * **栈顶那一帧的位置** ✓：**文件 + 行** ✓ ⇒ ⇒ **在我们自己的构建产物里** ✓ ⇒ ⇒
  * **不含用户数据** ✓ ⇒ ⇒ **可以进日志** ✓（基座 §5.2 ✓）。
+ *
+ * **只认我们自己的构建产物** ✓ ⇒ ⇒ **别的来源的帧一律不取** ✓ ⇒ ⇒
+ * 一个 `file://` 的用户路径**不会进日志** ✓ ⇒ ⇒ 那句"不含用户数据"从此是
+ * **约束** ✓ ⇒ ⇒ 不是假设 ✓。
+ *
+ * **为什么用 scheme 来认** ✓：应用总是跑在 http(s) 上 ✓ ⇒ ⇒ 我们的构建产物的帧
+ * 就是 http(s) 的 URL ✓ ⇒ ⇒ **别的 scheme 一定不是我们的** ✓ ⇒ ⇒ 跳过它 ✓
+ * ⇒ ⇒ 继续往下找我们的那一帧 ✓ ⇒ ⇒ 实在没有就只说异常种类 ✓。
  */
 function topFrame(stack: string | undefined): string | undefined {
   if (!stack) return undefined;
   for (const line of stack.split('\n')) {
     const match = /\(?([^()\s]+):(\d+):(\d+)\)?\s*$/.exec(line.trim());
-    if (match) return `${match[1]}:${match[2]}`;
+    if (!match) continue;
+    const file = match[1];
+    if (!file || !isOurBuildUrl(file)) continue;
+    return `${file}:${match[2]}`;
   }
   return undefined;
+}
+
+/** 那个文件是不是我们自己的构建产物 ✓。 */
+function isOurBuildUrl(file: string): boolean {
+  return file.startsWith('http://') || file.startsWith('https://');
 }
 
 /**
