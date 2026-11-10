@@ -1,7 +1,59 @@
 // @vitest-environment node
-import {it,expect,vi} from 'vitest';
+import {it, expect, vi} from 'vitest';
 import {CleanupList} from '../../src/application/tasks/cleanup';
-it('cleans task-local entries once across concurrent and repeated disposal',async()=>{const list=new CleanupList(),done=vi.fn();list.register('url','url',8,done);await Promise.all([list.dispose(),list.dispose()]);await list.dispose();expect(done).toHaveBeenCalledOnce();expect(list.totalBytes).toBe(0);expect(list.snapshot()).toEqual([])});
-it('attempts every cleanup, retains failed entries and retries only those explicitly',async()=>{const list=new CleanupList(),bad=vi.fn().mockRejectedValueOnce(new Error('cleanup failed')).mockResolvedValue(undefined),good=vi.fn();list.register('bad','host',8,bad);list.register('good','url',4,good);expect(await list.dispose()).toHaveLength(1);expect(good).toHaveBeenCalledOnce();expect(list.totalBytes).toBe(8);expect(list.snapshot()[0]?.error).toContain('cleanup failed');expect(await list.dispose()).toEqual([]);expect(bad).toHaveBeenCalledTimes(2);expect(good).toHaveBeenCalledOnce();expect(list.totalBytes).toBe(0)});
-it('keeps lists local and rejects duplicates, invalid sizes or additions after disposal',async()=>{const a=new CleanupList(),b=new CleanupList();a.register('same','host',8,()=>{});b.register('same','host',4,()=>{});expect(()=>a.register('same','host',8,()=>{})).toThrow('Duplicate');expect(()=>a.register('bad','host',-1,()=>{})).toThrow('Invalid');await a.dispose();expect(()=>a.register('late','url',0,()=>{})).toThrow('closed');expect(b.totalBytes).toBe(4)});
-it('starts all cleanups even while another entry awaits completion',async()=>{const list=new CleanupList(),good=vi.fn();let finish=()=>{};list.register('slow','host',8,()=>new Promise<void>(resolve=>{finish=resolve}));list.register('good','timer',0,good);const disposing=list.dispose();await Promise.resolve();expect(good).toHaveBeenCalledOnce();finish();expect(await disposing).toEqual([])});
+it('cleans task-local entries once across concurrent and repeated disposal', async () => {
+  const list = new CleanupList(),
+    done = vi.fn();
+  list.register('url', 'url', 8, done);
+  await Promise.all([list.dispose(), list.dispose()]);
+  await list.dispose();
+  expect(done).toHaveBeenCalledOnce();
+  expect(list.totalBytes).toBe(0);
+  expect(list.snapshot()).toEqual([]);
+});
+it('attempts every cleanup, retains failed entries and retries only those explicitly', async () => {
+  const list = new CleanupList(),
+    bad = vi.fn().mockRejectedValueOnce(new Error('cleanup failed')).mockResolvedValue(undefined),
+    good = vi.fn();
+  list.register('bad', 'host', 8, bad);
+  list.register('good', 'url', 4, good);
+  expect(await list.dispose()).toHaveLength(1);
+  expect(good).toHaveBeenCalledOnce();
+  expect(list.totalBytes).toBe(8);
+  expect(list.snapshot()[0]?.error).toContain('cleanup failed');
+  expect(await list.dispose()).toEqual([]);
+  expect(bad).toHaveBeenCalledTimes(2);
+  expect(good).toHaveBeenCalledOnce();
+  expect(list.totalBytes).toBe(0);
+});
+it('keeps lists local and rejects duplicates, invalid sizes or additions after disposal', async () => {
+  const a = new CleanupList(),
+    b = new CleanupList();
+  a.register('same', 'host', 8, () => {});
+  b.register('same', 'host', 4, () => {});
+  expect(() => a.register('same', 'host', 8, () => {})).toThrow('Duplicate');
+  expect(() => a.register('bad', 'host', -1, () => {})).toThrow('Invalid');
+  await a.dispose();
+  expect(() => a.register('late', 'url', 0, () => {})).toThrow('closed');
+  expect(b.totalBytes).toBe(4);
+});
+it('starts all cleanups even while another entry awaits completion', async () => {
+  const list = new CleanupList(),
+    good = vi.fn();
+  let finish = () => {};
+  list.register(
+    'slow',
+    'host',
+    8,
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  list.register('good', 'timer', 0, good);
+  const disposing = list.dispose();
+  await Promise.resolve();
+  expect(good).toHaveBeenCalledOnce();
+  finish();
+  expect(await disposing).toEqual([]);
+});

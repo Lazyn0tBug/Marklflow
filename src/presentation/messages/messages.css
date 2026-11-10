@@ -13,57 +13,48 @@
  * **形状与语气是数据属性** ✓：`data-shape` / `data-tone` ✓ ⇒ ⇒ 视觉归这份 CSS ✓
  * ⇒ ⇒ React 只出结构 ✓ ⇒ ⇒ 纯 HTML 样例也能被同一份 CSS 正确渲染 ✓。
  *
- * **现代特性都留了退路** ✓：`light-dark()` 与 `color-mix()` 放在 `@supports` 里 ✓
- * ⇒ ⇒ 老内核拿到的仍是可用的一份 ✓（Tauri 的 macOS 走 WKWebView、Linux 走 WebKitGTK ✓）。
+ * **现代特性直接用** ✓：`light-dark()`、`color-mix()`、`:has()` ✓ ⇒ ⇒ 不写兜底 ✓
+ * ⇒ ⇒ 老内核上颜色会失效 ✓ ⇒ ⇒ 这是接受的代价 ✓（本应用不特地兼容老内核 ✓）。
+ * ⇒ ⇒ 因此**主题靠 `color-scheme`** ✓ ⇒ ⇒ 宿主声明它 ✓ ⇒ ⇒ 消息区继承它 ✓。
  *
  * **特异性策略** ✓：几何（位置、尺寸、边距）用 `:where()` ✓ ⇒ ⇒ 宿主要接管不必改这里 ✓；
  * 文字与语气用类选择器 ✓ ⇒ ⇒ 压得住宿主的元素选择器 ✓（`p { margin: 1rem }` 那种 ✓）。
  */
 
 @layer mf-message {
-
   /* ---------- 令牌 ---------- */
 
   /* 三个入口都带上令牌 ✓ ⇒ ⇒ 单独用一张卡片也成立 ✓。 */
   .mf-message,
   .mf-message-card,
   .mf-message-result {
-    --mf-message-surface: #ffffff;
-    --mf-message-ink: #171717;
-    --mf-message-muted: #525252;
-    --mf-message-line: #d4d4d4;
-    --mf-message-accent: #0d9488;
-    --mf-message-warn: #b45309;
-    --mf-message-danger: #b91c1c;
+    /* 表面**半透明** ✓ ⇒ ⇒ 底下工作台透一点上来 ✓ ⇒ ⇒ 不沉重 ✓。 */
+    --mf-message-surface: light-dark(rgb(252 252 253 / 0.94), rgb(26 26 28 / 0.94));
+    --mf-message-ink: light-dark(#171717, #f5f5f5);
+    --mf-message-muted: light-dark(#525252, #b4b4b8);
+    --mf-message-accent: light-dark(#0d9488, #2dd4bf);
+    --mf-message-warn: light-dark(#b45309, #fbbf24);
+    --mf-message-danger: light-dark(#b91c1c, #f87171);
 
-    --mf-message-width: 24rem;
-    --mf-message-gap: 0.5rem;
-    --mf-message-pad: 0.75rem;
-    --mf-message-radius: 0.5rem;
-    --mf-message-size: 0.75rem;
-    --mf-message-leading: 1.5;
-    --mf-message-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --mf-message-width: 26rem;
+    --mf-message-gap: 0.625rem;
+    --mf-message-pad: 0.875rem;
+    --mf-message-radius: 0.75rem;
+    --mf-message-size: 0.8125rem;
+    --mf-message-leading: 1.55;
+    /* 阴影要**柔** ✓ ⇒ ⇒ 托住层次，不压出重量 ✓。 */
+    --mf-message-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.35), 0 4px 12px -6px rgb(0 0 0 / 0.18);
     --mf-message-inset-inline: 1rem;
     --mf-message-inset-block: 2.5rem;
-    --mf-message-z: 60;
-  }
-
-  /*
-   * 明暗两套值 ✓：**只能整块覆盖** ✓ ⇒ ⇒ 自定义属性里不能靠"第二条声明"兜底 ✓
-   * ⇒ ⇒ 老内核拿到上面那套浅色值 ✓ ⇒ ⇒ 仍然可用 ✓。
-   */
-  @supports (color: light-dark(#ffffff, #000000)) {
-    .mf-message,
-    .mf-message-card,
-    .mf-message-result {
-      --mf-message-surface: light-dark(#ffffff, #171717);
-      --mf-message-ink: light-dark(#171717, #f5f5f5);
-      --mf-message-muted: light-dark(#525252, #a3a3a3);
-      --mf-message-line: light-dark(#d4d4d4, #404040);
-      --mf-message-accent: light-dark(#0d9488, #2dd4bf);
-      --mf-message-warn: light-dark(#b45309, #fbbf24);
-      --mf-message-danger: light-dark(#b91c1c, #f87171);
-    }
+    /*
+     * **层序：低于对话框** ✓ ⇒ ⇒ 消息区不能盖住对话框的按钮 ✓
+     * ⇒ ⇒ （实测：区域更宽一点时，导入结果那张卡压住了导出窗口的"立即导出并保存" ✓
+     * ⇒ ⇒ ⇒ 那个按钮点不到 ✓ ⇒ ⇒ 对话框是模态的，它占着屏幕 ✓）。
+     *
+     * 应用里对话框是 50 ✓ ⇒ ⇒ 这里取 45 ✓ ⇒ ⇒ 在顶栏（40 ✓）之上、在对话框之下 ✓
+     * ⇒ ⇒ 宿主要改就覆盖这个令牌 ✓。
+     */
+    --mf-message-z: 45;
   }
 
   /* ---------- 消息区 ---------- */
@@ -74,14 +65,15 @@
    */
   :where(.mf-message) {
     /*
-     * 主题开关 ✓：**只声明在这一层** ✓ ⇒ ⇒ 卡片继承它 ✓。
+     * 主题开关 ✓：**跟着宿主走** ✓ ⇒ ⇒ 宿主在根上设的 `color-scheme` 就是这一区的 ✓
+     * ⇒ ⇒ 宿主的明暗切换说了算 ✓ ⇒ ⇒ 这里不另设一套 ✓。
      *
-     * **特异性为零** ✓ ⇒ ⇒ 宿主在 `:root` 上设的 `color-scheme` 压得过它 ✓
-     * ⇒ ⇒ 宿主的主题开关说了算 ✓（`:root` 是 0,1,0 ⇒ ⇒ 压得住 0,0,0 ✓）。
+     * **为什么是 `inherit` 而不是 `light dark`** ✓：继承只发生在元素自己没有声明时 ✓
+     * ⇒ ⇒ 这一层若自己声明了 `light dark` ⇒ ⇒ 宿主的值就被挡住 ⇒ ⇒ 两边就分家了 ✓。
      *
-     * 宿主什么都不设时 ⇒ ⇒ 跟着系统的明暗偏好走 ✓ ⇒ ⇒ 独立样例才对 ✓。
+     * 宿主什么都不设 ⇒ ⇒ 落到 `normal` ⇒ ⇒ `light-dark()` 取浅色那支 ✓ ⇒ ⇒ 仍是可用的一份 ✓。
      */
-    color-scheme: light dark;
+    color-scheme: inherit;
     position: fixed;
     inset-block-end: var(--mf-message-inset-block);
     inset-inline-end: var(--mf-message-inset-inline);
@@ -115,7 +107,8 @@
     gap: var(--mf-message-gap);
     background: var(--mf-message-surface);
     color: var(--mf-message-ink);
-    border: 1px solid var(--mf-message-line);
+    /* 边是**发丝** ✓ ⇒ ⇒ 半透明面上才看得出层次 ✓。 */
+    border: 1px solid color-mix(in oklab, var(--mf-message-ink) 14%, transparent);
     border-radius: var(--mf-message-radius);
     box-shadow: var(--mf-message-shadow);
     font-size: var(--mf-message-size);
@@ -125,7 +118,7 @@
   }
 
   /* 持续的那条留一道语气边 ✓ ⇒ ⇒ 与瞬时的那条一眼能分开 ✓。 */
-  .mf-message-card[data-shape="persistent"] {
+  .mf-message-card[data-shape='persistent'] {
     border-inline-start: 3px solid var(--mf-message-tone, var(--mf-message-ink));
   }
 
@@ -135,10 +128,26 @@
    * **两个角色分开** ✓：`--mf-message-tone` 给那道语气边 ✓（中性是灰的 ✓）；
    * `--mf-message-heading` 给标题 ✓（中性不强调 ✓ ⇒ ⇒ 标题仍是正文色 ✓）。
    */
-  .mf-message-card[data-tone="success"], .mf-message-result[data-tone="success"] { --mf-message-tone: var(--mf-message-accent); --mf-message-heading: var(--mf-message-accent); }
-  .mf-message-card[data-tone="info"], .mf-message-result[data-tone="info"] { --mf-message-tone: var(--mf-message-muted); --mf-message-heading: var(--mf-message-ink); }
-  .mf-message-card[data-tone="warning"], .mf-message-result[data-tone="warning"] { --mf-message-tone: var(--mf-message-warn); --mf-message-heading: var(--mf-message-warn); }
-  .mf-message-card[data-tone="error"], .mf-message-result[data-tone="error"] { --mf-message-tone: var(--mf-message-danger); --mf-message-heading: var(--mf-message-danger); }
+  .mf-message-card[data-tone='success'],
+  .mf-message-result[data-tone='success'] {
+    --mf-message-tone: var(--mf-message-accent);
+    --mf-message-heading: var(--mf-message-accent);
+  }
+  .mf-message-card[data-tone='info'],
+  .mf-message-result[data-tone='info'] {
+    --mf-message-tone: var(--mf-message-muted);
+    --mf-message-heading: var(--mf-message-ink);
+  }
+  .mf-message-card[data-tone='warning'],
+  .mf-message-result[data-tone='warning'] {
+    --mf-message-tone: var(--mf-message-warn);
+    --mf-message-heading: var(--mf-message-warn);
+  }
+  .mf-message-card[data-tone='error'],
+  .mf-message-result[data-tone='error'] {
+    --mf-message-tone: var(--mf-message-danger);
+    --mf-message-heading: var(--mf-message-danger);
+  }
 
   /* 内容列 ✓ ⇒ ⇒ 动作列靠边 ✓。 */
   .mf-message-card__content {
@@ -167,7 +176,7 @@
   .mf-message-card__detail {
     margin-block-start: 0.25rem;
     padding-block-start: 0.25rem;
-    border-block-start: 1px solid var(--mf-message-line);
+    border-block-start: 1px solid color-mix(in oklab, var(--mf-message-ink) 12%, transparent);
     color: var(--mf-message-muted);
   }
 
@@ -204,7 +213,7 @@
   }
 
   .mf-message-button:hover {
-    border-color: var(--mf-message-line);
+    border-color: color-mix(in oklab, var(--mf-message-ink) 18%, transparent);
   }
 
   .mf-message-button:focus-visible {
@@ -218,38 +227,50 @@
   }
 
   /* 颜色计算 ✓：只给一个色相 ⇒ ⇒ 悬停底色由它算出来 ✓。 */
-  @supports (color: color-mix(in oklab, red, blue)) {
-    .mf-message-button:hover {
-      background: color-mix(in oklab, var(--mf-message-ink) 10%, transparent);
-    }
-    .mf-message-button:focus-visible {
-      outline-color: color-mix(in oklab, var(--mf-message-accent) 70%, transparent);
-    }
+  .mf-message-button:hover {
+    background: color-mix(in oklab, var(--mf-message-ink) 10%, transparent);
+  }
+  .mf-message-button:focus-visible {
+    outline-color: color-mix(in oklab, var(--mf-message-accent) 70%, transparent);
   }
 
   /* ---------- 焦点在卡片里 ---------- */
 
   /*
-   * `:has()` 只做增强 ✓ ⇒ ⇒ 不支持的老内核拿不到这条，键盘焦点仍有按钮自己的焦点环 ✓
+   * `:has()` 只做增强 ✓ ⇒ ⇒ 键盘焦点仍有按钮自己的焦点环 ✓
    * ⇒ ⇒ 没有任何功能依赖它 ✓。
    */
-  /* 这里不用颜色计算 ✓ ⇒ ⇒ 支持 `:has()` 但不支持 `color-mix()` 的内核也拿得到 ✓。 */
-  @supports selector(:has(*)) {
-    .mf-message-card:has(:focus-visible) {
-      outline: 2px solid var(--mf-message-accent);
-      outline-offset: 2px;
-    }
+  .mf-message-card:has(:focus-visible) {
+    outline: 2px solid var(--mf-message-accent);
+    outline-offset: 2px;
   }
 
-  /* ---------- 进场 ---------- */
+  /* ---------- 进与退 ---------- */
+
+  /*
+   * **退场** ✓：渐隐 + 往下沉一点 ✓ ⇒ ⇒ 定时消失的那条不是"啪"地没了 ✓。
+   *
+   * 谁在退场由外面说 ✓ ⇒ ⇒ 这里只认 `data-leaving` ✓ ⇒ ⇒ 组件不决定消失 ✓。
+   */
+  .mf-message-card[data-leaving='true'],
+  .mf-message-result[data-leaving='true'] {
+    opacity: 0;
+    transform: translateY(6px);
+    /* **看不见了就不该吃点击** ✓ ⇒ ⇒ 退场那 200ms 里右下角那一块不该是死的 ✓。 */
+    pointer-events: none;
+  }
 
   @media (prefers-reduced-motion: no-preference) {
-    .mf-message-card {
-      transition: opacity 160ms ease, transform 160ms ease;
+    .mf-message-card,
+    .mf-message-result {
+      transition:
+        opacity 180ms ease,
+        transform 180ms ease;
     }
     /* 老内核整块丢弃这一条 ✓ ⇒ ⇒ 卡片照常出现 ✓。 */
     @starting-style {
-      .mf-message-card {
+      .mf-message-card,
+      .mf-message-result {
         opacity: 0;
         transform: translateY(4px);
       }
@@ -264,7 +285,7 @@
     padding: var(--mf-message-pad);
     background: var(--mf-message-surface);
     color: var(--mf-message-ink);
-    border: 1px solid var(--mf-message-line);
+    border: 1px solid color-mix(in oklab, var(--mf-message-ink) 14%, transparent);
     border-radius: var(--mf-message-radius);
     box-shadow: var(--mf-message-shadow);
     font-size: var(--mf-message-size);
@@ -299,7 +320,7 @@
   }
 
   /* 失败的那一条自己偏红 ✓ ⇒ ⇒ 一批结果里哪条坏了，一眼看见 ✓。 */
-  .mf-message-result__list li[data-failed="true"] {
+  .mf-message-result__list li[data-failed='true'] {
     color: var(--mf-message-danger);
   }
 }

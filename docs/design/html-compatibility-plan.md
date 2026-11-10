@@ -18,19 +18,19 @@
 
 以下为固定起点的静态源码观察，不是浏览器漏洞利用、排版或导出实测结论。
 
-| 现状 | 位置 | 改造含义 |
-|---|---|---|
-| 手写逐行/正则解析；输出大量Tailwind类，表格对齐拼接动态类名；仅标题含源行信息 | `src/core/parser/markdownParser.ts` | 语义结构、允许内容和区块映射需先规范，不能默认动态类已生成CSS |
-| parseInline 未统一转义原文，链接/图片URL直接进入属性；未见统一清理入口 | 同上 | H1前落实HTML/SVG/MathML/URL边界验证，避免扩展HTML能力时扩大原有风险 |
-| 阅读跟随应用dark样式，异步补写Mermaid；未见修订检查阻止旧结果落地 | `src/components/preview/ReadingPreview.tsx` | 文档主题应独立；输出须有修订与就绪结果 |
-| 全局math/code等选择器及Tailwind文档样式混在应用CSS | `src/index.css` | 提取独立文档CSS并限定作用域，保留应用样式 |
-| 独立HTML内嵌另一套CSS、固定860px容器，重新调用同步解析；未等待/封装Mermaid成品 | `src/core/export/htmlExporter.ts` | 建立共享文档结构/样式与异步静态化产物，不能只导出占位符 |
-| Mermaid securityLevel为loose；首次初始化后主题不随文档重新选择；错误模板直接插入代码/错误文本 | `src/core/render/mermaidRender.ts` | 受控配置、错误转义和产物验证须纳入；是否更改安全配置以兼容样例验证决定 |
-| MathJax依赖为3.2.2，有本地bundle及同步转换/源码回退，读视图等待后再解析 | `package.json`、`src/core/render/mathRender.ts`、`index.html` | 本分支先明确就绪/错误，不把源码回退当公式完成；不借机升级到设计中的4.x |
-| A4按显式分页符切段，纸张min-height且overflow:hidden，并非已证明自动分页 | `src/components/preview/A4PagePreview.tsx`、`src/index.css` | 超高区块和续页必须实测，不因物理尺寸就宣称分页正确 |
-| 打印使用150ms延时；HTML导出同步生成，没有完整冻结/就绪屏障 | `src/components/export/ExportModal.tsx` | 改为固定修订与资源完成事件，不能用延时猜完成 |
-| 应用入口远程加载Google Fonts；源载荷含文档但没有完整资产清单，导入只做部分结构检查 | `index.html`、`src/core/storage/storage.ts`、`src/core/model/document.ts` | 区分应用/文档资源，建立资产闭包、schema校验和往返测试；应用联网字体不证明导出离线失败，也不证明离线完成 |
-| CI仅类型检查/构建和产物上传，无测试配置 | `.github/workflows/ci.yml`、`docs/ci.md` | 随改造补真实契约/浏览器测试，不把已有CI全绿当HTML兼容验收 |
+| 现状                                                                                          | 位置                                                                      | 改造含义                                                                                                |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 手写逐行/正则解析；输出大量Tailwind类，表格对齐拼接动态类名；仅标题含源行信息                 | `src/core/parser/markdownParser.ts`                                       | 语义结构、允许内容和区块映射需先规范，不能默认动态类已生成CSS                                           |
+| parseInline 未统一转义原文，链接/图片URL直接进入属性；未见统一清理入口                        | 同上                                                                      | H1前落实HTML/SVG/MathML/URL边界验证，避免扩展HTML能力时扩大原有风险                                     |
+| 阅读跟随应用dark样式，异步补写Mermaid；未见修订检查阻止旧结果落地                             | `src/components/preview/ReadingPreview.tsx`                               | 文档主题应独立；输出须有修订与就绪结果                                                                  |
+| 全局math/code等选择器及Tailwind文档样式混在应用CSS                                            | `src/index.css`                                                           | 提取独立文档CSS并限定作用域，保留应用样式                                                               |
+| 独立HTML内嵌另一套CSS、固定860px容器，重新调用同步解析；未等待/封装Mermaid成品                | `src/core/export/htmlExporter.ts`                                         | 建立共享文档结构/样式与异步静态化产物，不能只导出占位符                                                 |
+| Mermaid securityLevel为loose；首次初始化后主题不随文档重新选择；错误模板直接插入代码/错误文本 | `src/core/render/mermaidRender.ts`                                        | 受控配置、错误转义和产物验证须纳入；是否更改安全配置以兼容样例验证决定                                  |
+| MathJax依赖为3.2.2，有本地bundle及同步转换/源码回退，读视图等待后再解析                       | `package.json`、`src/core/render/mathRender.ts`、`index.html`             | 本分支先明确就绪/错误，不把源码回退当公式完成；不借机升级到设计中的4.x                                  |
+| A4按显式分页符切段，纸张min-height且overflow:hidden，并非已证明自动分页                       | `src/components/preview/A4PagePreview.tsx`、`src/index.css`               | 超高区块和续页必须实测，不因物理尺寸就宣称分页正确                                                      |
+| 打印使用150ms延时；HTML导出同步生成，没有完整冻结/就绪屏障                                    | `src/components/export/ExportModal.tsx`                                   | 改为固定修订与资源完成事件，不能用延时猜完成                                                            |
+| 应用入口远程加载Google Fonts；源载荷含文档但没有完整资产清单，导入只做部分结构检查            | `index.html`、`src/core/storage/storage.ts`、`src/core/model/document.ts` | 区分应用/文档资源，建立资产闭包、schema校验和往返测试；应用联网字体不证明导出离线失败，也不证明离线完成 |
+| CI仅类型检查/构建和产物上传，无测试配置                                                       | `.github/workflows/ci.yml`、`docs/ci.md`                                  | 随改造补真实契约/浏览器测试，不把已有CI全绿当HTML兼容验收                                               |
 
 ## 3. 实施顺序
 
@@ -117,11 +117,11 @@
 
 ## 4. 后续路线：不是A0–A7的实施清单
 
-| 阶段 | 后续能力 | 启动门槛 |
-|---|---|---|
-| H2 | 独立HTML/CSS模板宿主、受控作者入口、主题包及变量字体导入/轴、完整资产包 | H1通过；先ADR选择宿主和语法，验证隔离/迁移/打印及非HTML降级后逐项开放 |
-| H3 | 注册交互组件，initialize/whenReady/serializeState/pause/renderStatic/dispose；之后才评估自定义JS | 与静态模式分开；独立来源/sandbox及消息schema，不能同时给不可信srcdoc任意脚本与同源权限；无Tauri桥接权限 |
-| H4 | 滚动/样式容器查询、新CSS、复杂多栏/纵排、Canvas/WebGL/媒体静态化与多平台覆盖 | 有真实需求和独立样例；读取/打印/各格式分别适配，失败不阻塞静态能力 |
+| 阶段 | 后续能力                                                                                         | 启动门槛                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| H2   | 独立HTML/CSS模板宿主、受控作者入口、主题包及变量字体导入/轴、完整资产包                          | H1通过；先ADR选择宿主和语法，验证隔离/迁移/打印及非HTML降级后逐项开放                                   |
+| H3   | 注册交互组件，initialize/whenReady/serializeState/pause/renderStatic/dispose；之后才评估自定义JS | 与静态模式分开；独立来源/sandbox及消息schema，不能同时给不可信srcdoc任意脚本与同源权限；无Tauri桥接权限 |
+| H4   | 滚动/样式容器查询、新CSS、复杂多栏/纵排、Canvas/WebGL/媒体静态化与多平台覆盖                     | 有真实需求和独立样例；读取/打印/各格式分别适配，失败不阻塞静态能力                                      |
 
 H2–H4各自批准范围后规划实际版本。脚本交互、单文件可打开、完整离线是三个验收维度，不因保存innerHTML就认定成立。
 

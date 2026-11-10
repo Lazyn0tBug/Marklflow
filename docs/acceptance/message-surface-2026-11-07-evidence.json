@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-11-07T08:20:30+00:00",
+  "reviewBase": "c78df46030a333468db94dae84a95e09e88493fa",
+  "validatedCodeCommit": "56dcbbc",
+  "branch": "local-document",
+  "scope": "The visual round of the message surface: roomier cards, a translucent surface, an exit animation, a dismissal that takes two steps, a visual page that behaves like the product, and the css minifier the modern features need. Plus one layering fix the full end to end run found, and three defects the delta review of that round found: the focus after a message goes away, the same on a platform that does not focus a button when it is clicked, and a leaving message that still took clicks. No push, no merge, no tag move, no dependency or lockfile change.",
+  "design": "docs/design/message-surface-2026-11-07.md",
+  "checks": {
+    "typecheck": "4 profiles + 286 managed sources/configs covered",
+    "sourcePolicy": "passed",
+    "moduleBoundaries": "passed",
+    "nativeIsolation": "passed",
+    "commandAdmission": "passed",
+    "messageVocabulary": "37 categories on both sides, one list",
+    "lint": "passed",
+    "unitTests": 604,
+    "productionBuild": "passed",
+    "chromiumE2E": 174,
+    "e2eSkipped": 1,
+    "e2eSkippedReason": "pre-existing fixme: keeps flow/A4 cache entries independent and invalidates a changed math configuration",
+    "newEndToEnd": [
+      "tests/e2e/message-presentation.spec.ts: the css entry alone renders the three shapes",
+      "tests/e2e/message-presentation.spec.ts: the application keeps the message styles above the preflight",
+      "tests/e2e/message-presentation.spec.ts: the css entry follows the color scheme it is given",
+      "tests/e2e/message-presentation.spec.ts: the detail toggle opens with the keyboard",
+      "tests/e2e/message-presentation.spec.ts: the pure components hand the callbacks back to the caller",
+      "tests/e2e/message-region.spec.ts: the region stays inside a narrow window and does not push the workbench",
+      "tests/e2e/message-region.spec.ts: a message does not take the editing focus",
+      "tests/e2e/message-region.spec.ts: closing a message moves the focus to a control that remains",
+      "tests/e2e/message-region.spec.ts: closing a message keeps the focus when the platform does not focus the button",
+      "tests/e2e/message-region.spec.ts: a message that times out does not drop the focus",
+      "tests/e2e/message-region.spec.ts: a leaving message does not take clicks",
+      "tests/e2e/message-region.spec.ts: a closing message fades out before it is gone",
+      "tests/e2e/message-region.spec.ts: the visual page surfaces a shape in the real region (against the dev server)",
+      "tests/e2e/message-region.spec.ts: the visual page dismisses a transient message on its own (against the dev server)",
+      "tests/e2e/message-region.spec.ts: a message does not cover the dialog that is open",
+      "tests/e2e/message-region.spec.ts: the production build carries no message visual page",
+      "tests/e2e/message-region.spec.ts: the message region follows the workbench theme switch"
+    ],
+    "engineFloor": "Chrome 123 / Safari 17.5 / Firefox 120, declared in build.cssTarget. The floor is the lowest version of the one feature the design depends on (light-dark, which carries the theme); color-mix, :has, text-wrap, @starting-style and scrollbar-gutter are progressive and do not raise it. Below the floor is out of scope and the module carries no fallback. The minifier is esbuild, because the css target only says which version to lower to and Lightning CSS lowered light-dark() anyway; the built css was checked for the leftovers of that rewrite and has none, and light-dark() and color-mix() are both in it as written."
+  },
+  "applicationPageRequirements": [
+    {
+      "requirement": "the region sits at the bottom right and clears the status bar",
+      "evidence": "region is fixed at 2.5rem from the bottom, the status bar is 1.75rem tall; narrow window assertion measures the box inside a 360x740 viewport"
+    },
+    {
+      "requirement": "the region shrinks to the available width on a narrow window",
+      "evidence": "tests/e2e/message-region.spec.ts, 360x740 viewport"
+    },
+    {
+      "requirement": "the region bounds its height and scrolls, the batch result scrolls inside",
+      "evidence": "region max-height 70vh/30rem with overflow-y auto; result list max-height 12rem with overflow-y auto"
+    },
+    {
+      "requirement": "long file names and unbroken text wrap",
+      "evidence": "tests/e2e/message-presentation.spec.ts measures scrollWidth <= clientWidth on the long result item"
+    },
+    {
+      "requirement": "the region does not leave the viewport and does not push the workbench",
+      "evidence": "tests/e2e/message-region.spec.ts compares the editor box before and after a message arrives"
+    },
+    {
+      "requirement": "a message does not take the editing focus",
+      "evidence": "tests/e2e/message-region.spec.ts asserts the editor keeps the focus"
+    },
+    {
+      "requirement": "closing a message moves the focus to a control that is still there",
+      "evidence": "tests/e2e/message-region.spec.ts asserts the remaining close button is focused"
+    },
+    {
+      "requirement": "a closing message fades out before it is gone",
+      "evidence": "tests/e2e/message-region.spec.ts waits for data-leaving on the card and then for it to be gone; it watches the attribute, not the element, because the element is gone 200ms later"
+    },
+    {
+      "requirement": "a transient message leaves on its own, only the ones that wait for the user wait",
+      "evidence": "the visual page test waits for the transient demo to start leaving on its own; the shape follows the condition, not the tone"
+    },
+    {
+      "requirement": "a message never covers a dialog that is open",
+      "evidence": "tests/e2e/message-region.spec.ts checks the point of the export window's confirm button: whatever receives the click there must be the button itself"
+    },
+    {
+      "requirement": "the detail expands with the keyboard",
+      "evidence": "tests/e2e/message-presentation.spec.ts presses Enter on the toggle"
+    },
+    {
+      "requirement": "the theme is the application's own switch",
+      "evidence": "tests/e2e/message-region.spec.ts asserts the region colour scheme follows the workbench toggle"
+    }
+  ],
+  "migration": {
+    "migrated": [
+      "notification surface: many at once, each closable, ten second timer still owned by the list, four tones, announcement still status",
+      "import result and import busy line: ownership still in the application, wording and actions unchanged",
+      "save failure: waits for an acknowledgement instead of timing out, a deliberate behaviour change"
+    ],
+    "kept": [
+      "storage recovery and action error banner: four meanings in one strip, splitting it changes ownership, keeping it as one strip rewords it",
+      "compatibility hint inside the export panel: it belongs to the dialog it sits in"
+    ]
+  },
+  "defectsFoundDuringReview": [
+    {
+      "id": "layer order",
+      "symptom": "in the application the cards had no border, no padding and square buttons",
+      "cause": "Tailwind drops any layer order statement the application writes, so the message layer was registered first and became the lowest one; the preflight won",
+      "fix": "the stylesheet is imported into Tailwind's components layer, so it sits above the preflight and below the utilities; the component entry no longer imports it, two owners produced two copies and the first copy decided the layer",
+      "guard": "tests/e2e/message-presentation.spec.ts measures the card in the application, where the preflight is present; it fails when the import moves back"
+    },
+    {
+      "id": "focus after closing",
+      "symptom": "closing a message dropped the focus back to the body",
+      "cause": "the focused close button is removed with the message",
+      "fix": "the list remembers the region while the button is attached and moves the focus to the next control, or to the programmatically focusable region"
+    },
+    {
+      "id": "light-dark rewritten by the build",
+      "symptom": "the module was light in the dark application: its border, background and padding were gone",
+      "cause": "Lightning CSS rewrote light-dark() inside a custom property as var(--lightningcss-light,X)var(--lightningcss-dark,Y); those variables are never defined, so the value was invalid; the dev server does not rewrite it, so the standalone sample looked right",
+      "fix": "the minifier is esbuild, because the css target only names the version to lower to and the lowering still happened; the module carries no fallback for older engines",
+      "guard": "the end to end test measures the real background colour of a card in the application, in the dark theme; the built css was also checked for the leftovers of the rewrite"
+    },
+    {
+      "id": "the assertion named a colour that never existed",
+      "symptom": "the background assertion expected a colour that no version of the module ever had",
+      "cause": "the stylesheet was changed without running that assertion, so the value drifted and nothing said so",
+      "fix": "the assertion pins the dark branch exactly and requires an alpha below 1, so the transparency can be tuned without touching it",
+      "guard": "tests/e2e/message-presentation.spec.ts measures the real background colour of a card in the application"
+    },
+    {
+      "id": "a message covered a dialog",
+      "symptom": "the export window's confirm button could not be clicked while an import result was on screen; the resource bundle export failed",
+      "cause": "the region sat above the dialogs (60 against 50); the region was narrow enough to miss them until the card grew, and then the import result landed on the button",
+      "fix": "the region now sits below the dialogs and above the top bar, which is where the application keeps its overlays; the dialog is modal and owns the screen",
+      "guard": "tests/e2e/message-region.spec.ts checks the point of the confirm button; the layer was put back the way it was and the test does fail that way"
+    },
+    {
+      "id": "the focus was lost when a message timed out",
+      "symptom": "a keyboard user who tabbed into a message and left it alone lost their place when it timed out after ten seconds",
+      "cause": "the timer called the store directly, so the list never learned the message was going away and never moved the focus; the button that had the focus was removed with it",
+      "fix": "the timer goes through the same dismiss path as the close button; the callback it depends on is stable, so the timer is not reset whenever a notice arrives",
+      "guard": "tests/e2e/message-region.spec.ts waits for the ten seconds and asks where the focus is now"
+    },
+    {
+      "id": "the focus was lost when a message was closed on a platform that does not focus buttons",
+      "symptom": "closing a message dropped the focus to the body on macOS, where a click does not focus a button",
+      "cause": "the region was derived from the focused element, and on that platform the focused element is still the body after a click, so there was no region to hand the focus back to",
+      "fix": "the region is the element the workbench already owns, so it is handed down instead of being guessed from the focus",
+      "guard": "tests/e2e/message-region.spec.ts clicks the button programmatically, which moves no focus, and is what a click on macOS looks like to the page; it fails when the fix is taken out"
+    },
+    {
+      "id": "a leaving message still took clicks",
+      "symptom": "an invisible message held the clicks in that corner of the screen for the two hundred milliseconds its exit takes",
+      "cause": "the leaving rule set the opacity and the offset but not the pointer events",
+      "fix": "the leaving rule also turns the pointer events off",
+      "guard": "tests/e2e/message-region.spec.ts reads the computed pointer events of the card while it is leaving"
+    }
+  ],
+  "openItems": [
+    {
+      "id": "the card has no real blur",
+      "state": "recorded and shelved on 2026-11-07",
+      "detail": "the surface is translucent at 0.94 and the bleed-through stopped, but there is no backdrop blur under it. The earlier reason for leaving it out no longer holds: with esbuild and the explicit css target the built css keeps the standard backdrop-filter (Tailwind's own backdrop utilities are emitted with both forms, checked in the built file). So this is a design question now, not a toolchain one: whether to blur, how much, and how that pairs with the alpha."
+    },
+    {
+      "id": "when the save failure notice goes away",
+      "state": "open",
+      "detail": "it now waits for the user to acknowledge it. Whether a later successful save takes it away by itself is not defined in the design."
+    }
+  ],
+  "notValidated": [
+    "visual check against the 2026-11-07 prototype: the prototype files are on another host and are not archived in the repository",
+    "readers and screen readers: only roles, names and keyboard order are asserted, no assistive technology was run",
+    "physical print: the region carries no-print, no printed output was inspected",
+    "WKWebView on macOS and WebKitGTK on Linux: only Chromium was run; the declared floor is Safari 17.5, older WebKitGTK is out of scope. One difference found there, a click that does not focus the button, is now covered by construction and by an assertion that reproduces it in Chromium; the rest of the platform differences are unverified",
+    "engines below the declared floor: the module carries no fallback for them by decision",
+    "remote CI, other browsers, Tauri desktop",
+    "the two kept entries and the business migration of their ownership",
+    "the exit animation as seen by a person: the assertions cover the state before and after, not how the fade looks"
+  ],
+  "warnings": [
+    "the review and the test execution were done by the main agent: AGENTS.md asks for the gpt-6-luna subagent, which is not available in this environment",
+    "the message module carries its own visual language by design, so it wins over Tailwind utilities; the host adjusts it through the --mf-message-* tokens",
+    "the message visual page is a review aid and ships only in the development build; its end to end test therefore runs against the dev server",
+    "the full chromium suite was run because the css minifier changed, which touches every stylesheet in the application; the two tests that run against the dev server are the visual page ones"
+  ]
+}

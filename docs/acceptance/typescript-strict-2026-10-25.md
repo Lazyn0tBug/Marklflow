@@ -4,11 +4,11 @@
 
 ## 结果
 
-| 步骤 | 结果 |
-| --- | --- |
-| S1 | strict=true、allowJs=false，显式 include 源码/测试/配置；类型和 Oxlint 门禁独立，CI 已配置；41单元及构建通过 |
-| S2 | noUncheckedIndexedAccess/exactOptionalPropertyTypes 开启，108条诊断消除；45单元、20 Chromium及构建通过 |
-| S3 | MathJax/Paged.js 最小适配接口与运行时能力/返回值校验；58单元、20 Chromium、类型/lint及构建通过 |
+| 步骤 | 结果                                                                                                         |
+| ---- | ------------------------------------------------------------------------------------------------------------ |
+| S1   | strict=true、allowJs=false，显式 include 源码/测试/配置；类型和 Oxlint 门禁独立，CI 已配置；41单元及构建通过 |
+| S2   | noUncheckedIndexedAccess/exactOptionalPropertyTypes 开启，108条诊断消除；45单元、20 Chromium及构建通过       |
+| S3   | MathJax/Paged.js 最小适配接口与运行时能力/返回值校验；58单元、20 Chromium、类型/lint及构建通过               |
 
 本地命令：bun install --frozen-lockfile；bun run check；bun run test:e2e。Oxlint 负例探针验证：临时源码显式 any 被拒绝，退出码1；文件随后删除。最终工作区不包含探针或日志产物。
 

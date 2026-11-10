@@ -1,5 +1,11 @@
 <!doctype html>
-<html lang="zh-CN"><meta charset="utf-8"><title>消息组件样例</title><body>
-<div data-message-sample></div>
-<script type="module" src="./messages-component-sample-client.tsx"></script>
-</body></html>
+<html lang="zh-CN">
+  <meta charset="utf-8" />
+  <!-- 样例页自己声明明暗 ✓ ⇒ ⇒ 模块的 `color-scheme: inherit` 才有东西可继承 ✓ ⇒ ⇒ 跟着系统的偏好走 ✓。 -->
+  <meta name="color-scheme" content="light dark" />
+  <title>消息组件样例</title>
+  <body>
+    <div data-message-sample></div>
+    <script type="module" src="./messages-component-sample-client.tsx"></script>
+  </body>
+</html>

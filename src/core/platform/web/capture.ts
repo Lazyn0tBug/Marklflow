@@ -13,7 +13,9 @@ import {reportFailure} from '../failures';
  */
 
 /** 捕获器：报告走**失败的那个出口** ✓ ⇒ ⇒ 通知、日志、控制台一次到位 ✓。 */
-const capture=new ErrorCapture(async report=>{await reportFailure(report);});
+const capture = new ErrorCapture(async (report) => {
+  await reportFailure(report);
+});
 
 /**
  * 工作台起来过吗 ✓。
@@ -23,16 +25,16 @@ const capture=new ErrorCapture(async report=>{await reportFailure(report);});
  * ⇒ ⇒ 边界自己的"挂载过"标志在那一刻已经是真的了 ✓ ⇒ ⇒ 靠它判不出来 ✓。
  * ⇒ ⇒ 改由**应用自己说**："我起来了" ✓ ⇒ ⇒ 那一刻就是真的 ✓。
  */
-let appReady=false;
+let appReady = false;
 
 /** 工作台起来了 ✓：应用第一次提交之后调它 ✓。 */
-export function markAppReady():void{
- appReady=true;
+export function markAppReady(): void {
+  appReady = true;
 }
 
 /** 工作台起来过吗 ✓：没起来 ⇒ 崩在最外层 ⇒ 类别是"起不来" ✓。 */
-export function isAppReady():boolean{
- return appReady;
+export function isAppReady(): boolean {
+  return appReady;
 }
 
 /**
@@ -40,8 +42,12 @@ export function isAppReady():boolean{
  *
  * **返回有没有真的报出去** ✓：去重与限流挡掉时是 false ✓。
  */
-export function reportCapture(category:MessageCategory,error:unknown,source:string):Promise<boolean>{
- return capture.report(category,error,source);
+export function reportCapture(
+  category: MessageCategory,
+  error: unknown,
+  source: string,
+): Promise<boolean> {
+  return capture.report(category, error, source);
 }
 
 /**
@@ -50,16 +56,19 @@ export function reportCapture(category:MessageCategory,error:unknown,source:stri
  * 同一个抛出点每次都一样 ✓ ⇒ ⇒ 渲染循环收敛成一条 ✓（P-3 ✓）⇒ ⇒ 而不同的组件
  * 仍然是不同的问题 ✓ ⇒ ⇒ 一次崩两处不会只看见一处 ✓。
  */
-export function reactSource(componentStack?:string|null):string{
- const frame=(componentStack??'').split('\n').map(part=>part.trim()).find(part=>part.length>0);
- return frame??'react';
+export function reactSource(componentStack?: string | null): string {
+  const frame = (componentStack ?? '')
+    .split('\n')
+    .map((part) => part.trim())
+    .find((part) => part.length > 0);
+  return frame ?? 'react';
 }
 
 /** 拒绝的来源标识 ✓：异常的类型与消息 ✓ ⇒ ⇒ 同一个拒绝收敛成一条 ✓。 */
-export function rejectionSource(reason:unknown):string{
- if(reason instanceof Error)return `${reason.name}: ${reason.message}`.slice(0,120);
- if(typeof reason==='string')return reason.slice(0,120);
- return 'rejection';
+export function rejectionSource(reason: unknown): string {
+  if (reason instanceof Error) return `${reason.name}: ${reason.message}`.slice(0, 120);
+  if (typeof reason === 'string') return reason.slice(0, 120);
+  return 'rejection';
 }
 
 /**
@@ -68,13 +77,17 @@ export function rejectionSource(reason:unknown):string{
  * **`error` 事件也包括资源加载失败** ✓ ⇒ ⇒ 那种没有异常对象也没有消息 ✓
  * ⇒ ⇒ 不是脚本错误 ⇒ ⇒ 跳过 ✓。
  */
-export function installWindowCapture():void{
- if(typeof window==='undefined')return;
- window.addEventListener('error',event=>{
-  if(!event.error&&!event.message)return;
-  void reportCapture('unhandled',event.error??event.message,`${event.filename}:${event.lineno}`);
- });
- window.addEventListener('unhandledrejection',event=>{
-  void reportCapture('rejection',event.reason,rejectionSource(event.reason));
- });
+export function installWindowCapture(): void {
+  if (typeof window === 'undefined') return;
+  window.addEventListener('error', (event) => {
+    if (!event.error && !event.message) return;
+    void reportCapture(
+      'unhandled',
+      event.error ?? event.message,
+      `${event.filename}:${event.lineno}`,
+    );
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    void reportCapture('rejection', event.reason, rejectionSource(event.reason));
+  });
 }

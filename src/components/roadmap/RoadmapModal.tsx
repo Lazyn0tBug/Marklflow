@@ -3,12 +3,12 @@
  * 对应设计方案第 13 章：0.1 至 0.9 实施路径与 0.9->1.0 审查验证放行机制
  */
 
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {version as APP_VERSION} from '../../../package.json';
-import { CheckCircle2, ShieldCheck, Flag, Sparkles, X, RefreshCw } from 'lucide-react';
-import {renderDocument,assertArtifact} from '../../core/render/documentRenderer';
-import { DocumentRecord } from '../../core/model/document';
-import { extractOutline } from '../../core/parse/markdown';
+import {CheckCircle2, ShieldCheck, Flag, Sparkles, X, RefreshCw} from 'lucide-react';
+import {renderDocument, assertArtifact} from '../../core/render/documentRenderer';
+import {DocumentRecord} from '../../core/model/document';
+import {extractOutline} from '../../core/parse/markdown';
 
 interface RoadmapModalProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ interface RoadmapModalProps {
   currentDoc: DocumentRecord;
 }
 
-export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, currentDoc }) => {
+export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, currentDoc}) => {
   const [activeTab, setActiveTab] = useState<'roadmap' | 'audit' | 'diagnostics'>('roadmap');
   const [testLog, setTestLog] = useState<string[]>([]);
   const [testing, setTesting] = useState(false);
@@ -115,7 +115,8 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
       id: 'g2',
       category: '零外部依赖',
       item: '开箱即用免安装环境',
-      detail: '用户端无需安装 Node、Python、TeX、Pandoc 或 Graphviz CLI 即可完成所有公式、图表与导出。',
+      detail:
+        '用户端无需安装 Node、Python、TeX、Pandoc 或 Graphviz CLI 即可完成所有公式、图表与导出。',
       verified: false,
     },
     {
@@ -129,7 +130,8 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
       id: 'g4',
       category: '数据完整性',
       item: '单文件 HTML 载荷 100% 往返还原',
-      detail: '导出的可编辑 HTML 通过嵌入非执行 JSON 载荷，再次导入时准确恢复文档内容、标题与元数据。',
+      detail:
+        '导出的可编辑 HTML 通过嵌入非执行 JSON 载荷，再次导入时准确恢复文档内容、标题与元数据。',
       verified: false,
     },
     {
@@ -155,14 +157,35 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
     },
   ];
 
-  const runDiagnostics=async()=>{
-    setTesting(true);setTestLog([]);const frozen=structuredClone(currentDoc),logs:string[]=[];
-    try{
-      logs.push('检查冻结修订 '+frozen.id+' / Rev '+frozen.revision);
-      logs.push('大纲标题：'+extractOutline(frozen.markdown).length);
-      for(const mode of ['mathml','svg'] as const){const artifact=await renderDocument(frozen.markdown,mode);assertArtifact(artifact);logs.push(mode+'：生成 '+artifact.html.length+' 字符，警告 '+artifact.diagnostics.length+' 项')}
-      logs.push('当前样本渲染检查完成。未执行离线、分页、DOCX阅读器或系统打印验收；不能据此放行1.0。');
-    }catch(error){logs.push('检查失败：'+String(error))}finally{setTestLog(logs);setTesting(false)}
+  const runDiagnostics = async () => {
+    setTesting(true);
+    setTestLog([]);
+    const frozen = structuredClone(currentDoc),
+      logs: string[] = [];
+    try {
+      logs.push('检查冻结修订 ' + frozen.id + ' / Rev ' + frozen.revision);
+      logs.push('大纲标题：' + extractOutline(frozen.markdown).length);
+      for (const mode of ['mathml', 'svg'] as const) {
+        const artifact = await renderDocument(frozen.markdown, mode);
+        assertArtifact(artifact);
+        logs.push(
+          mode +
+            '：生成 ' +
+            artifact.html.length +
+            ' 字符，警告 ' +
+            artifact.diagnostics.length +
+            ' 项',
+        );
+      }
+      logs.push(
+        '当前样本渲染检查完成。未执行离线、分页、DOCX阅读器或系统打印验收；不能据此放行1.0。',
+      );
+    } catch (error) {
+      logs.push('检查失败：' + String(error));
+    } finally {
+      setTestLog(logs);
+      setTesting(false);
+    }
   };
 
   return (
@@ -176,7 +199,9 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-neutral-100">MarkFlow 版本规划与 1.0 验收审查看板</h2>
+                <h2 className="text-base font-semibold text-neutral-100">
+                  MarkFlow 版本规划与 1.0 验收审查看板
+                </h2>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-700/60">
                   当前：{APP_VERSION} · HTML 兼容性修复
                 </span>
@@ -238,7 +263,8 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
               <div className="p-3 rounded-lg bg-teal-950/30 border border-teal-800/40 text-xs text-teal-200 flex items-start gap-2">
                 <span className="font-semibold text-teal-400 shrink-0">设计准则：</span>
                 <span>
-                  本应用已全面覆盖 0.1 至 0.9 所有核心需求，功能开发已进入 0.9 冻结态。所有在 1.3 节规划的编辑、公式、图表、分页、单文件 HTML、打印 PDF 与 DOCX 导出均已落地！
+                  本应用已全面覆盖 0.1 至 0.9 所有核心需求，功能开发已进入 0.9 冻结态。所有在 1.3
+                  节规划的编辑、公式、图表、分页、单文件 HTML、打印 PDF 与 DOCX 导出均已落地！
                 </span>
               </div>
 
@@ -253,14 +279,18 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
                         isCurrent
                           ? 'bg-neutral-800/90 border-teal-500/80 shadow-lg shadow-teal-950/20 ring-1 ring-teal-500/30'
                           : isDone
-                          ? 'bg-neutral-900/80 border-neutral-800 hover:border-neutral-700'
-                          : 'bg-neutral-950/60 border-neutral-800/80 opacity-80'
+                            ? 'bg-neutral-900/80 border-neutral-800 hover:border-neutral-700'
+                            : 'bg-neutral-950/60 border-neutral-800/80 opacity-80'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-sm text-teal-400">{m.version}</span>
-                          <span className="text-[11px] font-medium text-neutral-400">· {m.phase}</span>
+                          <span className="font-mono font-bold text-sm text-teal-400">
+                            {m.version}
+                          </span>
+                          <span className="text-[11px] font-medium text-neutral-400">
+                            · {m.phase}
+                          </span>
                         </div>
                         {isCurrent && (
                           <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-teal-500 text-neutral-950 font-bold">
@@ -295,7 +325,8 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
           {activeTab === 'audit' && (
             <div className="space-y-3">
               <div className="text-xs text-neutral-300 pb-2 border-b border-neutral-800">
-                根据《Markdown 编辑器总体设计方案 V0.2.8》第 13.3 节要求，0.9 到 1.0 为无新功能添加的纯审查验证过程。以下为 1.0 准入放行检验项：
+                根据《Markdown 编辑器总体设计方案 V0.2.8》第 13.3 节要求，0.9 到 1.0
+                为无新功能添加的纯审查验证过程。以下为 1.0 准入放行检验项：
               </div>
               <div className="space-y-2">
                 {auditChecklist.map((check) => (
@@ -325,9 +356,12 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({ isOpen, onClose, cur
               <div className="p-4 rounded-lg bg-neutral-950 border border-neutral-800 text-xs">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <div className="font-semibold text-neutral-200">当前文档实时解析与就绪屏障测试</div>
+                    <div className="font-semibold text-neutral-200">
+                      当前文档实时解析与就绪屏障测试
+                    </div>
                     <div className="text-[11px] text-neutral-400">
-                      针对当前编辑中的文档实时运行 AST、大纲、公式与图表解析，检查当前样本渲染；不代替各输出格式验收。
+                      针对当前编辑中的文档实时运行
+                      AST、大纲、公式与图表解析，检查当前样本渲染；不代替各输出格式验收。
                     </div>
                   </div>
                   <button

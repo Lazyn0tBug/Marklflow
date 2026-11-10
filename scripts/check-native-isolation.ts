@@ -1,5 +1,5 @@
 import {existsSync} from 'node:fs';
-import {join,resolve} from 'node:path';
+import {join, resolve} from 'node:path';
 
 /**
  * 原生侧的隔离前提。
@@ -17,32 +17,32 @@ import {join,resolve} from 'node:path';
  */
 
 /** 仓库根。 */
-const repo=resolve(import.meta.dirname,'..');
+const repo = resolve(import.meta.dirname, '..');
 
 /** 应用自带 ACL manifest 的目录（Tauri 从这里收集应用自身的权限定义）。 */
-export const APP_ACL_DIR=join(repo,'src-tauri/permissions');
+export const APP_ACL_DIR = join(repo, 'src-tauri/permissions');
 
 /**
  * 隔离前提被破坏时的理由；前提成立时返回 undefined。
  *
  * 纯函数：只看那个目录在不在 ✓，不读别的东西 ✓。
  */
-export function isolationPremiseBroken(appAclDir:string=APP_ACL_DIR):string|undefined{
- if(!existsSync(appAclDir))return undefined;
- return [
-  '应用自带 ACL manifest 会改变隔离层：',
-  `  ${appAclDir} 存在 → Tauri 开始检查应用自定义命令 → `,
-  '  输出宿主的拒绝证据不再来自来源守卫（D0-3 的取证前提失效）。',
-  '  要引入它，先把 D1b/D7 的取证前提一起改掉，并重跑那两轮取证。',
- ].join('\n');
+export function isolationPremiseBroken(appAclDir: string = APP_ACL_DIR): string | undefined {
+  if (!existsSync(appAclDir)) return undefined;
+  return [
+    '应用自带 ACL manifest 会改变隔离层：',
+    `  ${appAclDir} 存在 → Tauri 开始检查应用自定义命令 → `,
+    '  输出宿主的拒绝证据不再来自来源守卫（D0-3 的取证前提失效）。',
+    '  要引入它，先把 D1b/D7 的取证前提一起改掉，并重跑那两轮取证。',
+  ].join('\n');
 }
 
-export default function checkNativeIsolation():void{
- const reason=isolationPremiseBroken();
- if(reason){
-  console.error(reason);
-  process.exitCode=1;
- }
+export default function checkNativeIsolation(): void {
+  const reason = isolationPremiseBroken();
+  if (reason) {
+    console.error(reason);
+    process.exitCode = 1;
+  }
 }
 
-if(process.argv[1]?.endsWith('check-native-isolation.ts'))checkNativeIsolation();
+if (process.argv[1]?.endsWith('check-native-isolation.ts')) checkNativeIsolation();

@@ -30,7 +30,6 @@ Action 固定到官方仓库提交；默认只读权限，checkout 不持久化�
 
 可在 GitHub 分支保护中将 `Typecheck and build` 配置为必需检查；本次只创建配置文件，不更改远端分支保护。工作流推送后方可在 Actions 页面实际执行；本地构建通过不代表 Linux Actions 已通过。
 
-
 ## html 分支增加的门禁
 
 已加入Vitest契约/单元与Playwright生产构建测试，main/html推送或PR触发；CI安装独立Chromium，验证语义/负例、容器响应、图表/资源离线与源载荷往返、长文自动分页和DOCX静态化提示/媒体结构、打印资源就绪及失败路径。浏览器证据保存14天。前述“没有测试”为初始CI历史，现以本节/工作流为准，不宣称已配置ESLint或全浏览器/系统打印验收。
@@ -61,14 +60,11 @@ bun run test:unit:changed                      # vitest --changed：受改动影
 
 已知存在缺陷、暂不阻塞信号的用例用 `test.fixme()` 标注，并登记在 [已知失败](contracts/known-failures.md)；报告里它们显示为 fixme 而非失败。
 
-
 R0–R4审查后，本地样例为37项单元/契约及19项Chromium测试，覆盖SVG资源/公式隔离、DOCX文本/编号/锚点、分页外壳隔离与容器、七种显隐组合、设置对话框、草稿恢复及双向同步。数量为本次快照，以实际测试收集为准。运行环境JSON与长表格/代码的独立HTML/PDF也进入test-results证据目录；CI既有上传覆盖这些文件。远端尚未执行本分支。
-
 
 ## 普通 HTTP 兼容性回归（0.9.1 之后）
 
 新增浏览器测试使用普通 HTTP 来源，断言 isSecureContext=false 且 randomUUID/subtle 缺失，再验证预览、公式与图片导出、SHA-256 校验和源文档重导入。随机标识优先 randomUUID，回退到 getRandomValues；资产摘要优先原生 SHA-256，回退到动态加载的 hash.js。单元测试覆盖 SHA-256 分块和填充边界以及随机数能力缺失的明确失败，不使用弱随机数代替。历史 R0–R4 验证记录保持原样；本次运行结果以当前 CI 为准。
-
 
 ## TypeScript 严格化分支门禁
 

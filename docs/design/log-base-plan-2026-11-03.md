@@ -19,25 +19,25 @@
 
 ## 2. 范围与归属
 
-| 项 | 内容 |
-| --- | --- |
-| 范围 | L1 Rust 侧日志基座；L2 web→Rust 回传；证据形态与取信规则 |
-| 不在范围 | 生产侧监控看板与告警；崩溃上报服务；日志文件的长期归档策略（归 D8） |
-| 归属 | **跨阶段复用**，不是探针专用：D1b 取证、D1c 宿主诊断、D8 生产接入共用同一基座 |
-| 与探针的关系 | 探针方案的 §5.1 只引用本文；探针的每一步观测都按本文的形态留痕 |
+| 项           | 内容                                                                          |
+| ------------ | ----------------------------------------------------------------------------- |
+| 范围         | L1 Rust 侧日志基座；L2 web→Rust 回传；证据形态与取信规则                      |
+| 不在范围     | 生产侧监控看板与告警；崩溃上报服务；日志文件的长期归档策略（归 D8）           |
+| 归属         | **跨阶段复用**，不是探针专用：D1b 取证、D1c 宿主诊断、D8 生产接入共用同一基座 |
+| 与探针的关系 | 探针方案的 §5.1 只引用本文；探针的每一步观测都按本文的形态留痕                |
 
 ## 3. L1 Rust 日志基座
 
-| 项 | 决定 |
-| --- | --- |
-| 框架 | `tracing` 做门面、`tracing-subscriber` 做输出（`default-features = false`，开 `fmt`/`ansi`/`std`/`json`）。不引 `env-filter`（正则）与 `tracing-log` 桥 |
-| 过滤 | 配置文件 `log.level` 解析全局级别（**2026-11-05 改** ✓：原为环境变量 `MARKFLOW_LOG` ✓）；默认 debug 构建 INFO、release 构建 WARN |
-| 形态 | 人读一行式为主（时间 级别 目标 字段=值）；配置文件 `log.format=json` 切 JSON 行（**2026-11-05 改** ✓：原为环境变量 `MARKFLOW_LOG_FORMAT` ✓） |
-| 主 sink | **文件**：日志目录 **`<当前目录>\log\`** 下**按运行分文件**（`markflow.<pid>.log`）；单文件 8 MiB 或 UTC 跨日轮转，归档 `markflow.<pid>.log.YYYY-MM-DD.NNN`，只保留最新 10 份归档，规则见§3.2。**目录原为平台约定的 `app_log_dir()`** ✓（**2026-11-05 改** ✓：日志埋在用户配置目录里 ✓，跑一次要找一次 ✓；现在它与配置同一个根 ✓，见[运行期配置契约](runtime-config-2026-11-05.md)§2 ✓） |
-| 次 sink | stdout（tee）。开发期的快反馈回路 |
-| 写入 | 专用写线程；最多 1024 条待写记录，每条编码后最多 16 KiB。生产者不等待队列空间或文件I/O，队列满则丢弃新记录并计数；超长记录拒收，不截断成无效JSON。**UI 线程不得被日志阻塞**。**同一日志文件只有一个写者**——按运行分文件后结构上成立，无需跨进程协调 |
-| 运行标记 | 每次进程启动写一行 `event=run_start run_id=… os=… arch=… app_version=… feature=… config_source=… log_level=… log_format=…`。`run_id` 同时是本次运行的**根 span**；轮转后一个文件含多次运行，靠它圈出本次。**后三个字段是 2026-11-05 补的** ✓：配置的**来源**与**有效级别、有效形态** ✓ ——「配置没生效」与「配置生效了但值不对」是两回事 ✓，只记值就分不开 ✓ |
-| 凭据策略 | 所有构建均不记录完整授权key、文档正文、完整本地路径或带凭据URL；以不具授权能力的关联ID替代。字段按允许清单输出，异常文本及Web载荷同样受限，见§5 |
+| 项       | 决定                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 框架     | `tracing` 做门面、`tracing-subscriber` 做输出（`default-features = false`，开 `fmt`/`ansi`/`std`/`json`）。不引 `env-filter`（正则）与 `tracing-log` 桥                                                                                                                                                                                                                                  |
+| 过滤     | 配置文件 `log.level` 解析全局级别（**2026-11-05 改** ✓：原为环境变量 `MARKFLOW_LOG` ✓）；默认 debug 构建 INFO、release 构建 WARN                                                                                                                                                                                                                                                         |
+| 形态     | 人读一行式为主（时间 级别 目标 字段=值）；配置文件 `log.format=json` 切 JSON 行（**2026-11-05 改** ✓：原为环境变量 `MARKFLOW_LOG_FORMAT` ✓）                                                                                                                                                                                                                                             |
+| 主 sink  | **文件**：日志目录 **`<当前目录>\log\`** 下**按运行分文件**（`markflow.<pid>.log`）；单文件 8 MiB 或 UTC 跨日轮转，归档 `markflow.<pid>.log.YYYY-MM-DD.NNN`，只保留最新 10 份归档，规则见§3.2。**目录原为平台约定的 `app_log_dir()`** ✓（**2026-11-05 改** ✓：日志埋在用户配置目录里 ✓，跑一次要找一次 ✓；现在它与配置同一个根 ✓，见[运行期配置契约](runtime-config-2026-11-05.md)§2 ✓） |
+| 次 sink  | stdout（tee）。开发期的快反馈回路                                                                                                                                                                                                                                                                                                                                                        |
+| 写入     | 专用写线程；最多 1024 条待写记录，每条编码后最多 16 KiB。生产者不等待队列空间或文件I/O，队列满则丢弃新记录并计数；超长记录拒收，不截断成无效JSON。**UI 线程不得被日志阻塞**。**同一日志文件只有一个写者**——按运行分文件后结构上成立，无需跨进程协调                                                                                                                                      |
+| 运行标记 | 每次进程启动写一行 `event=run_start run_id=… os=… arch=… app_version=… feature=… config_source=… log_level=… log_format=…`。`run_id` 同时是本次运行的**根 span**；轮转后一个文件含多次运行，靠它圈出本次。**后三个字段是 2026-11-05 补的** ✓：配置的**来源**与**有效级别、有效形态** ✓ ——「配置没生效」与「配置生效了但值不对」是两回事 ✓，只记值就分不开 ✓                              |
+| 凭据策略 | 所有构建均不记录完整授权key、文档正文、完整本地路径或带凭据URL；以不具授权能力的关联ID替代。字段按允许清单输出，异常文本及Web载荷同样受限，见§5                                                                                                                                                                                                                                          |
 
 ### 3.1 故障、退出与丢失边界
 
@@ -57,16 +57,16 @@
 
 ## 4. L2 web→Rust 日志回传
 
-| 项 | 决定 |
-| --- | --- |
-| 通道 | 新增 `log_event` 命令，web 侧事件经它进入同一套日志 |
-| 边界 | **该命令只写日志，不铸任何授权**：D1b 的"无命令能铸造授权"这条实质性质不变。逐字意义上的"`invoke_handler` 不变"在此放宽为一个例外 |
-| 来源封装 | Rust生成外层 `origin=web`、真实调用方身份和接收时间；页面不能覆盖外层字段。页面记录是 Web 应用层报告，Rust 只证明收到了该身份的声明；本地日志不抵御已控制进程或可改日志文件的攻击者 |
-| 限制 | 每条请求UTF-8最多4 KiB；仅接收最小事件结构及允许字段，拒绝自由正文、堆栈、路径、URL和key。未知字段/事件拒收——**可记录的内容是受控的白名单**，不靠事后过滤 |
-| 调用身份 | 注入owned Webview读取窗口/WebView身份对。**写日志是有准入的**（与敏感命令同一套身份判定）：正常路径仅允许主窗口；默认关闭的pdf-probe构建可额外接收由原生实际创建并登记的本次探针输出实例，身份仍归受限文件调用侧。不得由页面自报身份获得允许，也不因此扩展文件权限 |
-| 限流 | 每个允许身份对最多20条/秒、进程全部Web调用最多100条/秒（每秒固定窗口）；拒绝者不建立无限身份桶。所有请求先做廉价大小/身份限制，超限丢弃并计数；不承诺阻止IPC反序列化本身的开销 |
-| 失败 | log_event只表示已校验并接受入队或明确丢弃，不表示已落盘；使用稳定结果 accepted / dropped / rejected。页面最多保留一份最后状态，不重试刷屏；失败不再调用log_event记录自身失败。拒绝/丢弃计数由Rust健康状态维护 |
-| 页面侧留痕 | 探针页DOM保留有界且同样脱敏的步骤摘要；回传失败时保留Web应用层观察供诊断，不当作原生结果或文件日志完整性的证明 |
+| 项         | 决定                                                                                                                                                                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 通道       | 新增 `log_event` 命令，web 侧事件经它进入同一套日志                                                                                                                                                                                                                |
+| 边界       | **该命令只写日志，不铸任何授权**：D1b 的"无命令能铸造授权"这条实质性质不变。逐字意义上的"`invoke_handler` 不变"在此放宽为一个例外                                                                                                                                  |
+| 来源封装   | Rust生成外层 `origin=web`、真实调用方身份和接收时间；页面不能覆盖外层字段。页面记录是 Web 应用层报告，Rust 只证明收到了该身份的声明；本地日志不抵御已控制进程或可改日志文件的攻击者                                                                                |
+| 限制       | 每条请求UTF-8最多4 KiB；仅接收最小事件结构及允许字段，拒绝自由正文、堆栈、路径、URL和key。未知字段/事件拒收——**可记录的内容是受控的白名单**，不靠事后过滤                                                                                                          |
+| 调用身份   | 注入owned Webview读取窗口/WebView身份对。**写日志是有准入的**（与敏感命令同一套身份判定）：正常路径仅允许主窗口；默认关闭的pdf-probe构建可额外接收由原生实际创建并登记的本次探针输出实例，身份仍归受限文件调用侧。不得由页面自报身份获得允许，也不因此扩展文件权限 |
+| 限流       | 每个允许身份对最多20条/秒、进程全部Web调用最多100条/秒（每秒固定窗口）；拒绝者不建立无限身份桶。所有请求先做廉价大小/身份限制，超限丢弃并计数；不承诺阻止IPC反序列化本身的开销                                                                                     |
+| 失败       | log_event只表示已校验并接受入队或明确丢弃，不表示已落盘；使用稳定结果 accepted / dropped / rejected。页面最多保留一份最后状态，不重试刷屏；失败不再调用log_event记录自身失败。拒绝/丢弃计数由Rust健康状态维护                                                      |
+| 页面侧留痕 | 探针页DOM保留有界且同样脱敏的步骤摘要；回传失败时保留Web应用层观察供诊断，不当作原生结果或文件日志完整性的证明                                                                                                                                                     |
 
 ### 4.1 身份是 webview 的身份，这里没有"用户"（2026-11-04 补记 ✓）
 
@@ -106,16 +106,16 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 
 **span 上放这次调用的标识与参数，事件上放这次调用的结果与结论**：读日志时先看 span（这是什么操作），再看事件（发生了什么）。span 词汇表是固定的，不开放任意结构：
 
-| span 名 | 谁开 | span 上的字段 | span 内的事件 | 事件字段 |
-| --- | --- | --- | --- | --- |
-| `run` | 进程启动 | run_id, os, arch, app_version, feature | `run_start` / `run_end` | — |
-| `command` | 每个受保护命令 | command, window_label, webview_label | `source_decision` | decision(allow/deny), reason_code |
-| | | | `operation_result` | result, bytes, elapsed_ms, committed, pdf_temp_removed |
-| `page_call` | 页面侧每次调用 | call_id, command, window_label, webview_label | `call_started` / `call_finished` / `page_error` | result, error_category |
-| `host` | 每次原生宿主创建 | host_kind, host_label, visible | `host_state` | state, instances |
-| `probe` | 探针装配一次 | — | `probe_source_check` / `probe_initial_load` / `probe_navigation` / `probe_cleanup` | reachable, loaded, navigated, revoked |
-| | | | `page_report_observed` | host, role, read_ok, read_matches_fixture |
-| `log` | 日志基座自身 | — | `log_health` | dropped, rejected, write_failures, rotate_failures, stdout_failed |
+| span 名     | 谁开             | span 上的字段                                 | span 内的事件                                                                      | 事件字段                                                          |
+| ----------- | ---------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `run`       | 进程启动         | run_id, os, arch, app_version, feature        | `run_start` / `run_end`                                                            | —                                                                 |
+| `command`   | 每个受保护命令   | command, window_label, webview_label          | `source_decision`                                                                  | decision(allow/deny), reason_code                                 |
+|             |                  |                                               | `operation_result`                                                                 | result, bytes, elapsed_ms, committed, pdf_temp_removed            |
+| `page_call` | 页面侧每次调用   | call_id, command, window_label, webview_label | `call_started` / `call_finished` / `page_error`                                    | result, error_category                                            |
+| `host`      | 每次原生宿主创建 | host_kind, host_label, visible                | `host_state`                                                                       | state, instances                                                  |
+| `probe`     | 探针装配一次     | —                                             | `probe_source_check` / `probe_initial_load` / `probe_navigation` / `probe_cleanup` | reachable, loaded, navigated, revoked                             |
+|             |                  |                                               | `page_report_observed`                                                             | host, role, read_ok, read_matches_fixture                         |
+| `log`       | 日志基座自身     | —                                             | `log_health`                                                                       | dropped, rejected, write_failures, rotate_failures, stdout_failed |
 
 两条补充约束（实施时查出，写进契约免得再犯）：
 
@@ -134,9 +134,9 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 
 **`log_health` 的 `dropped` 与 `rejected` 各自记着两处**（2026-11-04 补记 ✓）：
 
-| 计数 | 也记着 |
-| --- | --- |
-| `dropped` | web 事件**超限丢弃** ✓（限流 ✓）＋ 日志记录**队列满丢弃** ✓ |
+| 计数       | 也记着                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------- |
+| `dropped`  | web 事件**超限丢弃** ✓（限流 ✓）＋ 日志记录**队列满丢弃** ✓                                                   |
 | `rejected` | web 事件**不合规拒收** ✓（超大 ✓、身份不在允许范围 ✓、解析失败 ✓、`call_id` 超长 ✓）＋ 日志记录**超长拒收** ✓ |
 
 两者的**分母不同** ✓，所以这两个数**不能**当成"丢了／拒了多少条日志" ✓。
@@ -165,12 +165,12 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 
 **一族一种拼写** ✓：全是 kebab ✓（`export-failed` ✓、`native-io-failed` ✓）⇒ ⇒ 同一个字段里不会混着两种写法 ✓ ⇒ ⇒ 读日志的人不用记两套规则 ✓。
 
-| 族 | 类别 | 谁报 |
-| --- | --- | --- |
-| **通道类** | `no-tauri-internals` / `invoke-rejected` / `invalid-payload` / `rate-limited` / `timeout` / `unknown` | 探针页 ✓（基座原有 ✓） |
+| 族             | 类别                                                                                                                                                                                                                                                                                                                                           | 谁报                                          |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| **通道类**     | `no-tauri-internals` / `invoke-rejected` / `invalid-payload` / `rate-limited` / `timeout` / `unknown`                                                                                                                                                                                                                                          | 探针页 ✓（基座原有 ✓）                        |
 | **原生文件类** | `native-source-denied` / `native-target-missing` / `native-permission-denied` / `native-io-failed` / `native-dialog-failed` / `file-too-large` / `invalid-utf8` / `not-a-file` / `not-a-regular-target` / `unknown-file-key` / `print-failed` / `file-capability-mismatch` / `native-internal-failed` / `invalid-file-name` / `invalid-target` | 原生侧 ✓（`files.rs` 与 `source_guard.rs` ✓） |
-| **应用自身类** | `app-internal-failed` / `document-open-failed` / `export-failed` / `export-blocked` / `save-failed` / `storage-corrupted` / `storage-unreadable` / `storage-write-failed` / `preview-unavailable` / `import-rejected` / `input-too-large` | 应用层 ✓ |
-| **捕获类** | `render` / `unhandled` / `rejection` / `startup` / `worker` | 前端捕获未捕获错误时 ✓ |
+| **应用自身类** | `app-internal-failed` / `document-open-failed` / `export-failed` / `export-blocked` / `save-failed` / `storage-corrupted` / `storage-unreadable` / `storage-write-failed` / `preview-unavailable` / `import-rejected` / `input-too-large`                                                                                                      | 应用层 ✓                                      |
+| **捕获类**     | `render` / `unhandled` / `rejection` / `startup` / `worker`                                                                                                                                                                                                                                                                                    | 前端捕获未捕获错误时 ✓                        |
 
 ⇒ **类别是码，不是文案** ✓：文案在应用侧那张表里 ✓（`src/application/messages.ts` ✓）⇒ ⇒ 日志里只有码 ✓。
 ⇒ **类别只在失败时出现** ✓（成功不另造码 ✓，见[应用消息方案](app-messaging-plan-2026-11-07.md) §2.1 ✓）。
@@ -189,7 +189,6 @@ Tauri 的 ACL **不检查应用自定义命令** ✓（D0-3 ✓），
 2. 做**契约体检**（诊断项，不混进断言）：重复输出、调用 span 是否都是根的直接子、事件是否落在契约规定的 span 内、跨侧结果不一致、两侧记录数量不匹配、web 侧只记开始没有完成、`log_health` 计数、run_end 缺失、脱敏扫描（凭据片段／完整本地路径／带凭据 URL／夹具正文）。
 
 **内容相符的依据边界**：原生不记正文（§3 凭据策略），故"读到的内容与夹具逐字相符"只有页面自述（`read_matches_fixture`）一个来源；原生能证明的是"放行、读成功、返回 N 字节"。校验器据此把该依据标为页面自述，并在诊断里显式提示，不把它写成原生证实。
-
 
 ## 6. 执行约定
 

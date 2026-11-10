@@ -27,7 +27,22 @@ export interface ThemeSpec {
   };
 }
 
-export interface DocumentAsset {source:string;mime:string;bytes:number;sha256:string;data:string;license?:string}
+/**
+ * **这个文件按哪种载荷读进来** ✓（设计 §3.3 ✓、§6.1 ✓）。
+ *
+ * **一处定义** ✓ ⇒ ⇒ 写回那一份字节按它选 ✓ ⇒ ⇒ 纯模块与平台层用同一份 ✓。
+ * **只有两种** ✓ ⇒ ⇒ 写回的内容随它而异 ✓ ⇒ ⇒ 没有第三种"不知道" ✓。
+ */
+export type SourceFormat = 'markdown' | 'editable-html';
+
+export interface DocumentAsset {
+  source: string;
+  mime: string;
+  bytes: number;
+  sha256: string;
+  data: string;
+  license?: string;
+}
 
 export interface DocumentRecord {
   assets?: DocumentAsset[];
@@ -44,10 +59,10 @@ export interface DocumentRecord {
 }
 
 /** 文档标题取首个一级标题；超出存储上限时截断，避免写入被 schema 拒绝。 */
-export function deriveDocumentTitle(markdown:string):string|null{
-  const title=markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  if(!title)return null;
-  return title.length>DOCUMENT_TITLE_MAX?title.slice(0,DOCUMENT_TITLE_MAX):title;
+export function deriveDocumentTitle(markdown: string): string | null {
+  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  if (!title) return null;
+  return title.length > DOCUMENT_TITLE_MAX ? title.slice(0, DOCUMENT_TITLE_MAX) : title;
 }
 
 export const DEFAULT_THEME: ThemeSpec = {

@@ -6,7 +6,7 @@
  * 3. 视窗最大宽度（默认 1024px）支持灵活配置
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   FileDown,
   BookOpen,
@@ -15,14 +15,18 @@ import {
   Moon,
   Sun,
   ShieldCheck,
-  Save,
   Sigma,
   PanelLeftClose,
   PanelLeftOpen,
   SlidersHorizontal,
   ChevronDown,
   Check,
+  MessageSquare,
 } from 'lucide-react';
+import {SYNC_STATUS_TEXTS} from '../../application/messages';
+import type {SyncStatus} from '../../application/workspace/documentFileContext';
+import type {SaveControlView} from '../../application/workspace/saveControl';
+import {SaveSplitButton} from './SaveSplitButton';
 
 export type ViewMode = 'split' | 'edit' | 'reading' | 'a4';
 
@@ -41,7 +45,7 @@ export interface TopBarProps {
 
   // 最大宽度配置 (默认 1024)
   softWrap: boolean;
-  onSoftWrapChange: (enabled:boolean)=>void;
+  onSoftWrapChange: (enabled: boolean) => void;
   maxWidth: number | 'full';
   onMaxWidthChange: (width: number | 'full') => void;
 
@@ -50,18 +54,39 @@ export interface TopBarProps {
   isDark: boolean;
   onThemeToggle: () => void;
   isDirty: boolean;
-  onSave: () => void;
+  /**
+   * **那个分裂按钮的形状** ✓ ⇒ ⇒ **界面不自己判** ✓（§8.6 ✓）。
+   */
+  saveView: SaveControlView;
+  /** 主区：写回文件 ✓（§6.4 ✓）。 */
+  onWriteBack: () => void;
+  /** 菜单里另存为 ✓（§6.2 ✓）。 */
+  onSaveAs: () => void;
   onOpenExport: () => void;
   onOpenRoadmap: () => void;
+  /**
+   * 打开消息视觉页 ✓（核对消息的样子用 ✓）。
+   *
+   * **只在开发构建里给** ✓ ⇒ ⇒ 生产构建没有那个入口 ✓ ⇒ ⇒ 它不是产品功能 ✓。
+   */
+  onOpenMessages: (() => void) | undefined;
   documentTitle: string;
+  /**
+   * 已关联的文件名 ✓（设计 §8.3 ✓）⇒ ⇒ **没有就显示文档标题** ✓ ⇒ ⇒ 不显示路径占位 ✓。
+   */
+  fileName?: string | undefined;
+  /** 人类可读的定位串 ✓：**可选** ✓ ⇒ ⇒ 次要样式 ✓。 */
+  filePath?: string | undefined;
+  /** 同步维度 ✓：标题旁的未同步标记 ✓（设计 §8.3 ✓）。 */
+  syncStatus: SyncStatus;
 }
 
-const WIDTH_OPTIONS: { label: string; value: number | 'full'; desc: string }[] = [
-  { label: '800px', value: 800, desc: '紧凑聚焦排版' },
-  { label: '1024px', value: 1024, desc: '标准默认 (黄金阅读宽度)' },
-  { label: '1280px', value: 1280, desc: '宽屏排版' },
-  { label: '1440px', value: 1440, desc: '超宽大屏' },
-  { label: '100% 铺满', value: 'full', desc: '自适应全屏铺满' },
+const WIDTH_OPTIONS: {label: string; value: number | 'full'; desc: string}[] = [
+  {label: '800px', value: 800, desc: '紧凑聚焦排版'},
+  {label: '1024px', value: 1024, desc: '标准默认 (黄金阅读宽度)'},
+  {label: '1280px', value: 1280, desc: '宽屏排版'},
+  {label: '1440px', value: 1440, desc: '超宽大屏'},
+  {label: '100% 铺满', value: 'full', desc: '自适应全屏铺满'},
 ];
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -82,23 +107,35 @@ export const TopBar: React.FC<TopBarProps> = ({
   isDark,
   onThemeToggle,
   isDirty,
-  onSave,
+  saveView,
+  onWriteBack,
+  onSaveAs,
   onOpenExport,
   onOpenRoadmap,
+  onOpenMessages,
   documentTitle,
+  fileName,
+  filePath,
+  syncStatus,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
-  const settingsRef=useRef<HTMLDialogElement>(null);
-  const settingsButtonRef=useRef<HTMLButtonElement>(null);
-  const visibleCount=Number(sidebarOpen)+Number(showEditor)+Number(showPreview);
-  useEffect(()=>{const dialog=settingsRef.current;if(widthMenuOpen&&!dialog?.open)dialog?.showModal();else if(!widthMenuOpen&&dialog?.open)dialog.close()},[widthMenuOpen]);
+  const settingsRef = useRef<HTMLDialogElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const visibleCount = Number(sidebarOpen) + Number(showEditor) + Number(showPreview);
+  useEffect(() => {
+    const dialog = settingsRef.current;
+    if (widthMenuOpen && !dialog?.open) dialog?.showModal();
+    else if (!widthMenuOpen && dialog?.open) dialog.close();
+  }, [widthMenuOpen]);
 
   return (
     <header className="h-13 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-3 md:px-4 text-neutral-100 gap-3 select-none shrink-0 no-print z-40">
       {/* Zone 1: 侧栏侧边触发 + 品牌 & 当前文档 */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
-          disabled={sidebarOpen&&visibleCount===1} aria-pressed={sidebarOpen} onClick={onToggleSidebar}
+          disabled={sidebarOpen && visibleCount === 1}
+          aria-pressed={sidebarOpen}
+          onClick={onToggleSidebar}
           className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
             sidebarOpen
               ? 'border-neutral-700 bg-neutral-800 text-teal-300'
@@ -106,7 +143,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           }`}
           title={sidebarOpen ? '收起侧边文档与大纲 (侧边点击)' : '展开侧边文档与大纲 (侧边点击)'}
         >
-          {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+          {sidebarOpen ? (
+            <PanelLeftClose className="w-4 h-4" />
+          ) : (
+            <PanelLeftOpen className="w-4 h-4" />
+          )}
         </button>
 
         <a href="/" className="flex items-center gap-2 group">
@@ -119,9 +160,26 @@ export const TopBar: React.FC<TopBarProps> = ({
         </a>
 
         <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-neutral-800 text-xs text-neutral-400 max-w-xs truncate">
-          <span className="truncate">{documentTitle || '未命名技术文档'}</span>
+          {fileName ? (
+            <span className="truncate" title={filePath ? `${fileName} · ${filePath}` : fileName}>
+              {fileName}
+            </span>
+          ) : (
+            <span className="truncate">{documentTitle || '未命名技术文档'}</span>
+          )}
+          {syncStatus === 'unsynced' && (
+            <span
+              className="shrink-0 rounded border border-amber-500/60 px-1 py-px text-[10px] text-amber-300"
+              title="本地文件有未同步的修改（Ctrl/Cmd+S）"
+            >
+              {SYNC_STATUS_TEXTS.unsynced}
+            </span>
+          )}
           {isDirty && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="有未写入草稿修改" />
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+              title="有未写入草稿修改"
+            />
           )}
         </div>
       </div>
@@ -132,7 +190,9 @@ export const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center p-0.5 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-medium">
           {/* 编辑器开关 */}
           <button
-            disabled={showEditor&&visibleCount===1} aria-pressed={showEditor} onClick={onToggleEditor}
+            disabled={showEditor && visibleCount === 1}
+            aria-pressed={showEditor}
+            onClick={onToggleEditor}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               showEditor
                 ? 'bg-neutral-800 text-teal-300 shadow-xs'
@@ -151,7 +211,9 @@ export const TopBar: React.FC<TopBarProps> = ({
 
           {/* HTML 预览开关 */}
           <button
-            disabled={showPreview&&visibleCount===1} aria-pressed={showPreview} onClick={onTogglePreview}
+            disabled={showPreview && visibleCount === 1}
+            aria-pressed={showPreview}
+            onClick={onTogglePreview}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               showPreview
                 ? 'bg-neutral-800 text-teal-300 shadow-xs'
@@ -198,22 +260,68 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
-        <button ref={settingsButtonRef} type="button" onClick={()=>setWidthMenuOpen(true)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300 whitespace-nowrap" aria-haspopup="dialog">
-          <SlidersHorizontal className="w-3.5 h-3.5"/>设置
+        <button
+          ref={settingsButtonRef}
+          type="button"
+          onClick={() => setWidthMenuOpen(true)}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300 whitespace-nowrap"
+          aria-haspopup="dialog"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          设置
         </button>
-        <dialog ref={settingsRef} aria-labelledby="settings-title" onClose={()=>{setWidthMenuOpen(false);settingsButtonRef.current?.focus()}} className="m-auto w-80 max-w-[calc(100vw-32px)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60">
-          <h2 id="settings-title" className="text-base font-semibold mb-4">工作台设置</h2>
-          <label htmlFor="content-width" className="block text-sm mb-2">编辑器与 HTML 内容最大宽度</label>
-          <select id="content-width" value={maxWidth} onChange={e=>onMaxWidthChange(e.target.value==='full'?'full':Number(e.target.value))} className="w-full rounded border border-neutral-600 bg-neutral-950 p-2 text-sm">
-            {WIDTH_OPTIONS.map(opt=><option key={opt.label} value={opt.value}>{opt.label}</option>)}
+        <dialog
+          ref={settingsRef}
+          aria-labelledby="settings-title"
+          onClose={() => {
+            setWidthMenuOpen(false);
+            settingsButtonRef.current?.focus();
+          }}
+          className="m-auto w-80 max-w-[calc(100vw-32px)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60"
+        >
+          <h2 id="settings-title" className="text-base font-semibold mb-4">
+            工作台设置
+          </h2>
+          <label htmlFor="content-width" className="block text-sm mb-2">
+            编辑器与 HTML 内容最大宽度
+          </label>
+          <select
+            id="content-width"
+            value={maxWidth}
+            onChange={(e) =>
+              onMaxWidthChange(e.target.value === 'full' ? 'full' : Number(e.target.value))
+            }
+            className="w-full rounded border border-neutral-600 bg-neutral-950 p-2 text-sm"
+          >
+            {WIDTH_OPTIONS.map((opt) => (
+              <option key={opt.label} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
-          <p className="text-xs text-neutral-400 mt-2">默认 1024px。仅影响工作台，不改变导出纸张。</p>
+          <p className="text-xs text-neutral-400 mt-2">
+            默认 1024px。仅影响工作台，不改变导出纸张。
+          </p>
           <label className="mt-4 flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={softWrap} onChange={e=>onSoftWrapChange(e.target.checked)} aria-describedby="soft-wrap-description" className="accent-teal-500"/>
+            <input
+              type="checkbox"
+              checked={softWrap}
+              onChange={(e) => onSoftWrapChange(e.target.checked)}
+              aria-describedby="soft-wrap-description"
+              className="accent-teal-500"
+            />
             自动换行
           </label>
-          <p id="soft-wrap-description" className="mt-2 text-xs text-neutral-400">仅调整编辑器显示，不改变正文换行。关闭后可水平滚动。</p>
-          <button type="button" onClick={()=>setWidthMenuOpen(false)} className="mt-5 rounded bg-neutral-700 px-3 py-2 text-sm">完成</button>
+          <p id="soft-wrap-description" className="mt-2 text-xs text-neutral-400">
+            仅调整编辑器显示，不改变正文换行。关闭后可水平滚动。
+          </p>
+          <button
+            type="button"
+            onClick={() => setWidthMenuOpen(false)}
+            className="mt-5 rounded bg-neutral-700 px-3 py-2 text-sm"
+          >
+            完成
+          </button>
         </dialog>
 
         {/* 公式引擎切换 (MathML vs SVG) */}
@@ -225,6 +333,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           <Sigma className="w-3.5 h-3.5 text-teal-400" />
           <span>{mathMode === 'mathml' ? 'MathML' : 'SVG'}</span>
         </button>
+
+        {/* 消息视觉页：把三种形状与四种语气都点出来 ✓（只在开发构建里 ✓）。 */}
+        {onOpenMessages ? (
+          <button
+            onClick={onOpenMessages}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 transition-colors whitespace-nowrap"
+            title="打开消息视觉页：点一个按钮，右下角就会出现那条消息"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
+            <span className="hidden sm:inline">消息</span>
+          </button>
+        ) : null}
 
         {/* 1.0 准入审查看板 */}
         <button
@@ -247,14 +367,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        <button
-          onClick={onSave}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700/80 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer"
-          title="保存当前修改到本地 IndexedDB"
-        >
-          <Save className="w-3.5 h-3.5" />
-          <span>保存</span>
-        </button>
+        {/* **分裂按钮** ✓ ⇒ ⇒ 主区 = 写回文件 ✓ ⇒ ⇒ 箭头 = 菜单 ✓（§8.2 ✓）。 */}
+        <SaveSplitButton view={saveView} onWriteBack={onWriteBack} onSaveAs={onSaveAs} />
 
         <button
           onClick={onOpenExport}

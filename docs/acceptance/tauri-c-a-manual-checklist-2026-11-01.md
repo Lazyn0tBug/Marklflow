@@ -8,26 +8,26 @@
 
 已核实的现状（决定本单口径，不得再推测）：
 
-| 事实 | 出处 |
-| --- | --- |
+| 事实                                                                                                                                                                                 | 出处                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
 | 原生适配器**未接线**：`invoke` 只出现在 `src/core/platform/tauri/` 内，`src/` 其余部分零引用 ⇒ 桌面壳走 **web 路径**（FSA / `window.print`），**不会**弹出 Tauri 原生打开/保存对话框 | `src/core/platform/tauri/files.ts`、`runtime.ts` |
-| Rust 侧已有 5 个原生命令（`select_native_open` / `select_native_save` / `read_native_text` / `write_native_bytes` / `release_native_file`）与 `get_platform_info`，但生产组合未调用 | `src-tauri/src/files.rs`、`src-tauri/src/lib.rs` |
-| 桌面包自带前端构建（`beforeBuildCommand: bun run build`），不依赖 CI 的 web 产物 | `src-tauri/tauri.conf.json` |
-| 应用标识：`MarkFlow`，窗口标题「MarkFlow 墨流 - Markdown 排版与发布工作台」，默认 1280×840，最小 800×600 | 同上 |
-| 能力清单为空：无 JS 侧文件系统/对话框权限 | `src-tauri/capabilities/default.json` |
+| Rust 侧已有 5 个原生命令（`select_native_open` / `select_native_save` / `read_native_text` / `write_native_bytes` / `release_native_file`）与 `get_platform_info`，但生产组合未调用  | `src-tauri/src/files.rs`、`src-tauri/src/lib.rs` |
+| 桌面包自带前端构建（`beforeBuildCommand: bun run build`），不依赖 CI 的 web 产物                                                                                                     | `src-tauri/tauri.conf.json`                      |
+| 应用标识：`MarkFlow`，窗口标题「MarkFlow 墨流 - Markdown 排版与发布工作台」，默认 1280×840，最小 800×600                                                                             | 同上                                             |
+| 能力清单为空：无 JS 侧文件系统/对话框权限                                                                                                                                            | `src-tauri/capabilities/default.json`            |
 
 ⇒ **凡是"应该出现原生对话框"的地方，本轮记录实际现象，不写成缺陷结论**（是否接线由 M4/M5/M9 决策）。
 
 ## 1. 环境与产物
 
-| 项 | 记录 |
-| --- | --- |
-| 产物名 | `markflow-macos-universal-<sha>` / `markflow-windows-x64-<sha>` |
-| 来源 | 标签 `0.9.8-pre3` 对应的工作流运行（Actions → Build Tauri Desktop） |
-| OS / 版本 | 待填 |
-| 机器架构（Apple Silicon / Intel / x64） | 待填 |
-| 安装方式（dmg 拖入 / msi 安装 / 解包） | 待填 |
-| 应用版本与窗口标题 | 待填 |
+| 项                                      | 记录                                                                |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| 产物名                                  | `markflow-macos-universal-<sha>` / `markflow-windows-x64-<sha>`     |
+| 来源                                    | 标签 `0.9.8-pre3` 对应的工作流运行（Actions → Build Tauri Desktop） |
+| OS / 版本                               | 待填                                                                |
+| 机器架构（Apple Silicon / Intel / x64） | 待填                                                                |
+| 安装方式（dmg 拖入 / msi 安装 / 解包）  | 待填                                                                |
+| 应用版本与窗口标题                      | 待填                                                                |
 
 ## 2. 启动与基本可用性
 
@@ -47,11 +47,11 @@
 
 对 **DOCX / HTML / PDF** 各做一次，记录**实际发生了什么**：
 
-| 导出 | 现象记录 |
-| --- | --- |
+| 导出 | 现象记录                                                                           |
+| ---- | ---------------------------------------------------------------------------------- |
 | DOCX | 是否弹出对话框？是否落到下载目录？应用给什么反馈（成功提示 / 错误提示 / 无反应）？ |
-| HTML | 同上 |
-| PDF | 是否弹出系统打印界面？打印面板里是否出现内容？取消后应用如何反馈？ |
+| HTML | 同上                                                                               |
+| PDF  | 是否弹出系统打印界面？打印面板里是否出现内容？取消后应用如何反馈？                 |
 
 同时记录：应用是否使用了 Tauri 原生对话框（预期：**不会**，适配器未接线）；若观察到原生对话框出现，反而说明接线已生效，需要记录并回报。
 

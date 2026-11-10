@@ -1,21 +1,9 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": [
-      "node"
-    ],
-    "lib": [
-      "ES2022"
-    ]
+    "types": ["node"],
+    "lib": ["ES2022"]
   },
-  "include": [
-    "scripts/**/*.ts",
-    "*.config.ts",
-    "*.config.mts",
-    "*.config.cts"
-  ],
-  "exclude": [
-    "scripts/measure-architecture-baseline.ts",
-    "scripts/pdf-probe-sample.ts"
-  ]
+  "include": ["scripts/**/*.ts", "*.config.ts", "*.config.mts", "*.config.cts"],
+  "exclude": ["scripts/measure-architecture-baseline.ts", "scripts/pdf-probe-sample.ts"]
 }

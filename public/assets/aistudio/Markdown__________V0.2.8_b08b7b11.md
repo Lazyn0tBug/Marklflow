@@ -73,32 +73,32 @@ IR 指内部文档结构，不要求写入本地中间文件。除显式保存�
 
 以下选型作为开发默认基线。Bun 优先承担包管理、脚本和开发工具运行，React 19 负责 UI，Vite 继续承担开发服务与生产构建。版本号分为设计基线和工程精确锁定版本：前者如下，后者须在 P0 安装、兼容验证后记录于 package.json、bun.lock 和工具链记录，不能把文档中的版本族当成已验证组合。
 
-| 领域 | 建议 | 用途与边界 |
-|---|---|---|
-| 语言 | TypeScript 6.0.x 验证基线，严格模式 | 使用 tsc --noEmit 单独类型检查；是保守兼容基线，不声称为最新版本 [S24] |
-| 开发运行时 | Bun 1.4.x，P0 锁定具体补丁 | 优先开发、脚本和 CI；Node 仅作具体工具的兼容回退，不作为应用运行依赖 [S21][S23] |
-| 包管理 | Bun + bun.lock 文本锁文件 | 使用 bun install --frozen-lockfile 复现；仅维护一份锁文件；单仓库起步 [S22] |
-| 构建 | Vite 8.x + @vitejs/plugin-react | 静态部署、代码分割、Worker 和 WASM 资源打包；验证插件、PWA 与 Bun 的兼容组合 [S1][S21] |
-| UI | React 19.x + react-dom 19.x，优先验证 19.3.x | 两包对齐版本，使用 createRoot；类型包使用 @types/react 和 @types/react-dom 19.x；不启用 SSR/RSC [S25] |
-| 编辑 | CodeMirror 6 | Markdown 高亮、编辑事务、快捷键、选区和语言扩展；先验证中文输入与嵌套代码语言 [S2] |
-| 代码展示高亮 | Shiki 4.x 验证基线，优先 JavaScript 正则引擎 | Worker 内复用实例、按需加载语言/主题，输出 token 数据后适配预览和导出；替换 highlight.js [S29][S30] |
-| 临时文字标记 | CSS Custom Highlight API | 阅读预览中的搜索、当前源位置与文本诊断；无需新增运行库；不替代 CodeMirror 或语法分析 [S31] |
-| Markdown | unified / remark-parse / remark-gfm / remark-math | 建立可扩展语法树；保留源位置，不用正则实现通用解析 [S3] |
-| HTML 转换 | remark-rehype 或 IR 到 hast 适配器 | 首版采用 IR 到 hast 的统一出口；remark-rehype 用作生态适配参考，避免两套正文渲染逻辑 [S3] |
-| 样式 | Tailwind CSS v4 + 语义化文档 CSS | 编译后发布；应用 UI 与文档主题隔离；颜色主要使用 OKLCH [S4] |
-| 公式 | MathJax 4.x，使用 @mathjax/src 单一核心入口适配 | LaTeX 输入、MathML/SVG 双输出；不同时引入重复的 MathJax 分发包；浏览器资源打包路径须 P0 验证 [S5][S17][S18][S19] |
-| Mermaid | mermaid 12.x 验证基线 | 图表转 SVG；异步完成后才允许进入导出快照 [S6] |
-| Graphviz | @viz-js/viz | 使用 WASM Graphviz；不安装 dot；首版限定常用布局与 SVG 输出 [S7] |
-| 分页 | Paged.js，经可行性验证后接入 | 封装 Paginator；不承诺完整 CSS Paged Media 或直接下载 PDF [S8] |
-| Word | docx | 浏览器生成原生 OOXML 和 Blob；不经过 Word/LibreOffice [S9] |
-| PPTX | PptxGenJS，后续阶段 | 原生文本/形状/图片；不能自动复现任意 HTML [S10] |
-| 资源容器 | fflate + 自定义版本化清单 | 可选项目 ZIP 和 EPUB ZIP；需验证 EPUB 打包约束 |
-| 校验 | Zod，包名 zod | 导入配置、插件选项、版本化文档的运行时校验 |
-| 安全清理 | DOMPurify + URL/CSS 策略 | HTML/SVG 清理；不能把它视为任意 CSS 或 JS 的沙箱 [S11] |
-| 存储 | IndexedDB，使用 idb 薄封装 | 草稿、资源、快照；浏览器数据不等于已下载文件 |
-| 离线 | vite-plugin-pwa / Workbox | 资源预缓存与升级；大型 WASM、字体必须进入缓存检查 [S12] |
-| 测试 | Vitest + @playwright/test | Vitest 统一单元/集成测试；Playwright 验证真实浏览器；用 bun run test，不混用 Bun 原生测试器 [S26] |
-| 后续桌面 | Tauri 2；@tauri-apps/api、plugin-dialog、plugin-fs | 复用 Bun + React 19/Vite 前端；桌面阶段引入 Rust/系统构建工具及受控文件系统适配；本轮不安装 [S33][S34] |
+| 领域         | 建议                                               | 用途与边界                                                                                                       |
+| ------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 语言         | TypeScript 6.0.x 验证基线，严格模式                | 使用 tsc --noEmit 单独类型检查；是保守兼容基线，不声称为最新版本 [S24]                                           |
+| 开发运行时   | Bun 1.4.x，P0 锁定具体补丁                         | 优先开发、脚本和 CI；Node 仅作具体工具的兼容回退，不作为应用运行依赖 [S21][S23]                                  |
+| 包管理       | Bun + bun.lock 文本锁文件                          | 使用 bun install --frozen-lockfile 复现；仅维护一份锁文件；单仓库起步 [S22]                                      |
+| 构建         | Vite 8.x + @vitejs/plugin-react                    | 静态部署、代码分割、Worker 和 WASM 资源打包；验证插件、PWA 与 Bun 的兼容组合 [S1][S21]                           |
+| UI           | React 19.x + react-dom 19.x，优先验证 19.3.x       | 两包对齐版本，使用 createRoot；类型包使用 @types/react 和 @types/react-dom 19.x；不启用 SSR/RSC [S25]            |
+| 编辑         | CodeMirror 6                                       | Markdown 高亮、编辑事务、快捷键、选区和语言扩展；先验证中文输入与嵌套代码语言 [S2]                               |
+| 代码展示高亮 | Shiki 4.x 验证基线，优先 JavaScript 正则引擎       | Worker 内复用实例、按需加载语言/主题，输出 token 数据后适配预览和导出；替换 highlight.js [S29][S30]              |
+| 临时文字标记 | CSS Custom Highlight API                           | 阅读预览中的搜索、当前源位置与文本诊断；无需新增运行库；不替代 CodeMirror 或语法分析 [S31]                       |
+| Markdown     | unified / remark-parse / remark-gfm / remark-math  | 建立可扩展语法树；保留源位置，不用正则实现通用解析 [S3]                                                          |
+| HTML 转换    | remark-rehype 或 IR 到 hast 适配器                 | 首版采用 IR 到 hast 的统一出口；remark-rehype 用作生态适配参考，避免两套正文渲染逻辑 [S3]                        |
+| 样式         | Tailwind CSS v4 + 语义化文档 CSS                   | 编译后发布；应用 UI 与文档主题隔离；颜色主要使用 OKLCH [S4]                                                      |
+| 公式         | MathJax 4.x，使用 @mathjax/src 单一核心入口适配    | LaTeX 输入、MathML/SVG 双输出；不同时引入重复的 MathJax 分发包；浏览器资源打包路径须 P0 验证 [S5][S17][S18][S19] |
+| Mermaid      | mermaid 12.x 验证基线                              | 图表转 SVG；异步完成后才允许进入导出快照 [S6]                                                                    |
+| Graphviz     | @viz-js/viz                                        | 使用 WASM Graphviz；不安装 dot；首版限定常用布局与 SVG 输出 [S7]                                                 |
+| 分页         | Paged.js，经可行性验证后接入                       | 封装 Paginator；不承诺完整 CSS Paged Media 或直接下载 PDF [S8]                                                   |
+| Word         | docx                                               | 浏览器生成原生 OOXML 和 Blob；不经过 Word/LibreOffice [S9]                                                       |
+| PPTX         | PptxGenJS，后续阶段                                | 原生文本/形状/图片；不能自动复现任意 HTML [S10]                                                                  |
+| 资源容器     | fflate + 自定义版本化清单                          | 可选项目 ZIP 和 EPUB ZIP；需验证 EPUB 打包约束                                                                   |
+| 校验         | Zod，包名 zod                                      | 导入配置、插件选项、版本化文档的运行时校验                                                                       |
+| 安全清理     | DOMPurify + URL/CSS 策略                           | HTML/SVG 清理；不能把它视为任意 CSS 或 JS 的沙箱 [S11]                                                           |
+| 存储         | IndexedDB，使用 idb 薄封装                         | 草稿、资源、快照；浏览器数据不等于已下载文件                                                                     |
+| 离线         | vite-plugin-pwa / Workbox                          | 资源预缓存与升级；大型 WASM、字体必须进入缓存检查 [S12]                                                          |
+| 测试         | Vitest + @playwright/test                          | Vitest 统一单元/集成测试；Playwright 验证真实浏览器；用 bun run test，不混用 Bun 原生测试器 [S26]                |
+| 后续桌面     | Tauri 2；@tauri-apps/api、plugin-dialog、plugin-fs | 复用 Bun + React 19/Vite 前端；桌面阶段引入 Rust/系统构建工具及受控文件系统适配；本轮不安装 [S33][S34]           |
 
 选择 CodeMirror 而非从 textarea 自建编辑器；选择 AST 生态而非从已渲染 HTML 恢复 Word 语义。Graphviz WASM 先采用一个实现，不同时引入多个同类运行时。
 
@@ -106,25 +106,25 @@ IR 指内部文档结构，不要求写入本地中间文件。除显式保存�
 
 ### 3.1 具体包与模块边界
 
-| 模块 | 明确采用的包/平台能力 | 实施约束 |
-|---|---|---|
-| UI 入口与开发 | react、react-dom、vite、@vitejs/plugin-react | 客户端 SPA；不用 Next.js、服务端组件或后端框架 |
-| 状态 | React useReducer/Context；会话用受控外部 store + useSyncExternalStore | 初期不引入 Redux/Zustand；光标和事务状态仍由 CodeMirror 持有 |
-| 编辑器 | @codemirror/state、view、commands、language、search、autocomplete、lang-markdown、language-data；@lezer/highlight | 统一使用 CodeMirror 6 模块体系，语言包按需加载；直接封装实例生命周期，首版不依赖 React 编辑器包装库 |
-| Markdown | unified、remark-parse、remark-gfm、remark-math；hast-util-to-html | mdast 转自有 IR，再由 IR 到 hast/HTML；不并列引入 markdown-it/marked；保留源位置 |
-| 公式 | @mathjax/src 及明确批准的扩展/字体资源 | 固定 MathJax 4.x，LaTeX/MathML/SVG；浏览器使用 ESM 核心与 browserAdaptor，禁止误用依赖本地文件系统的 Node 启动入口；宏、编号和异步就绪按第 7.4 节 [S28] |
-| 图表 | mermaid、@viz-js/viz | Mermaid 走受控 DOM 渲染；DOT 优先 Worker + WASM；随包部署运行资源 |
-| 代码展示高亮 | shiki/core、shiki/engine/javascript、@shikijs/langs、@shikijs/themes | 采用 Shiki 4.x 已验证组合；细粒度导入、Worker 单例和受控语言别名表；不导入 full/web 全语言 bundle [S29][S30] |
-| 临时标记 | 原生 Range、Highlight、CSS.highlights、::highlight() | 只管理预览文字范围；注册名按文档/视图隔离，DOM 更新后重建相关范围，不进入文档保存数据 [S31] |
-| 样式与主题 | tailwindcss 4.x、@tailwindcss/vite | 正文 CSS 与代码主题独立；Shiki 颜色统一转换/映射为代码 token 样式，导出包含必要 CSS |
-| 结构与资源 | zod、idb、fflate；Web Crypto、Blob、URL | 浏览器端哈希与文件字节处理不得依赖 Bun.file、node:fs 或 Buffer 全局 |
-| 分页 | pagedjs | 仅通过 Paginator 适配器引用；先跑通 MathML/SVG 的分页与打印 |
-| 首版导出 | docx、fflate、浏览器打印 API | docx 动态加载；HTML 内嵌编译 CSS/资源；PDF 首版为打印路径 |
-| 后续导出 | pptxgenjs；自有 EPUB 打包适配器 | 不提前加载到首屏；不额外引入云转换服务 |
-| 离线 | vite-plugin-pwa、Workbox 预缓存 | 生成完整资源清单；仅确有自定义 SW 需求时直接添加 Workbox 运行包 |
-| 单元/集成 | vitest、jsdom、@testing-library/react、@testing-library/user-event | DOM 仿真不能证明 MathML、SVG 尺寸、字体或打印效果 |
-| 真实浏览器 | @playwright/test | 独立安装测试浏览器；测试浏览器是开发/CI 依赖，不进入 Web 用户安装要求 |
-| 质量工具 | typescript、eslint、typescript-eslint、eslint-plugin-react-hooks、eslint-plugin-react-refresh、prettier | ESM 配置；格式与 lint 分开；Bun/Vite 的转译成功不等于类型检查通过 |
+| 模块          | 明确采用的包/平台能力                                                                                             | 实施约束                                                                                                                                                |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI 入口与开发 | react、react-dom、vite、@vitejs/plugin-react                                                                      | 客户端 SPA；不用 Next.js、服务端组件或后端框架                                                                                                          |
+| 状态          | React useReducer/Context；会话用受控外部 store + useSyncExternalStore                                             | 初期不引入 Redux/Zustand；光标和事务状态仍由 CodeMirror 持有                                                                                            |
+| 编辑器        | @codemirror/state、view、commands、language、search、autocomplete、lang-markdown、language-data；@lezer/highlight | 统一使用 CodeMirror 6 模块体系，语言包按需加载；直接封装实例生命周期，首版不依赖 React 编辑器包装库                                                     |
+| Markdown      | unified、remark-parse、remark-gfm、remark-math；hast-util-to-html                                                 | mdast 转自有 IR，再由 IR 到 hast/HTML；不并列引入 markdown-it/marked；保留源位置                                                                        |
+| 公式          | @mathjax/src 及明确批准的扩展/字体资源                                                                            | 固定 MathJax 4.x，LaTeX/MathML/SVG；浏览器使用 ESM 核心与 browserAdaptor，禁止误用依赖本地文件系统的 Node 启动入口；宏、编号和异步就绪按第 7.4 节 [S28] |
+| 图表          | mermaid、@viz-js/viz                                                                                              | Mermaid 走受控 DOM 渲染；DOT 优先 Worker + WASM；随包部署运行资源                                                                                       |
+| 代码展示高亮  | shiki/core、shiki/engine/javascript、@shikijs/langs、@shikijs/themes                                              | 采用 Shiki 4.x 已验证组合；细粒度导入、Worker 单例和受控语言别名表；不导入 full/web 全语言 bundle [S29][S30]                                            |
+| 临时标记      | 原生 Range、Highlight、CSS.highlights、::highlight()                                                              | 只管理预览文字范围；注册名按文档/视图隔离，DOM 更新后重建相关范围，不进入文档保存数据 [S31]                                                             |
+| 样式与主题    | tailwindcss 4.x、@tailwindcss/vite                                                                                | 正文 CSS 与代码主题独立；Shiki 颜色统一转换/映射为代码 token 样式，导出包含必要 CSS                                                                     |
+| 结构与资源    | zod、idb、fflate；Web Crypto、Blob、URL                                                                           | 浏览器端哈希与文件字节处理不得依赖 Bun.file、node:fs 或 Buffer 全局                                                                                     |
+| 分页          | pagedjs                                                                                                           | 仅通过 Paginator 适配器引用；先跑通 MathML/SVG 的分页与打印                                                                                             |
+| 首版导出      | docx、fflate、浏览器打印 API                                                                                      | docx 动态加载；HTML 内嵌编译 CSS/资源；PDF 首版为打印路径                                                                                               |
+| 后续导出      | pptxgenjs；自有 EPUB 打包适配器                                                                                   | 不提前加载到首屏；不额外引入云转换服务                                                                                                                  |
+| 离线          | vite-plugin-pwa、Workbox 预缓存                                                                                   | 生成完整资源清单；仅确有自定义 SW 需求时直接添加 Workbox 运行包                                                                                         |
+| 单元/集成     | vitest、jsdom、@testing-library/react、@testing-library/user-event                                                | DOM 仿真不能证明 MathML、SVG 尺寸、字体或打印效果                                                                                                       |
+| 真实浏览器    | @playwright/test                                                                                                  | 独立安装测试浏览器；测试浏览器是开发/CI 依赖，不进入 Web 用户安装要求                                                                                   |
+| 质量工具      | typescript、eslint、typescript-eslint、eslint-plugin-react-hooks、eslint-plugin-react-refresh、prettier           | ESM 配置；格式与 lint 分开；Bun/Vite 的转译成功不等于类型检查通过                                                                                       |
 
 表中未列主版本的包，在 P0 查验正式发布、浏览器入口、许可证及 peerDependencies 后精确锁定，不写虚构小版本，也不默认安装 prerelease。上述为明确选择的包名，不是所有包必须在第一阶段全部安装；按阶段添加并更新同一 bun.lock。
 
@@ -279,13 +279,13 @@ interface DocumentRecord {
   id: string;
   revision: number;
   markdown: string;
-  meta: { title: string; author?: string; createdAt: string; updatedAt: string };
+  meta: {title: string; author?: string; createdAt: string; updatedAt: string};
   theme: ThemeSpec;
   assets: AssetRef[];
-  options: { syntaxProfile: "commonmark-gfm-v1"; pluginOptions: Record<string, unknown> };
+  options: {syntaxProfile: 'commonmark-gfm-v1'; pluginOptions: Record<string, unknown>};
 }
 interface AssetRef {
-  id: string;             // a_ + SHA-256；内容寻址
+  id: string; // a_ + SHA-256；内容寻址
   sha256: string;
   mime: string;
   byteLength: number;
@@ -319,13 +319,13 @@ YAML front matter 后续可通过显式启用支持，导入时明确元数据�
 
 ### 5.4 用户可见文件
 
-| 文件 | 内容 | 用途与保证 |
-|---|---|---|
-| .md | Markdown 原文 | 与通用工具交换；单独下载不保证携带图片和主题 |
-| Markdown ZIP | .md + 相对路径资源 | 可迁移、可在其他编辑器打开；转换资源引用时不修改会话原文 |
-| 阅读 HTML | 已渲染正文、原生 MathML 或 SVG、内嵌 CSS/图片、打印脚本 | 双击即可阅读和打印；不包含源编辑数据 |
-| 可编辑文档 HTML | 阅读 HTML + 嵌入的版本化源数据和资源 | 单文件保存；导入工具后可继续编辑；不在每份文档中嵌入整个编辑器 |
-| 项目 ZIP，可选 | manifest.json、document.md、theme.json、assets/ | 大文档备份和开发调试；不是默认强制格式 |
+| 文件            | 内容                                                    | 用途与保证                                                     |
+| --------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| .md             | Markdown 原文                                           | 与通用工具交换；单独下载不保证携带图片和主题                   |
+| Markdown ZIP    | .md + 相对路径资源                                      | 可迁移、可在其他编辑器打开；转换资源引用时不修改会话原文       |
+| 阅读 HTML       | 已渲染正文、原生 MathML 或 SVG、内嵌 CSS/图片、打印脚本 | 双击即可阅读和打印；不包含源编辑数据                           |
+| 可编辑文档 HTML | 阅读 HTML + 嵌入的版本化源数据和资源                    | 单文件保存；导入工具后可继续编辑；不在每份文档中嵌入整个编辑器 |
+| 项目 ZIP，可选  | manifest.json、document.md、theme.json、assets/         | 大文档备份和开发调试；不是默认强制格式                         |
 
 可编辑 HTML 默认明确标注“包含 Markdown 源内容和配置”；用户选择阅读 HTML 时去除源数据与历史。两者均不包含编辑历史、凭证或浏览器内部状态，历史仅在用户选择备份时包含。
 
@@ -341,13 +341,13 @@ YAML front matter 后续可通过显式启用支持，导入时明确元数据�
 
 ### 6.1 插件类别
 
-| 类别 | 负责内容 | 首批实例 |
-|---|---|---|
-| 语法插件 | 解析扩展、规范化 IR | 数学、图表围栏、分页指令 |
-| 编辑扩展 | CodeMirror 语言、命令、补全与诊断 | DOT 高亮、图表模板 |
-| 渲染插件 | 将特定 IR 节点渲染为可复用资源 | Shiki、MathJax、Mermaid、Graphviz |
-| 导出插件 | 消费 IR、主题、资源和快照生成文件 | HTML、DOCX、EPUB |
-| 分页/平台适配器 | 页面布局、文件保存与平台能力 | Paged.js、Browser、Tauri |
+| 类别            | 负责内容                          | 首批实例                          |
+| --------------- | --------------------------------- | --------------------------------- |
+| 语法插件        | 解析扩展、规范化 IR               | 数学、图表围栏、分页指令          |
+| 编辑扩展        | CodeMirror 语言、命令、补全与诊断 | DOT 高亮、图表模板                |
+| 渲染插件        | 将特定 IR 节点渲染为可复用资源    | Shiki、MathJax、Mermaid、Graphviz |
+| 导出插件        | 消费 IR、主题、资源和快照生成文件 | HTML、DOCX、EPUB                  |
+| 分页/平台适配器 | 页面布局、文件保存与平台能力      | Paged.js、Browser、Tauri          |
 
 首版插件为仓库内受信任代码，通过注册表在构建时注册、运行时动态 import。禁用远程 JS 插件和文档内嵌插件。插件机制的目的首先是隔离变化，而非建立市场。
 
@@ -356,19 +356,19 @@ YAML front matter 后续可通过显式启用支持，导入时明确元数据�
 以下为建议接口骨架，开发第一阶段需落实为可编译类型与 conformance 测试。
 
 ```ts
-type Format = "html" | "docx" | "epub" | "png" | "svg" | "pptx" | "pdf";
+type Format = 'html' | 'docx' | 'epub' | 'png' | 'svg' | 'pptx' | 'pdf';
 interface PluginManifest {
   id: string;
   version: string;
   apiVersion: 1;
-  kind: "syntax" | "editor" | "renderer" | "exporter";
-  requires: string[];        // 插件依赖，注册时检测缺失和循环
+  kind: 'syntax' | 'editor' | 'renderer' | 'exporter';
+  requires: string[]; // 插件依赖，注册时检测缺失和循环
   offline: boolean;
-  resources: string[];       // 构建资源 ID，生成离线清单
+  resources: string[]; // 构建资源 ID，生成离线清单
 }
 interface Diagnostic {
   code: string;
-  severity: "info" | "warning" | "error";
+  severity: 'info' | 'warning' | 'error';
   message: string;
   nodeId?: string;
 }
@@ -381,13 +381,13 @@ interface RenderContext {
 interface RenderArtifact {
   nodeId: string;
   codeHighlight?: CodeHighlightArtifact; // 可序列化的代码 token 与样式
-  mathml?: string;          // MathJax 序列化输出；验证并清理后使用
+  mathml?: string; // MathJax 序列化输出；验证并清理后使用
   svgAssetId?: string;
   pngAssetId?: string;
   htmlFragment?: string;
   widthPx: number;
   heightPx: number;
-  baselinePx?: number;     // 行内公式实际布局基线指标
+  baselinePx?: number; // 行内公式实际布局基线指标
   alt: string;
   diagnostics: Diagnostic[];
 }
@@ -404,8 +404,8 @@ interface ExportPlugin {
   export(snapshot: ExportSnapshot, signal: AbortSignal): Promise<ExportResult>;
 }
 type ExportResult =
-  | { kind: "download"; files: { name: string; blob: Blob }[]; diagnostics: Diagnostic[] }
-  | { kind: "print-request"; diagnostics: Diagnostic[] };
+  | {kind: 'download'; files: {name: string; blob: Blob}[]; diagnostics: Diagnostic[]}
+  | {kind: 'print-request'; diagnostics: Diagnostic[]};
 ```
 
 IRNode、ThemeSpec、ExportSnapshot 定义在核心模型模块。浏览器打印返回 print-request，不能伪装成已经生成 PDF 文件。插件返回的 HTML/SVG 在平台层清理后使用，不能通过接口直接获得任意应用 DOM 或文件系统权限。
@@ -468,10 +468,10 @@ Paged.js 通过适配器接入，先验证长表格、代码、中文、SVG、�
 
 显示采用文档级模式，不自动猜测单个公式是否应切换格式：
 
-| 模式 | 路径 | 使用与验收原则 |
-|---|---|---|
+| 模式        | 路径                                              | 使用与验收原则                                                                                   |
+| ----------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | 原生 MathML | LaTeX → MathJax 解析 → MathML 序列化 → 浏览器布局 | 优先验证方向；验证编号、多行对齐、字体变体、行内基线及打印；不能仅凭输出合法 MathML 判定显示正确 |
-| MathJax SVG | LaTeX → MathJax SVG 输出 → 自包含资源 | 优先排版完整性与固定视觉输出；作为复杂公式和正式交付可选模式 |
+| MathJax SVG | LaTeX → MathJax SVG 输出 → 自包含资源             | 优先排版完整性与固定视觉输出；作为复杂公式和正式交付可选模式                                     |
 
 MathJax 提供 tex2mmlPromise 等转换方法，但原生 MathML 不是 MathJax v4 的内置输出渲染器。其序列化结果与浏览器 MathML Core 在部分表格对齐属性、编号和字体变体上存在差异；适配层需要规范化并测试，不能通过“只支持现代浏览器”跳过这项验证。[S19][S20]
 
@@ -501,13 +501,13 @@ Shiki Worker 通过细粒度导入加载受控语言与主题，实例复用；�
 
 ### 7.6 待验证项，不纳入首版承诺
 
-| 实验 | 验证内容 | 进入正式方案的条件 |
-|---|---|---|
+| 实验                                          | 验证内容                                                            | 进入正式方案的条件                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Shiki token + CSS Highlights 负责全部代码着色 | 对比 span 数量、Range 建立/更新、重绘、内存、分页拆分和样式表达能力 | 在固定代码样例中有明确净收益，字体样式和导出有持久化路径；不取代 CodeMirror |
-| Shiki 预编译语言包 | 验证所选版本的官方已知问题、语言正确性、启动和包体 | 问题已解决或目标语言逐项通过；不能直接套用性能建议中尚有风险的能力 [S30] |
-| 替换 unified 或新增 Tree-sitter | 解析成本、源位置、插件、错误恢复和额外语言资源 | 实测解析为主要瓶颈且收益覆盖迁移成本；未通过前保留现有解析路线 |
-| 替换分页引擎或自研增量分页 | 中文、表格、代码、MathML/SVG、目录和导出一致性 | 现有路线存在确认缺口且替代方案通过同一验收集；不并行引入多套默认引擎 |
-| content-visibility / 预览虚拟化 | 长文档布局节省、查找/定位、可访问性与高度测量 | 不影响内容发现；分页/打印使用完整可测量 DOM，不复用跳过布局的估计高度 |
+| Shiki 预编译语言包                            | 验证所选版本的官方已知问题、语言正确性、启动和包体                  | 问题已解决或目标语言逐项通过；不能直接套用性能建议中尚有风险的能力 [S30]    |
+| 替换 unified 或新增 Tree-sitter               | 解析成本、源位置、插件、错误恢复和额外语言资源                      | 实测解析为主要瓶颈且收益覆盖迁移成本；未通过前保留现有解析路线              |
+| 替换分页引擎或自研增量分页                    | 中文、表格、代码、MathML/SVG、目录和导出一致性                      | 现有路线存在确认缺口且替代方案通过同一验收集；不并行引入多套默认引擎        |
+| content-visibility / 预览虚拟化               | 长文档布局节省、查找/定位、可访问性与高度测量                       | 不影响内容发现；分页/打印使用完整可测量 DOM，不复用跳过布局的估计高度       |
 
 现代原生 API 优先，但不把“减少 span”“移入 Worker”或“更换新库”直接等同于整体更快。任何实验都要记录基准环境、结果和失败边界，另行确认后才改变默认实现。
 
@@ -523,11 +523,11 @@ Shiki Worker 通过细粒度导入加载受控语言与主题，实例复用；�
 
 在既有区块缓存上增加稳定公式节点身份；段落改变但公式源及上下文未变时复用结果，sourceRange 始终取最新 IR。缓存键使用结构化配置和内容哈希，不随意删除 LaTeX 空白或宏文本。
 
-| 层次 | 保存内容 | 关键失效输入 |
-|---|---|---|
-| 转换缓存 | 序列化 MathML、诊断及上下文元数据 | LaTeX、display、引擎/扩展版本、宏及编号/引用上下文 |
+| 层次     | 保存内容                           | 关键失效输入                                                     |
+| -------- | ---------------------------------- | ---------------------------------------------------------------- |
+| 转换缓存 | 序列化 MathML、诊断及上下文元数据  | LaTeX、display、引擎/扩展版本、宏及编号/引用上下文               |
 | 输出缓存 | 目标模式 MathML/SVG 成品和资源依赖 | 转换输入、适配器版本、输出设置、数学字体及实际影响生成的尺寸参数 |
-| 测量缓存 | 宽高、基线、布局及分页占位 | 输出哈希、字体就绪状态、字号、容器宽度、换行策略和目标视图 |
+| 测量缓存 | 宽高、基线、布局及分页占位         | 输出哈希、字体就绪状态、字号、容器宽度、换行策略和目标视图       |
 
 三层是逻辑责任，不要求每次先生成 MathML 再生成 SVG，亦不要求同时生成全部表示。阅读按选定模式生成，其他表示在导出需要时生成。同键进行中任务合并；相同错误可短期缓存，输入或配置改变后允许重试。LRU 同时限制条目数和字节数；持久缓存另验版本迁移、清理与存储配额。
 
@@ -563,12 +563,12 @@ A4/导出补齐冻结快照的全文公式，复用有效转换及输出缓存�
 
 M1–M4 均在首版 P4 发行后按需推进，不是设计文档版本号，不强制与 P5/P6 同步；进入开发时再分配实际发布版本。初版不实施本节新增优化。
 
-| 阶段 | 后续工作 | 退出条件 |
-|---|---|---|
-| M1 基准与优先优化 | 公式级缓存、在途去重、任务合并、稳定节点和过期结果拒收 | 未改变且独立的公式不重复转换；连续输入最终修订正确；性能收益与内存可解释 |
-| M2 增量与输出复用 | 保守失效、宏/编号/引用测试、阅读与 A4/导出复用 | 定义变更及前向引用不显示旧语义；完整导出和目标宽度布局通过 |
-| M3 Worker 待验证 | 单个常驻 Worker 优先实验 LaTeX→序列化 MathML；SVG 另验适配器、字体、尺寸和离线加载 | 相比主线程有端到端收益，传输、重启、状态隔离与资源成本可接受后才批准正式接入 |
-| M4 复杂适配待验证 | MathML Core 复杂适配、细化依赖/检查点、持久缓存，按需研究其他并行策略 | 同样例正确性、可访问性、打印和性能通过后逐项纳入；可不实施无收益或风险过高的实验 |
+| 阶段              | 后续工作                                                                           | 退出条件                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| M1 基准与优先优化 | 公式级缓存、在途去重、任务合并、稳定节点和过期结果拒收                             | 未改变且独立的公式不重复转换；连续输入最终修订正确；性能收益与内存可解释         |
+| M2 增量与输出复用 | 保守失效、宏/编号/引用测试、阅读与 A4/导出复用                                     | 定义变更及前向引用不显示旧语义；完整导出和目标宽度布局通过                       |
+| M3 Worker 待验证  | 单个常驻 Worker 优先实验 LaTeX→序列化 MathML；SVG 另验适配器、字体、尺寸和离线加载 | 相比主线程有端到端收益，传输、重启、状态隔离与资源成本可接受后才批准正式接入     |
+| M4 复杂适配待验证 | MathML Core 复杂适配、细化依赖/检查点、持久缓存，按需研究其他并行策略              | 同样例正确性、可访问性、打印和性能通过后逐项纳入；可不实施无收益或风险过高的实验 |
 
 Worker 只传可序列化输入、配置及结果，不传 MathJax 内部对象或 DOM。浏览器实际字体排版、挂载、尺寸测量和分页仍在有布局能力的环境完成。不预建 Worker 池，不将 Promise 或 Worker 当作安全沙箱，也不将实验成功等同于全面替换主线程路径。
 
@@ -576,18 +576,18 @@ Worker 只传可序列化输入、配置及结果，不传 MathJax 内部对象�
 
 ## 8. 各类格式导出路径
 
-| 格式 | 路径 | 是否需要用户额外环境 | 阶段 |
-|---|---|---|---|
-| MD / MD ZIP | Markdown → 文本；资源引用重写 → ZIP | 无 | 首版 |
-| HTML | IR + 已完成渲染资源 + 主题 → 静态 HTML → 内嵌资源和可选源载荷 | 浏览器 | 首版 |
-| PDF，打印方式 | 同一 A4 页面 DOM → window.print() → 用户保存 PDF | 浏览器打印功能 | 首版 |
-| DOCX | IR + 主题映射 + 公式/图表资源 → docx → Blob | 无需 Word 即可生成；兼容性验收需实际阅读器 | 首版 |
-| EPUB | IR → 分章 XHTML、目录、资源、OPF → EPUB ZIP | 生成无额外环境；验收需阅读器 | 后续 |
-| SVG | 指定图表/公式 → 清理、自包含 SVG | 无 | 后续 |
-| PNG | 图表 SVG → Canvas；页面 HTML → 经验证的截图适配器 | 浏览器；有字体、跨域和 Canvas 尺寸限制 | 后续 |
-| PPTX，视觉模式 | 显式幻灯片布局 → 页面图像 → PptxGenJS | 无 | 后续 |
-| PPTX，可编辑模式 | IR → 幻灯片模型 → 原生文字、表格、形状及图表图片 | 无 | 后续 |
-| PDF，自动生成/写入 | 后续 Tauri 平台 PDF 适配器 → 文件写入器 | 具体生成能力单独验证；不等同于拥有文件系统访问 | 待验证 |
+| 格式               | 路径                                                          | 是否需要用户额外环境                           | 阶段   |
+| ------------------ | ------------------------------------------------------------- | ---------------------------------------------- | ------ |
+| MD / MD ZIP        | Markdown → 文本；资源引用重写 → ZIP                           | 无                                             | 首版   |
+| HTML               | IR + 已完成渲染资源 + 主题 → 静态 HTML → 内嵌资源和可选源载荷 | 浏览器                                         | 首版   |
+| PDF，打印方式      | 同一 A4 页面 DOM → window.print() → 用户保存 PDF              | 浏览器打印功能                                 | 首版   |
+| DOCX               | IR + 主题映射 + 公式/图表资源 → docx → Blob                   | 无需 Word 即可生成；兼容性验收需实际阅读器     | 首版   |
+| EPUB               | IR → 分章 XHTML、目录、资源、OPF → EPUB ZIP                   | 生成无额外环境；验收需阅读器                   | 后续   |
+| SVG                | 指定图表/公式 → 清理、自包含 SVG                              | 无                                             | 后续   |
+| PNG                | 图表 SVG → Canvas；页面 HTML → 经验证的截图适配器             | 浏览器；有字体、跨域和 Canvas 尺寸限制         | 后续   |
+| PPTX，视觉模式     | 显式幻灯片布局 → 页面图像 → PptxGenJS                         | 无                                             | 后续   |
+| PPTX，可编辑模式   | IR → 幻灯片模型 → 原生文字、表格、形状及图表图片              | 无                                             | 后续   |
+| PDF，自动生成/写入 | 后续 Tauri 平台 PDF 适配器 → 文件写入器                       | 具体生成能力单独验证；不等同于拥有文件系统访问 | 待验证 |
 
 ### 8.1 HTML
 
@@ -772,16 +772,16 @@ Codex 可作为主要开发工具；本项目不需要调用 OpenAI API 才能�
 
 以下为待建立的 package.json 脚本契约，不代表当前目录已有可运行脚本。CI 调用与本地相同入口；不使用 bunx 临时获取未锁定工具。
 
-| 入口 | 必须执行与结果 |
-|---|---|
-| bun run format:check / format:write | 检查/显式修改受管源码和设计文档格式；排除用户内容、fixtures、第三方及生成产物 |
-| bun run lint | ESLint、Stylelint；零错误、零警告；规则例外须在 Review 中说明 |
-| bun run docs:check | Markdown 结构、内部链接/锚点、受管样例及 schema、版本/契约引用；外链可达性独立定期检查，不能用网络波动阻塞普通 PR |
-| bun run typecheck | 按浏览器、Worker、脚本配置运行 tsc --noEmit；Vite 构建不替代类型检查 |
-| bun run test:unit / test:integration | Vitest 单元及集成测试，固定输入与可重现断言；非 watch 模式失败返回非零 |
-| bun run build / assets:check | 生产构建；核验资源清单、路径、许可证、隐含远程依赖及产物体积预算 |
-| bun run test:e2e | Playwright 针对实际生产构建运行；输出失败 trace/截图及测试报告 |
-| bun run check | 聚合格式、Lint、文档、类型、单元/集成、构建及资源检查；任一失败整体非零，不自动修复源文件 |
+| 入口                                 | 必须执行与结果                                                                                                    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| bun run format:check / format:write  | 检查/显式修改受管源码和设计文档格式；排除用户内容、fixtures、第三方及生成产物                                     |
+| bun run lint                         | ESLint、Stylelint；零错误、零警告；规则例外须在 Review 中说明                                                     |
+| bun run docs:check                   | Markdown 结构、内部链接/锚点、受管样例及 schema、版本/契约引用；外链可达性独立定期检查，不能用网络波动阻塞普通 PR |
+| bun run typecheck                    | 按浏览器、Worker、脚本配置运行 tsc --noEmit；Vite 构建不替代类型检查                                              |
+| bun run test:unit / test:integration | Vitest 单元及集成测试，固定输入与可重现断言；非 watch 模式失败返回非零                                            |
+| bun run build / assets:check         | 生产构建；核验资源清单、路径、许可证、隐含远程依赖及产物体积预算                                                  |
+| bun run test:e2e                     | Playwright 针对实际生产构建运行；输出失败 trace/截图及测试报告                                                    |
+| bun run check                        | 聚合格式、Lint、文档、类型、单元/集成、构建及资源检查；任一失败整体非零，不自动修复源文件                         |
 
 提交前可用暂存文件快检，但不能替代 PR 全量门禁。CI 缓存键包括系统、Bun 版本及锁文件哈希；缓存缺失时仍能完整运行。安装使用 bun install --frozen-lockfile，禁止 CI 自动更新锁文件。[S50]
 
@@ -789,11 +789,11 @@ Codex 可作为主要开发工具；本项目不需要调用 OpenAI API 才能�
 
 功能开发前维护对应设计条目、接口、样例和验收范围；跨层边界、源载荷、schema、插件 API、依赖和导出语义变化先写 ADR，记录选择、影响、迁移/回退与替代方案。小型缺陷修复可在 PR 中说明，无需为每次修改新建 ADR。文档不得把规划写成实现或把转换成功写成视觉验证。
 
-| Review 类型 | 必查事项 | 留存结果 |
-|---|---|---|
-| 文档 Review | 范围和阶段一致；术语、接口、示例及引用可用；新增约束可验收；兼容性与降级有依据 | 关联章节/ADR、未解决问题、通过或阻塞结论 |
+| Review 类型 | 必查事项                                                                                        | 留存结果                                      |
+| ----------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 文档 Review | 范围和阶段一致；术语、接口、示例及引用可用；新增约束可验收；兼容性与降级有依据                  | 关联章节/ADR、未解决问题、通过或阻塞结论      |
 | 代码 Review | 行为、边界输入、分层、状态/资源生命周期、竞态、错误恢复、权限、依赖及性能风险；测试是否验证行为 | 文件/行号、可复现问题、严重度、修复或接受依据 |
-| 输出 Review | HTML/MathML/SVG、A4 和声明支持的阅读器效果；离线资产及内容完整 | 环境、修订、样例、截图/文件、明确未验证项 |
+| 输出 Review | HTML/MathML/SVG、A4 和声明支持的阅读器效果；离线资产及内容完整                                  | 环境、修订、样例、截图/文件、明确未验证项     |
 
 每个 PR 需至少一名未编写该变更的审阅者给出明确结论；Codex 可协助文档/代码 Review，但作者自己的复述不能视为独立 Review。单人开发可由独立 Review 会话检查固定 diff，作者承担最终合并责任；不得宣称获得不存在的人类批准。保护分支强制人类批准时，以实际仓库规则为准。
 
@@ -817,12 +817,12 @@ PR 模板至少包含：问题与结果、范围/非目标、设计/契约变化
 
 默认规划 GitHub Actions；迁移托管平台时保持相同脚本和门禁语义。工作流文件、分支保护和发布环境配置一并纳入 Review，不能只依赖开发者本地 Hook。
 
-| 触发 | 必须检查 | 通过后的权限 |
-|---|---|---|
-| PR/合并队列（若启用） | 冻结安装；check；相关生产构建 E2E；Review/讨论完成；检测依赖与资源变化 | 允许合并，不获得生产发布权限 |
-| 主分支合并 | 对实际合并 SHA 重跑聚合检查及核心 E2E，生成候选产物和哈希 | 可供预览/验收；失败阻止提升为发行版 |
-| 定期/依赖 PR | 全回归、跨浏览器、依赖/许可证/外链及体积趋势；按需性能基准 | 产生问题与修复 PR，不自动合并升级 |
-| 发布候选/版本标签 | 指向已验收提交；版本、变更记录、许可及离线资源完整；目标矩阵和人工输出验收 | 满足发布授权/环境策略后才可部署 |
+| 触发                  | 必须检查                                                                   | 通过后的权限                        |
+| --------------------- | -------------------------------------------------------------------------- | ----------------------------------- |
+| PR/合并队列（若启用） | 冻结安装；check；相关生产构建 E2E；Review/讨论完成；检测依赖与资源变化     | 允许合并，不获得生产发布权限        |
+| 主分支合并            | 对实际合并 SHA 重跑聚合检查及核心 E2E，生成候选产物和哈希                  | 可供预览/验收；失败阻止提升为发行版 |
+| 定期/依赖 PR          | 全回归、跨浏览器、依赖/许可证/外链及体积趋势；按需性能基准                 | 产生问题与修复 PR，不自动合并升级   |
+| 发布候选/版本标签     | 指向已验收提交；版本、变更记录、许可及离线资源完整；目标矩阵和人工输出验收 | 满足发布授权/环境策略后才可部署     |
 
 每项门禁有稳定检查名称。路径过滤不能令必需检查永久等待或直接被绕过；用汇总门禁明确运行/合理跳过结果。CI 设置超时与并发控制；新预览可取消旧预览任务，不取消正在提升的正式发行。保存报告、失败 trace、候选清单和必要截图，P0 默认保留 30 天；发行清单随版本长期保留，不保留敏感测试数据。
 
@@ -844,15 +844,15 @@ P0 建立 AGENTS.md、EditorConfig/Git 属性、Lint/格式/类型配置、统�
 
 ## 13. 实施阶段与退出条件
 
-| 阶段 | 工作 | 完成条件 |
-|---|---|---|
-| P0 技术验证 | Bun + React 19/Vite、CodeMirror 中文、Shiki JS 引擎/Worker、CSS Highlights、AST 映射、公式/图表、Paged.js、docx、资源打包 | 冻结安装及构建/测试通过，局部 Node 回退如实记录；高亮 token/Range 映射与离线语言加载通过；混合样例完成真实渲染、A4 与 DOCX 检查；确定公式默认模式并提交精确工具链记录 |
-| P1 编辑闭环 | 编辑、高亮、撤销、搜索、大纲、文件与草稿恢复、基础阅读预览 | 导入→编辑→保存→刷新恢复→下载→重开通过；中文和 emoji 源定位正确 |
-| P2 内容与插件 | IR、资源库、Shiki/公式/图表插件、Worker、区块缓存、视口队列与临时标记 | 四类渲染插件按统一契约接入；消息/缓存/Range 生命周期、取消超时、未知语法及修订竞争通过 |
-| P3 排版与 HTML/PDF | 主题、A4、分页、单文件 HTML、源载荷恢复、打印 | 收件人断网打开 HTML 可读可打印；源数据往返恢复；A4 实际预览检查通过 |
-| P4 DOCX 与首版发行 | 原生文档映射、能力检查、PWA 完整离线与发布包 | 在干净用户环境不装开发工具即可编辑、渲染和导出；DOCX 目标阅读器验收通过 |
-| P5 扩展格式 | EPUB、SVG/PNG、PPTX | 每种格式独立能力矩阵、异常回退及阅读器验证，不以“生成 ZIP 成功”为验收 |
-| P6 后续 Tauri | 本地工作区、源文件写回、选择导出目录、文件关联 | 不装开发工具可用；目录权限、资源相对路径、写入失败/冲突、取消及恢复验证；自动 PDF 作为单独待验证任务 |
+| 阶段               | 工作                                                                                                                      | 完成条件                                                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P0 技术验证        | Bun + React 19/Vite、CodeMirror 中文、Shiki JS 引擎/Worker、CSS Highlights、AST 映射、公式/图表、Paged.js、docx、资源打包 | 冻结安装及构建/测试通过，局部 Node 回退如实记录；高亮 token/Range 映射与离线语言加载通过；混合样例完成真实渲染、A4 与 DOCX 检查；确定公式默认模式并提交精确工具链记录 |
+| P1 编辑闭环        | 编辑、高亮、撤销、搜索、大纲、文件与草稿恢复、基础阅读预览                                                                | 导入→编辑→保存→刷新恢复→下载→重开通过；中文和 emoji 源定位正确                                                                                                        |
+| P2 内容与插件      | IR、资源库、Shiki/公式/图表插件、Worker、区块缓存、视口队列与临时标记                                                     | 四类渲染插件按统一契约接入；消息/缓存/Range 生命周期、取消超时、未知语法及修订竞争通过                                                                                |
+| P3 排版与 HTML/PDF | 主题、A4、分页、单文件 HTML、源载荷恢复、打印                                                                             | 收件人断网打开 HTML 可读可打印；源数据往返恢复；A4 实际预览检查通过                                                                                                   |
+| P4 DOCX 与首版发行 | 原生文档映射、能力检查、PWA 完整离线与发布包                                                                              | 在干净用户环境不装开发工具即可编辑、渲染和导出；DOCX 目标阅读器验收通过                                                                                               |
+| P5 扩展格式        | EPUB、SVG/PNG、PPTX                                                                                                       | 每种格式独立能力矩阵、异常回退及阅读器验证，不以“生成 ZIP 成功”为验收                                                                                                 |
+| P6 后续 Tauri      | 本地工作区、源文件写回、选择导出目录、文件关联                                                                            | 不装开发工具可用；目录权限、资源相对路径、写入失败/冲突、取消及恢复验证；自动 PDF 作为单独待验证任务                                                                  |
 
 P0 是决定性门槛。若分页、离线 WASM 或 Word 兼容出现阻碍，先调整能力范围并记录决策，不通过增加用户手动安装软件绕过约束。
 
@@ -866,17 +866,17 @@ HTML 兼容能力分期见第 16.8 节 H0–H4，它是现有 P0–P6 内的能�
 
 完整路线见 [产品版本规划：0.1–0.9 开发与 1.0 验证](产品版本规划_0.1至0.9与1.0验证.md)。该文件与本方案共同约束实施；0.x 为产品里程碑，本文件 V0.2.8 为设计版本，现有 UI 原型不代表里程碑已完成。
 
-| 产品版本 | 本版核心交付 | 技术阶段 |
-|---|---|---|
-| 0.1 | 工程规范/CI、锁定工具链、公式/图表/分页/导出技术验证 | P0/H0 |
-| 0.2 | 三栏编辑器、高亮、中文输入、撤销、搜索与大纲 | P1 |
-| 0.3 | 导入/保存、资产、IR/schema、多文档状态与草稿恢复 | P1/P2 |
-| 0.4 | Shiki、MathJax、Mermaid、Graphviz 和完整阅读预览 | P2/H1 |
-| 0.5 | 版式、A4 分页、阅读 HTML、含源载荷 HTML 往返 | P3/H1 |
-| 0.6 | 浏览器打印 PDF、基础 DOCX、完整快照和降级提示 | P3/P4 |
-| 0.7 | PWA 全资源离线、干净环境使用、更新与候选发布/回退 | P4/H1 |
-| 0.8 | 需求内功能整合补齐、边界错误和回归，冻结支持环境 | P0–P4 汇总 |
-| 0.9 | 功能完整冻结候选、需求追踪及审查包，结束功能开发 | P4 候选完成 |
+| 产品版本 | 本版核心交付                                         | 技术阶段    |
+| -------- | ---------------------------------------------------- | ----------- |
+| 0.1      | 工程规范/CI、锁定工具链、公式/图表/分页/导出技术验证 | P0/H0       |
+| 0.2      | 三栏编辑器、高亮、中文输入、撤销、搜索与大纲         | P1          |
+| 0.3      | 导入/保存、资产、IR/schema、多文档状态与草稿恢复     | P1/P2       |
+| 0.4      | Shiki、MathJax、Mermaid、Graphviz 和完整阅读预览     | P2/H1       |
+| 0.5      | 版式、A4 分页、阅读 HTML、含源载荷 HTML 往返         | P3/H1       |
+| 0.6      | 浏览器打印 PDF、基础 DOCX、完整快照和降级提示        | P3/P4       |
+| 0.7      | PWA 全资源离线、干净环境使用、更新与候选发布/回退    | P4/H1       |
+| 0.8      | 需求内功能整合补齐、边界错误和回归，冻结支持环境     | P0–P4 汇总  |
+| 0.9      | 功能完整冻结候选、需求追踪及审查包，结束功能开发     | P4 候选完成 |
 
 P0–P4 是技术工作分组，可跨产品版本；P4 正式发行的最终验收在 0.9→1.0 完成，不因 0.9 候选构建成功而提前宣称完成。P5/P6 和 H2–H4 不安排在本路线中。
 
@@ -969,11 +969,11 @@ HTML/CSS/JS 支持声明须同时标明目标运行环境、阅读效果、打�
 
 ### 16.2 内容模式与渲染宿主
 
-| 模式 | 作者入口与内容 | 执行和输出原则 | 阶段 |
-|---|---|---|---|
-| Markdown 基础模式 | Markdown、批准的原始语义 HTML、公式/图表插件 | 普通正文不执行用户脚本；应用插件输出可为现代 HTML/SVG/MathML | H1 |
-| 现代静态内容/模板 | 明确的 HTML/CSS 内容块、结构化主题和模板包 | 广泛使用已验证现代 CSS；不执行作者 JS；拥有独立资源清单和打印样式 | H2 |
-| 显式交互内容 | 已注册交互组件，后续按需允许自定义 JS 内容块 | 独立隔离宿主、消息契约、资源/状态声明和静态输出 | H3 |
+| 模式              | 作者入口与内容                               | 执行和输出原则                                                    | 阶段 |
+| ----------------- | -------------------------------------------- | ----------------------------------------------------------------- | ---- |
+| Markdown 基础模式 | Markdown、批准的原始语义 HTML、公式/图表插件 | 普通正文不执行用户脚本；应用插件输出可为现代 HTML/SVG/MathML      | H1   |
+| 现代静态内容/模板 | 明确的 HTML/CSS 内容块、结构化主题和模板包   | 广泛使用已验证现代 CSS；不执行作者 JS；拥有独立资源清单和打印样式 | H2   |
+| 显式交互内容      | 已注册交互组件，后续按需允许自定义 JS 内容块 | 独立隔离宿主、消息契约、资源/状态声明和静态输出                   | H3   |
 
 编辑器外壳、文档样式与交互内容分层。静态文档可以使用独立 iframe 文档根隔离选择器/字体/CSS 变量；具体宿主在 H0/H2 选择并验证，不把 Shadow DOM 当作脚本安全边界。导出器生成完整文档结构，不只抓取可见片段的 innerHTML。
 
@@ -985,18 +985,18 @@ CSS 和资源的允许策略独立于 DOMPurify：验证 URL、资源访问、@i
 
 下表“优先”表示计划建立正式契约和测试，不表示全部在首版实现；最终支持以运行环境和验证记录为准。
 
-| 特性组 | 目标能力 | 约束与实现顺序 |
-|---|---|---|
-| HTML 结构 | 语义元素、表格、图像、figure、SVG、MathML、链接/锚点 | H1 保证正文语义；后续 details 等交互元素增加打印展开策略；外部嵌入不作为离线基线 |
-| 布局 | Flex、Grid、Subgrid、逻辑属性、aspect-ratio | H1 常用布局，H2 扩展内容块；浏览器尺寸测量与跨页拆分分别验证 |
-| CSS 组织 | 自定义属性、@layer、嵌套、:is()/:where()/:has()、按需 @scope | 按实际引擎与构建输出测试；文档 CSS 隔离，不由正文任意生成应用 Tailwind 类 |
-| 响应式 | @media、尺寸容器查询、命名容器 | H1/H2 优先；工具外壳看视口，文档组件看内容容器 |
-| 尺寸 | rem/em、ch/ic、lh/rlh、svh/dvh/lvh、容器单位、mm/pt、min/max/clamp/calc | 按第 16.4 节定义参考空间；打印不依赖屏幕高度 |
-| 字体 | WOFF2、变量字体、OpenType 特性、中文/西文/数学/代码分配 | H1 本地回退与就绪检测；H2 字体导入、轴设置、内嵌和授权信息 |
-| 颜色 | OKLCH、color-mix()、按需相对颜色/广色域 | H1 OKLCH token；H2 扩展，向其他格式输出时做色彩映射 |
-| 文本排版 | 行距/字距、断行、连字、数字特性，按需 balance/pretty、纵排 | 常用能力优先；纵排、多栏与复杂跨页作为 H4 专项，不能只凭屏幕截图通过 |
-| 原生交互 | details、dialog/popover、CSS Highlights | 应用 UI 与文档交互分开；临时高亮不进入交付，打印展开/隐藏交互控件 |
-| 新增增强 | 容器样式/滚动状态查询、Anchor Positioning、View Transitions、滚动驱动动画 | H4 检测后按需启用；不作为普通文档可读或可打印的前置条件 |
+| 特性组    | 目标能力                                                                  | 约束与实现顺序                                                                   |
+| --------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| HTML 结构 | 语义元素、表格、图像、figure、SVG、MathML、链接/锚点                      | H1 保证正文语义；后续 details 等交互元素增加打印展开策略；外部嵌入不作为离线基线 |
+| 布局      | Flex、Grid、Subgrid、逻辑属性、aspect-ratio                               | H1 常用布局，H2 扩展内容块；浏览器尺寸测量与跨页拆分分别验证                     |
+| CSS 组织  | 自定义属性、@layer、嵌套、:is()/:where()/:has()、按需 @scope              | 按实际引擎与构建输出测试；文档 CSS 隔离，不由正文任意生成应用 Tailwind 类        |
+| 响应式    | @media、尺寸容器查询、命名容器                                            | H1/H2 优先；工具外壳看视口，文档组件看内容容器                                   |
+| 尺寸      | rem/em、ch/ic、lh/rlh、svh/dvh/lvh、容器单位、mm/pt、min/max/clamp/calc   | 按第 16.4 节定义参考空间；打印不依赖屏幕高度                                     |
+| 字体      | WOFF2、变量字体、OpenType 特性、中文/西文/数学/代码分配                   | H1 本地回退与就绪检测；H2 字体导入、轴设置、内嵌和授权信息                       |
+| 颜色      | OKLCH、color-mix()、按需相对颜色/广色域                                   | H1 OKLCH token；H2 扩展，向其他格式输出时做色彩映射                              |
+| 文本排版  | 行距/字距、断行、连字、数字特性，按需 balance/pretty、纵排                | 常用能力优先；纵排、多栏与复杂跨页作为 H4 专项，不能只凭屏幕截图通过             |
+| 原生交互  | details、dialog/popover、CSS Highlights                                   | 应用 UI 与文档交互分开；临时高亮不进入交付，打印展开/隐藏交互控件                |
+| 新增增强  | 容器样式/滚动状态查询、Anchor Positioning、View Transitions、滚动驱动动画 | H4 检测后按需启用；不作为普通文档可读或可打印的前置条件                          |
 
 容器查询包含多种不同能力，必须逐项声明，不能用一个 containerQueries 布尔值覆盖全部。属性可解析不保证真实排版正确；同样，构建器能处理新 CSS 语法也不保证运行时具备对应能力。[S35][S36][S37]
 
@@ -1006,15 +1006,15 @@ CSS 和资源的允许策略独立于 DOMPurify：验证 URL、资源访问、@i
 
 容器根使用 container-type: inline-size 等明确设置，查询样式作用于其后代。容器单位 cqi/cqw 等的查询祖先必须确定；不要因导出遗漏容器而改变参考空间。纸张内容宽度依据纸张减去页边距计算，打印适配层重建同等语义容器。H0 以简单两栏→一栏组件验证，H2 扩展到图文/表格组件。[S35][S36]
 
-| 单位/机制 | 默认用途 | 打印与导出处理 |
-|---|---|---|
-| rem/em | 字号与相对间距 | 保留层级；非 CSS 格式由适配器换算 |
-| ch/ic | 西文/代码与中文行长参考 | 字体和字形改变可能影响度量，字体就绪后重排 |
-| lh/rlh | 按行高组织间距 | 保留明确的行高上下文，避免循环或不确定计算 |
-| svh/dvh/lvh | 应用外壳、交互阅读空间 | 打印样式替换，不能将正文截成一屏 |
-| cqi/cqb/cqw 等 | 文档组件随内容容器变化 | 导出保留容器链；纸张按内容区域计算 |
-| mm/cm/pt | 纸张、页边距和打印排版 | 屏幕显示不是实体测量证明；实际 PDF/打印验收 |
-| fr/%、min/max/clamp/calc | 弹性布局 | 阅读保留；非 HTML 格式依据适配规则重排或静态化 |
+| 单位/机制                | 默认用途                | 打印与导出处理                                 |
+| ------------------------ | ----------------------- | ---------------------------------------------- |
+| rem/em                   | 字号与相对间距          | 保留层级；非 CSS 格式由适配器换算              |
+| ch/ic                    | 西文/代码与中文行长参考 | 字体和字形改变可能影响度量，字体就绪后重排     |
+| lh/rlh                   | 按行高组织间距          | 保留明确的行高上下文，避免循环或不确定计算     |
+| svh/dvh/lvh              | 应用外壳、交互阅读空间  | 打印样式替换，不能将正文截成一屏               |
+| cqi/cqb/cqw 等           | 文档组件随内容容器变化  | 导出保留容器链；纸张按内容区域计算             |
+| mm/cm/pt                 | 纸张、页边距和打印排版  | 屏幕显示不是实体测量证明；实际 PDF/打印验收    |
+| fr/%、min/max/clamp/calc | 弹性布局                | 阅读保留；非 HTML 格式依据适配规则重排或静态化 |
 
 容器查询带来的布局变化需在分页前完成；字体、栏宽、资源及容器断点变化后重新测量。分页器若移动/克隆节点改变容器祖先，必须测试或补回容器上下文，不能拿阅读布局的旧高度计算新页码。
 
@@ -1042,15 +1042,15 @@ Canvas/WebGL、音视频、动画、自定义元素及 Shadow DOM 按实际组�
 
 输出能力使用 native（原生语义）、mapped（显式映射）、static（冻结后的视觉表示）、unsupported（不支持）四类；每次还记录文字可选取、对象可编辑、交互保留和视觉一致性的独立结果。图片静态化不能标为“可编辑”，文本存在也不能代替语义正确。
 
-| 内容 | HTML 阅读/交互交付 | A4/PDF | DOCX | PPTX | EPUB |
-|---|---|---|---|---|---|
-| 标题/段落/列表/简单表格 | 原生 HTML | 正文文字与分页 | 原生对象映射 | 按幻灯片模型映射 | XHTML 语义结构 |
-| Grid/Flex/容器布局 | 保留 CSS 与容器链 | 独立打印布局，测试跨页 | 明确重排；必要时静态化 | 模板化重建或视觉模式 | 阅读器子集/回退 |
-| 变量字体/OpenType | 保留声明并准备字体资产 | 验证嵌入与字形效果 | 字体/轴映射，按阅读器验证 | 字体/轴映射，按阅读器验证 | 字体许可与阅读器验证 |
-| OKLCH/现代色彩 | 原生表达 | 验证打印映射 | 转支持颜色 | 转支持颜色 | 原生或提供已验证回退 |
-| 数学/图表 | 按既定 MathML/SVG 路线 | 固定模式与完整资源 | 按现有公式图片路径；OMML 后续 | 已支持对象/图像 | MathML/SVG/图像按阅读器 |
-| 交互控件/脚本 | 仅显式交互交付保留 | 展开/冻结状态，无运行交互 | 静态语义替代或图像 | 支持的对象/静态表示 | 默认不依赖脚本 |
-| Canvas/WebGL/音视频 | 已声明组件及运行资源 | 静态快照/封面/说明 | 静态表示或明确不支持 | 按导出器能力处理 | 阅读器专项能力，否则回退 |
+| 内容                    | HTML 阅读/交互交付     | A4/PDF                    | DOCX                          | PPTX                      | EPUB                     |
+| ----------------------- | ---------------------- | ------------------------- | ----------------------------- | ------------------------- | ------------------------ |
+| 标题/段落/列表/简单表格 | 原生 HTML              | 正文文字与分页            | 原生对象映射                  | 按幻灯片模型映射          | XHTML 语义结构           |
+| Grid/Flex/容器布局      | 保留 CSS 与容器链      | 独立打印布局，测试跨页    | 明确重排；必要时静态化        | 模板化重建或视觉模式      | 阅读器子集/回退          |
+| 变量字体/OpenType       | 保留声明并准备字体资产 | 验证嵌入与字形效果        | 字体/轴映射，按阅读器验证     | 字体/轴映射，按阅读器验证 | 字体许可与阅读器验证     |
+| OKLCH/现代色彩          | 原生表达               | 验证打印映射              | 转支持颜色                    | 转支持颜色                | 原生或提供已验证回退     |
+| 数学/图表               | 按既定 MathML/SVG 路线 | 固定模式与完整资源        | 按现有公式图片路径；OMML 后续 | 已支持对象/图像           | MathML/SVG/图像按阅读器  |
+| 交互控件/脚本           | 仅显式交互交付保留     | 展开/冻结状态，无运行交互 | 静态语义替代或图像            | 支持的对象/静态表示       | 默认不依赖脚本           |
+| Canvas/WebGL/音视频     | 已声明组件及运行资源   | 静态快照/封面/说明        | 静态表示或明确不支持          | 按导出器能力处理          | 阅读器专项能力，否则回退 |
 
 这是一份适配目标，不是已实现矩阵；具体内容若没有相应适配器，当前就是 unsupported。导出前 inspect 按实际文档生成能力报告，列出受影响区块、原因和替代结果。语义重排、图片化或交互移除需展示选择，禁止静默丢失。
 
@@ -1058,13 +1058,13 @@ Canvas/WebGL、音视频、动画、自定义元素及 Shadow DOM 按实际组�
 
 ### 16.8 分阶段实现规划
 
-| 阶段 | 对应已有阶段 | 本阶段交付 | 退出条件 |
-|---|---|---|---|
-| H0 契约与检测 | P0 | 内容/输出能力 schema、测试夹具、命名容器/字体/颜色最小样例、运行环境记录 | 确定首批支持清单和已知缺口；不写“完整 HTML5/CSS3 支持” |
-| H1 现代静态基线 | P1–P4 | 既定 Markdown 输出、OKLCH、Flex/Grid、常用单位/字体、尺寸响应式、静态 HTML 与打印 | 已选基线在目标环境阅读及关键打印样例通过；未实现高级内容明确诊断 |
-| H2 模板/高级静态内容 | P4 之后按需 | 独立 HTML/CSS 宿主、尺寸容器组件、变量字体导入、主题包资源收集、阅读/打印双样式 | 拖动预览栏/独立 HTML/A4 容器行为正确；离线资产完整；非 HTML 降级可解释 |
-| H3 显式交互 | P5 或独立迭代 | 先做少量注册组件，落实隔离、状态/就绪/静态化接口；再评估自定义 JS | 交互 HTML 可恢复状态，静态输出确定，无法适配时正确提示；无原生权限泄漏 |
-| H4 增强与覆盖扩展 | P5/P6 按需求 | 滚动/样式查询、新交互 CSS、复杂文字/跨页布局、多阅读器及 Tauri 环境扩展 | 每项有实际用户需求与同一套样例证据；失败不阻断基础文档 |
+| 阶段                 | 对应已有阶段  | 本阶段交付                                                                        | 退出条件                                                               |
+| -------------------- | ------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| H0 契约与检测        | P0            | 内容/输出能力 schema、测试夹具、命名容器/字体/颜色最小样例、运行环境记录          | 确定首批支持清单和已知缺口；不写“完整 HTML5/CSS3 支持”                 |
+| H1 现代静态基线      | P1–P4         | 既定 Markdown 输出、OKLCH、Flex/Grid、常用单位/字体、尺寸响应式、静态 HTML 与打印 | 已选基线在目标环境阅读及关键打印样例通过；未实现高级内容明确诊断       |
+| H2 模板/高级静态内容 | P4 之后按需   | 独立 HTML/CSS 宿主、尺寸容器组件、变量字体导入、主题包资源收集、阅读/打印双样式   | 拖动预览栏/独立 HTML/A4 容器行为正确；离线资产完整；非 HTML 降级可解释 |
+| H3 显式交互          | P5 或独立迭代 | 先做少量注册组件，落实隔离、状态/就绪/静态化接口；再评估自定义 JS                 | 交互 HTML 可恢复状态，静态输出确定，无法适配时正确提示；无原生权限泄漏 |
+| H4 增强与覆盖扩展    | P5/P6 按需求  | 滚动/样式查询、新交互 CSS、复杂文字/跨页布局、多阅读器及 Tauri 环境扩展           | 每项有实际用户需求与同一套样例证据；失败不阻断基础文档                 |
 
 H2–H4 的顺序可按真实需求拆分，不要求同一版本全部交付。DOCX、PPTX、EPUB 的能力跟各自导出器阶段推进，不为完成本章清单提前实现这些格式。任何能力从计划升级到正式支持，都更新 manifest、测试、用户说明及已知限制。
 

@@ -8,14 +8,14 @@
 
 ## 本轮已修
 
-| 提交 | 缺陷 | 改法 |
-| --- | --- | --- |
-| `b128163` | DOT 属性逐条正则匹配，`color=` 命中 `fillcolor=` 的尾巴，节点描边色取成填充色（样例文档同时声明两者，故样例拓扑图的边框不可见）；`node [...]` / `edge [...]` 被当成真节点，多渲染两个方块并占用第一层坐标 | 属性列表用单一解析器读，键名整体匹配；默认属性声明按 DOT 语义应用到未声明该属性的节点与边，与出现顺序无关 |
-| `f89627d` | 标题取自首个 H1 但 schema 上限 1000 字，超长标题让每次按键在会话更新里抛 ZodError，异常逃出 onChange，状态不更新、字符丢失、标题再也敲不完 | 标题经 `deriveDocumentTitle` 截断到 schema 同一上限；源文超预算时给出提示而非抛异常 |
-| `f89627d` | schema 既非 strict 也非 passthrough，未建模字段被 zod 静默剥掉，而被剥掉的正是随后落盘的快照：别处构建写下的记录在下一次保存时丢失，无警告、无 recovery 副本 | 改 passthrough，与仓库既有 envelope 的做法一致 |
-| `497d4bc` | IME 合成标志守 scroll / keydown / geometry 却不守 onChange，中文输入每个合成更新提交一个修订、一次撤销、一次预览重建、一次大纲重解析 | 合成中文本留在本地并镜像进受控 textarea，合成结束才提交一次；测量仍由原生规则负责 |
-| `39e5583` | `commit_bytes` 用 0600 临时文件覆盖目标，权限位、属主、附加硬链接全丢；父目录未 fsync，rename 本身不耐崩溃 | 覆盖前把目标权限搬到临时文件，rename 后 fsync 父目录（unix） |
-| `39e5583` | 非 UTF-8 文件名让整次多选失败，并撤销已签发的授权，用户一无所获 | 文件名有损显示，选取不再作废 |
+| 提交      | 缺陷                                                                                                                                                                                                              | 改法                                                                                                                                                                                                    |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `b128163` | DOT 属性逐条正则匹配，`color=` 命中 `fillcolor=` 的尾巴，节点描边色取成填充色（样例文档同时声明两者，故样例拓扑图的边框不可见）；`node [...]` / `edge [...]` 被当成真节点，多渲染两个方块并占用第一层坐标         | 属性列表用单一解析器读，键名整体匹配；默认属性声明按 DOT 语义应用到未声明该属性的节点与边，与出现顺序无关                                                                                               |
+| `f89627d` | 标题取自首个 H1 但 schema 上限 1000 字，超长标题让每次按键在会话更新里抛 ZodError，异常逃出 onChange，状态不更新、字符丢失、标题再也敲不完                                                                        | 标题经 `deriveDocumentTitle` 截断到 schema 同一上限；源文超预算时给出提示而非抛异常                                                                                                                     |
+| `f89627d` | schema 既非 strict 也非 passthrough，未建模字段被 zod 静默剥掉，而被剥掉的正是随后落盘的快照：别处构建写下的记录在下一次保存时丢失，无警告、无 recovery 副本                                                      | 改 passthrough，与仓库既有 envelope 的做法一致                                                                                                                                                          |
+| `497d4bc` | IME 合成标志守 scroll / keydown / geometry 却不守 onChange，中文输入每个合成更新提交一个修订、一次撤销、一次预览重建、一次大纲重解析                                                                              | 合成中文本留在本地并镜像进受控 textarea，合成结束才提交一次；测量仍由原生规则负责                                                                                                                       |
+| `39e5583` | `commit_bytes` 用 0600 临时文件覆盖目标，权限位、属主、附加硬链接全丢；父目录未 fsync，rename 本身不耐崩溃                                                                                                        | 覆盖前把目标权限搬到临时文件，rename 后 fsync 父目录（unix）                                                                                                                                            |
+| `39e5583` | 非 UTF-8 文件名让整次多选失败，并撤销已签发的授权，用户一无所获                                                                                                                                                   | 文件名有损显示，选取不再作废                                                                                                                                                                            |
 | `de77a31` | **本轮新发现的既有缺陷**：分页 CSS 由整份 `presentation.css` 构造，导出 CSS 里文档规则出现两遍，而经 Paged.js 转换的那遍没有 `@container`，层叠上"最后一遍赢"把容器查询盖掉，纸张两栏。旧代码靠重复的顺序恰好蒙对 | 分页样式只带页面几何，文档规则只由 nativeStyle 提供一次；并改按 Paged.js 自己的 `data-pagedjs-inserted-styles` 标记收集样式，不再靠"分页前后求差集"（后者会把分页期间并发注入的工作台样式写进交付文档） |
 
 同时清掉两处重复实现：`graphvizRender` 自造的 HTML 转义改用 `core/policy/htmlRules` 的共享版本（边界规则已允许）。
@@ -24,55 +24,55 @@
 
 ### 一、数据与可用性（建议优先）
 
-| # | 位置 | 问题 | 触发路径 |
-| --- | --- | --- | --- |
-| B1 | `src/core/platform/tauri/files.ts:22` | 原生写入把整个 blob 摊成普通 JS 数字数组再作 IPC 载荷，而 Rust 侧 `WRITE_LIMIT` 允许到 100 MiB | 导出 50 MiB 的 markdown 包 → 生成 5000 万元素的数组与数百 MB 的 JSON 消息 → webview 在 `write_native_bytes` 送达前卡死或被 OOM 杀掉，文件根本没写出 |
-| B2 | `src/core/platform/web/documentRepository.ts:92` | localStorage 回退后端每次保存整库一次 `setItem`，无配额预检、无分片 | 文档集合超过浏览器配额 → `QuotaExceededError` → 该次编辑丢失且不重试；后端选择是粘性的，IndexedDB 永远为空 |
-| B3 | `src/core/platform/web/workbenchPreviewRuntime.ts:41` | `activate()` 把已发布视图换成不含 `rendered` 载荷的 `pending` 状态，预览窗在每次激活时被清空 | 每次内容变更的激活 → 预览只剩"预览更新中"，直到 worker 与 DOM 分页跑完（大文档预算 60 秒）；缓存仍持有上一份产物，只是没被取用 |
-| B4 | `src/core/platform/tauri/files.ts:11` | 原生授权 key 无台账、无自动回收，只在调用方记得调 `release_native_file` 时失效 | 选中的文件对应的读授权在进程存活期内一直有效（当前无生产文档绑定，故属潜伏） |
-| B5 | `src/App.tsx:285` | 删除文档时会话要到异步删除落定才关闭，其间的保存会把记录写回 | 删除后立刻在仍打开的编辑器里敲一下 → `saveNow` 见记录不存在当作新建 → 文档在下次启动时复活，删除被静默撤销 |
+| #   | 位置                                                  | 问题                                                                                           | 触发路径                                                                                                                                            |
+| --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B1  | `src/core/platform/tauri/files.ts:22`                 | 原生写入把整个 blob 摊成普通 JS 数字数组再作 IPC 载荷，而 Rust 侧 `WRITE_LIMIT` 允许到 100 MiB | 导出 50 MiB 的 markdown 包 → 生成 5000 万元素的数组与数百 MB 的 JSON 消息 → webview 在 `write_native_bytes` 送达前卡死或被 OOM 杀掉，文件根本没写出 |
+| B2  | `src/core/platform/web/documentRepository.ts:92`      | localStorage 回退后端每次保存整库一次 `setItem`，无配额预检、无分片                            | 文档集合超过浏览器配额 → `QuotaExceededError` → 该次编辑丢失且不重试；后端选择是粘性的，IndexedDB 永远为空                                          |
+| B3  | `src/core/platform/web/workbenchPreviewRuntime.ts:41` | `activate()` 把已发布视图换成不含 `rendered` 载荷的 `pending` 状态，预览窗在每次激活时被清空   | 每次内容变更的激活 → 预览只剩"预览更新中"，直到 worker 与 DOM 分页跑完（大文档预算 60 秒）；缓存仍持有上一份产物，只是没被取用                      |
+| B4  | `src/core/platform/tauri/files.ts:11`                 | 原生授权 key 无台账、无自动回收，只在调用方记得调 `release_native_file` 时失效                 | 选中的文件对应的读授权在进程存活期内一直有效（当前无生产文档绑定，故属潜伏）                                                                        |
+| B5  | `src/App.tsx:285`                                     | 删除文档时会话要到异步删除落定才关闭，其间的保存会把记录写回                                   | 删除后立刻在仍打开的编辑器里敲一下 → `saveNow` 见记录不存在当作新建 → 文档在下次启动时复活，删除被静默撤销                                          |
 
 ### 二、正确性（可能项，触发条件依赖运行状态）
 
-| # | 位置 | 问题 | 触发路径 |
-| --- | --- | --- | --- |
-| B6 | `src/core/export/docxExporter.ts:88` | 公式降级为图片需要产物里有 SVG，而 core 导出 API 默认取文档的 `mathml` 模式（无视觉层） | 直接调用 `prepareExportContent` + `exportDocumentToDocx` 且文档含求和/积分/矩阵 → 抛"公式没有可用的图像后备"。应用层 `exportService.ts:51` 对 docx 强制 svg，故用户路径未破 |
-| B7 | `src/core/platform/web/byteDelivery.ts:56` | File System Access 写入无超时，`ExportService.run` 的 `active` 只在 `finally` 里清 | 写入流卡住 → `busy` 永远为真 → 之后每次导出都返回 `{status:'busy'}`，用户须重载应用 |
-| B8 | `src/core/platform/tauri/runtime.ts:3` | strict schema 的 `os` 枚举只收 windows/macos/linux，Rust 侧直接回 `std::env::consts::OS` | 移动端或其他系统上解析抛错而非按契约返回 `undefined`（当前无此类发行目标） |
-| B9 | `src/core/platform/web/pdfDelivery.ts:41` | 打印宿主 iframe 只由 `afterprint` 拆除 | `afterprint` 未触发 → iframe 与其 HTML 留存到下一次导出；调用方无信号，导出仍报成功 |
-| B10 | `src/application/tasks/budget.ts:15` | `estimatedBytes` 用 `JSON.stringify` 长度估算，二次转义引号与换行使账面偏大 | 大渲染产物超过单条目上限 → 被当成"预览缓存容量超限"而丢弃，用户看到不透明错误 |
-| B11 | `src/application/tasks/roleExecutor.ts:26` | 清理失败时 `finish()` 提前返回，不清 `slot.run` | 清理回调失败 → 该角色永久停在 running，调度器再也装不进替补；`retryCleanup` 目前只有测试调用 |
-| B12 | `src/core/storage/storage.ts:14` | 存储为空时重新播种样例文档 | 删空文档集合 → 下次启动样例复活（UI 侧有 `documents.length > 1` 守卫，需并发删除才能触发） |
+| #   | 位置                                       | 问题                                                                                     | 触发路径                                                                                                                                                                    |
+| --- | ------------------------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B6  | `src/core/export/docxExporter.ts:88`       | 公式降级为图片需要产物里有 SVG，而 core 导出 API 默认取文档的 `mathml` 模式（无视觉层）  | 直接调用 `prepareExportContent` + `exportDocumentToDocx` 且文档含求和/积分/矩阵 → 抛"公式没有可用的图像后备"。应用层 `exportService.ts:51` 对 docx 强制 svg，故用户路径未破 |
+| B7  | `src/core/platform/web/byteDelivery.ts:56` | File System Access 写入无超时，`ExportService.run` 的 `active` 只在 `finally` 里清       | 写入流卡住 → `busy` 永远为真 → 之后每次导出都返回 `{status:'busy'}`，用户须重载应用                                                                                         |
+| B8  | `src/core/platform/tauri/runtime.ts:3`     | strict schema 的 `os` 枚举只收 windows/macos/linux，Rust 侧直接回 `std::env::consts::OS` | 移动端或其他系统上解析抛错而非按契约返回 `undefined`（当前无此类发行目标）                                                                                                  |
+| B9  | `src/core/platform/web/pdfDelivery.ts:41`  | 打印宿主 iframe 只由 `afterprint` 拆除                                                   | `afterprint` 未触发 → iframe 与其 HTML 留存到下一次导出；调用方无信号，导出仍报成功                                                                                         |
+| B10 | `src/application/tasks/budget.ts:15`       | `estimatedBytes` 用 `JSON.stringify` 长度估算，二次转义引号与换行使账面偏大              | 大渲染产物超过单条目上限 → 被当成"预览缓存容量超限"而丢弃，用户看到不透明错误                                                                                               |
+| B11 | `src/application/tasks/roleExecutor.ts:26` | 清理失败时 `finish()` 提前返回，不清 `slot.run`                                          | 清理回调失败 → 该角色永久停在 running，调度器再也装不进替补；`retryCleanup` 目前只有测试调用                                                                                |
+| B12 | `src/core/storage/storage.ts:14`           | 存储为空时重新播种样例文档                                                               | 删空文档集合 → 下次启动样例复活（UI 侧有 `documents.length > 1` 守卫，需并发删除才能触发）                                                                                  |
 
 ### 三、性能与结构（属架构改动，须单独一轮设计与取舍，不宜顺手改）
 
-| # | 位置 | 问题 | 代价 |
-| --- | --- | --- | --- |
-| B13 | `src/App.tsx:179` | 预览激活随每次按键重新发起且无防抖，每次都硬取消在跑的渲染并重建 markdown worker | 每次按键：remark 解析约三次、全部公式重走 MathJax、mermaid/graphviz 重渲染、DOMPurify 两遍；`RoleTaskQueue` 的"只留最新前台需求"被调度层硬取消架空 |
-| B14 | `src/application/sessions/documentSessions.ts:17` | `read()` 深拷贝整份文档（含 base64 资源），UI 每次渲染读当前文档一次、每个标签页再读一次 | 32 个标签页时每次按键深拷贝 33 份完整文档；预览路径另有约 10 次 `structuredClone` |
-| B15 | `src/application/workspace/previewActivation.ts:35` | 提交前把整个产物深拷贝给只读校验器，随后又整体 `JSON.stringify` 估算字节并递归冻结 | 发布预览那一刻的主线程纯开销 |
-| B16 | `src/components/workspace/Sidebar.tsx:54` | 大纲是全文 remark 解析，三处调用点各算一次（Sidebar 每次渲染、App effect 每次按键、`highlightLine` 每次滚动），Sidebar 未 memo 化 | 一个按键两次全文解析，一次滚轮一次；10 MiB 源文下单次解析约秒级 |
-| B17 | `src/components/workspace/sourceScroll.ts:58` | 源行到预览像素的映射每次滚动事件从活 DOM 重测，每个元素一次子树查询加一次 rect 读 | 2000 个标注块时每次滚动 2000 次强制布局，单帧即可超 16 ms |
-| B18 | `src/components/editor/Editor.tsx:70` | 布局 effect 把 `value` 列入依赖，每次按键重建观察者并同步重算整篇行几何 | 每行一个镜像 div 与一次 rect 读；5000 行文档即每次按键 5000 次建节点与测量 |
+| #   | 位置                                                | 问题                                                                                                                              | 代价                                                                                                                                               |
+| --- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B13 | `src/App.tsx:179`                                   | 预览激活随每次按键重新发起且无防抖，每次都硬取消在跑的渲染并重建 markdown worker                                                  | 每次按键：remark 解析约三次、全部公式重走 MathJax、mermaid/graphviz 重渲染、DOMPurify 两遍；`RoleTaskQueue` 的"只留最新前台需求"被调度层硬取消架空 |
+| B14 | `src/application/sessions/documentSessions.ts:17`   | `read()` 深拷贝整份文档（含 base64 资源），UI 每次渲染读当前文档一次、每个标签页再读一次                                          | 32 个标签页时每次按键深拷贝 33 份完整文档；预览路径另有约 10 次 `structuredClone`                                                                  |
+| B15 | `src/application/workspace/previewActivation.ts:35` | 提交前把整个产物深拷贝给只读校验器，随后又整体 `JSON.stringify` 估算字节并递归冻结                                                | 发布预览那一刻的主线程纯开销                                                                                                                       |
+| B16 | `src/components/workspace/Sidebar.tsx:54`           | 大纲是全文 remark 解析，三处调用点各算一次（Sidebar 每次渲染、App effect 每次按键、`highlightLine` 每次滚动），Sidebar 未 memo 化 | 一个按键两次全文解析，一次滚轮一次；10 MiB 源文下单次解析约秒级                                                                                    |
+| B17 | `src/components/workspace/sourceScroll.ts:58`       | 源行到预览像素的映射每次滚动事件从活 DOM 重测，每个元素一次子树查询加一次 rect 读                                                 | 2000 个标注块时每次滚动 2000 次强制布局，单帧即可超 16 ms                                                                                          |
+| B18 | `src/components/editor/Editor.tsx:70`               | 布局 effect 把 `value` 列入依赖，每次按键重建观察者并同步重算整篇行几何                                                           | 每行一个镜像 div 与一次 rect 读；5000 行文档即每次按键 5000 次建节点与测量                                                                         |
 
 ### 四、复用与简化（成本明确，改动小）
 
-| # | 位置 | 问题 | 成本 |
-| --- | --- | --- | --- |
-| B19 | `src/core/export/htmlExporter.ts:14` | 50 MB 单文件 HTML 上限在三个模块各写一遍，且三者量的不是同一个东西（成品字节 / 内容加 CSS 字节 / 字符数） | 一条策略三处实现三份行为，改上限要改三处 |
-| B20 | `src/application/tasks/roleQueue.ts:37` | Markdown UTF-8 预算检查抄在五处（roleQueue ×2、markdownWorkerTask、sourceImport ×2），两种错误文案 | 限额值已集中在 `taskBudget`，只有"编码并比较"这一步重复 |
-| B21 | `src/App.tsx:233` 与 `src/components/editor/Editor.tsx:97` | 光标保持插入算法两处逐行重复 | 选区/光标的修复要写两遍，工具栏与快捷键会漂移 |
-| B22 | `src/core/storage/storage.ts:17` | `getAllDocuments` 全仓无调用方 | 死代码 |
-| B23 | `src/core/render/documentPresentation.ts:12` | `documentStyleAttribute` 全仓无调用方，且与同文件的 `variableStyleAttribute` 等价 | 死代码加重复实现 |
-| B24 | `src/core/render/mermaidRender.ts:5` | `isDark` 与 `mathMode` 一路传下去却无人读 | 承诺了不存在的行为：Mermaid 永远用 default 主题，应用暗色模式不生效；`ParseOptions.mathMode` 形同虚设 |
+| #   | 位置                                                       | 问题                                                                                                      | 成本                                                                                                  |
+| --- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| B19 | `src/core/export/htmlExporter.ts:14`                       | 50 MB 单文件 HTML 上限在三个模块各写一遍，且三者量的不是同一个东西（成品字节 / 内容加 CSS 字节 / 字符数） | 一条策略三处实现三份行为，改上限要改三处                                                              |
+| B20 | `src/application/tasks/roleQueue.ts:37`                    | Markdown UTF-8 预算检查抄在五处（roleQueue ×2、markdownWorkerTask、sourceImport ×2），两种错误文案        | 限额值已集中在 `taskBudget`，只有"编码并比较"这一步重复                                               |
+| B21 | `src/App.tsx:233` 与 `src/components/editor/Editor.tsx:97` | 光标保持插入算法两处逐行重复                                                                              | 选区/光标的修复要写两遍，工具栏与快捷键会漂移                                                         |
+| B22 | `src/core/storage/storage.ts:17`                           | `getAllDocuments` 全仓无调用方                                                                            | 死代码                                                                                                |
+| B23 | `src/core/render/documentPresentation.ts:12`               | `documentStyleAttribute` 全仓无调用方，且与同文件的 `variableStyleAttribute` 等价                         | 死代码加重复实现                                                                                      |
+| B24 | `src/core/render/mermaidRender.ts:5`                       | `isDark` 与 `mathMode` 一路传下去却无人读                                                                 | 承诺了不存在的行为：Mermaid 永远用 default 主题，应用暗色模式不生效；`ParseOptions.mathMode` 形同虚设 |
 
 ## 已推翻（勿再提出）
 
-| 候选 | 结论 | 依据 |
-| --- | --- | --- |
-| mathml 模式残留 LaTeX 注解 | REFUTED | MathJax 3.2.2 的 `SerializedMmlVisitor` 不输出 `<semantics>`/`<annotation>`，菜单用的 `MmlVisitor` 才输出；前提不成立 |
-| `pagedJsAdapter` 的 `destroy` 未被调用 | REFUTED | 那两行只是存在性检查，真正的销毁在 `cleanupComponent` → `apiMethod(component,'destroy')()` 路径 |
-| `roleScheduler` 的 `notifying` 跨角色竞争 | REFUTED | 该标志在置位与清除之间没有 await，构造不出所述竞态 |
+| 候选                                      | 结论    | 依据                                                                                                                  |
+| ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| mathml 模式残留 LaTeX 注解                | REFUTED | MathJax 3.2.2 的 `SerializedMmlVisitor` 不输出 `<semantics>`/`<annotation>`，菜单用的 `MmlVisitor` 才输出；前提不成立 |
+| `pagedJsAdapter` 的 `destroy` 未被调用    | REFUTED | 那两行只是存在性检查，真正的销毁在 `cleanupComponent` → `apiMethod(component,'destroy')()` 路径                       |
+| `roleScheduler` 的 `notifying` 跨角色竞争 | REFUTED | 该标志在置位与清除之间没有 await，构造不出所述竞态                                                                    |
 
 ## 与探针工作的关系
 

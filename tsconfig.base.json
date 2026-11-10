@@ -10,9 +10,7 @@
     "moduleDetection": "force",
     "allowJs": false,
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,

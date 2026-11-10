@@ -15,14 +15,14 @@
 
 ## MIME描述（维持现值）
 
-| 格式 | 后缀 | MIME |
-| --- | --- | --- |
-| editable-html | .markflow.html | text/html |
-| reading-html | .html | text/html |
-| docx | .docx | application/vnd.openxmlformats-officedocument.wordprocessingml.document |
-| print-pdf | .pdf | application/pdf |
-| markdown | .md | text/markdown |
-| markdown-bundle | .zip | application/zip |
+| 格式            | 后缀           | MIME                                                                    |
+| --------------- | -------------- | ----------------------------------------------------------------------- |
+| editable-html   | .markflow.html | text/html                                                               |
+| reading-html    | .html          | text/html                                                               |
+| docx            | .docx          | application/vnd.openxmlformats-officedocument.wordprocessingml.document |
+| print-pdf       | .pdf           | application/pdf                                                         |
+| markdown        | .md            | text/markdown                                                           |
+| markdown-bundle | .zip           | application/zip                                                         |
 
 ## 兼容性与不变范围
 

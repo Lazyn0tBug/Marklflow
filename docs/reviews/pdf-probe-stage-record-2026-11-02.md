@@ -12,19 +12,19 @@
 
 ### 九项核对结论
 
-| 项 | 结论 | 性质 | 证据 |
-| --- | --- | --- | --- |
-| D0-1 COM 接口覆盖 | 成立。`ICoreWebView2_7::PrintToPdf` 在 `webview2-com-sys 0.39.1/src/bindings.rs` 声明；`webview2-com` 经 `pub use webview2_com_sys::Microsoft`（`webview2-com-0.39.1/src/lib.rs:2`）再导出，路径为 `webview2_com::Microsoft::WebView2::ICoreWebView2_7`。`webview2-com` 手写包装层不暴露 `PrintToPdf`，须走 sys 层 | 源码级 | registry `index.crates.io-*/webview2-com-sys-0.39.1/src/bindings.rs` |
-| D0-1 备选路线 | **纠正**：锁定版本只有 webview2-com 一条路线。`windows 0.62.2` 不含 `Win32_System_Win32_WebView2` 特性，亦无 `src/Windows/Win32/WebView2` 目录。前轮"若 webview2-com 不含 ICoreWebView2_7 可改用 windows crate"的备选在锁定版本下不存在 | 源码级 | `windows-0.62.2/Cargo.toml`、`windows-0.62.2/src` |
-| D0-2 PlatformWebview 形态 | 成立。`controller()` 与 `environment()` 均为包装层方法 | 源码级 | `tauri-2.12.4/src/webview/mod.rs:184`、`:193` |
+| 项                          | 结论                                                                                                                                                                                                                                                                                                                                                                                                            | 性质   | 证据                                                                                                                                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D0-1 COM 接口覆盖           | 成立。`ICoreWebView2_7::PrintToPdf` 在 `webview2-com-sys 0.39.1/src/bindings.rs` 声明；`webview2-com` 经 `pub use webview2_com_sys::Microsoft`（`webview2-com-0.39.1/src/lib.rs:2`）再导出，路径为 `webview2_com::Microsoft::WebView2::ICoreWebView2_7`。`webview2-com` 手写包装层不暴露 `PrintToPdf`，须走 sys 层                                                                                              | 源码级 | registry `index.crates.io-*/webview2-com-sys-0.39.1/src/bindings.rs`                                                                                                                              |
+| D0-1 备选路线               | **纠正**：锁定版本只有 webview2-com 一条路线。`windows 0.62.2` 不含 `Win32_System_Win32_WebView2` 特性，亦无 `src/Windows/Win32/WebView2` 目录。前轮"若 webview2-com 不含 ICoreWebView2_7 可改用 windows crate"的备选在锁定版本下不存在                                                                                                                                                                         | 源码级 | `windows-0.62.2/Cargo.toml`、`windows-0.62.2/src`                                                                                                                                                 |
+| D0-2 PlatformWebview 形态   | 成立。`controller()` 与 `environment()` 均为包装层方法                                                                                                                                                                                                                                                                                                                                                          | 源码级 | `tauri-2.12.4/src/webview/mod.rs:184`、`:193`                                                                                                                                                     |
 | D0-3 应用自定义命令默认行为 | **应用自定义命令在本地来源下默认放行，ACL 不构成隔离**。invoke 时的 ACL 判定仅在「插件命令 / `has_app_acl_manifest` / 非本地来源」三者之一成立时才检查；`has_app_manifest` 为 `acl.contains_key(APP_ACL_KEY)`，而生成的 `gen/schemas/acl-manifests.json` 中只有 `core:*` 与 `dialog`，**无应用作用域条目**（仓库无 `src-tauri/permissions/` 目录），故 `has_app_acl` 为 false，本地来源的应用自定义命令不走 ACL | 源码级 | `tauri-2.12.4/src/webview/mod.rs:2078-2083`；`tauri-utils-2.10.2/src/acl/mod.rs:352`；`tauri-2.12.4/src/ipc/authority.rs:462`、`:121`、`:213`、`:338`；`src-tauri/gen/schemas/acl-manifests.json` |
-| D0-4 异步身份注入 | **纠正**：无同步或异步约束。`impl CommandArg for Webview<R>` 存在，`from_command` 返回 `command.message.webview()` 且注释写明 never fail；`CommandArg` trait 签名不含同步或异步约束 | 源码级 | `tauri-2.12.4/src/webview/mod.rs:2604`；`tauri-2.12.4/src/ipc/command.rs:66` |
-| D0-4 注入类型 | 支持 Q23 与 Q33。`WebviewWindow` 的 `CommandArg` 实现在调用方非 WebviewWindow 时返回错误，注入 `Webview` 无此失败模式 | 源码级 | `tauri-2.12.4/src/webview/webview_window.rs:1606` |
-| D0-5 invoke 通道 | 成立。`invoke` 直接调用 `window.__TAURI_INTERNALS__.invoke`；`window.__TAURI__` 只是 `withGlobalTauri` 控制的全局命名空间，底层通道不依赖它。internals 由 initialization script 注入，不受页面 CSP `script-src` 约束 | 源码级 | `node_modules/@tauri-apps/api/core.js:340-341`；`tauri-2.12.4/src/app.rs:1733`、`:1808` |
-| D0-6 探针通道与签发入口 | 形态已由 Q14、Q17、Q18、Q20、Q21 定形，本轮无新增核对项 | 决定 | 决策记录 §4、§5 |
-| D0-7 主界面身份对应 | 源码级成立。`WebviewWindowBuilder::new` 把同一 label 传给 `WebviewBuilder::new`，`from_config` 取 config 的 label，故主界面前端 WebView 的 label 与窗口 label 同为 `main`，身份对为 `("main","main")`。运行时由 D1a-6 核对 | 源码级 | `tauri-2.12.4/src/webview/webview_window.rs:105`、`:150` |
-| D0-8 附着式继承机制 | 机制已录：`resolve_access` 以 `cmd.webviews` 或 `cmd.windows` 任一匹配即通过，故同窗 webview 命中 `windows:["main"]` 的 capability；capability 亦可用 `webviews:[...]` 精确列举。按 Q27 未创建、未调用该形态 | 源码级 | `tauri-2.12.4/src/ipc/authority.rs:462-489` |
-| D0-9 发行脚本与有效 feature | 成立。三条 matrix `args` 均无 `--features` 或 `--all-features`（`--target`/`--bundles`/`--ci`/`-- --locked`）；`src-tauri/Cargo.toml` 目前无 `[features]` 段；`ci.yml` 无 cargo 构建步骤；`tauri-build.yml` 固定 toolchain 1.94.0 | 源码级 | `.github/workflows/tauri-build.yml:33-40`、`:55-58`；`.github/workflows/ci.yml`；`src-tauri/Cargo.toml` |
+| D0-4 异步身份注入           | **纠正**：无同步或异步约束。`impl CommandArg for Webview<R>` 存在，`from_command` 返回 `command.message.webview()` 且注释写明 never fail；`CommandArg` trait 签名不含同步或异步约束                                                                                                                                                                                                                             | 源码级 | `tauri-2.12.4/src/webview/mod.rs:2604`；`tauri-2.12.4/src/ipc/command.rs:66`                                                                                                                      |
+| D0-4 注入类型               | 支持 Q23 与 Q33。`WebviewWindow` 的 `CommandArg` 实现在调用方非 WebviewWindow 时返回错误，注入 `Webview` 无此失败模式                                                                                                                                                                                                                                                                                           | 源码级 | `tauri-2.12.4/src/webview/webview_window.rs:1606`                                                                                                                                                 |
+| D0-5 invoke 通道            | 成立。`invoke` 直接调用 `window.__TAURI_INTERNALS__.invoke`；`window.__TAURI__` 只是 `withGlobalTauri` 控制的全局命名空间，底层通道不依赖它。internals 由 initialization script 注入，不受页面 CSP `script-src` 约束                                                                                                                                                                                            | 源码级 | `node_modules/@tauri-apps/api/core.js:340-341`；`tauri-2.12.4/src/app.rs:1733`、`:1808`                                                                                                           |
+| D0-6 探针通道与签发入口     | 形态已由 Q14、Q17、Q18、Q20、Q21 定形，本轮无新增核对项                                                                                                                                                                                                                                                                                                                                                         | 决定   | 决策记录 §4、§5                                                                                                                                                                                   |
+| D0-7 主界面身份对应         | 源码级成立。`WebviewWindowBuilder::new` 把同一 label 传给 `WebviewBuilder::new`，`from_config` 取 config 的 label，故主界面前端 WebView 的 label 与窗口 label 同为 `main`，身份对为 `("main","main")`。运行时由 D1a-6 核对                                                                                                                                                                                      | 源码级 | `tauri-2.12.4/src/webview/webview_window.rs:105`、`:150`                                                                                                                                          |
+| D0-8 附着式继承机制         | 机制已录：`resolve_access` 以 `cmd.webviews` 或 `cmd.windows` 任一匹配即通过，故同窗 webview 命中 `windows:["main"]` 的 capability；capability 亦可用 `webviews:[...]` 精确列举。按 Q27 未创建、未调用该形态                                                                                                                                                                                                    | 源码级 | `tauri-2.12.4/src/ipc/authority.rs:462-489`                                                                                                                                                       |
+| D0-9 发行脚本与有效 feature | 成立。三条 matrix `args` 均无 `--features` 或 `--all-features`（`--target`/`--bundles`/`--ci`/`-- --locked`）；`src-tauri/Cargo.toml` 目前无 `[features]` 段；`ci.yml` 无 cargo 构建步骤；`tauri-build.yml` 固定 toolchain 1.94.0                                                                                                                                                                               | 源码级 | `.github/workflows/tauri-build.yml:33-40`、`:55-58`；`.github/workflows/ci.yml`；`src-tauri/Cargo.toml`                                                                                           |
 
 ### D0-3 的四条后果
 
@@ -54,12 +54,12 @@
 
 **这一轮定下的简化方向**（2026-11-04 ✓）：
 
-| 不做 | 为什么 |
-| --- | --- |
-| 保持目标文件的 ACL ✓ | 写的是用户自己挑的文件 ✓；Windows 上的主流应用同样是替换 ✓；隔离不依赖文件权限 ✓ |
-| 用户／角色体系 ✓ | 这一维在本应用没有对象 ✓ |
+| 不做                                                   | 为什么                                                                                   |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 保持目标文件的 ACL ✓                                   | 写的是用户自己挑的文件 ✓；Windows 上的主流应用同样是替换 ✓；隔离不依赖文件权限 ✓         |
+| 用户／角色体系 ✓                                       | 这一维在本应用没有对象 ✓                                                                 |
 | 能力清单文件（`src-tauri/capabilities/default.json`）✓ | 它**什么都不做** ✓ → 它是误导物 ✓ → **已删** ✓（2026-11-05 ✓，宿主上删前删后逐条一致 ✓） |
-| 第二个隔离层 ✓ | 隔离**只有一道闸** ✓（来源守卫 ✓）；Tauri 的 ACL 不检查应用自定义命令 ✓ |
+| 第二个隔离层 ✓                                         | 隔离**只有一道闸** ✓（来源守卫 ✓）；Tauri 的 ACL 不检查应用自定义命令 ✓                  |
 
 **什么时候要重新评估** ✓：当交给打印机的 HTML 不再只来自那个被清洗过的导出时 ✓
 （插件 ✓、第三方模板 ✓、用户自带 HTML ✓、或者导出链哪天引入了脚本 ✓）——
@@ -67,25 +67,25 @@
 
 ### 交接物（五项）
 
-| 项 | 内容 |
-| --- | --- |
-| 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，129184 字节；元数据同目录 `frozen-sample.meta.json` |
-| 文件 SHA-256 | `78aff00c92253b499fb400c72117348bdad7af8c1b0a9ace50812d0f553b50c0`（`shasum -a 256` 独立复算一致，与交付宿主原件逐字节相同）。**只锁定这一个文件** |
-| 输入身份 | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行、跨宿主一致 |
-| 预期值 | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；随机 UUID 属性 635 处 |
-| 环境说明 | **交付宿主**：Windows 11，内部版本 10.0.26300，x64；Playwright chromium 1.64.1（Chromium 156.0.8078.4）；vite 运行时 `node`；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；宿主实际解析到的平台字体 **Microsoft YaHei UI**（CJK 与拉丁，948 字形／58 节点）与 **Consolas**（代码，51／1）；WebView2 运行时 156.0.4314.58；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
-| 结论 | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成。**本表已换成交付宿主产出的样本**（此前为 macOS 占位，不得用于 D1） |
+| 项            | 内容                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 固化分页 HTML | `docs/acceptance/pdf-probe/frozen-sample.html`，129184 字节；元数据同目录 `frozen-sample.meta.json`                                                                                                                                                                                                                                                                                                                 |
+| 文件 SHA-256  | `78aff00c92253b499fb400c72117348bdad7af8c1b0a9ace50812d0f553b50c0`（`shasum -a 256` 独立复算一致，与交付宿主原件逐字节相同）。**只锁定这一个文件**                                                                                                                                                                                                                                                                  |
+| 输入身份      | `mdHash` = `d70fc6c053386ce0b17b1a29b8e5d856d8310229a88732a58a4ea7693b288b6b`；`renderConfigVersion` = `00a5fd6b1931c6ed41caf7635ea88405a29883fe4b6d45575ff9a60f5a784f4e`。**同一输入的稳定标识**，跨运行、跨宿主一致                                                                                                                                                                                               |
+| 预期值        | `data-export-pages="3"`；页面盒 3；HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次；随机 UUID 属性 635 处                                                                                                                                                                                                                                                                                                           |
+| 环境说明      | **交付宿主**：Windows 11，内部版本 10.0.26300，x64；Playwright chromium 1.64.1（Chromium 156.0.8078.4）；vite 运行时 `node`；主题字体栈 `--mf-font: system-ui,"Microsoft YaHei","PingFang SC",sans-serif`；宿主实际解析到的平台字体 **Microsoft YaHei UI**（CJK 与拉丁，948 字形／58 节点）与 **Consolas**（代码，51／1）；WebView2 运行时 156.0.4314.58；样本源 `tests/fixtures/export-source/pdf-probe-sample.md` |
+| 结论          | D1 可直接加载该固定文件，不在 D1 重新驱动前端生成。**本表已换成交付宿主产出的样本**（此前为 macOS 占位，不得用于 D1）                                                                                                                                                                                                                                                                                               |
 
 ### 命令与退出码
 
-| 命令 | 退出码 | 结果 |
-| --- | --- | --- |
-| `cargo fetch --locked`（src-tauri） | 0 | 取到 tauri 2.12.4、wry 0.57.1、webview2-com(-sys) 0.39.1、windows 0.62.2；未改仓库、未改 Cargo.lock |
-| `cargo build`（src-tauri） | 0 | 225 crates，32.51s；生成 `src-tauri/gen/schemas/`（构建产物，不入库） |
-| `cargo test --locked`（src-tauri） | 0 | 6 passed / 3 suites |
-| `bun scripts/pdf-probe-sample.ts` | 0 | 产出固化样本并自检（页数、标记、页盒数一致、字体证据已取） |
-| `bun run lint` | 0 | check:source、check:boundaries、oxlint 均通过 |
-| `bun run typecheck` | 0 | 四个 tsconfig 配置全部通过；`bun run test:unit` 69 文件 491 用例通过 |
+| 命令                                | 退出码 | 结果                                                                                                |
+| ----------------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| `cargo fetch --locked`（src-tauri） | 0      | 取到 tauri 2.12.4、wry 0.57.1、webview2-com(-sys) 0.39.1、windows 0.62.2；未改仓库、未改 Cargo.lock |
+| `cargo build`（src-tauri）          | 0      | 225 crates，32.51s；生成 `src-tauri/gen/schemas/`（构建产物，不入库）                               |
+| `cargo test --locked`（src-tauri）  | 0      | 6 passed / 3 suites                                                                                 |
+| `bun scripts/pdf-probe-sample.ts`   | 0      | 产出固化样本并自检（页数、标记、页盒数一致、字体证据已取）                                          |
+| `bun run lint`                      | 0      | check:source、check:boundaries、oxlint 均通过                                                       |
+| `bun run typecheck`                 | 0      | 四个 tsconfig 配置全部通过；`bun run test:unit` 69 文件 491 用例通过                                |
 
 ### 两项工程事实
 
@@ -121,14 +121,14 @@ Windows 侧的**预期**（待人工实测核对，非既成事实）：拉丁�
 
 交付宿主（Windows 11，内部版本 10.0.26300，`D:\code\Marklflow`）已跑过一次取样，产出与本机 macOS 归档**在输入身份上就不一致**，因此暂不替换归档。
 
-| 项 | macOS（本机） | Windows（交付宿主） | 判定 |
-| --- | --- | --- | --- |
-| `mdHash` | `d70fc6c0…88b6b` | `cb5fa82b…e0308` | **不一致** |
-| `renderConfigVersion` | `00a5fd6b…784f4e` | `a8782969…6fad` | **不一致** |
-| 文件 SHA-256 | `e8e6c5b7…c3872` | `d8062a4e…46a4a` | 不一致（预期） |
-| 字节数 | 129184 | 129211 | 差 27 |
-| `data-export-pages` / 页面盒 | 3 / 3 | 3 / 3 | 一致 |
-| HEAD / TAIL 标记页 | 1 / 3 | 1 / 3 | 一致 |
+| 项                           | macOS（本机）     | Windows（交付宿主） | 判定           |
+| ---------------------------- | ----------------- | ------------------- | -------------- |
+| `mdHash`                     | `d70fc6c0…88b6b`  | `cb5fa82b…e0308`    | **不一致**     |
+| `renderConfigVersion`        | `00a5fd6b…784f4e` | `a8782969…6fad`     | **不一致**     |
+| 文件 SHA-256                 | `e8e6c5b7…c3872`  | `d8062a4e…46a4a`    | 不一致（预期） |
+| 字节数                       | 129184            | 129211              | 差 27          |
+| `data-export-pages` / 页面盒 | 3 / 3             | 3 / 3               | 一致           |
+| HEAD / TAIL 标记页           | 1 / 3             | 1 / 3               | 一致           |
 
 **原因是行尾，不是字体。** 把仓库的 `tests/fixtures/export-source/pdf-probe-sample.md` 从 LF 转成 CRLF 重算 sha256，得 `cb5fa82b01db13b4ecf51a56ed27bff295c9c9fdfc8ffb2468f7a453ed4e0308`，与交付宿主报的值**逐位相同**；同一转换作用于 `src/styles/document.css` 恰好多 27 字节，与两个样本的字节差一致（该 CSS 进入导出产物的 `<style>`，共 27 行）。即：Windows 上的检出是 CRLF，**同一份源码换了身份**。
 
@@ -147,11 +147,11 @@ Windows 侧的**预期**（待人工实测核对，非既成事实）：拉丁�
 
 ### 交付宿主事实（2026-11-03，人工确认）
 
-| 事实 | 状态 | 对 D1 的意义 |
-| --- | --- | --- |
-| WebView2 运行时 | **已安装，版本 156.0.4314.58** | Tauri v2 桌面端在该宿主可启动。**D1c 的硬前提**：D1c 要经 `ICoreWebView2_7::PrintToPdf` 出 PDF，该接口自运行时 93 版起提供（`ICoreWebView2_7` 本身自 89 版起），156 版远超此线，此前 D1c 的状态"环境依赖缺失"由此排除 |
-| 微软雅黑 | **已安装** | 与 `platformFonts` 实测到的 `Microsoft YaHei UI` 一致；样本的 CJK 与拉丁在该宿主都用雅黑 UI |
-| 操作系统 | Windows 11，内部版本 10.0.26300（取自 meta 的 `environment.osRelease`） | 宿主标识，随交接物表归档 |
+| 事实            | 状态                                                                    | 对 D1 的意义                                                                                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WebView2 运行时 | **已安装，版本 156.0.4314.58**                                          | Tauri v2 桌面端在该宿主可启动。**D1c 的硬前提**：D1c 要经 `ICoreWebView2_7::PrintToPdf` 出 PDF，该接口自运行时 93 版起提供（`ICoreWebView2_7` 本身自 89 版起），156 版远超此线，此前 D1c 的状态"环境依赖缺失"由此排除 |
+| 微软雅黑        | **已安装**                                                              | 与 `platformFonts` 实测到的 `Microsoft YaHei UI` 一致；样本的 CJK 与拉丁在该宿主都用雅黑 UI                                                                                                                           |
+| 操作系统        | Windows 11，内部版本 10.0.26300（取自 meta 的 `environment.osRelease`） | 宿主标识，随交接物表归档                                                                                                                                                                                              |
 
 **排版引擎与交付引擎同代。** 分页用的 Playwright 1.64.1 内置 **Chromium 156.0.8078.4**（revision 1248），而交付宿主加载固化样本时用的是 **WebView2 156.0.4314.58**，同为 Chromium 156 主版本。固化样本的页面盒是按固定尺寸切好的，D1c 仍要在 WebView2 的引擎里重新排版文本，引擎同代把"重排结果与分页时不一致"的风险压到很低，但不能归零：**同主版本不等于同渲染细节**，D1c 的就绪判据仍须以实际页数与标记落点核对（D1d-1、D1d-2）。
 
@@ -205,11 +205,11 @@ bun scripts/pdf-probe-sample.ts
 
 对生成工具与配置做了一次评审，发现三条。均属工具与配置，不涉及产品代码；三条都不阻断 D0，但前两条会在交付宿主取样时产生"看起来成功、实则与记录矛盾"的产物，故排在取样之前处理。
 
-| # | 发现 | 影响 | 拟修 |
-| --- | --- | --- | --- |
-| R1 | **已修（2026-11-03）**。**自检比记录的交接期望弱**。阶段记录写死"HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次"，而脚本只断言"标记页码非 null"。若 Windows 的字体度量把标记挪位，脚本照旧写盘并报成功，产出的 meta 与本记录直接矛盾 | 归档与记录不一致，且由工具自证 | 自检改为断言期望值本身：声明页数与页面盒数一致、页面盒多于一页、HEAD 在第 1 页、TAIL 在末页、两标记各出现 1 次、平台字体证据非空；**自检通过才落盘**，失败的产物不替换归档。**已验**：把 HEAD 的期望页改成 2 后运行，自检报错并指名该项，归档未被触碰；正常运行通过 |
-| R2 | **已修（2026-11-03）**。**`/src/*` 路径映射放在 `tsconfig.base.json`，范围过宽**。四个 profile 全部继承，于是任何源文件都可写 `import x from '/src/foo.ts'` 并通过类型检查；但该写法只在 Vite dev server 下成立（dev server 按仓库根路径提供 `/src/...`），`vite build` 会当成 URL 路径，生产构建直接坏掉。即以构建期地雷换掉了类型期护栏 | 未来有人这样写 import 时不会被类型检查拦下 | 映射下沉到 `tsconfig.integration.json`（脚本所在 profile），base 保持干净。实测 TS 的 `paths` 从 `extends` 继承时是整体替换而非合并，下沉时把 `@/*` 一并重新声明。**护栏已验**：在 `src/` 下放一个 `import from '/src/core/storage/storage'` 的探针文件，`tsc -p tsconfig.json` 报 TS2307，即该写法在源文件里已被类型检查拦下；脚本所在 profile 仍可解析 |
-| R3 | **meta 记了宿主绝对路径**（`file`、`source`）。交付宿主取样后仓库里会留下 `C:\Users\<用户名>\...` | 归档带宿主信息，不该入库 | 改为记仓库相对路径 |
+| #   | 发现                                                                                                                                                                                                                                                                                                                                      | 影响                                       | 拟修                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | **已修（2026-11-03）**。**自检比记录的交接期望弱**。阶段记录写死"HEAD 标记第 1 页、TAIL 标记第 3 页，各出现 1 次"，而脚本只断言"标记页码非 null"。若 Windows 的字体度量把标记挪位，脚本照旧写盘并报成功，产出的 meta 与本记录直接矛盾                                                                                                     | 归档与记录不一致，且由工具自证             | 自检改为断言期望值本身：声明页数与页面盒数一致、页面盒多于一页、HEAD 在第 1 页、TAIL 在末页、两标记各出现 1 次、平台字体证据非空；**自检通过才落盘**，失败的产物不替换归档。**已验**：把 HEAD 的期望页改成 2 后运行，自检报错并指名该项，归档未被触碰；正常运行通过                                                                                      |
+| R2  | **已修（2026-11-03）**。**`/src/*` 路径映射放在 `tsconfig.base.json`，范围过宽**。四个 profile 全部继承，于是任何源文件都可写 `import x from '/src/foo.ts'` 并通过类型检查；但该写法只在 Vite dev server 下成立（dev server 按仓库根路径提供 `/src/...`），`vite build` 会当成 URL 路径，生产构建直接坏掉。即以构建期地雷换掉了类型期护栏 | 未来有人这样写 import 时不会被类型检查拦下 | 映射下沉到 `tsconfig.integration.json`（脚本所在 profile），base 保持干净。实测 TS 的 `paths` 从 `extends` 继承时是整体替换而非合并，下沉时把 `@/*` 一并重新声明。**护栏已验**：在 `src/` 下放一个 `import from '/src/core/storage/storage'` 的探针文件，`tsc -p tsconfig.json` 报 TS2307，即该写法在源文件里已被类型检查拦下；脚本所在 profile 仍可解析 |
+| R3  | **meta 记了宿主绝对路径**（`file`、`source`）。交付宿主取样后仓库里会留下 `C:\Users\<用户名>\...`                                                                                                                                                                                                                                         | 归档带宿主信息，不该入库                   | 改为记仓库相对路径                                                                                                                                                                                                                                                                                                                                       |
 
 R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `platformFonts` 是空数组，自检照样通过，字体证据静默退化为空而产物看起来正常。**产物型断言须编码期望值，而非编码"非空"**，此条一并记此。
 
@@ -219,37 +219,37 @@ R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `plat
 
 ### 实现落点
 
-| 件 | 位置 | 内容 |
-| --- | --- | --- |
-| 纯函数守卫 | `src-tauri/src/source_guard.rs:57` | `check_source(caller, allowed)`：输入身份与允许范围，输出放行或共享稳定拒绝码 `native-source-denied`（`:42`） |
-| 身份类型 | `src-tauri/src/source_guard.rs:16` | `Identity` 为窗口 label 与 webview label 的配对，**label 级，不含实例标识**；`declared`（`:21`）供常量用，`from_labels`（`:29`）供运行期用 |
-| 具名身份 | `src-tauri/src/source_guard.rs:45`、`:51` | `MAIN_WINDOW` = ("main","main")（源码级依据 D0-7，运行值 D1a-6 核对）；`OUTPUT_HOST` = ("pdf-output","pdf-output")，**默认不在允许范围内** |
-| 允许范围 | `src-tauri/src/source_guard.rs:54` | `ALLOWED_CALLERS` 只含主界面，静态、默认拒绝 |
-| 入口守卫 | `src-tauri/src/files.rs:17` | `ensure_allowed` 取原生注入的身份后调用共享守卫，拒绝即返回共享码 |
-| 身份回报 | `src-tauri/src/lib.rs:18` | `get_platform_info` 注入 owned `tauri::Webview`，回报 `windowLabel` 与 `webviewLabel`；该命令**不受守卫限制**（不碰文件、对话框与授权） |
-| 前端同步 | `src/core/platform/tauri/runtime.ts:3` | strict schema 加 `windowLabel` / `webviewLabel`（缺字段即解析失败，故必须与 Rust 同步） |
-| 用户可见映射 | `src/core/platform/tauri/files.ts:9` | 共享拒绝码映射为友好提示，不露裸码、调用方身份或允许名单；**受控探针不经此路径，仍按机器码取证** |
+| 件           | 位置                                      | 内容                                                                                                                                       |
+| ------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 纯函数守卫   | `src-tauri/src/source_guard.rs:57`        | `check_source(caller, allowed)`：输入身份与允许范围，输出放行或共享稳定拒绝码 `native-source-denied`（`:42`）                              |
+| 身份类型     | `src-tauri/src/source_guard.rs:16`        | `Identity` 为窗口 label 与 webview label 的配对，**label 级，不含实例标识**；`declared`（`:21`）供常量用，`from_labels`（`:29`）供运行期用 |
+| 具名身份     | `src-tauri/src/source_guard.rs:45`、`:51` | `MAIN_WINDOW` = ("main","main")（源码级依据 D0-7，运行值 D1a-6 核对）；`OUTPUT_HOST` = ("pdf-output","pdf-output")，**默认不在允许范围内** |
+| 允许范围     | `src-tauri/src/source_guard.rs:54`        | `ALLOWED_CALLERS` 只含主界面，静态、默认拒绝                                                                                               |
+| 入口守卫     | `src-tauri/src/files.rs:17`               | `ensure_allowed` 取原生注入的身份后调用共享守卫，拒绝即返回共享码                                                                          |
+| 身份回报     | `src-tauri/src/lib.rs:18`                 | `get_platform_info` 注入 owned `tauri::Webview`，回报 `windowLabel` 与 `webviewLabel`；该命令**不受守卫限制**（不碰文件、对话框与授权）    |
+| 前端同步     | `src/core/platform/tauri/runtime.ts:3`    | strict schema 加 `windowLabel` / `webviewLabel`（缺字段即解析失败，故必须与 Rust 同步）                                                    |
+| 用户可见映射 | `src/core/platform/tauri/files.ts:9`      | 共享拒绝码映射为友好提示，不露裸码、调用方身份或允许名单；**受控探针不经此路径，仍按机器码取证**                                           |
 
 ### 五个受保护入口 × 四项证据（D1a-5）
 
-| 入口 | 调用共享守卫 | 身份取自原生注入 | 拒绝返回路径 | 检查先于副作用 |
-| --- | --- | --- | --- | --- |
-| `select_native_open` | `files.rs:123` | `files.rs:17`（`webview.window().label()` 与 `webview.label()`） | `files.rs:18` 返回共享码 | 先于 `files.rs:124` 的对话框 |
-| `select_native_save` | `files.rs:159` | 同上 | 同上 | 先于 `files.rs:160` 的文件名校验与 `files.rs:163` 的对话框 |
-| `read_native_text` | `files.rs:176` | 同上 | 同上 | 先于 `files.rs:177` 的授权解析与读取 |
-| `write_native_bytes` | `files.rs:186` | 同上 | 同上 | 先于 `files.rs:187` 的授权解析与 `files.rs:188` 的提交 |
-| `release_native_file` | `files.rs:195` | 同上 | 同上 | 先于 `files.rs:196` 的授权撤销 |
+| 入口                  | 调用共享守卫   | 身份取自原生注入                                                 | 拒绝返回路径             | 检查先于副作用                                             |
+| --------------------- | -------------- | ---------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------- |
+| `select_native_open`  | `files.rs:123` | `files.rs:17`（`webview.window().label()` 与 `webview.label()`） | `files.rs:18` 返回共享码 | 先于 `files.rs:124` 的对话框                               |
+| `select_native_save`  | `files.rs:159` | 同上                                                             | 同上                     | 先于 `files.rs:160` 的文件名校验与 `files.rs:163` 的对话框 |
+| `read_native_text`    | `files.rs:176` | 同上                                                             | 同上                     | 先于 `files.rs:177` 的授权解析与读取                       |
+| `write_native_bytes`  | `files.rs:186` | 同上                                                             | 同上                     | 先于 `files.rs:187` 的授权解析与 `files.rs:188` 的提交     |
+| `release_native_file` | `files.rs:195` | 同上                                                             | 同上                     | 先于 `files.rs:196` 的授权撤销                             |
 
 ### 六条断言
 
-| # | 断言 | 判定 | 证据 |
-| --- | --- | --- | --- |
-| D1a-1 | 注入 owned Webview 且身份解析符合预期 | 成立 | 五个入口与 `get_platform_info` 均注入 `tauri::Webview`；`CommandArg` 对 owned `Webview` 无同步或异步约束且不失败（D0-4）。**本断言只覆盖注入签名与主窗口身份取值接线**，真实 IPC 调用归 D1b |
-| D1a-2 | 允许范围按真实身份映射表达，不假设 label 相等、不以枚举即允许 | 成立 | 允许范围是 (window label, webview label) 的配对（`source_guard.rs:54`）；单元测试断言窗口或 webview 任一不符即拒绝；输出宿主身份虽已具名但**不在范围内**（测试 `the_output_host_is_not_in_the_allowed_range_by_default`） |
-| D1a-3 | 允许范围的判定正确 | 成立 | 守卫为纯函数，5 项 Rust 单测覆盖放行、范围外拒绝、窗口与 webview 单独不符、空范围全拒、输出宿主默认被拒 |
-| D1a-4 | feature 关闭时来源限制仍生效 | 成立 | 守卫代码不在任何 `cfg(feature)` 之后；`Cargo.toml` 目前仍无 `[features]` 段，故 feature 关闭即当前构建。以默认 feature 集构建通过、单测通过 |
-| D1a-5 | 限制发生在副作用前 | 成立 | 上表五入口 × 四项，逐项标源码位置；均为定向源码审查证据，**不冒充框架实际 IPC 响应**，后者归 D1b |
-| D1a-6 | 允许范围写入的主窗口身份对与运行中实际值一致 | **成立（交付宿主运行值）** | 写入值 ("main","main")（`source_guard.rs:45`）；交付宿主实际调用 `get_platform_info` 返回 `{os:"windows",arch:"x86_64",version:"0.9.1",windowLabel:"main",webviewLabel:"main"}`，与写入值**逐项一致**。**未提前接 M4/M5 生产文件交互** |
+| #     | 断言                                                          | 判定                       | 证据                                                                                                                                                                                                                                   |
+| ----- | ------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1a-1 | 注入 owned Webview 且身份解析符合预期                         | 成立                       | 五个入口与 `get_platform_info` 均注入 `tauri::Webview`；`CommandArg` 对 owned `Webview` 无同步或异步约束且不失败（D0-4）。**本断言只覆盖注入签名与主窗口身份取值接线**，真实 IPC 调用归 D1b                                            |
+| D1a-2 | 允许范围按真实身份映射表达，不假设 label 相等、不以枚举即允许 | 成立                       | 允许范围是 (window label, webview label) 的配对（`source_guard.rs:54`）；单元测试断言窗口或 webview 任一不符即拒绝；输出宿主身份虽已具名但**不在范围内**（测试 `the_output_host_is_not_in_the_allowed_range_by_default`）              |
+| D1a-3 | 允许范围的判定正确                                            | 成立                       | 守卫为纯函数，5 项 Rust 单测覆盖放行、范围外拒绝、窗口与 webview 单独不符、空范围全拒、输出宿主默认被拒                                                                                                                                |
+| D1a-4 | feature 关闭时来源限制仍生效                                  | 成立                       | 守卫代码不在任何 `cfg(feature)` 之后；`Cargo.toml` 目前仍无 `[features]` 段，故 feature 关闭即当前构建。以默认 feature 集构建通过、单测通过                                                                                            |
+| D1a-5 | 限制发生在副作用前                                            | 成立                       | 上表五入口 × 四项，逐项标源码位置；均为定向源码审查证据，**不冒充框架实际 IPC 响应**，后者归 D1b                                                                                                                                       |
+| D1a-6 | 允许范围写入的主窗口身份对与运行中实际值一致                  | **成立（交付宿主运行值）** | 写入值 ("main","main")（`source_guard.rs:45`）；交付宿主实际调用 `get_platform_info` 返回 `{os:"windows",arch:"x86_64",version:"0.9.1",windowLabel:"main",webviewLabel:"main"}`，与写入值**逐项一致**。**未提前接 M4/M5 生产文件交互** |
 
 ### D1a 退出结论
 
@@ -259,14 +259,14 @@ R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `plat
 
 ### 本轮验证
 
-| 项 | 结果 |
-| --- | --- |
-| `cargo build`（src-tauri） | 0 错误 0 警告 |
-| `cargo test --locked` | 13 项通过（3 套件），较上轮新增 5 项守卫单测 |
-| `bun run typecheck` | 四个配置通过，类型覆盖 231 源 |
-| `bun run test:unit` | 71 文件 497 项通过（新增 1 项前端友好映射） |
-| `bun run lint` | 通过 |
-| 全量 e2e | 143 通过 1 跳过（跳过项为既有）。注：e2e 跑的是 Web 应用，不经过 Tauri 命令，故**它验不到本轮的 Rust 改动**；Rust 侧由 `cargo build` 与 `cargo test` 覆盖，注入行为由 D1b 在真实调用中取证 |
+| 项                         | 结果                                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cargo build`（src-tauri） | 0 错误 0 警告                                                                                                                                                                              |
+| `cargo test --locked`      | 13 项通过（3 套件），较上轮新增 5 项守卫单测                                                                                                                                               |
+| `bun run typecheck`        | 四个配置通过，类型覆盖 231 源                                                                                                                                                              |
+| `bun run test:unit`        | 71 文件 497 项通过（新增 1 项前端友好映射）                                                                                                                                                |
+| `bun run lint`             | 通过                                                                                                                                                                                       |
+| 全量 e2e                   | 143 通过 1 跳过（跳过项为既有）。注：e2e 跑的是 Web 应用，不经过 Tauri 命令，故**它验不到本轮的 Rust 改动**；Rust 侧由 `cargo build` 与 `cargo test` 覆盖，注入行为由 D1b 在真实调用中取证 |
 
 ### 本轮未做与边界
 
@@ -281,45 +281,45 @@ R1 的同类情形已在开发中发生过一次：修 `DOM.enable` 之前 `plat
 
 ### TBD-14 的处置（已定）
 
-| 问题 | 决定 | 理由 |
-| --- | --- | --- |
-| 受控授权的形态 | **复用现有 `FileAccess` 授权**（path + writable + UUID key），在受控初始化里为一份受控夹具文件签发读、写两种角色 | 探针要验的是**生产命令在真实身份下的真实行为**；给探针单开分支会验到测试替身，与"隔离证据不落在测试替身上"同源 |
-| key 向探针页的交付 | **URL 查询串**：Rust 铸造后经探针页 URL 交付，页面从 `location.search` 取 | 初始化脚本注入这条路主窗口用不了（主窗口是应用自己的 webview，注入就要动生产 webview 的初始化脚本）；URL 这条路让主窗口导航到探针页，身份仍是 ("main","main") |
-| "未弹出任何原生对话框" | **机器码 + 人工观察**（拒绝由共享稳定码取证，不弹框由人在机器前确认） | 成本最低，且操作者本就在那台机器前；自动判定要写 Win32 窗口枚举，另议 |
+| 问题                   | 决定                                                                                                             | 理由                                                                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 受控授权的形态         | **复用现有 `FileAccess` 授权**（path + writable + UUID key），在受控初始化里为一份受控夹具文件签发读、写两种角色 | 探针要验的是**生产命令在真实身份下的真实行为**；给探针单开分支会验到测试替身，与"隔离证据不落在测试替身上"同源                                                |
+| key 向探针页的交付     | **URL 查询串**：Rust 铸造后经探针页 URL 交付，页面从 `location.search` 取                                        | 初始化脚本注入这条路主窗口用不了（主窗口是应用自己的 webview，注入就要动生产 webview 的初始化脚本）；URL 这条路让主窗口导航到探针页，身份仍是 ("main","main") |
+| "未弹出任何原生对话框" | **机器码 + 人工观察**（拒绝由共享稳定码取证，不弹框由人在机器前确认）                                            | 成本最低，且操作者本就在那台机器前；自动判定要写 Win32 窗口枚举，另议                                                                                         |
 
 ### 实现落点
 
-| 件 | 位置 | 内容 |
-| --- | --- | --- |
-| feature | `src-tauri/Cargo.toml` | `pdf-probe` 默认关闭；来源守卫不在它之后，故生产构建始终带守卫 |
-| 输出宿主单点创建 | `src-tauri/src/output_host.rs` | 身份取自 `source_guard::OUTPUT_HOST`（"pdf-output"），形态为不可见的独立 WebviewWindow；每次调用创建独立实例（首个实例 label 逐字为 "pdf-output"，同进程后续实例追加序号） |
-| 受控初始化 | `src-tauri/src/probe.rs` | 铸造受控授权（不经 IPC，`invoke_handler` 未变，未新增前端铸造命令）、把主窗口导航到探针页、创建输出宿主承载同一页、读取两份报告、撤销授权 |
-| 探针页 | `tests/fixtures/architecture/pdf-probe-client.html` / `.ts` | 与交付用样本分离；不经前端适配器，故取到机器码；外部脚本文件，不内联，不放宽生产 CSP |
+| 件               | 位置                                                        | 内容                                                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| feature          | `src-tauri/Cargo.toml`                                      | `pdf-probe` 默认关闭；来源守卫不在它之后，故生产构建始终带守卫                                                                                                             |
+| 输出宿主单点创建 | `src-tauri/src/output_host.rs`                              | 身份取自 `source_guard::OUTPUT_HOST`（"pdf-output"），形态为不可见的独立 WebviewWindow；每次调用创建独立实例（首个实例 label 逐字为 "pdf-output"，同进程后续实例追加序号） |
+| 受控初始化       | `src-tauri/src/probe.rs`                                    | 铸造受控授权（不经 IPC，`invoke_handler` 未变，未新增前端铸造命令）、把主窗口导航到探针页、创建输出宿主承载同一页、读取两份报告、撤销授权                                  |
+| 探针页           | `tests/fixtures/architecture/pdf-probe-client.html` / `.ts` | 与交付用样本分离；不经前端适配器，故取到机器码；外部脚本文件，不内联，不放宽生产 CSP                                                                                       |
 
 ### 证据矩阵（本机 macOS 流程验证，交付宿主复跑待做）
 
-| # | 证据 | 判定 | 本机实测 |
-| --- | --- | --- | --- |
-| D1b-1 | 通道阳性 | 成立 | 主窗口 `get_platform_info` 返回 ok，身份 ("main","main") |
-| D1b-2 | 主窗口同命令允许 | 成立 | `read_native_text` 配受控读 key 返回**夹具原文** `MF-PROBE-FIXTURE-20261103`（`readMatchesFixture: true`） |
-| D1b-3 | 输出宿主同命令拒绝 | 成立 | 同一 key 在输出宿主（"pdf-output","pdf-output"）返回 `native-source-denied`，**无内容泄露**，无副作用 |
-| D1b-4 | 选择器补充 | 成立 | 输出宿主调用 `select_native_open` 返回 `native-source-denied`；守卫在对话框之前（`files.rs:132` 先于 `:133` 的对话框），**未弹框**（本机为流程验证，交付宿主需人工确认一次） |
-| D1b-5 | feature 关闭构建 | 成立 | 默认 feature 构建 0 错误 0 警告，`probe` 模块整段不在默认构建内；来源守卫与主窗口允许路径不受 feature 影响 |
-| D1b-6 | 清理证据 | 成立 | 探针授权在报告读完后被撤销（`PDF-PROBE cleanup`），夹具随临时目录销毁；正常 `release_native_file` 业务清理未被一并移除——主窗口的撤销调用返回 ok，输出宿主的撤销尝试被守卫拒绝（防越权撤销） |
+| #     | 证据               | 判定 | 本机实测                                                                                                                                                                                    |
+| ----- | ------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1b-1 | 通道阳性           | 成立 | 主窗口 `get_platform_info` 返回 ok，身份 ("main","main")                                                                                                                                    |
+| D1b-2 | 主窗口同命令允许   | 成立 | `read_native_text` 配受控读 key 返回**夹具原文** `MF-PROBE-FIXTURE-20261103`（`readMatchesFixture: true`）                                                                                  |
+| D1b-3 | 输出宿主同命令拒绝 | 成立 | 同一 key 在输出宿主（"pdf-output","pdf-output"）返回 `native-source-denied`，**无内容泄露**，无副作用                                                                                       |
+| D1b-4 | 选择器补充         | 成立 | 输出宿主调用 `select_native_open` 返回 `native-source-denied`；守卫在对话框之前（`files.rs:132` 先于 `:133` 的对话框），**未弹框**（本机为流程验证，交付宿主需人工确认一次）                |
+| D1b-5 | feature 关闭构建   | 成立 | 默认 feature 构建 0 错误 0 警告，`probe` 模块整段不在默认构建内；来源守卫与主窗口允许路径不受 feature 影响                                                                                  |
+| D1b-6 | 清理证据           | 成立 | 探针授权在报告读完后被撤销（`PDF-PROBE cleanup`），夹具随临时目录销毁；正常 `release_native_file` 业务清理未被一并移除——主窗口的撤销调用返回 ok，输出宿主的撤销尝试被守卫拒绝（防越权撤销） |
 
 额外观察：写角色 key 用于读取时返回 `file-capability-mismatch`（角色校验在来源守卫之后、授权解析之前生效），证明读、写两种角色的授权互不通用。
 
 ### 本轮验证
 
-| 项 | 结果 |
-| --- | --- |
-| `cargo build`（默认 feature） | 0 错误 0 警告 |
-| `cargo build --features pdf-probe` | 0 错误 0 警告 |
-| `cargo test --locked` | 13 项通过 |
-| `bun run typecheck` | 四个配置通过，类型覆盖 232 源 |
-| `bun run test:unit` | 71 文件 497 项通过 |
-| `bun run lint` | 通过 |
-| 探针实跑 | 本机 macOS 一次跑通，报告完整（见上表） |
+| 项                                 | 结果                                    |
+| ---------------------------------- | --------------------------------------- |
+| `cargo build`（默认 feature）      | 0 错误 0 警告                           |
+| `cargo build --features pdf-probe` | 0 错误 0 警告                           |
+| `cargo test --locked`              | 13 项通过                               |
+| `bun run typecheck`                | 四个配置通过，类型覆盖 232 源           |
+| `bun run test:unit`                | 71 文件 497 项通过                      |
+| `bun run lint`                     | 通过                                    |
+| 探针实跑                           | 本机 macOS 一次跑通，报告完整（见上表） |
 
 ### 两处由实跑暴露的缺陷（已修）
 
@@ -364,13 +364,13 @@ L1 落地后（提交 `a8616ae`），本轮补上 L2 与**机器校验器**：D1
 
 ### L2 落地内容
 
-| 件 | 位置 | 内容 |
-| --- | --- | --- |
-| 回传命令 | `src-tauri/src/lib.rs` | `log_event` 只写日志，不碰 `FileAccess`，**发不出任何能力**；返回稳定结果 accepted／dropped／rejected |
-| 准入与限流 | `src-tauri/src/logging.rs` | 写日志与敏感命令同一套身份判定：正常路径只允许主窗口，pdf-probe 构建额外接受由原生创建并登记的探针输出实例；单请求 ≤ 4 KiB、每身份对 20 条/秒、进程 100 条/秒 |
-| 载荷白名单 | `src-tauri/src/logging.rs` | `deny_unknown_fields` 的最小事件结构（event／call_id／command／result／error_category／bytes）；未知字段与未知事件**拒收**；外层 origin 与身份由原生生成，页面覆盖不了 |
-| 统一发送口 | `src-tauri/src/logging.rs` | 必填字段在一处装配；native 事件名即业务事件名，web 外层固定 `web_event`、业务事件在 `page_event`，健康摘要为 `log_health` |
-| 探针页回传 | `tests/fixtures/architecture/pdf-probe-client.ts` | 最小载荷 + `log_event` 转发 + 有界 DOM 步骤日志（64 条上限）；缺失元素不使脚本死掉 |
+| 件         | 位置                                              | 内容                                                                                                                                                                   |
+| ---------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 回传命令   | `src-tauri/src/lib.rs`                            | `log_event` 只写日志，不碰 `FileAccess`，**发不出任何能力**；返回稳定结果 accepted／dropped／rejected                                                                  |
+| 准入与限流 | `src-tauri/src/logging.rs`                        | 写日志与敏感命令同一套身份判定：正常路径只允许主窗口，pdf-probe 构建额外接受由原生创建并登记的探针输出实例；单请求 ≤ 4 KiB、每身份对 20 条/秒、进程 100 条/秒          |
+| 载荷白名单 | `src-tauri/src/logging.rs`                        | `deny_unknown_fields` 的最小事件结构（event／call_id／command／result／error_category／bytes）；未知字段与未知事件**拒收**；外层 origin 与身份由原生生成，页面覆盖不了 |
+| 统一发送口 | `src-tauri/src/logging.rs`                        | 必填字段在一处装配；native 事件名即业务事件名，web 外层固定 `web_event`、业务事件在 `page_event`，健康摘要为 `log_health`                                              |
+| 探针页回传 | `tests/fixtures/architecture/pdf-probe-client.ts` | 最小载荷 + `log_event` 转发 + 有界 DOM 步骤日志（64 条上限）；缺失元素不使脚本死掉                                                                                     |
 
 ### 机器校验器
 
@@ -385,14 +385,14 @@ L1 落地后（提交 `a8616ae`），本轮补上 L2 与**机器校验器**：D1
 
 校验器第一次跑在旧日志上就报了 4 个错误级诊断；补测后共 6 处：
 
-| # | 偏差 | 契约依据 | 处置 |
-| --- | --- | --- | --- |
-| 1 | `probe_source_check` 记在 span 外 | §5.1：事件落在规定的 span 内 | 该事件移进 probe span |
-| 2 | `host` span 的 parent 为 null | §5.1：调用 span 都是根的直接子 | 宿主创建改在 `run_span()` 作用域内开 span |
-| 3 | `probe_cleanup` 记 key 前 8 位 | §3／§5.3：不记凭据及其派生值，不用 key 片段做关联 | 删除该字段；`credential_prefix` 一并移除 |
-| 4 | 拒绝路径无 `operation_result` | §5.1：command span 的结果事件 | 守卫拒绝时由 span 层补 `result=denied` + `reason_code` |
-| 5 | 授权解析失败等早退路径无结果事件 | 同上 | 各命令改为先并出结果再记事件，早退也留痕 |
-| 6 | `release_native_file` 的结果事件缺 `elapsed_ms` | §5.1：结束事件带耗时 | 补计时；五个命令统一由 span 层计时 |
+| #   | 偏差                                            | 契约依据                                          | 处置                                                   |
+| --- | ----------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------ |
+| 1   | `probe_source_check` 记在 span 外               | §5.1：事件落在规定的 span 内                      | 该事件移进 probe span                                  |
+| 2   | `host` span 的 parent 为 null                   | §5.1：调用 span 都是根的直接子                    | 宿主创建改在 `run_span()` 作用域内开 span              |
+| 3   | `probe_cleanup` 记 key 前 8 位                  | §3／§5.3：不记凭据及其派生值，不用 key 片段做关联 | 删除该字段；`credential_prefix` 一并移除               |
+| 4   | 拒绝路径无 `operation_result`                   | §5.1：command span 的结果事件                     | 守卫拒绝时由 span 层补 `result=denied` + `reason_code` |
+| 5   | 授权解析失败等早退路径无结果事件                | 同上                                              | 各命令改为先并出结果再记事件，早退也留痕               |
+| 6   | `release_native_file` 的结果事件缺 `elapsed_ms` | §5.1：结束事件带耗时                              | 补计时；五个命令统一由 span 层计时                     |
 
 另补两处契约补齐（不是偏差，是缺口）：`run_start` 事件上重复 os／arch／app_version（span 上的字段不进记录，校验器要按 §5.3 记环境）；`probe_cleanup` 改为**先删夹具再记事实**，不再提前宣称已删除。
 
@@ -422,17 +422,17 @@ log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
 
 #### A. D1b 部分（2026-11-03 已完成，日志已归档）
 
-| 步 | 操作 | 要点 |
-| --- | --- | --- |
-| 1 | 取代码 | `git pull` 到 `D:\code\Marklflow` |
-| 2 | 起前端 dev server | `bun run dev:desktop`（127.0.0.1:3000）。探针页在 `tests/fixtures/architecture/pdf-probe-client.html`，dev server 直接从仓库根提供，**不打包进前端产物** |
-| 3 | 跑探针构建 | `cd src-tauri`；`set MARKFLOW_LOG=info`；`set MARKFLOW_LOG_FORMAT=json`；`cargo run --no-default-features --features pdf-probe`。**必须是 debug 构建**：生产构建加载的是内嵌前端（tauri://localhost），探针页就成了异源，IPC 与 CSP 都不成立 |
-| 4 | 等探针跑完 | 启动即自动装配；约 10 秒内完成，无需操作 |
-| 5 | 从界面正常退出 | 关闭窗口即触发 `run_end`；强杀进程则日志无 `run_end`，校验器会报"不得宣称日志完整" |
-| 6 | 取日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log`（按运行分文件；轮转时同一次运行会分散在多个文件里，一起取回） |
-| 7 | 补 D1b-5 的默认构建运行 | 另跑一次**默认构建**（不带 feature），并让主窗口载到探针页：`bun scripts/pdf-probe-default-run.ts` 会生成一份临时配置（devUrl 指向探针页）并给出两条命令。**产品界面里没有调用受保护命令的路径**（导入走浏览器 `file input`、导出走浏览器下载），故只能这样取到主窗口的放行证据 |
-| 8 | 机器核对 | 把两份日志放回仓库，在开发机执行 `bun scripts/pdf-probe-check.ts docs/acceptance/pdf-probe/<两份日志>`；期望 D1b-1—D1b-6 全通过、错误级诊断 0 |
-| 9 | 归档 | 归档日志原文与 SHA-256 到 `docs/acceptance/pdf-probe/`（**改名为 `.jsonl` 入库**：仓库忽略 `*.log`），并把校验器输出抄进本记录 |
+| 步  | 操作                    | 要点                                                                                                                                                                                                                                                                            |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 取代码                  | `git pull` 到 `D:\code\Marklflow`                                                                                                                                                                                                                                               |
+| 2   | 起前端 dev server       | `bun run dev:desktop`（127.0.0.1:3000）。探针页在 `tests/fixtures/architecture/pdf-probe-client.html`，dev server 直接从仓库根提供，**不打包进前端产物**                                                                                                                        |
+| 3   | 跑探针构建              | `cd src-tauri`；`set MARKFLOW_LOG=info`；`set MARKFLOW_LOG_FORMAT=json`；`cargo run --no-default-features --features pdf-probe`。**必须是 debug 构建**：生产构建加载的是内嵌前端（tauri://localhost），探针页就成了异源，IPC 与 CSP 都不成立                                    |
+| 4   | 等探针跑完              | 启动即自动装配；约 10 秒内完成，无需操作                                                                                                                                                                                                                                        |
+| 5   | 从界面正常退出          | 关闭窗口即触发 `run_end`；强杀进程则日志无 `run_end`，校验器会报"不得宣称日志完整"                                                                                                                                                                                              |
+| 6   | 取日志                  | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log`（按运行分文件；轮转时同一次运行会分散在多个文件里，一起取回）                                                                                                                                                     |
+| 7   | 补 D1b-5 的默认构建运行 | 另跑一次**默认构建**（不带 feature），并让主窗口载到探针页：`bun scripts/pdf-probe-default-run.ts` 会生成一份临时配置（devUrl 指向探针页）并给出两条命令。**产品界面里没有调用受保护命令的路径**（导入走浏览器 `file input`、导出走浏览器下载），故只能这样取到主窗口的放行证据 |
+| 8   | 机器核对                | 把两份日志放回仓库，在开发机执行 `bun scripts/pdf-probe-check.ts docs/acceptance/pdf-probe/<两份日志>`；期望 D1b-1—D1b-6 全通过、错误级诊断 0                                                                                                                                   |
+| 9   | 归档                    | 归档日志原文与 SHA-256 到 `docs/acceptance/pdf-probe/`（**改名为 `.jsonl` 入库**：仓库忽略 `*.log`），并把校验器输出抄进本记录                                                                                                                                                  |
 
 人工项：第 3 步运行期间，**输出宿主调用选择器命令时屏幕上不得弹出原生文件对话框**（D1b-4）。这一步机器只证"被拒"，弹框与否由人在机器前确认。
 
@@ -442,35 +442,35 @@ log_health dropped=0 rejected=0 write_failures=0 file_unavailable=false
 
 Windows 侧代码本机只能交叉编译验类型（`bun scripts/check-windows-com.ts` 已通过），**运行能力必须在真机上看**。
 
-| 步 | 操作 | 要点 |
-| --- | --- | --- |
-| B1 | push 分支 | 交付宿主要先拿到代码（`architecture-refactor` 领先 origin 26 个提交） |
-| B2 | 取代码 | `git pull` 到 `D:\code\Marklflow` |
-| B3 | **编译**（第一次 Windows 编译） | `cd src-tauri`；`cargo build --locked --features pdf-probe`。MSVC 工具链 1.94.0（与 CI 一致）；WebView2 运行时 156.0.4314.58 已装 |
-| B4 | 起 dev server | `bun run dev:desktop`（**另开一个终端**，保持它跑着） |
-| B5 | 跑探针构建 | `cd src-tauri`；`set MARKFLOW_LOG=info`；`set MARKFLOW_LOG_FORMAT=json`；`cargo run --no-default-features --features pdf-probe` |
-| B6 | 等探针跑完 | 本轮比 D1b 长：探针页证据 → **就绪探测（≤30s）** → **打印（≤60s）**。合计可能几分钟。**期间屏幕上不应出现任何原生对话框或打印面板**（D1c-5） |
-| B7 | 从界面正常退出 | 关闭窗口即触发 `run_end`；强杀则日志缺 `run_end` |
-| B8 | 取日志 | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log` |
-| B9 | 取产出的 PDF | 默认 `D:\code\Marklflow\docs\acceptance\pdf-probe\probe-pdf-output.pdf`（可用 `set MARKFLOW_PROBE_PDF=<别的路径>` 改）。**同目录的 `*.tmp-<pid>-*` 若还在，说明提交（rename）没成功**（临时名按调用唯一 ✓，带序号 ✓） |
-| B10 | 回传 | 把日志与 PDF 传回开发机 |
-| B11 | 机器核对 | `bun scripts/pdf-probe-check.ts <日志>`：期望 **D1b-1—D1b-6 与 D1c-1、D1c-2 全通过**、错误级诊断 0 |
-| B12 | 核对 PDF | 页数应为 3、页面尺寸应为 A4（210×297mm）。**若 PDF 是空白页**：症结在"打印宿主是隐藏窗口，隐藏的 WebView2 是否照常排版"，不是打印设置也不是就绪判据 |
-| B13 | 归档 | 日志原文与 SHA-256、PDF、校验器输出都记进本记录 |
+| 步  | 操作                            | 要点                                                                                                                                                                                                                  |
+| --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B1  | push 分支                       | 交付宿主要先拿到代码（`architecture-refactor` 领先 origin 26 个提交）                                                                                                                                                 |
+| B2  | 取代码                          | `git pull` 到 `D:\code\Marklflow`                                                                                                                                                                                     |
+| B3  | **编译**（第一次 Windows 编译） | `cd src-tauri`；`cargo build --locked --features pdf-probe`。MSVC 工具链 1.94.0（与 CI 一致）；WebView2 运行时 156.0.4314.58 已装                                                                                     |
+| B4  | 起 dev server                   | `bun run dev:desktop`（**另开一个终端**，保持它跑着）                                                                                                                                                                 |
+| B5  | 跑探针构建                      | `cd src-tauri`；`set MARKFLOW_LOG=info`；`set MARKFLOW_LOG_FORMAT=json`；`cargo run --no-default-features --features pdf-probe`                                                                                       |
+| B6  | 等探针跑完                      | 本轮比 D1b 长：探针页证据 → **就绪探测（≤30s）** → **打印（≤60s）**。合计可能几分钟。**期间屏幕上不应出现任何原生对话框或打印面板**（D1c-5）                                                                          |
+| B7  | 从界面正常退出                  | 关闭窗口即触发 `run_end`；强杀则日志缺 `run_end`                                                                                                                                                                      |
+| B8  | 取日志                          | `%LOCALAPPDATA%\com.markflow.desktop\logs\markflow.<pid>.log`                                                                                                                                                         |
+| B9  | 取产出的 PDF                    | 默认 `D:\code\Marklflow\docs\acceptance\pdf-probe\probe-pdf-output.pdf`（可用 `set MARKFLOW_PROBE_PDF=<别的路径>` 改）。**同目录的 `*.tmp-<pid>-*` 若还在，说明提交（rename）没成功**（临时名按调用唯一 ✓，带序号 ✓） |
+| B10 | 回传                            | 把日志与 PDF 传回开发机                                                                                                                                                                                               |
+| B11 | 机器核对                        | `bun scripts/pdf-probe-check.ts <日志>`：期望 **D1b-1—D1b-6 与 D1c-1、D1c-2 全通过**、错误级诊断 0                                                                                                                    |
+| B12 | 核对 PDF                        | 页数应为 3、页面尺寸应为 A4（210×297mm）。**若 PDF 是空白页**：症结在"打印宿主是隐藏窗口，隐藏的 WebView2 是否照常排版"，不是打印设置也不是就绪判据                                                                   |
+| B13 | 归档                            | 日志原文与 SHA-256、PDF、校验器输出都记进本记录                                                                                                                                                                       |
 
 #### 读日志速查（省一次往返）
 
-| 事件 | 含义与处置 |
-| --- | --- |
-| `probe_source_check reachable=false` | dev server 没起或端口不对 → 回 B4 |
-| `probe_navigation navigated=false` | 主窗口没导航到探针页 → 探针页不可达 → 回 B4 |
-| `probe_readiness eval_ok=false` | 原生求值拿不到内容 → 页面没加载或执行被挡 |
-| `probe_readiness is_target=false` | 求值落在了别的文档上（导航没换文档） |
-| `probe_readiness ready=false` | 文档未达就绪条件（看 `ready_state`／`fonts_status` 字段） |
-| `probe_pdf ok=false reason=…` | 打印失败，reason 里带 HRESULT 或超时 |
-| `probe_pdf ok=true committed=false` | 打印成功但 rename 没成功 → 目标未被替换，原文件仍在 ✓ |
-| `log_health dropped/rejected > 0` | 有记录没落盘，证据可能不全 → 记"未能确认"，不要当作通过 |
-| 无 `run_end` | 强杀退出 → 不宣称日志完整（回 B7） |
+| 事件                                 | 含义与处置                                                |
+| ------------------------------------ | --------------------------------------------------------- |
+| `probe_source_check reachable=false` | dev server 没起或端口不对 → 回 B4                         |
+| `probe_navigation navigated=false`   | 主窗口没导航到探针页 → 探针页不可达 → 回 B4               |
+| `probe_readiness eval_ok=false`      | 原生求值拿不到内容 → 页面没加载或执行被挡                 |
+| `probe_readiness is_target=false`    | 求值落在了别的文档上（导航没换文档）                      |
+| `probe_readiness ready=false`        | 文档未达就绪条件（看 `ready_state`／`fonts_status` 字段） |
+| `probe_pdf ok=false reason=…`        | 打印失败，reason 里带 HRESULT 或超时                      |
+| `probe_pdf ok=true committed=false`  | 打印成功但 rename 没成功 → 目标未被替换，原文件仍在 ✓     |
+| `log_health dropped/rejected > 0`    | 有记录没落盘，证据可能不全 → 记"未能确认"，不要当作通过   |
+| 无 `run_end`                         | 强杀退出 → 不宣称日志完整（回 B7）                        |
 
 ### 已知边界（不掩盖）
 
@@ -505,14 +505,14 @@ macOS 上没暴露：那时 `main.url()` 已经是 devUrl。**根因是"从窗�
 
 ### 修复
 
-| 处 | 改法 | 理由 |
-| --- | --- | --- |
-| `probe.rs` 探针页 URL 的源 | 改从**配置**的 `build.devUrl` 取（新增纯函数 `probe_url_from`，配 3 项单测） | 配置是"应用自身的源"的稳定陈述；窗口 URL 是瞬时的（初载前是 about:blank） |
-| `probe.rs` 同源判定 | 主窗口实际源与配置源不一致时中止（生产构建的页面走 tauri 协议，与配置里的源不是同一个，自然落在这条判定上） | 不同源时探针页既不在产物里、IPC 也不通，那样的证据是假的 |
-| `probe.rs` 导航时机 | 源可达性在**导航之前**判；不可达就不导航，把主窗口留在应用自己的页面上 | 探针不该把应用带到一个打不开的页面上 |
-| `probe.rs` 失败回退 | 试过导航却没成位时，把主窗口导回初始页 | 探针失败不该把应用留在坏页面上 |
-| `probe.rs` 报告读取 | 探针页没就位就不读报告 | 等满 60 秒超时也读不到，白等一分钟 |
-| `probe.rs` 装配失败 | 装配失败只记一条中止原因，**不拖住应用启动** | 探针是测试路径，不能让应用起不来 |
+| 处                         | 改法                                                                                                        | 理由                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `probe.rs` 探针页 URL 的源 | 改从**配置**的 `build.devUrl` 取（新增纯函数 `probe_url_from`，配 3 项单测）                                | 配置是"应用自身的源"的稳定陈述；窗口 URL 是瞬时的（初载前是 about:blank） |
+| `probe.rs` 同源判定        | 主窗口实际源与配置源不一致时中止（生产构建的页面走 tauri 协议，与配置里的源不是同一个，自然落在这条判定上） | 不同源时探针页既不在产物里、IPC 也不通，那样的证据是假的                  |
+| `probe.rs` 导航时机        | 源可达性在**导航之前**判；不可达就不导航，把主窗口留在应用自己的页面上                                      | 探针不该把应用带到一个打不开的页面上                                      |
+| `probe.rs` 失败回退        | 试过导航却没成位时，把主窗口导回初始页                                                                      | 探针失败不该把应用留在坏页面上                                            |
+| `probe.rs` 报告读取        | 探针页没就位就不读报告                                                                                      | 等满 60 秒超时也读不到，白等一分钟                                        |
+| `probe.rs` 装配失败        | 装配失败只记一条中止原因，**不拖住应用启动**                                                                | 探针是测试路径，不能让应用起不来                                          |
 
 ### 审查查出的一处死代码（已修）
 
@@ -535,10 +535,10 @@ Tauri v2 的标准模板要求 app 构件声明 `custom-protocol = ["tauri/custo
 
 ### 本机复验（macOS）
 
-| 场景 | 结果 |
-| --- | --- |
-| 源可达（dev server 在跑） | `probe_source_check page_origin=127.0.0.1:3000 reachable=true`、`probe_navigation navigated=true`；校验器**错误 0**，D1b-1/2/3/4/6 通过 |
-| 源不可达（dev server 已停） | `reachable=false` → `probe_abort` → **不导航**（主窗口留在应用页面）→ 不读报告 → 整轮几秒内结束，不再白等 60 秒 |
+| 场景                        | 结果                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 源可达（dev server 在跑）   | `probe_source_check page_origin=127.0.0.1:3000 reachable=true`、`probe_navigation navigated=true`；校验器**错误 0**，D1b-1/2/3/4/6 通过 |
+| 源不可达（dev server 已停） | `reachable=false` → `probe_abort` → **不导航**（主窗口留在应用页面）→ 不读报告 → 整轮几秒内结束，不再白等 60 秒                         |
 
 日志里 `page_origin` 现在只有 `127.0.0.1:3000`：没有路径、没有查询串、没有 key。
 
@@ -546,14 +546,14 @@ Tauri v2 的标准模板要求 app 构件声明 `custom-protocol = ["tauri/custo
 
 白屏修复后交付宿主复跑，探针页正常加载，**六条断言全部通过**。归档：`docs/acceptance/pdf-probe/delivery-host-windows-pdf-probe.txt`（探针构建，sha256 `afd3fa8ee1b8e7967ad02ab4b7d390f97a582a735630e0f3928d71d6868422b8`，123 行）与 `delivery-host-windows-default-with-probe-page.txt`（默认构建，sha256 `c88e7705d494ce8e0503bc4c9f21f459e5dfc67320b20eb6a6cac2367ac1274a`，20 行），元数据见 `delivery-host-windows.meta.json`。
 
-| 断言 | 结论 | 依据摘要 |
-| --- | --- | --- |
-| D1b-1 通道阳性 | 通过 | web 观察：主窗口 `get_platform_info` 返回 ok |
-| D1b-2 主窗口同命令允许 | 通过 | native：`source_decision=allow` + `operation_result=ok bytes=25`；页面自述 `read_matches_fixture=true` |
-| D1b-3 输出宿主同命令拒绝 | 通过 | native：`source_decision=deny reason_code=native-source-denied`（拒绝层归因：Rust 来源守卫）；web：`result=denied`；页面自述 `read_error=native-source-denied` |
-| D1b-4 选择器补充（机器部分） | 通过 | native：`select_native_open` 被拒，同一拒绝码 |
-| D1b-5 feature 关闭构建 | 通过 | 默认构建运行里无探针事件、无探针身份；主窗口 `read_native_text`/`release_native_file` 均为 allow |
-| D1b-6 清理证据 | 通过 | native：`probe_cleanup revoked=true`；主窗口 `release_native_file` 成功 6 次；输出宿主的撤销尝试被拒 |
+| 断言                         | 结论 | 依据摘要                                                                                                                                                       |
+| ---------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1b-1 通道阳性               | 通过 | web 观察：主窗口 `get_platform_info` 返回 ok                                                                                                                   |
+| D1b-2 主窗口同命令允许       | 通过 | native：`source_decision=allow` + `operation_result=ok bytes=25`；页面自述 `read_matches_fixture=true`                                                         |
+| D1b-3 输出宿主同命令拒绝     | 通过 | native：`source_decision=deny reason_code=native-source-denied`（拒绝层归因：Rust 来源守卫）；web：`result=denied`；页面自述 `read_error=native-source-denied` |
+| D1b-4 选择器补充（机器部分） | 通过 | native：`select_native_open` 被拒，同一拒绝码                                                                                                                  |
+| D1b-5 feature 关闭构建       | 通过 | 默认构建运行里无探针事件、无探针身份；主窗口 `read_native_text`/`release_native_file` 均为 allow                                                               |
+| D1b-6 清理证据               | 通过 | native：`probe_cleanup revoked=true`；主窗口 `release_native_file` 成功 6 次；输出宿主的撤销尝试被拒                                                           |
 
 校验器诊断：**错误 0、告警 1、提示 1**。告警是 `no-run-end`（两次运行都是强杀进程退出，故不宣称日志完整）；提示是 D1b-2 的内容相符只有页面自述依据。
 
@@ -569,11 +569,11 @@ Tauri v2 的标准模板要求 app 构件声明 `custom-protocol = ["tauri/custo
 
 交付宿主上三份日志逐份扫过：
 
-| 日志 | 结果 |
-| --- | --- |
+| 日志                       | 结果                                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 09:38 的白屏那次（修复前） | `page_origin=about:%2Ftests/…?readKey=…&writeKey=…` —— **完整授权 key 与夹具正文进了日志**，正是本轮修掉的那处 |
-| 10:12 的取证运行（修复后） | `page_origin=127.0.0.1:3000`，**无 key、无路径、无正文** ✓ |
-| 11:15 的默认构建运行 | 无 key、无路径、无正文 ✓ |
+| 10:12 的取证运行（修复后） | `page_origin=127.0.0.1:3000`，**无 key、无路径、无正文** ✓                                                     |
+| 11:15 的默认构建运行       | 无 key、无路径、无正文 ✓                                                                                       |
 
 ### D1b-4 的人工项已确认（附阳性对照）
 
@@ -602,10 +602,10 @@ operation_result  command=select_native_save  granted=false elapsed_ms=2724  res
 
 **改成两道标记，作用不同**：
 
-| 标记 | 作用 | 覆盖的场景 |
-| --- | --- | --- |
-| `history.state`（带首轮报告） | 重载后把首轮报告放回 DOM | 热更新、手动刷新——原生侧仍读得到有效证据 |
-| `window.name` | 窗口级标记：页面被导航走又回来时不再重跑 | 恢复应用页面后又被导航回探针页 |
+| 标记                          | 作用                                     | 覆盖的场景                               |
+| ----------------------------- | ---------------------------------------- | ---------------------------------------- |
+| `history.state`（带首轮报告） | 重载后把首轮报告放回 DOM                 | 热更新、手动刷新——原生侧仍读得到有效证据 |
+| `window.name`                 | 窗口级标记：页面被导航走又回来时不再重跑 | 恢复应用页面后又被导航回探针页           |
 
 浏览器级验证（Playwright 打到 dev server）：首轮 `done=true`、11 步调用、`history.state` 有报告；**重载后 `done=true` 仍在（报告被放回）、0 步调用（没有新调用）** ✓。
 
@@ -699,12 +699,12 @@ D1c 的实施：COM 侧 `PrintToPdf` 调用、打印设置钉死 A4 与零边距
 
 ### 落点
 
-| 件 | 位置 | 内容 |
-| --- | --- | --- |
-| COM 核心 | `src-tauri/src/print_com.rs` | Windows 专属：`ICoreWebView2_7::PrintToPdf` 调用、打印设置、完成回调与等待。不依赖 tauri，可被交叉编译夹具直接验证 |
-| 宿主侧 | `src-tauri/src/print_host.rs` | 从 Tauri 窗口取到 WebView2 的控制器与环境，发起在 UI 线程、等待在后台线程；非 Windows 返回明确的不支持 |
-| 交叉检查 | `scripts/check-windows-com.ts` | 用临时小 crate 把 `print_com.rs` **真文件**编译成 Windows 目标 |
-| 探针接线 | `src-tauri/src/probe.rs` | 打印宿主（独立实例，载归档原件）→ 就绪探测 → 打印到目标同目录的临时文件 → rename 提交 |
+| 件       | 位置                           | 内容                                                                                                               |
+| -------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| COM 核心 | `src-tauri/src/print_com.rs`   | Windows 专属：`ICoreWebView2_7::PrintToPdf` 调用、打印设置、完成回调与等待。不依赖 tauri，可被交叉编译夹具直接验证 |
+| 宿主侧   | `src-tauri/src/print_host.rs`  | 从 Tauri 窗口取到 WebView2 的控制器与环境，发起在 UI 线程、等待在后台线程；非 Windows 返回明确的不支持             |
+| 交叉检查 | `scripts/check-windows-com.ts` | 用临时小 crate 把 `print_com.rs` **真文件**编译成 Windows 目标                                                     |
+| 探针接线 | `src-tauri/src/probe.rs`       | 打印宿主（独立实例，载归档原件）→ 就绪探测 → 打印到目标同目录的临时文件 → rename 提交                              |
 
 ### 打印设置钉死 A4 与零边距
 
@@ -833,12 +833,12 @@ probe_pdf ok=true bytes=205821 committed=true elapsed_ms=284
 
 机器核对：**错误 0、告警 0** ✓
 
-| 断言 | 结论 |
-| --- | --- |
-| D1b-1 / D1b-2 / D1b-3 / D1b-4（机器部分）/ D1b-6 | **全部通过** ✓ |
-| D1c-1 就绪判据 | 通过 ✓ |
-| D1c-2 取得 PDF | 通过 ✓（打印成功 ✓、已提交 ✓） |
-| D1b-5 | 未能确认（待默认构建那次 ✓） |
+| 断言                                             | 结论                           |
+| ------------------------------------------------ | ------------------------------ |
+| D1b-1 / D1b-2 / D1b-3 / D1b-4（机器部分）/ D1b-6 | **全部通过** ✓                 |
+| D1c-1 就绪判据                                   | 通过 ✓                         |
+| D1c-2 取得 PDF                                   | 通过 ✓（打印成功 ✓、已提交 ✓） |
+| D1b-5                                            | 未能确认（待默认构建那次 ✓）   |
 
 归档：`delivery-host-windows-pdf-probe-v2.jsonl` ✓（元数据已更新 ✓）。
 
@@ -846,12 +846,12 @@ probe_pdf ok=true bytes=205821 committed=true elapsed_ms=284
 
 日志（`markflow.27720.log`，sha256 `eb78650e966b163b42e4e3fd928ae99221ac8ae0ddae4ec77e102a0a61c343f5`）：**导航修好了 ✓**（`probe_navigation navigated=true` ✓），两份页面报告都读到 ✓，机器核对 **错误 0、告警 0** ✓：
 
-| 断言 | 结论 |
-| --- | --- |
-| D1b-1 通道阳性 / D1b-2 主窗口允许 / D1b-3 输出宿主拒绝 / D1b-4 选择器（机器部分）/ D1b-6 清理 | **全部通过** ✓ |
-| D1c-1 就绪判据 | 通过 ✓（`ready_state=complete` ✓、`fonts=loaded` ✓、页面盒 3 个 794×1123 ✓、图片 1/1 ✓） |
-| D1c-2 取得 PDF **或**明确失败证据 | 通过 ✓（本轮是失败证据 ✓） |
-| D1b-5 | 未能确认（待默认构建那次 ✓） |
+| 断言                                                                                          | 结论                                                                                     |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| D1b-1 通道阳性 / D1b-2 主窗口允许 / D1b-3 输出宿主拒绝 / D1b-4 选择器（机器部分）/ D1b-6 清理 | **全部通过** ✓                                                                           |
+| D1c-1 就绪判据                                                                                | 通过 ✓（`ready_state=complete` ✓、`fonts=loaded` ✓、页面盒 3 个 794×1123 ✓、图片 1/1 ✓） |
+| D1c-2 取得 PDF **或**明确失败证据                                                             | 通过 ✓（本轮是失败证据 ✓）                                                               |
+| D1b-5                                                                                         | 未能确认（待默认构建那次 ✓）                                                             |
 
 **打印失败的根因被新加的诊断字段直接指出来** ✓：
 
@@ -868,10 +868,10 @@ HRESULT 无错 ✓ 而成功标志为 false ✓，且**目标的父目录不存�
 
 日志（`markflow.53880.log`）显示**两处失败**：
 
-| 现象 | 日志 | 判断 |
-| --- | --- | --- |
-| 主窗口没载上探针页 | `probe_navigation navigated=false`（5 次尝试全败 ✓）、`probe_report_unreadable` ✓、**整轮没有任何 `source_decision`** ✓ | 导航失败 → **本轮无 D1b 证据** ✓ |
-| 打印失败 | `probe_pdf ok=false reason="打印未成功：Ok(())，成功标志 false"` ✓ | HRESULT 无错 ✓ 但成功标志为 false ✓ → **没有 PDF** ✓ |
+| 现象               | 日志                                                                                                                    | 判断                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 主窗口没载上探针页 | `probe_navigation navigated=false`（5 次尝试全败 ✓）、`probe_report_unreadable` ✓、**整轮没有任何 `source_decision`** ✓ | 导航失败 → **本轮无 D1b 证据** ✓                     |
+| 打印失败           | `probe_pdf ok=false reason="打印未成功：Ok(())，成功标志 false"` ✓                                                      | HRESULT 无错 ✓ 但成功标志为 false ✓ → **没有 PDF** ✓ |
 
 **同时成立的部分** ✓：`probe_readiness` 全绿 ✓（`eval_ok=true` ✓、`is_target=true` ✓、`ready=true` ✓、`page_boxes=3` ✓、`794x1123` ✓、`fonts=loaded` ✓、`images 1/1` ✓）——**打印宿主把冻结样本好好地载起来了 ✓**，问题只出在打印那一步 ✓。
 
@@ -895,21 +895,21 @@ HRESULT 无错 ✓ 而成功标志为 false ✓，且**目标的父目录不存�
 
 ### 证据总账
 
-| 段 | 断言 | 结论 | 证据（归档） |
-| --- | --- | --- | --- |
-| D1a | 六条（身份回报、来源限制、命令签名） | 成立 ✓ | 交付宿主运行期身份核对 ✓ |
-| D1b-1 | 通道阳性 | 通过 ✓ | 探针构建日志 ✓ |
-| D1b-2 | 主窗口同命令允许 | 通过 ✓ | 同上 ✓（`allow` + `ok` + `bytes=25` ✓） |
-| D1b-3 | 输出宿主同命令拒绝 | 通过 ✓ | 同上 ✓（`deny` + `native-source-denied` ✓ + 无泄露 ✓） |
-| D1b-4 | 选择器补充 | 机器部分通过 ✓ + **人工确认未弹原生对话框** ✓ | 同上 ✓ + 阳性对照（主窗口放行时确实会弹 ✓） |
-| D1b-5 | feature 关闭构建 | 通过 ✓ | 默认构建日志 ✓（无探针痕迹 ✓ + 主窗口放行 ✓） |
-| D1b-6 | 清理证据 | 通过 ✓ | 探针构建日志 ✓ |
-| D1c-1 | 就绪判据 | 通过 ✓ | 探针构建日志 ✓（`complete` ✓、`fonts=loaded` ✓、页面盒 3 个 794×1123 ✓、图片 1/1 ✓） |
-| D1c-2 | 取得实际 PDF | 通过 ✓ | 探针构建日志 ✓（205821 字节 ✓、`committed=true` ✓、284 ms ✓） |
-| D1c-3 | 同卷、提交受控、失败时原文件不变 | 通过 ✓ | 同目录临时文件 + rename ✓（失败路径见下 ✓） |
-| D1c-4 | 清理、无残留、迟到回调不改回执 | 通过 ✓ | 探针专用宿主显式关闭 ✓、临时文件删除或 rename ✓、超时即失败 ✓ |
-| D1c-5 | 无窗口闪现、无打印面板 | **人工确认无** ✓ | 探针运行期间屏幕观察 ✓ |
-| D1d | 内容核验 | **人工核对** ✓ | 页数与 A4 ✓、首末标记落在第 1／3 页 ✓、公式与图渲染正常 ✓、正文可选中复制 ✓ |
+| 段    | 断言                                 | 结论                                          | 证据（归档）                                                                         |
+| ----- | ------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------ |
+| D1a   | 六条（身份回报、来源限制、命令签名） | 成立 ✓                                        | 交付宿主运行期身份核对 ✓                                                             |
+| D1b-1 | 通道阳性                             | 通过 ✓                                        | 探针构建日志 ✓                                                                       |
+| D1b-2 | 主窗口同命令允许                     | 通过 ✓                                        | 同上 ✓（`allow` + `ok` + `bytes=25` ✓）                                              |
+| D1b-3 | 输出宿主同命令拒绝                   | 通过 ✓                                        | 同上 ✓（`deny` + `native-source-denied` ✓ + 无泄露 ✓）                               |
+| D1b-4 | 选择器补充                           | 机器部分通过 ✓ + **人工确认未弹原生对话框** ✓ | 同上 ✓ + 阳性对照（主窗口放行时确实会弹 ✓）                                          |
+| D1b-5 | feature 关闭构建                     | 通过 ✓                                        | 默认构建日志 ✓（无探针痕迹 ✓ + 主窗口放行 ✓）                                        |
+| D1b-6 | 清理证据                             | 通过 ✓                                        | 探针构建日志 ✓                                                                       |
+| D1c-1 | 就绪判据                             | 通过 ✓                                        | 探针构建日志 ✓（`complete` ✓、`fonts=loaded` ✓、页面盒 3 个 794×1123 ✓、图片 1/1 ✓） |
+| D1c-2 | 取得实际 PDF                         | 通过 ✓                                        | 探针构建日志 ✓（205821 字节 ✓、`committed=true` ✓、284 ms ✓）                        |
+| D1c-3 | 同卷、提交受控、失败时原文件不变     | 通过 ✓                                        | 同目录临时文件 + rename ✓（失败路径见下 ✓）                                          |
+| D1c-4 | 清理、无残留、迟到回调不改回执       | 通过 ✓                                        | 探针专用宿主显式关闭 ✓、临时文件删除或 rename ✓、超时即失败 ✓                        |
+| D1c-5 | 无窗口闪现、无打印面板               | **人工确认无** ✓                              | 探针运行期间屏幕观察 ✓                                                               |
+| D1d   | 内容核验                             | **人工核对** ✓                                | 页数与 A4 ✓、首末标记落在第 1／3 页 ✓、公式与图渲染正常 ✓、正文可选中复制 ✓          |
 
 机器核对（两份交付宿主日志合并）：**八条断言全通过 ✓，错误 0、告警 0 ✓，退出码 0** ✓。
 
@@ -924,16 +924,16 @@ HRESULT 无错 ✓ 而成功标志为 false ✓，且**目标的父目录不存�
 
 ### 本轮修复的缺陷（留档，便于复用）
 
-| 缺陷 | 根因 | 修法 |
-| --- | --- | --- |
-| 探针页 URL 取自窗口的瞬时 URL（初载前是 about:blank）→ 白屏 | 从瞬时状态取"应用自身的源" | 改从配置的 devUrl 取 ✓ |
-| 探针页在交付宿主上载不上 | 初载只等"URL 不是 about:blank"✓，导航被在途的加载覆盖 ✓ | 等 `document.readyState==='complete'` ✓；报告读取不再以 URL 比较为前提 ✓ |
-| 打印静默失败（HRESULT 无错、成功标志 false） | **输出目标的父目录不存在** ✓ | 打印前确保目录在 ✓；失败记 `temp_exists`／`temp_bytes`／`target_dir_exists` ✓ |
-| 区间展开与游标倒退（自建 PDF 解析器） | 上界由输入决定 ✓ | 解析器已撤 ✓（D1d 改人工 ✓）；教训写进审查规范 ✓ |
+| 缺陷                                                        | 根因                                                    | 修法                                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 探针页 URL 取自窗口的瞬时 URL（初载前是 about:blank）→ 白屏 | 从瞬时状态取"应用自身的源"                              | 改从配置的 devUrl 取 ✓                                                        |
+| 探针页在交付宿主上载不上                                    | 初载只等"URL 不是 about:blank"✓，导航被在途的加载覆盖 ✓ | 等 `document.readyState==='complete'` ✓；报告读取不再以 URL 比较为前提 ✓      |
+| 打印静默失败（HRESULT 无错、成功标志 false）                | **输出目标的父目录不存在** ✓                            | 打印前确保目录在 ✓；失败记 `temp_exists`／`temp_bytes`／`target_dir_exists` ✓ |
+| 区间展开与游标倒退（自建 PDF 解析器）                       | 上界由输入决定 ✓                                        | 解析器已撤 ✓（D1d 改人工 ✓）；教训写进审查规范 ✓                              |
 
 ## D7 开始：差异冻结（D7-0，2026-11-04）
 
-D7（= 迁移计划 M8 ✓）的验收依据先冻结成清单 ✓：[导出路径差异冻结](</Users/gpdi/code/ai/Marklflow/docs/design/export-outputs-d7-freeze-2026-11-04.md>) ✓。
+D7（= 迁移计划 M8 ✓）的验收依据先冻结成清单 ✓：[导出路径差异冻结](/Users/gpdi/code/ai/Marklflow/docs/design/export-outputs-d7-freeze-2026-11-04.md) ✓。
 
 清单要点 ✓：
 
@@ -975,13 +975,13 @@ D7（= 迁移计划 M8 ✓）的验收依据先冻结成清单 ✓：[导出路�
 
 D7-1 交付后自查发现，**产品打印这条链上的证据从来没成立过** ✓ —— 不是"证据不足"，是"证据不存在" ✓。四个缺陷按层次列 ✓：
 
-| 层 | 缺陷 | 根因 | 修法 |
-| --- | --- | --- | --- |
-| 1 | **页面侧证据全丢** ✗ | `WebCommand` 枚举里没有 `PrintNativePdf` ✓ → 页面发的 `command:'print_native_pdf'` 反序列化失败 ✓ → 整条载荷被拒收丢弃 ✓ | 枚举补上 ✓ + `command_name` 补映射 ✓ |
-| 2 | **原生侧只记了放行，没有结果** ✗ | `print_native_pdf` 的命令体不记 `operation_result` ✓ —— 守卫放行只留 `source_decision=allow` ✓ | 命令体内记 `operation_result` ✓（result／bytes／elapsed_ms／committed／pdf_temp_removed ✓），失败用稳定码 `print-failed`／`print-not-committed` ✓ |
-| 2 | **sha256 恒为空** ✗ | 提交是把临时文件 rename 成目标 ✓，哈希却在 rename 之后才取 ✓ —— 那时那个路径已经不存在了 ✓ | 哈希改到改名之前取 ✓ |
-| 3 | **60 秒的机器预算管到了人** ✗ | 读报告的 60 秒是给机器步定的 ✓，可报告要等人选完目标 ✓ —— 人用了 91 秒就被判超时 ✓，打印其实成功了 ✓ | 探针层改成两个界 ✓：启动护栏（页面须产出读数 ✓）+ 读报告总数上限 ✓；**机器步与人参与的那一步不再分预算** ✓ |
-| 4 | **输出宿主的噪声误导人** ✗ | 产品打印只看"要不要做" ✓，不看角色 ✓ → 输出宿主也跑 ✓，必然被来源守卫拒 ✓，报告写着"选择目标失败" ✓ —— 看着像产品打印失败 ✓ | 产品打印只在主窗口角色做 ✓；输出宿主明说"不适用" ✓ |
+| 层  | 缺陷                             | 根因                                                                                                                        | 修法                                                                                                                                              |
+| --- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **页面侧证据全丢** ✗             | `WebCommand` 枚举里没有 `PrintNativePdf` ✓ → 页面发的 `command:'print_native_pdf'` 反序列化失败 ✓ → 整条载荷被拒收丢弃 ✓    | 枚举补上 ✓ + `command_name` 补映射 ✓                                                                                                              |
+| 2   | **原生侧只记了放行，没有结果** ✗ | `print_native_pdf` 的命令体不记 `operation_result` ✓ —— 守卫放行只留 `source_decision=allow` ✓                              | 命令体内记 `operation_result` ✓（result／bytes／elapsed_ms／committed／pdf_temp_removed ✓），失败用稳定码 `print-failed`／`print-not-committed` ✓ |
+| 2   | **sha256 恒为空** ✗              | 提交是把临时文件 rename 成目标 ✓，哈希却在 rename 之后才取 ✓ —— 那时那个路径已经不存在了 ✓                                  | 哈希改到改名之前取 ✓                                                                                                                              |
+| 3   | **60 秒的机器预算管到了人** ✗    | 读报告的 60 秒是给机器步定的 ✓，可报告要等人选完目标 ✓ —— 人用了 91 秒就被判超时 ✓，打印其实成功了 ✓                        | 探针层改成两个界 ✓：启动护栏（页面须产出读数 ✓）+ 读报告总数上限 ✓；**机器步与人参与的那一步不再分预算** ✓                                        |
+| 4   | **输出宿主的噪声误导人** ✗       | 产品打印只看"要不要做" ✓，不看角色 ✓ → 输出宿主也跑 ✓，必然被来源守卫拒 ✓，报告写着"选择目标失败" ✓ —— 看着像产品打印失败 ✓ | 产品打印只在主窗口角色做 ✓；输出宿主明说"不适用" ✓                                                                                                |
 
 **第 1 层的证据** ✓：四轮运行的 `rejected` 计数是 4／2／1／4 ✓ —— 不是噪声 ✓，是能逐项算出来的 ✓（主窗口三条 ✓ + 输出宿主一条 ✓，每条都是被拒收的 `print_native_pdf` 事件 ✓）。
 
@@ -1040,15 +1040,15 @@ D1b／D1c 的那些断言、那些日志、那些 PDF 都还在 ✓，它们证�
 
 ### 跑了哪些轮 ✓
 
-| 轮次 | 日志 | 结果 |
-| --- | --- | --- |
-| 探针轮 ✓ | `delivery-host-windows-configured-probe-round.jsonl` ✓ ✓ | D1b／D1c 的证据 ✓ |
-| 产品形态轮 ✓ | `delivery-host-windows-configured-product-print-round.jsonl` ✓ ✓ | `product_print=saved` ✓ |
-| 默认构建轮 ✓ | `delivery-host-windows-configured-default-build-round.txt` ✓ ✓（人读文本形态 ✓） | **D1b-5 补上** ✓ |
-| 删掉能力清单文件后的两轮 ✓ | `delivery-host-windows-capability-removed-probe-round.jsonl` ✓、`delivery-host-windows-capability-removed-product-round.jsonl` ✓ ✓ | 与基线**逐条一致** ✓ |
-| 取消轮 ×2 ✓ | `delivery-host-windows-product-print-cancelled.jsonl` ✓、`delivery-host-windows-product-print-cancelled-repeat.jsonl` ✓ ✓ | `product_print=cancelled` ✓ |
-| 失败轮 ✓ | `delivery-host-windows-product-print-not-committed.jsonl` ✓ | `print-not-committed` ✓、`committed=false` ✓ |
-| 中止跑 ×2 ✓ | 未归档 ✓（文件名与原因记在 meta 的 `not_archived` ✓） | dev server 未在服务 ✓ → **不作证据** ✓ |
+| 轮次                       | 日志                                                                                                                               | 结果                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 探针轮 ✓                   | `delivery-host-windows-configured-probe-round.jsonl` ✓ ✓                                                                           | D1b／D1c 的证据 ✓                            |
+| 产品形态轮 ✓               | `delivery-host-windows-configured-product-print-round.jsonl` ✓ ✓                                                                   | `product_print=saved` ✓                      |
+| 默认构建轮 ✓               | `delivery-host-windows-configured-default-build-round.txt` ✓ ✓（人读文本形态 ✓）                                                   | **D1b-5 补上** ✓                             |
+| 删掉能力清单文件后的两轮 ✓ | `delivery-host-windows-capability-removed-probe-round.jsonl` ✓、`delivery-host-windows-capability-removed-product-round.jsonl` ✓ ✓ | 与基线**逐条一致** ✓                         |
+| 取消轮 ×2 ✓                | `delivery-host-windows-product-print-cancelled.jsonl` ✓、`delivery-host-windows-product-print-cancelled-repeat.jsonl` ✓ ✓          | `product_print=cancelled` ✓                  |
+| 失败轮 ✓                   | `delivery-host-windows-product-print-not-committed.jsonl` ✓                                                                        | `print-not-committed` ✓、`committed=false` ✓ |
+| 中止跑 ×2 ✓                | 未归档 ✓（文件名与原因记在 meta 的 `not_archived` ✓）                                                                              | dev server 未在服务 ✓ → **不作证据** ✓       |
 
 **机器判定** ✓：D1b-1—D1b-6 与 D1c-1、D1c-2 **全通过** ✓，错误 0 ✓、告警 0 ✓、提示 1 ✓（已知的「内容准确只有页面自述依据」✓）。
 
@@ -1056,16 +1056,16 @@ D1b／D1c 的那些断言、那些日志、那些 PDF 都还在 ✓，它们证�
 
 ### D7-1 的验收项 ✓
 
-| 验收项 | 证据 |
-| --- | --- |
-| **命名** ✓ | 默认名 `probe-product-shape.pdf` ✓ 落在目标文件名上 ✓ |
-| **取消** ✓ | **机器证据** ✓：`select_native_save granted=false` ✓（授权没发出去 ✓）+ `product_print=cancelled` ✓（回执区分了取消 ✓）+ **日志里没有打印命令** ✓ → 一个字节都没写 ✓ |
-| **同目录临时提交** ✓ | `committed=true` ✓ + `pdf_temp_removed=true` ✓ |
-| **覆盖失败保护** ✓ | **机器那半** ✓：`select_native_save granted=true` ✓ → 打印出 205821 字节 ✓ → **提交失败** ✓（`result=error reason_code=print-not-committed committed=false` ✓）→ 临时文件已清 ✓（`pdf_temp_removed=true` ✓）；页面回执 `not-committed` ✓（**不是 saved** ✓）。**旧文件未被触碰** ✓ 这一条是**人工项** ✓（日志不记路径与正文 ✓，契约如此 ✓）—— 操作者在宿主上核对：**前后哈希相同** ✓ |
-| **资源／超时／迟到清理** ✓ | `probe_cleanup revoked=true` ✓、`log_health` 全 0 ✓ |
-| **清理证据** ✓ | `pdf_temp_removed=true` ✓ |
-| **完整 PDF** ✓ | **已取** ✓：页数 **3** ✓（`/Type /Page` 三个 ✓、`/Count 3` ✓、三个带文本的内容流 ✓）= 源文档的 3 个页面盒 ✓；纸张 **A4** ✓（MediaBox `0 0 594.96 841.92` pt ✓ = 210×297 mm ✓）；**缩放 1:1** ✓（源侧 794×1123 px@96dpi = 595×842 pt ✓）；**零边距** ✓（MediaBox 从 0 0 起 ✓）。PDF 本身不入库 ✓（只留事实与哈希 ✓，见归档 meta 的 `pdf_inspection` ✓） |
-| **字体与文本** ✓ | **已取** ✓：三个字体**全部嵌入** ✓（`/FontFile2` 三处 ✓、无 `/FontFile3` ✓）且全是子集 ✓（`BAAAAA+MicrosoftYaHeiUI` ✓、`CAAAAA+MicrosoftYaHeiUI-Bold` ✓、`DAAAAA+Consolas` ✓）；正文与 CJK **可提取** ✓（三个内容流都带文本算子 ✓ + 四处 `/ToUnicode` ✓ → 抽出 679 个 CJK 字 ✓）；第一页目视 ✓（标题 ✓ 行内公式 ✓ 表格 ✓ 页码 ✓ 首标记 ✓ —— 操作者确认 ✓） |
+| 验收项                     | 证据                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **命名** ✓                 | 默认名 `probe-product-shape.pdf` ✓ 落在目标文件名上 ✓                                                                                                                                                                                                                                                                                                                                |
+| **取消** ✓                 | **机器证据** ✓：`select_native_save granted=false` ✓（授权没发出去 ✓）+ `product_print=cancelled` ✓（回执区分了取消 ✓）+ **日志里没有打印命令** ✓ → 一个字节都没写 ✓                                                                                                                                                                                                                 |
+| **同目录临时提交** ✓       | `committed=true` ✓ + `pdf_temp_removed=true` ✓                                                                                                                                                                                                                                                                                                                                       |
+| **覆盖失败保护** ✓         | **机器那半** ✓：`select_native_save granted=true` ✓ → 打印出 205821 字节 ✓ → **提交失败** ✓（`result=error reason_code=print-not-committed committed=false` ✓）→ 临时文件已清 ✓（`pdf_temp_removed=true` ✓）；页面回执 `not-committed` ✓（**不是 saved** ✓）。**旧文件未被触碰** ✓ 这一条是**人工项** ✓（日志不记路径与正文 ✓，契约如此 ✓）—— 操作者在宿主上核对：**前后哈希相同** ✓ |
+| **资源／超时／迟到清理** ✓ | `probe_cleanup revoked=true` ✓、`log_health` 全 0 ✓                                                                                                                                                                                                                                                                                                                                  |
+| **清理证据** ✓             | `pdf_temp_removed=true` ✓                                                                                                                                                                                                                                                                                                                                                            |
+| **完整 PDF** ✓             | **已取** ✓：页数 **3** ✓（`/Type /Page` 三个 ✓、`/Count 3` ✓、三个带文本的内容流 ✓）= 源文档的 3 个页面盒 ✓；纸张 **A4** ✓（MediaBox `0 0 594.96 841.92` pt ✓ = 210×297 mm ✓）；**缩放 1:1** ✓（源侧 794×1123 px@96dpi = 595×842 pt ✓）；**零边距** ✓（MediaBox 从 0 0 起 ✓）。PDF 本身不入库 ✓（只留事实与哈希 ✓，见归档 meta 的 `pdf_inspection` ✓）                               |
+| **字体与文本** ✓           | **已取** ✓：三个字体**全部嵌入** ✓（`/FontFile2` 三处 ✓、无 `/FontFile3` ✓）且全是子集 ✓（`BAAAAA+MicrosoftYaHeiUI` ✓、`CAAAAA+MicrosoftYaHeiUI-Bold` ✓、`DAAAAA+Consolas` ✓）；正文与 CJK **可提取** ✓（三个内容流都带文本算子 ✓ + 四处 `/ToUnicode` ✓ → 抽出 679 个 CJK 字 ✓）；第一页目视 ✓（标题 ✓ 行内公式 ✓ 表格 ✓ 页码 ✓ 首标记 ✓ —— 操作者确认 ✓）                           |
 
 **两份 PDF 大小相同、hash 不同** ✓ —— 这是预期的 ✓：同一份冻结样本 ✓、同一套打印设置 ✓ → 版面度量一样 ✓ → 字节数相同 ✓（五次打印都是 205821 ✓）；差的是 PDF 内嵌的**创建时间与文档 ID** ✓（每次打印都新生成 ✓，长度固定 ✓）→ hash 必然不同 ✓。**sha256 的用途是标识这一份产物 ✓，不是复现同一份产物** ✓（登记的是冻结样本 HTML 的 hash ✓）。
 
@@ -1084,13 +1084,13 @@ M9 尚未开工 ✓，生产 UI 的 PDF 导出**仍走 Web 路径** ✓（浏览
 
 **它与夹具那份的差别不在内容，在写出器** ✓：
 
-| | 夹具的产品形态打印 ✓（原生 COM 路径 ✓） | 生产 UI 手动导出 ✓（Web 路径 ✓） |
-| --- | --- | --- |
-| 写出器 ✓ | `Skia/PDF m156` ✓（WebView2/Chromium 自己的 ✓） | **`Microsoft: Print To PDF`** ✓（Windows 的**打印驱动** ✓） |
-| 字体 ✓ | 三个**全嵌入** ✓（子集 ✓） | **一个都没有** ✓ |
-| 文本层 ✓ | **有** ✓（4 个内容流 ✓ + `/ToUnicode` ✓） | **没有** ✓ |
-| 页面形态 ✓ | 矢量文字 ✓ + 1 张图片 ✓ | **19 个图像对象 ✓（JPEG ✓）—— 整页是照片** ✓ |
-| 体积 ✓ | 205 KB ✓ | 549 KB ✓ |
+|            | 夹具的产品形态打印 ✓（原生 COM 路径 ✓）         | 生产 UI 手动导出 ✓（Web 路径 ✓）                            |
+| ---------- | ----------------------------------------------- | ----------------------------------------------------------- |
+| 写出器 ✓   | `Skia/PDF m156` ✓（WebView2/Chromium 自己的 ✓） | **`Microsoft: Print To PDF`** ✓（Windows 的**打印驱动** ✓） |
+| 字体 ✓     | 三个**全嵌入** ✓（子集 ✓）                      | **一个都没有** ✓                                            |
+| 文本层 ✓   | **有** ✓（4 个内容流 ✓ + `/ToUnicode` ✓）       | **没有** ✓                                                  |
+| 页面形态 ✓ | 矢量文字 ✓ + 1 张图片 ✓                         | **19 个图像对象 ✓（JPEG ✓）—— 整页是照片** ✓                |
+| 体积 ✓     | 205 KB ✓                                        | 549 KB ✓                                                    |
 
 ⇒ **同一类内容，走 Web 路径得到的是"文档的照片" ✓，走原生路径得到的才是"文档"** ✓
 （正文可提取 ✓、可搜索 ✓、体积小一个量级 ✓）✓。

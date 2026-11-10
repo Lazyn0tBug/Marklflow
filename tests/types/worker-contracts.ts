@@ -1,7 +1,8 @@
 import {analyzeMarkdown} from '../../src/core/parse/markdown';
 import {documentSchema} from '../../src/core/model/documentSchema';
-const result=analyzeMarkdown('# pure');
-void result;void documentSchema;
+const result = analyzeMarkdown('# pure');
+void result;
+void documentSchema;
 // @ts-expect-error: Worker/pure compilation must never acquire browser Window globals.
 void window;
 // @ts-expect-error: Worker/pure compilation must never acquire DOM document globals.
@@ -12,33 +13,36 @@ void process;
 import type {TaskKind} from '../../src/application/tasks/contracts';
 import type {RoleSchedulerHooks} from '../../src/application/tasks/roleScheduler';
 // @ts-expect-error: Only the finite preview kinds may enter governance.
-const arbitraryTask:TaskKind='plugin.custom';
+const arbitraryTask: TaskKind = 'plugin.custom';
 // @ts-expect-error: Preview publication must return undefined synchronously, never a Promise.
-const asynchronousPublish:RoleSchedulerHooks['generated']=async()=>{};
-void arbitraryTask;void asynchronousPublish;
+const asynchronousPublish: RoleSchedulerHooks['generated'] = async () => {};
+void arbitraryTask;
+void asynchronousPublish;
 
-import type {PreviewSubmission,PreviewCacheKey} from '../../src/application/tasks/previewIdentity';
+import type {PreviewSubmission, PreviewCacheKey} from '../../src/application/tasks/previewIdentity';
 // @ts-expect-error: Only foreground/background roles belong to preview envelopes.
-const invalidRole:PreviewSubmission['role']='compute';
+const invalidRole: PreviewSubmission['role'] = 'compute';
 // @ts-expect-error: A cache key cannot be replaced with a partial execution ticket.
-const invalidCacheKey:PreviewCacheKey={taskId:'task',activationEpoch:1};
-void invalidRole;void invalidCacheKey;
+const invalidCacheKey: PreviewCacheKey = {taskId: 'task', activationEpoch: 1};
+void invalidRole;
+void invalidCacheKey;
 
 // @ts-expect-error: Legacy nested requests cannot replace a minimal preview envelope.
-const legacyPreview:PreviewSubmission={request:{}};
+const legacyPreview: PreviewSubmission = {request: {}};
 void legacyPreview;
 
-import type {WorkerAdapter,ExecutionIdentity} from '../../src/application/tasks/contracts';
+import type {WorkerAdapter, ExecutionIdentity} from '../../src/application/tasks/contracts';
 // @ts-expect-error: Fixed compute adapters cannot expose a generic compute/DOM lane registry.
-const genericLane:WorkerAdapter['lane']='dom';
+const genericLane: WorkerAdapter['lane'] = 'dom';
 // @ts-expect-error: The role adapter runs once, without a retry-attempt protocol.
-const retryAttempt:ExecutionIdentity['attempt']=1;
-void genericLane;void retryAttempt;
+const retryAttempt: ExecutionIdentity['attempt'] = 1;
+void genericLane;
+void retryAttempt;
 
 // @ts-expect-error: User exports never enter the preview task protocol.
-const exportedPreview:TaskKind='export.html';
+const exportedPreview: TaskKind = 'export.html';
 void exportedPreview;
 
 import {IdentityGate} from '../../src/application/tasks/identity';
 // @ts-expect-error: Document preview expectations cannot introduce arbitrary task kinds.
-new IdentityGate().expect('A','export.html','id');
+new IdentityGate().expect('A', 'export.html', 'id');

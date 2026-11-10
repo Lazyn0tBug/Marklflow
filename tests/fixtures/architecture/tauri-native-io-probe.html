@@ -1,8 +1,23 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><title>M3 native IO probe</title><body><h1>M3 原生 I/O 探针</h1><p>仅供开发验收：在桌面 webview 内驱动原生文件命令（选择、读取、写入、释放），不接生产路径，不绑定文档。</p>
-<button data-step="环境">环境</button>
-<button data-step="选择打开">选择打开</button>
-<button data-step="读取">读取</button>
-<button data-step="选择保存">选择保存</button>
-<button data-step="写入">写入</button>
-<button data-step="释放">释放</button>
-<pre data-state="idle">尚未操作</pre><script type="module" src="./tauri-native-io-probe-client.ts"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>M3 native IO probe</title>
+  <body>
+    <h1>M3 原生 I/O 探针</h1>
+    <p>
+      仅供开发验收：在桌面 webview
+      内驱动原生文件命令（选择、读取、写入、释放），不接生产路径，不绑定文档。
+    </p>
+    <button data-step="环境">环境</button>
+    <button data-step="选择打开">选择打开</button>
+    <button data-step="读取">读取</button>
+    <button data-step="选择保存">选择保存</button>
+    <button data-step="写入">写入</button>
+    <button data-step="释放">释放</button>
+    <button data-step="问一句">问一句</button>
+    <button data-step="再问一句">再问一句</button>
+    <button data-step="写回落到磁盘">写回落到磁盘</button>
+    <pre data-state="idle">尚未操作</pre>
+    <script type="module" src="./tauri-native-io-probe-client.ts"></script>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 mod config;
 mod files;
+mod hash;
 mod logging;
 mod output_host;
 // 静默打印：**生产构建的一部分** ✓（M9 接入 ✓）—— Windows 走 COM ✓，
@@ -91,6 +92,10 @@ pub fn run() {
             files::read_native_text,
             files::print_native_pdf,
             files::write_native_bytes,
+            files::write_native_sync,
+            files::detect_native_target,
+            files::is_native_same_directory,
+            files::is_native_target_present,
             files::release_native_file
         ]);
     // 日志基座在业务事件之前就位：守卫判定属安全事件，任何构建都该留痕。

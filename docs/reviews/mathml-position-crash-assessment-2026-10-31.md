@@ -37,7 +37,9 @@ TypeError: Cannot read properties of undefined (reading 'offset')
 触发表达式（源码，`src/core/render/markdownHtml.ts` 的 rehype 访问步骤）：
 
 ```js
-const sourceOffset=originalOffset(node.position?.start.offset),opening=markdown.slice(sourceOffset),prefix='<'+node.tagName;
+const sourceOffset = originalOffset(node.position?.start.offset),
+  opening = markdown.slice(sourceOffset),
+  prefix = "<" + node.tagName;
 ```
 
 即：**某个 hast 元素节点的 `node.position` 存在，但 `node.position.start` 为 undefined**。可选链只保护了 `node.position`，没有保护 `.start`。
@@ -45,8 +47,8 @@ const sourceOffset=originalOffset(node.position?.start.offset),opening=markdown.
 同一段里还有两处同类访问（当前靠 `if(node.position && ...)` 保护，但同样会读 `node.position.start.line`）：
 
 ```js
-if(node.position && !generated) node.properties.dataLine=node.position.start.line+offset;
-if(node.position && !generated) node.properties.dataSourceEnd=node.position.end.line+offset;
+if (node.position && !generated) node.properties.dataLine = node.position.start.line + offset;
+if (node.position && !generated) node.properties.dataSourceEnd = node.position.end.line + offset;
 ```
 
 栈中的祖先链显示：**出问题的节点位于 MathJax SVG 的 `<g>` 子树内**（`<g>` → … → `<mjx-container>` → `<div>` → root）。
@@ -72,14 +74,14 @@ aligned \begin{aligned}f(x)&=x\\g(x)&=x^2\end{aligned} | text-mixed \text{当 } 
 
 ## 3. 已排除的假设（附证据）
 
-| 编号 | 假设 | 结果 | 证据 |
-|---|---|---|---|
-| E1 | 自造 `<mjx-container>` 标记会触发 | **排除** | 合成 HTML（含 `<math>` 语义层、`munderover` 等）逐条与整篇解析全部通过 |
-| E2 | 某个单独公式的真实 MathJax 产物会触发 | **排除** | 15 个公式各自用真实 `prepareMath` 产物解析，全部通过 |
-| E3 | 15 个公式的真实产物合在一起会触发 | **排除** | 在浏览器里捕获 15 段真实产物（长度 2162,1897,4545,2736,3025,2827,3048,5098,5959,6590,1886,4493,5313,6342,2609）后 `parseMarkdownDocument` 通过；加载后与加载时各测一次均通过 |
-| E4 | `renderDocument` 全量语料会触发 | **排除** | 拦截掉探针脚本后在干净页面直接调 `renderDocument(同一语料)`，加载后与加载时均通过 |
-| E5 | `parseMarkdownDocument` 的 `mathMode` 参数影响 | **排除** | grep 确认 `options.mathMode` 在 `parseMarkdownDocument` 内**从未被使用**（只有 `parseInline` 用它） |
-| E6 | 探针页的 `tex.tags:'ams'` 是主因 | **未排除但非充分条件** | 应用页 `index.html` 无 `tags`，探针页有；但在**探针页**上（同一配置）我的复现不崩，说明 `tags` 单独不足以触发 |
+| 编号 | 假设                                           | 结果                   | 证据                                                                                                                                                                         |
+| ---- | ---------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1   | 自造 `<mjx-container>` 标记会触发              | **排除**               | 合成 HTML（含 `<math>` 语义层、`munderover` 等）逐条与整篇解析全部通过                                                                                                       |
+| E2   | 某个单独公式的真实 MathJax 产物会触发          | **排除**               | 15 个公式各自用真实 `prepareMath` 产物解析，全部通过                                                                                                                         |
+| E3   | 15 个公式的真实产物合在一起会触发              | **排除**               | 在浏览器里捕获 15 段真实产物（长度 2162,1897,4545,2736,3025,2827,3048,5098,5959,6590,1886,4493,5313,6342,2609）后 `parseMarkdownDocument` 通过；加载后与加载时各测一次均通过 |
+| E4   | `renderDocument` 全量语料会触发                | **排除**               | 拦截掉探针脚本后在干净页面直接调 `renderDocument(同一语料)`，加载后与加载时均通过                                                                                            |
+| E5   | `parseMarkdownDocument` 的 `mathMode` 参数影响 | **排除**               | grep 确认 `options.mathMode` 在 `parseMarkdownDocument` 内**从未被使用**（只有 `parseInline` 用它）                                                                          |
+| E6   | 探针页的 `tex.tags:'ams'` 是主因               | **未排除但非充分条件** | 应用页 `index.html` 无 `tags`，探针页有；但在**探针页**上（同一配置）我的复现不崩，说明 `tags` 单独不足以触发                                                                |
 
 **尚未解释的核心矛盾**：探针（模块脚本，页面加载时执行）稳定崩溃；我在**同一页面、同一时刻之后**用 `page.evaluate` 调用**同样的 `renderDocument`、同样的语料**却从不崩溃，且捕获到的注入产物长度完全一致。
 
@@ -90,7 +92,7 @@ aligned \begin{aligned}f(x)&=x\\g(x)&=x^2\end{aligned} | text-mixed \text{当 } 
 - **H1｜hast-util-raw / hast-util-from-parse5 的 position 丢失缺陷**：unified 生态有已知同类问题——
   - [hast-util-raw issue #12「Field position is being removed」](https://github.com/syntax-tree/hast-util-raw/issues/12)（重解析时 `position` 被移除/改写）
   - [hast-util-from-parse5 issue #11「Cannot read property 'end' of null」](https://github.com/syntax-tree/hast-util-from-parse5/issues/11)（parse5→hast 转换时位置处理崩溃）
-  若其中任一在**外层内容（SVG/MathML）**场景下留下「有 position 但缺 start」的节点，就与本现象完全吻合。需要确认：hast-util-raw 对**无法匹配回原树的节点**写入的 position 具体形状。
+    若其中任一在**外层内容（SVG/MathML）**场景下留下「有 position 但缺 start」的节点，就与本现象完全吻合。需要确认：hast-util-raw 对**无法匹配回原树的节点**写入的 position 具体形状。
 - **H2｜rehype-raw 的节点匹配失败**：rehype-raw 把 raw HTML 重新解析并按顺序/结构匹配回原树；当注入内容含**自闭合外层元素**（SVG 里 `<path .../>`、`<use .../>` 等）或 **foreign content（MathML/SVG）**时，匹配可能失败并留下半截 position。
 - **H3｜id 前缀参与匹配**：MathJax 的 `MJX-N-...` id 是否让 hast-util-raw 的节点匹配错位（探针那次是页面内首次转换，前缀与后续不同）。
 - **H4｜`<use>` / `xlink:href` 等 SVG 专有结构**在 rehypeRaw 的重解析中产生特殊节点。
@@ -98,6 +100,7 @@ aligned \begin{aligned}f(x)&=x\\g(x)&=x^2\end{aligned} | text-mixed \text{当 } 
 ## 5. 建议的检索关键词
 
 英文（issue / 讨论板）：
+
 - `hast-util-raw position removed issue`
 - `hast-util-raw "position" undefined foreign content svg`
 - `hast-util-from-parse5 "end" of null`
@@ -107,6 +110,7 @@ aligned \begin{aligned}f(x)&=x\\g(x)&=x^2\end{aligned} | text-mixed \text{当 } 
 - `hast-util-raw matches nodes by index position mismatch`
 
 中文：
+
 - `rehype-raw 位置信息 position 丢失`
 - `unified 解析 position undefined 崩溃`
 
@@ -135,11 +139,11 @@ if(node.position?.end && !generated) node.properties.dataSourceEnd=node.position
 
 ## 8. 相关文件
 
-| 文件 | 角色 |
-|---|---|
-| `src/core/render/markdownHtml.ts` | 崩溃点（rehype 访问步骤，`node.position?.start.offset` 与两处 `position.start.line`/`position.end.line`） |
-| `src/core/render/documentRenderer.ts` | 调用 `parseMarkdownDocument` 的上游（`renderDocument`） |
-| `src/core/render/mathRender.ts` / `mathJaxAdapter.ts` | 真实 MathJax 产物的来源（`retainMathML` 时附带语义层） |
-| `tests/fixtures/architecture/math-omml-probe-client.ts` | 触发语料与阶段标记 |
-| `tests/e2e/math-omml-probe.spec.ts` | 失败用例（development / built 均失败） |
-| `docs/design/export-outputs-formula-and-print-plan-2026-10-30.md` | 本轮 DOCX 原生公式方案（探针属其 B0-① 步骤） |
+| 文件                                                              | 角色                                                                                                      |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `src/core/render/markdownHtml.ts`                                 | 崩溃点（rehype 访问步骤，`node.position?.start.offset` 与两处 `position.start.line`/`position.end.line`） |
+| `src/core/render/documentRenderer.ts`                             | 调用 `parseMarkdownDocument` 的上游（`renderDocument`）                                                   |
+| `src/core/render/mathRender.ts` / `mathJaxAdapter.ts`             | 真实 MathJax 产物的来源（`retainMathML` 时附带语义层）                                                    |
+| `tests/fixtures/architecture/math-omml-probe-client.ts`           | 触发语料与阶段标记                                                                                        |
+| `tests/e2e/math-omml-probe.spec.ts`                               | 失败用例（development / built 均失败）                                                                    |
+| `docs/design/export-outputs-formula-and-print-plan-2026-10-30.md` | 本轮 DOCX 原生公式方案（探针属其 B0-① 步骤）                                                              |

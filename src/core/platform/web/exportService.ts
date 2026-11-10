@@ -9,4 +9,14 @@ import {exportDocumentToDocx} from '../../export/docxExporter';
 import {deliverPdfHtml} from './pdfDelivery';
 import {selectWebSave} from './byteDelivery';
 /** Shared across modal close/reopen; the user operation is independent of preview/Tab state. */
-export const webExportService=new ExportService({prepare:prepareExportContent,inspectDocx,encodeEditableSource,generatePdfHtml,generateMarkdownBundle,generateHtml:generateExportHtml,generateDocx:exportDocumentToDocx,selectSave:selectWebSave,deliverPdf:deliverPdfHtml});
+export const webExportService = new ExportService({
+  prepare: prepareExportContent,
+  inspectDocx,
+  encodeEditableSource,
+  generatePdfHtml,
+  generateMarkdownBundle,
+  generateHtml: generateExportHtml,
+  generateDocx: exportDocumentToDocx,
+  selectSave: selectWebSave,
+  deliverPdf: deliverPdfHtml,
+});

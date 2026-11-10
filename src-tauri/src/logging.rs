@@ -104,6 +104,22 @@ pub enum WebCommand {
     SelectNativeSave,
     ReadNativeText,
     WriteNativeBytes,
+    /// **写回原文件** ✓：**与通用字节写入分开** ✓ ⇒ ⇒ 复核是这条命令自带的 ✓。
+    ///
+    /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    WriteNativeSync,
+    /// 问一句"这个目标现在是什么状态" ✓（§3.1 ✓、§6.1 ✓）。
+    ///
+    /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    DetectNativeTarget,
+    /// 问一句"这两个文件在同一个目录里吗" ✓（§6.2 ✓）。
+    ///
+    /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    IsNativeSameDirectory,
+    /// 问一句"那个目标还在吗" ✓（§3.1 ✓、§8.2 ✓）。
+    ///
+    /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    IsNativeTargetPresent,
     ReleaseNativeFile,
     /// 产品形态的静默打印（D7 的入口）。
     ///
@@ -1329,6 +1345,10 @@ pub(crate) fn command_name(command: WebCommand) -> &'static str {
         WebCommand::SelectNativeSave => "select_native_save",
         WebCommand::ReadNativeText => "read_native_text",
         WebCommand::WriteNativeBytes => "write_native_bytes",
+        WebCommand::WriteNativeSync => "write_native_sync",
+        WebCommand::DetectNativeTarget => "detect_native_target",
+        WebCommand::IsNativeSameDirectory => "is_native_same_directory",
+        WebCommand::IsNativeTargetPresent => "is_native_target_present",
         WebCommand::ReleaseNativeFile => "release_native_file",
         WebCommand::PrintNativePdf => "print_native_pdf",
     }
@@ -1745,12 +1765,16 @@ mod tests {
         // 页面回传的命令名（serde 的 snake_case ✓）与日志里的命令名（`command_name` ✓）
         // 必须是**同一个字符串** ✓：不然跨侧配对就配不上 ✓，
         // 而配对不上时两侧各说各话 ✓，没人看得出来 ✓。
-        let cases:[(WebCommand,&str);7]=[
+        let cases:[(WebCommand,&str);11]=[
             (WebCommand::GetPlatformInfo,"get_platform_info"),
             (WebCommand::SelectNativeOpen,"select_native_open"),
             (WebCommand::SelectNativeSave,"select_native_save"),
             (WebCommand::ReadNativeText,"read_native_text"),
             (WebCommand::WriteNativeBytes,"write_native_bytes"),
+            (WebCommand::WriteNativeSync,"write_native_sync"),
+            (WebCommand::DetectNativeTarget,"detect_native_target"),
+            (WebCommand::IsNativeSameDirectory,"is_native_same_directory"),
+            (WebCommand::IsNativeTargetPresent,"is_native_target_present"),
             (WebCommand::ReleaseNativeFile,"release_native_file"),
             (WebCommand::PrintNativePdf,"print_native_pdf"),
         ];

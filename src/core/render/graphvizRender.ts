@@ -30,7 +30,9 @@ export interface DotGraph {
 /** DOT 属性是 `key=value` 列表；值可带引号或裸写。键名整体匹配，`fillcolor` 不会被读成 `color`。 */
 function parseDotAttributes(attrs: string): Record<string, string> {
   const parsed: Record<string, string> = {};
-  for (const match of attrs.matchAll(/([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*("([^"]*)"|'([^']*)'|[^\s,]+)/g)) {
+  for (const match of attrs.matchAll(
+    /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*("([^"]*)"|'([^']*)'|[^\s,]+)/g,
+  )) {
     parsed[match[1]!.toLowerCase()] = match[3] ?? match[4] ?? match[2]!;
   }
   return parsed;
@@ -59,8 +61,8 @@ export function parseDotToGraph(dotSource: string): DotGraph {
     // 检测 rankdir
     const rankMatch = line.match(/rankdir\s*=\s*(LR|TB|BT|RL)/i);
     if (rankMatch?.[1]) {
-      const rank=rankMatch[1].toUpperCase();
-      if(rank==='TB'||rank==='LR'||rank==='BT'||rank==='RL')graph.rankdir=rank;
+      const rank = rankMatch[1].toUpperCase();
+      if (rank === 'TB' || rank === 'LR' || rank === 'BT' || rank === 'RL') graph.rankdir = rank;
     }
 
     // 检测边关系: NodeA -> NodeB [label="..."]
@@ -73,30 +75,36 @@ export function parseDotToGraph(dotSource: string): DotGraph {
       graph.edges.push({
         from,
         to,
-        ...(attrs.label===undefined?{}:{label:attrs.label.replace(/\\n/g, ' ')}),
-        ...(attrs.color===undefined?{}:{color:attrs.color}),
+        ...(attrs.label === undefined ? {} : {label: attrs.label.replace(/\\n/g, ' ')}),
+        ...(attrs.color === undefined ? {} : {color: attrs.color}),
       });
 
       if (!graph.nodes.has(from)) {
-        graph.nodes.set(from, { id: from, label: from });
+        graph.nodes.set(from, {id: from, label: from});
       }
       if (!graph.nodes.has(to)) {
-        graph.nodes.set(to, { id: to, label: to });
+        graph.nodes.set(to, {id: to, label: to});
       }
       continue;
     }
 
     // 检测节点定义: NodeA [label="...", fillcolor="...", color="..."]
     const nodeMatch = line.match(/^([a-zA-Z0-9_]+)\s*\[(.*?)\]/);
-    if (nodeMatch?.[1] && nodeMatch[2]!==undefined) {
+    if (nodeMatch?.[1] && nodeMatch[2] !== undefined) {
       const id = nodeMatch[1];
       const attrs = parseDotAttributes(nodeMatch[2]);
       const keyword = id.toLowerCase();
       // `node [...]` 与 `edge [...]` 是默认属性声明，不是图节点。
-      if(keyword==='node'){Object.assign(defaultNode,attrs);continue}
-      if(keyword==='edge'){Object.assign(defaultEdge,attrs);continue}
-      if(keyword==='graph'||keyword==='strict')continue;
-      nodeAttributes.set(id,attrs);
+      if (keyword === 'node') {
+        Object.assign(defaultNode, attrs);
+        continue;
+      }
+      if (keyword === 'edge') {
+        Object.assign(defaultEdge, attrs);
+        continue;
+      }
+      if (keyword === 'graph' || keyword === 'strict') continue;
+      nodeAttributes.set(id, attrs);
       graph.nodes.set(id, {
         id,
         label: attrs.label?.replace(/\\n/g, '\n') ?? id,
@@ -112,7 +120,7 @@ export function parseDotToGraph(dotSource: string): DotGraph {
     node.shape = attrs.shape ?? defaultNode.shape ?? 'box';
   }
   for (const edge of graph.edges) {
-    if(edge.color===undefined&&defaultEdge.color!==undefined)edge.color=defaultEdge.color;
+    if (edge.color === undefined && defaultEdge.color !== undefined) edge.color = defaultEdge.color;
   }
 
   return graph;
@@ -152,7 +160,7 @@ export function renderDotToSVG(dotSource: string): string {
         queue.push(id);
       }
     }
-    const firstNode=nodeList[0];
+    const firstNode = nodeList[0];
     if (queue.length === 0 && firstNode) {
       levels.set(firstNode.id, 0);
       queue.push(firstNode.id);
@@ -160,7 +168,7 @@ export function renderDotToSVG(dotSource: string): string {
 
     while (queue.length > 0) {
       const curr = queue.shift();
-      if(curr===undefined)break;
+      if (curr === undefined) break;
       const currLvl = levels.get(curr) || 0;
       for (const e of graph.edges) {
         if (e.from === curr) {
@@ -181,10 +189,12 @@ export function renderDotToSVG(dotSource: string): string {
     const levelGroups: Map<number, DotNode[]> = new Map();
     for (const n of nodeList) {
       const lvl = levels.get(n.id) || 0;
-      const group=levelGroups.get(lvl)??[];group.push(n);levelGroups.set(lvl,group);
+      const group = levelGroups.get(lvl) ?? [];
+      group.push(n);
+      levelGroups.set(lvl, group);
     }
 
-    const nodePositions: Map<string, { x: number; y: number }> = new Map();
+    const nodePositions: Map<string, {x: number; y: number}> = new Map();
     const sortedLevels = Array.from(levelGroups.keys()).sort((a, b) => a - b);
 
     let maxDimX = 0;
@@ -192,8 +202,8 @@ export function renderDotToSVG(dotSource: string): string {
 
     for (const lvl of sortedLevels) {
       const nodesInLvl = levelGroups.get(lvl);
-      if(!nodesInLvl)throw new Error('DOT 布局分组缺失');
-      for (const [i,node] of nodesInLvl.entries()) {
+      if (!nodesInLvl) throw new Error('DOT 布局分组缺失');
+      for (const [i, node] of nodesInLvl.entries()) {
         let x: number, y: number;
         if (isLR) {
           x = 40 + lvl * (nodeWidth + gapX);
@@ -202,7 +212,7 @@ export function renderDotToSVG(dotSource: string): string {
           x = 40 + i * (nodeWidth + gapX);
           y = 40 + lvl * (nodeHeight + gapY);
         }
-        nodePositions.set(node.id, { x, y });
+        nodePositions.set(node.id, {x, y});
         maxDimX = Math.max(maxDimX, x + nodeWidth + 40);
         maxDimY = Math.max(maxDimY, y + nodeHeight + 40);
       }
@@ -253,7 +263,7 @@ export function renderDotToSVG(dotSource: string): string {
     let nodesSvg = '';
     for (const node of nodeList) {
       const pos = nodePositions.get(node.id);
-      if(!pos)throw new Error('DOT 节点布局缺失');
+      if (!pos) throw new Error('DOT 节点布局缺失');
       const strokeColor = escapeHtml(node.color || '#0d9488');
       const bgColor = escapeHtml(node.fillcolor || '#f0fdfa');
       const lines = node.label.split('\n');
@@ -261,11 +271,16 @@ export function renderDotToSVG(dotSource: string): string {
       nodesSvg += `
         <g class="graph-node" transform="translate(${pos.x}, ${pos.y})">
           <rect width="${nodeWidth}" height="${nodeHeight}" rx="6" fill="${bgColor}" stroke="${strokeColor}" stroke-width="1.5" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.05))"/>
-          ${lines.map((l, idx) => {
-            const yOffset = lines.length === 1 ? nodeHeight / 2 + 4 : (nodeHeight / (lines.length + 1)) * (idx + 1) + 4;
-            const isSub = idx > 0;
-            return `<text x="${nodeWidth / 2}" y="${yOffset}" font-size="${isSub ? 10 : 12}" font-weight="${isSub ? '400' : '600'}" fill="${isSub ? '#64748b' : '#0f172a'}" text-anchor="middle" font-family="sans-serif">${escapeHtml(l)}</text>`;
-          }).join('')}
+          ${lines
+            .map((l, idx) => {
+              const yOffset =
+                lines.length === 1
+                  ? nodeHeight / 2 + 4
+                  : (nodeHeight / (lines.length + 1)) * (idx + 1) + 4;
+              const isSub = idx > 0;
+              return `<text x="${nodeWidth / 2}" y="${yOffset}" font-size="${isSub ? 10 : 12}" font-weight="${isSub ? '400' : '600'}" fill="${isSub ? '#64748b' : '#0f172a'}" text-anchor="middle" font-family="sans-serif">${escapeHtml(l)}</text>`;
+            })
+            .join('')}
         </g>
       `;
     }

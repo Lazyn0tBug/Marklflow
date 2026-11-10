@@ -21,5 +21,4 @@ Luna浏览器测试发现原detached div解析会触发原生image请求，再�
 
 日志D:/codex/p1-image-signature-check.log；浏览器结果D:/codex/p1-image-signature-browser-results；[最终生产探针](../acceptance/image-signature-p1-browser-2026-10-29.json)。独立审查留X，未自动推进C/X/Tauri。EX-W0系统证据、原生保存/WordWPS/跨OS/干净安装/远端CI仍待补或未执行，不宣称完整验收通过。
 
-
 提交前Luna事实核对：验收JSON可解析，日志418/34计数及成功退出一致；bun.lock只新增候选关联10个package key，无删除或已有条目改版。历史稳定66/66产物存在且SHA-256一致；tag-release.patch仍为9284099EDCD54CE0D9580C42C370BC3163E4DE5DF0652E163BF9411F31683D48，保持未跟踪且不提交。此次核对不是X独立审查。

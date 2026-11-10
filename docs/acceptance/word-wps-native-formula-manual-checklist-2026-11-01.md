@@ -12,20 +12,20 @@
 
 原生公式（应为 **Word 可编辑公式**）：
 
-| # | 文本 | 结构 |
-| --- | --- | --- |
-| 1 | `E=mc2` | m:sSup, m:e, m:r |
-| 2 | `a+bc=x2` | m:f, m:num, m:den, m:rad, m:d, m:e, m:r |
-| 3 | `3x+1` | m:rad, m:d, m:e, m:r |
-| 4 | `xi2 yij zijk` | m:sSub, m:sSubSup, m:e, m:r |
-| 5 | `(a+b)2=c` | m:sSup, m:e, m:r |
+| #   | 文本           | 结构                                    |
+| --- | -------------- | --------------------------------------- |
+| 1   | `E=mc2`        | m:sSup, m:e, m:r                        |
+| 2   | `a+bc=x2`      | m:f, m:num, m:den, m:rad, m:d, m:e, m:r |
+| 3   | `3x+1`         | m:rad, m:d, m:e, m:r                    |
+| 4   | `xi2 yij zijk` | m:sSub, m:sSubSup, m:e, m:r             |
+| 5   | `(a+b)2=c`     | m:sSup, m:e, m:r                        |
 
 降级公式（应为 **图片**，替代文本带源 LaTeX）：
 
-| # | 替代文本 |
-| --- | --- |
-| 1 | `\sum_{i=1}^{n} i` |
-| 2 | `\begin{matrix} a & b \\ c & d \end{matrix}` |
+| #   | 替代文本                                     |
+| --- | -------------------------------------------- |
+| 1   | `\sum_{i=1}^{n} i`                           |
+| 2   | `\begin{matrix} a & b \\ c & d \end{matrix}` |
 
 其它图片：0。
 

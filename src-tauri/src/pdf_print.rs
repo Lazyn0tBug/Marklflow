@@ -336,17 +336,10 @@ fn commit_pdf(temp: &Path, target: &Path) -> bool {
 }
 
 /// 文件的 sha256 ✓（产物可不入库 ✓，hash 留证 ✓）。
+///
+/// **实现只有一处** ✓ ⇒ ⇒ 共享模块那份 ✓（设计 §3.4 ✓）⇒ ⇒ 摘要的行为不会分叉 ✓。
 fn file_sha256(path: &Path) -> String {
-    use sha2::{Digest, Sha256};
-    std::fs::read(path)
-        .ok()
-        .map(|bytes| {
-            Sha256::digest(&bytes)
-                .iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect()
-        })
-        .unwrap_or_default()
+    crate::hash::file_sha256(path)
 }
 
 /// 就绪探测脚本：读文档的加载状态、字体、图片与页面盒。

@@ -4,12 +4,12 @@
 
 ## 1. 实际实现与未完成部分
 
-| 路径 | 本地代码证据 | 结论 |
-| --- | --- | --- |
-| tauri:src/core/platform/desktop.ts / exportPdfDirect | 调用原生save，defaultPath使用所选名称并补.pdf；取消保存时不invoke | 原生建议文件名及路径选择逻辑已存在，可参考 |
-| 同函数调用export_pdf_direct | 将冻结HTML和target_path传给Rust；invoke成功后显示“已成功导出矢量PDF” | 前端返回值不能单独证明文件已生成 |
-| tauri:src-tauri/src/lib.rs / export_pdf_direct | 创建目标父目录，向系统临时目录写markflow_print_时间戳.html，然后直接Ok；未调用WebView PDF生成API、未写target_path | 当前仍为占位，不是已完成的PDF生成；会产生虚假成功反馈，临时HTML也没有清理 |
-| tauri:src/components/export/ExportModal.tsx | UI自行调用generateExportHtml及原生函数；使用旧导出逻辑，非当前ExportService单busy/完整A4路径 | 不能直接覆盖当前弹窗或照搬其顶层流程，否则回退架构及P5行为 |
+| 路径                                                 | 本地代码证据                                                                                                      | 结论                                                                      |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| tauri:src/core/platform/desktop.ts / exportPdfDirect | 调用原生save，defaultPath使用所选名称并补.pdf；取消保存时不invoke                                                 | 原生建议文件名及路径选择逻辑已存在，可参考                                |
+| 同函数调用export_pdf_direct                          | 将冻结HTML和target_path传给Rust；invoke成功后显示“已成功导出矢量PDF”                                              | 前端返回值不能单独证明文件已生成                                          |
+| tauri:src-tauri/src/lib.rs / export_pdf_direct       | 创建目标父目录，向系统临时目录写markflow_print_时间戳.html，然后直接Ok；未调用WebView PDF生成API、未写target_path | 当前仍为占位，不是已完成的PDF生成；会产生虚假成功反馈，临时HTML也没有清理 |
+| tauri:src/components/export/ExportModal.tsx          | UI自行调用generateExportHtml及原生函数；使用旧导出逻辑，非当前ExportService单busy/完整A4路径                      | 不能直接覆盖当前弹窗或照搬其顶层流程，否则回退架构及P5行为                |
 
 本轮只读检查源码，不运行原生构建或命令；不能把API命名、注释“原生静默导出”或Web单元替身当成PDF生成/落盘证据。这里指出的是当前可访问的本地提交状态，不推断其他未同步修改。
 

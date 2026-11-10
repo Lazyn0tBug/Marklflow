@@ -6,12 +6,12 @@
 
 ## 0. 摘要
 
-| # | 现象 | 归属 | 状态 |
-|---|---|---|---|
-| 1 | DOCX 中 §2.2 首公式（`\begin{pmatrix}` 矩阵）是**空对象框**：有图片框、无内容 | 本轮引入（公式从「一律图片」改为「三态判定」后才出现降级图片路径） | 根因已定位为**两个叠加因素**（见 §1.5），已修；待用户在 Word 复核 |
-| 2 | PDF 需第二次打印才出内容 | **既有缺陷**（基线即有），本轮 A1 改动（视口内 + 延迟释放）**未命中根因** | 已加诊断探针与一项低风险缓解，待现场判别 |
-| 3 | DOCX 显示「已保存文件」但目标位置没有文件 | **既有缺陷**（基线即有）：回执由 `close()` resolve 推定，无回读校验、无兜底 | 已改为「顺序归位 + 回读校验 + 兜底下载」，**现场已确认文件落位**（§3） |
-| 4 | PDF 打印成功但没有结果通知 | **既有缺陷**（基线即有）：结果只渲染在导出对话框内部，被系统打印对话框遮住 | 已改为应用层常驻通知，**现场已确认可见**（§4） |
+| #   | 现象                                                                          | 归属                                                                        | 状态                                                                   |
+| --- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | DOCX 中 §2.2 首公式（`\begin{pmatrix}` 矩阵）是**空对象框**：有图片框、无内容 | 本轮引入（公式从「一律图片」改为「三态判定」后才出现降级图片路径）          | 根因已定位为**两个叠加因素**（见 §1.5），已修；待用户在 Word 复核      |
+| 2   | PDF 需第二次打印才出内容                                                      | **既有缺陷**（基线即有），本轮 A1 改动（视口内 + 延迟释放）**未命中根因**   | 已加诊断探针与一项低风险缓解，待现场判别                               |
+| 3   | DOCX 显示「已保存文件」但目标位置没有文件                                     | **既有缺陷**（基线即有）：回执由 `close()` resolve 推定，无回读校验、无兜底 | 已改为「顺序归位 + 回读校验 + 兜底下载」，**现场已确认文件落位**（§3） |
+| 4   | PDF 打印成功但没有结果通知                                                    | **既有缺陷**（基线即有）：结果只渲染在导出对话框内部，被系统打印对话框遮住  | 已改为应用层常驻通知，**现场已确认可见**（§4）                         |
 
 ---
 
@@ -57,12 +57,12 @@ $$H = \hbar \begin{pmatrix} \frac{\omega_q}{2} & g \cos(\omega_d t) \\ g \cos(\o
 
 **图片段落的结构与尺寸**（`wp:extent` 为 96dpi 像素）：
 
-| 段落 | 内容 | extent | 媒体 | PNG 尺寸/体积 | PNG 墨量（不透明像素） |
-|---|---|---|---|---|---|
-| 13 | §2 的 `\sum` 公式 | 360×33 | `9455557c.svg` + `0b563622.png` | 720×66 / 9445 B | 5323 |
-| **18** | **§2.2 矩阵公式** | **255×55** | `88ea206a.svg` + `1ff76309.png` | **511×110 / 10209 B** | **4999** |
-| 26 | mermaid 图表 | 643×324 | `a8316c4a.svg` + `fd143b9.png` | 1286×648 / 81806 B | 54598 |
-| 29 | graphviz 图表 | 643×352 | `6575cc61.svg` + `e51d70ca.png` | 1286×704 / 120746 B | 52410 |
+| 段落   | 内容              | extent     | 媒体                            | PNG 尺寸/体积         | PNG 墨量（不透明像素） |
+| ------ | ----------------- | ---------- | ------------------------------- | --------------------- | ---------------------- |
+| 13     | §2 的 `\sum` 公式 | 360×33     | `9455557c.svg` + `0b563622.png` | 720×66 / 9445 B       | 5323                   |
+| **18** | **§2.2 矩阵公式** | **255×55** | `88ea206a.svg` + `1ff76309.png` | **511×110 / 10209 B** | **4999**               |
+| 26     | mermaid 图表      | 643×324    | `a8316c4a.svg` + `fd143b9.png`  | 1286×648 / 81806 B    | 54598                  |
+| 29     | graphviz 图表     | 643×352    | `6575cc61.svg` + `e51d70ca.png` | 1286×704 / 120746 B   | 52410                  |
 
 ⇒ **在这个文件里，PNG 兜底是有内容的**（4999 个不透明墨点）；而用户另行解包得到的是 **347 字节、510×110、全部像素 alpha=0 的空白 PNG** ⇒ **同一段代码在不同环境/时序下会产出空白位图** ⇒ 兜底不可靠。
 
@@ -86,12 +86,12 @@ $$H = \hbar \begin{pmatrix} \frac{\omega_q}{2} & g \cos(\omega_d t) \\ g \cos(\o
 
 **媒体 SVG 的标签清单**（决定性差异）：
 
-| 媒体 | use | defs | path | rect | viewBox |
-|---|---|---|---|---|---|
-| `9455557c`（§2 `\sum` 公式） | **36** | 1 | 22 | 3 | ✓ |
-| `88ea206a`（§2.2 矩阵公式） | **32** | 1 | 18 | 2 | ✓ |
-| `a8316c4a`（mermaid） | **0** | 0 | 10 | 9 | ✓ |
-| `6575cc61`（graphviz） | **0** | 1 | 6 | 13 | ✓ |
+| 媒体                         | use    | defs | path | rect | viewBox |
+| ---------------------------- | ------ | ---- | ---- | ---- | ------- |
+| `9455557c`（§2 `\sum` 公式） | **36** | 1    | 22   | 3    | ✓       |
+| `88ea206a`（§2.2 矩阵公式）  | **32** | 1    | 18   | 2    | ✓       |
+| `a8316c4a`（mermaid）        | **0**  | 0    | 10   | 9    | ✓       |
+| `6575cc61`（graphviz）       | **0**  | 1    | 6    | 13   | ✓       |
 
 ⇒ **两条公式 SVG 都靠 `<use xlink:href>` 复用字形；两条图表 SVG 不用 `<use>`** ⇒ 与「只有公式空、图表正常」的现场现象一致。
 
@@ -116,20 +116,33 @@ MathJax 3.2.2 输出中 Word 不友好的写法（实测取自本仓库产物）
 `src/core/export/outputCapabilities.ts`：
 
 ```ts
-if(node.hasAttribute('data-mf-math-id')){
- const plan=planDocxFormula(node);
- if(plan.kind==='native')continue;
- if(plan.kind==='fallback'&&node.querySelector('svg'))add(node,'static',DOCX_FORMULA_IMAGE_MESSAGE,plan.reason+'；源式：'+docxFormulaSource(node));
- else add(node,'unsupported',plan.kind==='fallback'?'公式没有可用的图像后备：'+plan.reason:plan.reason);
- continue;
+if (node.hasAttribute("data-mf-math-id")) {
+  const plan = planDocxFormula(node);
+  if (plan.kind === "native") continue;
+  if (plan.kind === "fallback" && node.querySelector("svg"))
+    add(
+      node,
+      "static",
+      DOCX_FORMULA_IMAGE_MESSAGE,
+      plan.reason + "；源式：" + docxFormulaSource(node),
+    );
+  else
+    add(
+      node,
+      "unsupported",
+      plan.kind === "fallback" ? "公式没有可用的图像后备：" + plan.reason : plan.reason,
+    );
+  continue;
 }
 ```
 
 `src/core/export/mathmlToOoml.ts`（`mtable`/`munder`/`mover` 等判为 fallback）：
 
 ```ts
-if(tag==='munder'||tag==='mover'||tag==='munderover')return {ok:false,reason:'公式包含上下限结构（求和、积分、极限、重音）'};
-if(tag==='mtable'||tag==='mtr'||tag==='mtd'||tag==='mlabeledtr')return {ok:false,reason:'公式包含矩阵或表格结构'};
+if (tag === "munder" || tag === "mover" || tag === "munderover")
+  return {ok: false, reason: "公式包含上下限结构（求和、积分、极限、重音）"};
+if (tag === "mtable" || tag === "mtr" || tag === "mtd" || tag === "mlabeledtr")
+  return {ok: false, reason: "公式包含矩阵或表格结构"};
 ```
 
 ⇒ 矩阵（`mtable`）⇒ fallback ⇒ 走图片路径 ⇒ **本轮才第一次产生「Word 里可能空的公式图」**（改动前所有公式都是图片，但那时用户看到的是图片正常渲染 ⇒ 说明**图片路径本身在当时是没问题的**；现在空，是因为新路径下的 SVG/PNG 组合不同 ⇒ 见 §1.5）。
@@ -167,13 +180,13 @@ async function rasterImage(source:string,width:number,height:number):Promise<Uin
 
 ### 1.4 错误细节
 
-| 现象 | 细节 |
-|---|---|
-| Word 侧 | 公式位置是一个**有边框尺寸、无内容**的对象框（图片框已按 255×55 px 排版，但未绘制任何像素） |
-| 位图侧（用户解包） | `word/media/image1.png`：**347 字节**、510×110、**56100 个像素全部 alpha=0** |
-| 位图侧（本机复现） | 同一条公式的 PNG：10209 字节、511×110、4999 个不透明墨点 ⇒ **空白与否取决于时序/环境，不稳定** |
-| 空白 PNG 的成因 | **推断**：`image.decode()` 在 SVG 的 `<use>` 引用就绪前 resolve ⇒ `drawImage` 得到空白画布；原实现不做任何检查 ⇒ 静默写出空白图。**成因未被证实**（本机复现不出空白），但「绘制后校验 alpha、重试、失败即中止」不依赖成因判断，故仍然成立 |
-| 矢量侧 | **两条关于 Word 行为的判断目前只有间接证据**：① Word 不解析 MathJax 的 `<use>` 字形复用；② Word 优先用 `svgBlip` 且画不出时不回退 PNG。两者的检索线索见下（标题指向「Word 渲染 SVG 有问题」，但正文未读到），**在 Word 中复核仍是必需的一步**；本轮实现已改为**不依赖这两条判断**（见 §1.7） |
+| 现象                         | 细节                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Word 侧                      | 公式位置是一个**有边框尺寸、无内容**的对象框（图片框已按 255×55 px 排版，但未绘制任何像素）                                                                                                                                                                                                                                                                                                                                                            |
+| 位图侧（用户解包）           | `word/media/image1.png`：**347 字节**、510×110、**56100 个像素全部 alpha=0**                                                                                                                                                                                                                                                                                                                                                                           |
+| 位图侧（本机复现）           | 同一条公式的 PNG：10209 字节、511×110、4999 个不透明墨点 ⇒ **空白与否取决于时序/环境，不稳定**                                                                                                                                                                                                                                                                                                                                                         |
+| 空白 PNG 的成因              | **推断**：`image.decode()` 在 SVG 的 `<use>` 引用就绪前 resolve ⇒ `drawImage` 得到空白画布；原实现不做任何检查 ⇒ 静默写出空白图。**成因未被证实**（本机复现不出空白），但「绘制后校验 alpha、重试、失败即中止」不依赖成因判断，故仍然成立                                                                                                                                                                                                              |
+| 矢量侧                       | **两条关于 Word 行为的判断目前只有间接证据**：① Word 不解析 MathJax 的 `<use>` 字形复用；② Word 优先用 `svgBlip` 且画不出时不回退 PNG。两者的检索线索见下（标题指向「Word 渲染 SVG 有问题」，但正文未读到），**在 Word 中复核仍是必需的一步**；本轮实现已改为**不依赖这两条判断**（见 §1.7）                                                                                                                                                           |
 | 上游线索（标题级，正文未读） | [metanorma/metanorma-iso#226「Word: SVG images showing up as blank space in Word Doc」](https://github.com/metanorma/metanorma-iso/issues/226)；[「Office cannot handle basic SVG text」](https://learn.microsoft.com/en-us/answers/questions/5161307/office-cannot-handle-basic-svg-text)；[「Word doesn't rasterize your Mermaid SVG — it drops the labels」](https://teckdeck.io/posts/word-doesn-t-rasterize-your-mermaid-svg-it-drops-the-labels) |
 
 ### 1.5 因果链（两个因素叠加，缺一不空）
@@ -194,12 +207,12 @@ PNG 兜底在 <use> 引用就绪前被栅格化 ──► 全透明空白位图�
 
 ### 1.6 测试用例
 
-| 层次 | 用例 | 断言 |
-|---|---|---|
-| 单元（转换器） | `tests/unit/docx-math-ooml.test.ts` | 真实 MathJax 语料逐例判定 native/fallback；源式不入方程；原生公式导出后无 `<w:drawing>` |
-| e2e（同意流 + 媒体契约） | `tests/e2e/docx-diagnostics.spec.ts` | 2 个降级公式 ⇒ 一致性提示「本次 2 个公式」；下载后的 docx：含 `svgBlip`（矢量副本在位）、**每个 PNG 体积 > 1 KB**（空白位图约 350 B） |
-| e2e（原生 DOCX 结构） | `tests/e2e/html-compatibility.spec.ts`「exports native DOCX structure with a native formula and embedded diagram pictures」 | 原生公式为 `<m:oMath>`；图表仍为图片；媒体数量 |
-| 人工（必须在 Word 做） | 导出初始样本 → Word 打开 → 看 §2.2 首公式 | 公式可见（矢量或位图皆可），非空对象框 |
+| 层次                     | 用例                                                                                                                        | 断言                                                                                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 单元（转换器）           | `tests/unit/docx-math-ooml.test.ts`                                                                                         | 真实 MathJax 语料逐例判定 native/fallback；源式不入方程；原生公式导出后无 `<w:drawing>`                                               |
+| e2e（同意流 + 媒体契约） | `tests/e2e/docx-diagnostics.spec.ts`                                                                                        | 2 个降级公式 ⇒ 一致性提示「本次 2 个公式」；下载后的 docx：含 `svgBlip`（矢量副本在位）、**每个 PNG 体积 > 1 KB**（空白位图约 350 B） |
+| e2e（原生 DOCX 结构）    | `tests/e2e/html-compatibility.spec.ts`「exports native DOCX structure with a native formula and embedded diagram pictures」 | 原生公式为 `<m:oMath>`；图表仍为图片；媒体数量                                                                                        |
+| 人工（必须在 Word 做）   | 导出初始样本 → Word 打开 → 看 §2.2 首公式                                                                                   | 公式可见（矢量或位图皆可），非空对象框                                                                                                |
 
 ### 1.7 本轮已实施的修复（`src/core/export/docxExporter.ts`）
 
@@ -223,61 +236,93 @@ PNG 兜底在 <use> 引用就绪前被栅格化 ──► 全透明空白位图�
 
 ### 2.2 归属与已排除项
 
-| 项 | 结论 | 依据 |
-|---|---|---|
-| 是否本轮引入 | **否**，既有缺陷 | 基线（37f7389）同样复现 |
-| 打印目标是谁的文档 | **打印的是 iframe 自己的文档**（`iframe.contentWindow.print()`），不是父文档的快照 | [printThis #112](https://github.com/jasonday/printThis/issues/112)：对 iframe 的 `contentWindow` 先 `focus()` 再 `print()`，打印的是该 iframe 自身内容 |
-| 「让父窗口先合成，父窗口截取快照」 | **前提不成立**（证据指向不成立，非已证伪） | 同上；因此「把帧放进视口 / 改 `opacity` / 父窗口等两帧」这类改动**对准的不是根因** |
-| 是否需要 `allow-scripts`（tauri 的做法） | **不需要** | 交付给打印宿主的 HTML **不含任何脚本**：`grep '<script'` 在 `pdfExporter.ts` / `htmlPaginator.ts` / `pagedJsAdapter.ts` 零命中；内容是主文档里已分页好的静态页 |
-| 「宿主过早被移除」是不是本症状 | **不是同一现象** | [Print.js #572](https://github.com/crabbly/Print.js/issues/572)、[jQuery.print #40](https://github.com/DoersGuild/jQuery.print/issues/40) 记录的是「打印对话框弹出但什么都没打印」，与「第二次才正常」不同 ⇒ 延迟释放方向合理，但不能直接当作本症状的解 |
-| 是否内容未就绪 | **待判别** | 需要现场事实（§2.4 的实验 A/B/C） |
+| 项                                       | 结论                                                                               | 依据                                                                                                                                                                                                                                                    |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 是否本轮引入                             | **否**，既有缺陷                                                                   | 基线（37f7389）同样复现                                                                                                                                                                                                                                 |
+| 打印目标是谁的文档                       | **打印的是 iframe 自己的文档**（`iframe.contentWindow.print()`），不是父文档的快照 | [printThis #112](https://github.com/jasonday/printThis/issues/112)：对 iframe 的 `contentWindow` 先 `focus()` 再 `print()`，打印的是该 iframe 自身内容                                                                                                  |
+| 「让父窗口先合成，父窗口截取快照」       | **前提不成立**（证据指向不成立，非已证伪）                                         | 同上；因此「把帧放进视口 / 改 `opacity` / 父窗口等两帧」这类改动**对准的不是根因**                                                                                                                                                                      |
+| 是否需要 `allow-scripts`（tauri 的做法） | **不需要**                                                                         | 交付给打印宿主的 HTML **不含任何脚本**：`grep '<script'` 在 `pdfExporter.ts` / `htmlPaginator.ts` / `pagedJsAdapter.ts` 零命中；内容是主文档里已分页好的静态页                                                                                          |
+| 「宿主过早被移除」是不是本症状           | **不是同一现象**                                                                   | [Print.js #572](https://github.com/crabbly/Print.js/issues/572)、[jQuery.print #40](https://github.com/DoersGuild/jQuery.print/issues/40) 记录的是「打印对话框弹出但什么都没打印」，与「第二次才正常」不同 ⇒ 延迟释放方向合理，但不能直接当作本症状的解 |
+| 是否内容未就绪                           | **待判别**                                                                         | 需要现场事实（§2.4 的实验 A/B/C）                                                                                                                                                                                                                       |
 
 ### 2.3 问题源码（`src/core/platform/web/pdfDelivery.ts`，当前实现）
 
 ```ts
-import {withDeadline,waitForLayout} from '../../export/documentPrint';
+import {withDeadline, waitForLayout} from "../../export/documentPrint";
 /** Web-only native PDF handoff. Input is complete frozen HTML, never source or PDF bytes. */
 /** The system spooler keeps reading after the print dialog closes; destroying the frame too early truncates the output. */
-export const FRAME_RELEASE_DELAY=1500;
-let activeFrame:HTMLIFrameElement|null=null;
+export const FRAME_RELEASE_DELAY = 1500;
+let activeFrame: HTMLIFrameElement | null = null;
 
-function removeFrame(frame:HTMLIFrameElement):void{
- try{frame.remove()}catch{}
- if(activeFrame===frame)activeFrame=null;
+function removeFrame(frame: HTMLIFrameElement): void {
+  try {
+    frame.remove();
+  } catch {}
+  if (activeFrame === frame) activeFrame = null;
 }
 /** Release the print host after the spooler had time to flush, never before. */
-export function scheduleFrameRelease(frame:HTMLIFrameElement):void{
- setTimeout(()=>removeFrame(frame),FRAME_RELEASE_DELAY);
+export function scheduleFrameRelease(frame: HTMLIFrameElement): void {
+  setTimeout(() => removeFrame(frame), FRAME_RELEASE_DELAY);
 }
-async function preparePrintFrame(html:string):Promise<HTMLIFrameElement>{
- if(activeFrame)removeFrame(activeFrame);
- const frame=document.createElement('iframe');frame.title='PDF导出文档';frame.setAttribute('aria-hidden','true');
- frame.setAttribute('sandbox','allow-same-origin allow-modals');
- frame.style.cssText='position:fixed;left:-20000px;top:0;width:794px;height:1123px;border:0';
- const loaded=new Promise<void>((resolve,reject)=>{frame.onload=()=>resolve();frame.onerror=()=>reject(new Error('打印文档加载失败'))});
- const controller=new AbortController();
- const leave=()=>{controller.abort(new Error('PDF导出页面已离开'));removeFrame(frame)};
- frame.srcdoc=html;
- try{
-  window.addEventListener('pagehide',leave,{once:true});document.body.append(frame);
-  await withDeadline(loaded,'打印文档就绪超时',20000,controller.signal);
-  const doc=frame.contentDocument;if(!doc)throw new Error('PDF导出文档不可读取');
-  await waitForLayout(doc,doc,controller.signal);controller.signal.throwIfAborted();
-  activeFrame=frame;return frame;
- }catch(error){removeFrame(frame);throw error}
- finally{window.removeEventListener('pagehide',leave);frame.onload=null;frame.onerror=null}
+async function preparePrintFrame(html: string): Promise<HTMLIFrameElement> {
+  if (activeFrame) removeFrame(activeFrame);
+  const frame = document.createElement("iframe");
+  frame.title = "PDF导出文档";
+  frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("sandbox", "allow-same-origin allow-modals");
+  frame.style.cssText = "position:fixed;left:-20000px;top:0;width:794px;height:1123px;border:0";
+  const loaded = new Promise<void>((resolve, reject) => {
+    frame.onload = () => resolve();
+    frame.onerror = () => reject(new Error("打印文档加载失败"));
+  });
+  const controller = new AbortController();
+  const leave = () => {
+    controller.abort(new Error("PDF导出页面已离开"));
+    removeFrame(frame);
+  };
+  frame.srcdoc = html;
+  try {
+    window.addEventListener("pagehide", leave, {once: true});
+    document.body.append(frame);
+    await withDeadline(loaded, "打印文档就绪超时", 20000, controller.signal);
+    const doc = frame.contentDocument;
+    if (!doc) throw new Error("PDF导出文档不可读取");
+    await waitForLayout(doc, doc, controller.signal);
+    controller.signal.throwIfAborted();
+    activeFrame = frame;
+    return frame;
+  } catch (error) {
+    removeFrame(frame);
+    throw error;
+  } finally {
+    window.removeEventListener("pagehide", leave);
+    frame.onload = null;
+    frame.onerror = null;
+  }
 }
-export async function deliverPdfHtml(html:string):Promise<void>{
- const frame=await preparePrintFrame(html);
- const view=frame.contentWindow;if(!view){removeFrame(frame);throw new Error('PDF导出窗口不可读取')}
- const cleanup=()=>{view.removeEventListener('afterprint',cleanup);window.removeEventListener('pagehide',cleanup);removeFrame(frame)};
- // Print readiness comes from load/decode/fonts/layout inside the host document, never from an arbitrary sleep.
- try{
-  view.addEventListener('afterprint',()=>scheduleFrameRelease(frame),{once:true});
-  window.addEventListener('afterprint',()=>scheduleFrameRelease(frame),{once:true});
-  window.addEventListener('pagehide',cleanup,{once:true});
-  view.focus();view.print();
- }catch(error){cleanup();throw error}
+export async function deliverPdfHtml(html: string): Promise<void> {
+  const frame = await preparePrintFrame(html);
+  const view = frame.contentWindow;
+  if (!view) {
+    removeFrame(frame);
+    throw new Error("PDF导出窗口不可读取");
+  }
+  const cleanup = () => {
+    view.removeEventListener("afterprint", cleanup);
+    window.removeEventListener("pagehide", cleanup);
+    removeFrame(frame);
+  };
+  // Print readiness comes from load/decode/fonts/layout inside the host document, never from an arbitrary sleep.
+  try {
+    view.addEventListener("afterprint", () => scheduleFrameRelease(frame), {once: true});
+    window.addEventListener("afterprint", () => scheduleFrameRelease(frame), {once: true});
+    window.addEventListener("pagehide", cleanup, {once: true});
+    view.focus();
+    view.print();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
 }
 ```
 
@@ -289,18 +334,24 @@ export async function deliverPdfHtml(html:string):Promise<void>{
 
 现象是「第一次不出、第二次出」，必须先分清是哪一种：
 
-| 分支 | 判别方式 | 若成立，修法方向 |
-|---|---|---|
+| 分支                | 判别方式                                   | 若成立，修法方向                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **A. 内容没准备好** | 第一次点打印，打印对话框里的**预览是空的** | 就绪等待要覆盖「首次打印才完成的异步工作」：宿主窗口内的图片解码、字体、`content-visibility`、`decoding=async`、延迟图片；当前 `waitForLayout` 只等布局与 `img`/`svg image` 的 `decode()`，不覆盖其余 |
-| **B. Spooler 侧空** | 预览**有内容**，但保存出的 PDF 为空 | 宿主在打印期间必须存活且可被 Spooler 读取（当前 1500 ms 延迟释放是否足够） |
+| **B. Spooler 侧空** | 预览**有内容**，但保存出的 PDF 为空        | 宿主在打印期间必须存活且可被 Spooler 读取（当前 1500 ms 延迟释放是否足够）                                                                                                                            |
 
 ⇒ **诊断探针已就绪**（`tests/fixtures/architecture/web-native-pdf-probe-client.ts`）：
 
 - **实验 A（就绪时序）**：探针支持 `?settle=<毫秒>`，会把**真正发起打印**的时刻延后 ⇒ 打开 `/tests/fixtures/architecture/web-native-pdf-probe.html?settle=4000` 再导出：若首次打印就正常 ⇒ 根因是就绪时序（候选 1/2）；仍为空 ⇒ 转向宿主或渲染层。**该开关只在探针侧，不改产品行为。**
 - **实验 B（就绪指标）**：`beforeprint` 时记录 `printReadiness`：
   ```json
-  { "incompleteImages": 0, "imageCount": 0, "fontsStatus": "loaded",
-    "lazyImages": 0, "contentVisibility": 0, "pagesWithSize": 6 }
+  {
+    "incompleteImages": 0,
+    "imageCount": 0,
+    "fontsStatus": "loaded",
+    "lazyImages": 0,
+    "contentVisibility": 0,
+    "pagesWithSize": 6
+  }
   ```
   外加 `printHostState`（宿主矩形、`readyState`、`innerWidth/Height`、页数、首屏尺寸、透明度、视口、`visibilityState`）。
 - **实验 C（现场事实）**：记录第一次打印对话框的**预览是否为空**。
@@ -309,11 +360,11 @@ export async function deliverPdfHtml(html:string):Promise<void>{
 
 ### 2.5 测试用例
 
-| 层次 | 用例 | 断言 |
-|---|---|---|
-| 单元 | `tests/unit/pdf-delivery.test.ts` | 帧样式在视口内且不含负偏移；就绪后才 `print()`；`afterprint` 后**不立即**销毁、延迟后销毁；`pagehide` 立即销毁 |
-| e2e（契约） | `tests/e2e/web-native-pdf-baseline.spec.ts` | 交接后 `remainingFrames:1`（事件瞬间）→ `settledFrames:0`（释放后）；打印失败/就绪期离开/交接后离开三种路径都清理干净 |
-| 人工 | `docs/acceptance/ex-w0-native-manual-checklist-2026-10-27.md` | 系统保存对话框的真实结果、默认名、取消行为、页数与正文完整性（**自动化 PDF 不作为系统保存证据**） |
+| 层次        | 用例                                                          | 断言                                                                                                                  |
+| ----------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 单元        | `tests/unit/pdf-delivery.test.ts`                             | 帧样式在视口内且不含负偏移；就绪后才 `print()`；`afterprint` 后**不立即**销毁、延迟后销毁；`pagehide` 立即销毁        |
+| e2e（契约） | `tests/e2e/web-native-pdf-baseline.spec.ts`                   | 交接后 `remainingFrames:1`（事件瞬间）→ `settledFrames:0`（释放后）；打印失败/就绪期离开/交接后离开三种路径都清理干净 |
+| 人工        | `docs/acceptance/ex-w0-native-manual-checklist-2026-10-27.md` | 系统保存对话框的真实结果、默认名、取消行为、页数与正文完整性（**自动化 PDF 不作为系统保存证据**）                     |
 
 ### 2.6 本轮已做的改动（已收敛为「有依据的最小集」）
 

@@ -1,5 +1,9 @@
-import {it,expect} from 'vitest';
-import {nativeCategories,vocabularyGap,readVocabulary} from '../../scripts/check-message-vocabulary';
+import {it, expect} from 'vitest';
+import {
+  nativeCategories,
+  vocabularyGap,
+  readVocabulary,
+} from '../../scripts/check-message-vocabulary';
 import {MESSAGE_CATEGORIES} from '../../src/application/messages';
 
 /**
@@ -9,9 +13,9 @@ import {MESSAGE_CATEGORIES} from '../../src/application/messages';
  * ⇒ ⇒ 少一个类别这件事不会"没人发现" ✓。
  */
 
-it('takes the categories from the macro call, not from the macro definition',()=>{
+it('takes the categories from the macro call, not from the macro definition', () => {
   // 宏的定义里有 `$name` ✓ ⇒ 那里不是类别 ✓。
-  const text=[
+  const text = [
     'macro_rules! web_error_categories {',
     '    ($($variant:ident => $name:literal),*) => {}',
     '}',
@@ -24,27 +28,32 @@ it('takes the categories from the macro call, not from the macro definition',()=
   expect(nativeCategories(text)).toEqual(['one']);
 });
 
-it('refuses to guess when the listing changes shape',()=>{
+it('refuses to guess when the listing changes shape', () => {
   // 解析不出就响着失败 ✓：宁可失败 ✓，不可静默放过 ✓。
-  expect(()=>nativeCategories('web_error_categories! {\n    One "one",\n}\n')).toThrow();
-  expect(()=>nativeCategories('nothing here')).toThrow();
+  expect(() => nativeCategories('web_error_categories! {\n    One "one",\n}\n')).toThrow();
+  expect(() => nativeCategories('nothing here')).toThrow();
 });
 
-it('reports the categories the two sides do not share',()=>{
-  const gap=vocabularyGap(['a','b'],['b','c']);
+it('reports the categories the two sides do not share', () => {
+  const gap = vocabularyGap(['a', 'b'], ['b', 'c']);
   expect(gap.missingInNative).toEqual(['c']);
   expect(gap.missingInWeb).toEqual(['a']);
 });
 
-it('reports a category that appears twice',()=>{
-  const gap=vocabularyGap(['a','a'],['a']);
+it('reports a category that appears twice', () => {
+  const gap = vocabularyGap(['a', 'a'], ['a']);
   expect(gap.duplicatedInNative).toEqual(['a']);
   expect(gap.duplicatedInWeb).toEqual([]);
 });
 
-it('has the two sides on the same list right now',()=>{
-  const {native,web}=readVocabulary();
-  const gap=vocabularyGap(native,web);
-  expect(gap).toEqual({missingInNative:[],missingInWeb:[],duplicatedInNative:[],duplicatedInWeb:[]});
+it('has the two sides on the same list right now', () => {
+  const {native, web} = readVocabulary();
+  const gap = vocabularyGap(native, web);
+  expect(gap).toEqual({
+    missingInNative: [],
+    missingInWeb: [],
+    duplicatedInNative: [],
+    duplicatedInWeb: [],
+  });
   expect(native.length).toBe(MESSAGE_CATEGORIES.length);
 });

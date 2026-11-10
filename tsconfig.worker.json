@@ -2,10 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "types": [],
-    "lib": [
-      "ES2022",
-      "WebWorker"
-    ]
+    "lib": ["ES2022", "WebWorker"]
   },
   "include": [
     "src/core/model/**/*",

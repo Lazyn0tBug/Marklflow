@@ -19,8 +19,8 @@
  * 墨迹自基线向上 ascent、向下 descent ⇒ 中心在基线上方 (ascent − descent)/2 处 ✓。
  * CJK 的字形填满字身框 ⇒ ascent 大 ⇒ 中心偏上 ⇒ 图标要相应上移 ✓。
  */
-export function inkCenterOffset(ascent:number,descent:number):number{
- return (ascent-descent)/2;
+export function inkCenterOffset(ascent: number, descent: number): number {
+  return (ascent - descent) / 2;
 }
 
 /**
@@ -29,27 +29,28 @@ export function inkCenterOffset(ascent:number,descent:number):number{
  * @param text 用来取样的一段文字（它的墨迹中心就是对齐的目标）。
  * @param slot 图标所在的折叠槽（提供图标当前的位置）。
  */
-export function measureOpticalShift(text:HTMLElement,slot:HTMLElement):number{
- const style=getComputedStyle(text);
- const fontSize=parseFloat(style.fontSize);
- if(!(fontSize>0))return 0;
+export function measureOpticalShift(text: HTMLElement, slot: HTMLElement): number {
+  const style = getComputedStyle(text);
+  const fontSize = parseFloat(style.fontSize);
+  if (!(fontSize > 0)) return 0;
 
- const probe=document.createElement('span');
- probe.style.cssText='display:inline-block;width:0;height:0;vertical-align:baseline';
- text.appendChild(probe);
- const baseline=probe.getBoundingClientRect().bottom;
- probe.remove();
+  const probe = document.createElement('span');
+  probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+  text.appendChild(probe);
+  const baseline = probe.getBoundingClientRect().bottom;
+  probe.remove();
 
- const context=document.createElement('canvas').getContext('2d');
- if(!context)return 0;
- context.font=`${fontSize}px ${style.fontFamily}`;
- const metrics=context.measureText(text.textContent??'');
- const ascent=metrics.actualBoundingBoxAscent,descent=metrics.actualBoundingBoxDescent;
- if(!Number.isFinite(ascent)||!Number.isFinite(descent))return 0;
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return 0;
+  context.font = `${fontSize}px ${style.fontFamily}`;
+  const metrics = context.measureText(text.textContent ?? '');
+  const ascent = metrics.actualBoundingBoxAscent,
+    descent = metrics.actualBoundingBoxDescent;
+  if (!Number.isFinite(ascent) || !Number.isFinite(descent)) return 0;
 
- // 墨迹中心在基线上方 (ascent − descent)/2 处。
- const inkCenter=baseline-inkCenterOffset(ascent,descent);
- const slotBox=slot.getBoundingClientRect();
- const slotCenter=(slotBox.top+slotBox.bottom)/2;
- return inkCenter-slotCenter;
+  // 墨迹中心在基线上方 (ascent − descent)/2 处。
+  const inkCenter = baseline - inkCenterOffset(ascent, descent);
+  const slotBox = slot.getBoundingClientRect();
+  const slotCenter = (slotBox.top + slotBox.bottom) / 2;
+  return inkCenter - slotCenter;
 }
