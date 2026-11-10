@@ -1,12 +1,34 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import {execFileSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {defineConfig, type UserConfig} from 'vite';
+
+/**
+ * **这个前端构建的 commit** ✓ ⇒ ⇒ 页面能报出**它自己的构建** ✓ ⇒ ⇒
+ * 于是日志能回答**页面与原生侧是不是同一个构建** ✓ ⇒ ⇒ 不用问人 ✓。
+ *
+ * **取不到就写 unknown** ✓ ⇒ ⇒ 没有 git 也能构建 ✓ ⇒ ⇒ 不因为标识而失败 ✓。
+ */
+function buildCommit(): string {
+  try {
+    const output = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return output.trim() || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
 
 export default defineConfig((): UserConfig => {
   return {
     plugins: [react(), tailwindcss()],
+    // **页面自己的构建标识** ✓：构建期注入 ✓ ⇒ ⇒ 页面报得出它是哪一次构建 ✓ ⇒ ⇒
+    // 与原生侧那一份同一个 commit ✓ ⇒ ⇒ 日志能对出两边是不是同一个构建 ✓。
+    define: {__MARKFLOW_BUILD_COMMIT__: JSON.stringify(buildCommit())},
     build: {
       /*
        * **用 esbuild 压 CSS** ✓ ⇒ ⇒ 它只压缩，**不改写新特性** ✓。

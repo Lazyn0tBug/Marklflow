@@ -28,7 +28,11 @@ it('the desktop port sends only the category to the log', async () => {
   await tauriMessagePort.report({category: 'export-failed', detail: '原始文本'});
   expect(native.invoke).toHaveBeenCalledOnce();
   const payload = JSON.parse(String(native.invoke.mock.calls[0]?.[1]?.payload));
-  expect(payload).toEqual({event: 'page_error', error_category: 'export-failed'});
+  // **载荷是封闭形状** ✓ ⇒ ⇒ 只有这几样 ✓ ⇒ ⇒ **原始文本不在里面** ✓ ⇒ ⇒
+  // 用户数据不落日志 ✓（基座 §5.2 的硬约束 ✓）。
+  expect(Object.keys(payload).sort()).toEqual(['build', 'error_category', 'event']);
+  expect(payload.event).toBe('page_error');
+  expect(payload.error_category).toBe('export-failed');
   // 原始文本不进日志 ✓（基座 §5.2 的硬约束 ✓）。
   expect(JSON.stringify(payload)).not.toContain('原始文本');
 });

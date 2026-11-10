@@ -230,6 +230,12 @@ pub struct WebEventPayload {
     /// **有界** ✓ ⇒ ⇒ 日志里那一条不会变长 ✓ ⇒ ⇒ 超出就截断 ✓。
     #[serde(default)]
     pub source: Option<String>,
+    /// **页面自己的构建标识** ✓（那个页面的 commit ✓）⇒ ⇒ 日志能对出
+    /// **页面与原生侧是不是同一个构建** ✓ ⇒ ⇒ 不用问人那个包是不是新的 ✓。
+    ///
+    /// **有界** ✓ ⇒ ⇒ 日志里那一条不会变长 ✓。
+    #[serde(default)]
+    pub build: Option<String>,
 }
 
 /// web 侧请求的处理结果：accepted（已校验并入队）、dropped（超限丢弃）、rejected（不合规拒收）。
@@ -693,6 +699,11 @@ fn record_web_event_for(
     // 只放业务字段：origin 与身份由发送口统一加（页面不能覆盖）。
     let mut fields: BTreeMap<String, String> = BTreeMap::new();
     fields.insert("page_event".to_owned(), event_kind_name(event.event).to_owned());
+    // **页面自己的构建标识** ✓ ⇒ ⇒ 与运行标记里的 `build_commit` 对一下 ⇒ ⇒
+    // 页面与原生侧是不是同一个构建 ⇒ ⇒ 日志直接答 ✓ ⇒ ⇒ 不用问人 ✓。
+    if let Some(build) = event.build.as_deref() {
+        fields.insert("page_build".to_owned(), build.chars().take(64).collect());
+    }
     // **web 记录也带它被记下的地方** ✓ ⇒ ⇒ **每条记录都有位置** ✓ ⇒ ⇒
     // 页面侧的问题位置在 `source` 里 ✓ ⇒ ⇒ 这一条说的是**原生侧在哪一处收下它** ✓。
     fields.insert("at".to_owned(), location_of(file!(), line!()));
@@ -1907,6 +1918,27 @@ mod tests {
         );
         // **原文 message 仍然不进日志** ✓ ⇒ ⇒ 用户数据不落日志 ✓。
         assert!(!text.contains("message"),"日志里落了原始异常文本：{text}");
+    }
+
+    #[test]
+    fn a_page_error_carries_the_build_of_the_page() {
+        // **页面自己的构建标识进日志** ✓ ⇒ ⇒ 与运行标记里的 `build_commit` 一比 ⇒ ⇒
+        // 页面与原生侧是不是同一个构建 ⇒ ⇒ 日志直接答 ✓ ⇒ ⇒ 不用问人 ✓。
+        let (emitter, receiver, _health) = test_emitter(8);
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("main", "main"),
+                r#"{"event":"page_error","error_category":"rejection","build":"2a1038a"}"#.to_owned(),
+                &emitter
+            ),
+            WEB_ACCEPTED
+        );
+        let record = receiver.try_recv().expect("记录已入队");
+        let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
+        assert!(
+            text.contains("\"page_build\":\"2a1038a\""),
+            "记录里没有页面的构建标识：{text}"
+        );
     }
 
     #[test]
