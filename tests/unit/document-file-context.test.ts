@@ -36,6 +36,20 @@ describe('文档-文件上下文', () => {
     expect(syncStatus(context, 8)).toBe('unsynced');
   });
 
+  it('目标不在了就说目标不在了，不说已同步', () => {
+    const contexts = new DocumentFileContexts();
+    contexts.open('d1', binding('f1'), 7);
+    // **读判断答"不在了"** ✓ ⇒ ⇒ **状态因此说清为什么** ✓ ⇒ ⇒ **不撒谎** ✓（§2.3 ✓、§8.2 ✓）。
+    contexts.markTargetPresent('d1', false);
+    // **不是"已同步"** ✓ ⇒ ⇒ 那个文件已经不在了 ⇒ ⇒ 说"已同步"会骗用户 ✓。
+    expect(syncStatus(contexts.read('d1'), 7)).toBe('target-missing');
+    // **也不是失败** ✓ ⇒ ⇒ 那是一次写的结果，不是这次的状态 ✓ ⇒ ⇒ 失败的字段不写 ✓。
+    expect(contexts.read('d1')?.sync.failure).toBeNull();
+    // **刷新回来就是有效** ✓ ⇒ ⇒ 那是读判断给的答案 ✓ ⇒ ⇒ **不是写的结果** ✓。
+    contexts.markTargetPresent('d1', true);
+    expect(syncStatus(contexts.read('d1'), 7)).toBe('synced');
+  });
+
   it('同一个文件再来一次是聚焦，不是新建', () => {
     const contexts = new DocumentFileContexts();
     contexts.open('d1', binding('f1'), 1);

@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 const render = (
-  syncStatus: 'none' | 'synced' | 'unsynced' | 'failed',
+  syncStatus: 'none' | 'target-missing' | 'synced' | 'unsynced' | 'failed',
   onRetrySync?: () => void,
 ) => {
   act(() => {
@@ -49,6 +49,18 @@ const render = (
     );
   });
 };
+
+it('目标不在了就说清为什么，不与别的说法混着', () => {
+  render('target-missing');
+  // **那一行说清为什么保存灰着** ✓ ⇒ ⇒ **另存为是出路** ✓（§8.2 ✓、§8.6 ✓）。
+  expect(host.textContent).toContain(SYNC_STATUS_TEXTS['target-missing']);
+  // **不与别的说法混着说** ✓ ⇒ ⇒ 那三个各说各的 ✓（§8.4 ✓）。
+  expect(host.textContent).not.toContain(SYNC_STATUS_TEXTS.synced);
+  expect(host.textContent).not.toContain(SYNC_STATUS_TEXTS.unsynced);
+  expect(host.textContent).not.toContain(SYNC_STATUS_TEXTS.failed);
+  // **失败那一句的说清草稿还在不在这儿** ✓ ⇒ ⇒ 那是失败才有的 ✓。
+  expect(host.textContent).not.toContain(SYNC_FAILURE_HINT);
+});
 
 it('失败就说失败，并说清草稿还在', () => {
   render('failed');
