@@ -119,6 +119,20 @@ describe('应用层同步', () => {
     expect(Array.from(writes[0]!.bytes)).toEqual(Array.from(bytes));
   });
 
+  it('基线钉在冻结的那一版，期间的新编辑仍算未同步', async () => {
+    const {syncer, contexts} = setup();
+    const doc = createNewDocument('在写.md');
+    // **写回用的是冻结的那一版** ✓ ⇒ ⇒ 修订是 5 ✓。
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const frozen = doc.revision;
+    await syncer.save({document: doc, bytes});
+    // **基线 = 写出的冻结修订** ✓ ⇒ ⇒ **不是最新的那个** ✓（§6.5 ✓）。
+    expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBe(frozen);
+    // **写回期间又编辑了一次** ✓ ⇒ ⇒ 修订变了 ✓ ⇒ ⇒ **那一次编辑不算进这次写回** ✓
+    // ⇒ ⇒ **仍是未同步** ✓ ⇒ ⇒ **不撒谎** ✓（§6.1 ✓、M5-12 ✓）。
+    expect(syncStatus(contexts.read(doc.id), frozen + 1)).toBe('unsynced');
+  });
+
   it('写回结果只有五种，没有"未尝试"', async () => {
     const {syncer, contexts} = setup();
     const doc = createNewDocument('五种.md');

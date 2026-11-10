@@ -1566,6 +1566,34 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), b"external");
     }
 
+    /// **写失败 ⇒ ⇒ 磁盘上那个文件一个字没变** ✓（M5-3 ✓）。
+    ///
+    /// **走命令体的那一半** ✓ ⇒ ⇒ **不是只在提交那一层验过** ✓ ⇒ ⇒ 临时文件也不留 ✓。
+    #[test]
+    fn a_refused_write_leaves_the_target_exactly_as_it_was() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("原样.md");
+        std::fs::write(&path, b"before").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+
+        // **应用外改过** ✓ ⇒ ⇒ 复核不通过 ⇒ ⇒ 答"变了" ✓ ⇒ ⇒ **不是失败** ✓。
+        std::fs::write(&path, b"external").unwrap();
+        let status = access.write(&grant.key, b"draft", false, false).unwrap();
+        assert_eq!(status, TargetStatus::Changed);
+        // **磁盘上那个文件一个字没变** ✓ ⇒ ⇒ **就是应用外改过的那一份** ✓。
+        assert_eq!(std::fs::read(&path).unwrap(), b"external");
+        // **临时文件不留残骸** ✓ ⇒ ⇒ 目录干净 ✓。
+        let leftovers = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_name() != "原样.md")
+            .count();
+        assert_eq!(leftovers, 0);
+    }
+
     /// **写回落到磁盘** ✓：**命令体的那一半** ✓ ⇒ ⇒ **磁盘上就是那批字节** ✓
     /// ⇒ ⇒ **写出去的那份成为新的基线** ✓ ⇒ ⇒ **下一句检测答"就绪"** ✓（M5-b4 ✓）。
     #[test]

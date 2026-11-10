@@ -1,7 +1,10 @@
 import type {TargetStatus} from '../../src/application/workspace/targetStatus';
 import {describe, expect, it} from 'vitest';
 import {DocumentOpener} from '../../src/application/workspace/documentOpen';
-import {DocumentFileContexts} from '../../src/application/workspace/documentFileContext';
+import {
+  DocumentFileContexts,
+  syncStatus,
+} from '../../src/application/workspace/documentFileContext';
 import {createNewDocument} from '../../src/core/storage/storage';
 import type {ImportFile} from '../../src/application/workspace/sourceImport';
 
@@ -100,6 +103,10 @@ describe('打开本地文件', () => {
     await opener.open(doc, file('本地.md'));
     // **不同 ⇒ ⇒ 基线 null ⇒ ⇒ 按未同步显示 ✓ ⇒ ⇒ 不静默覆盖草稿 ✓**（§2.3 ✓）。
     expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBeNull();
+    // **基线 null ⇒ ⇒ 状态就是未同步** ✓ ⇒ ⇒ **不说已同步** ✓ ⇒ ⇒ 不骗用户 ✓（§2.3 ✓）。
+    expect(syncStatus(contexts.read(doc.id), doc.revision)).toBe('unsynced');
+    // **草稿一个字没动** ✓ ⇒ ⇒ 不静默覆盖草稿 ✓（§2.3 ✓）。
+    expect(contexts.read(doc.id)?.sync.failure).toBeNull();
   });
 
   it('treats a CRLF file as the same content', async () => {
