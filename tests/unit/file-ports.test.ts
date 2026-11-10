@@ -28,9 +28,12 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('桌面端的端口', () => {
   it('问的还是那一版，走原生那句问答', async () => {
-    native.invoke.mockResolvedValueOnce(true);
-    expect(await nativeDiskPorts.sync.sameVersion(selected.key)).toBe(true);
-    expect(native.invoke).toHaveBeenCalledExactlyOnceWith('is_native_synced', {key: selected.key});
+    // **那句检测答的是状态** ✓ ⇒ ⇒ **"就绪"就是那一版** ✓ ⇒ ⇒ 其余都是"不是" ✓。
+    native.invoke.mockResolvedValueOnce('ready');
+    expect(await nativeDiskPorts.sync.detect(selected.key)).toBe('ready');
+    expect(native.invoke).toHaveBeenCalledExactlyOnceWith('detect_native_target', {
+      key: selected.key,
+    });
   });
 
   it('普通写回与覆盖写回走同一条命令，基准由原生侧选', async () => {
@@ -53,24 +56,30 @@ describe('桌面端的端口', () => {
     });
   });
 
-  it('原生侧答一个状态，映射到那一项结果', async () => {
-    // **状态 ⇒ 结果** ✓ ⇒ ⇒ **一处映射** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓（§6.1 ✓）。
+  it('原生侧答一个状态，应用侧按那个状态选处理', async () => {
+    // **它答的就是那个集合里的一个** ✓ ⇒ ⇒ **应用侧不再自己判断** ✓ ⇒ ⇒
+    // **检测与写回共用这一个集合** ✓ ⇒ ⇒ **一处定义** ✓（§6.1 ✓）。
     native.invoke.mockResolvedValueOnce('changed');
-    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toEqual({
-      kind: 'target-changed',
-    });
+    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toBe(
+      'changed',
+    );
     native.invoke.mockResolvedValueOnce('missing');
-    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toEqual({
-      kind: 'missing',
-    });
+    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toBe(
+      'missing',
+    );
     native.invoke.mockResolvedValueOnce('unwritable');
-    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toEqual({
-      kind: 'unwritable',
-    });
+    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toBe(
+      'unwritable',
+    );
     native.invoke.mockResolvedValueOnce('invalid');
-    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toEqual({
-      kind: 'invalid',
-    });
+    expect(await nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync')).toBe(
+      'invalid',
+    );
+    // **写不成就是抛** ✓ ⇒ ⇒ **机器码不出这一层** ✓ ⇒ ⇒ 应用层接住就是失败 ✓（§9 ✓）。
+    native.invoke.mockRejectedValueOnce({code: 'native-io-failed'});
+    await expect(
+      nativeDiskPorts.sync.write(selected.key, new Uint8Array(), 'sync'),
+    ).rejects.toThrow();
   });
 
   it('说继续的那一次写，目标允许不存在', async () => {
@@ -158,7 +167,7 @@ describe('桌面端的端口', () => {
 
 describe('Web 形态的端口', () => {
   it('答不了的就抛，整条同步逻辑不跑', async () => {
-    await expect(webDiskPorts.sync.sameVersion('k')).rejects.toThrow();
+    await expect(webDiskPorts.sync.detect('k')).rejects.toThrow();
     await expect(webDiskPorts.sync.write('k', new Uint8Array(), 'sync')).rejects.toThrow();
     await expect(webDiskPorts.sync.read('k', 'markdown')).rejects.toThrow();
     // **"那个目标还在吗"也答不了** ✓ ⇒ ⇒ 浏览器没有本地文件 ✓ ⇒ ⇒ 抛 ✓。

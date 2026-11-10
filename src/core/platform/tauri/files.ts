@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
 import {FileFailure} from '../fileFailure';
-import type {WriteOutcome} from '../../../application/workspace/documentSyncer';
+import type {TargetStatus} from '../../../application/workspace/targetStatus';
 import {NATIVE_WRITE_BYTE_LIMIT, formatBytes} from '../../model/limits';
 const selectedSchema = z
   .object({
@@ -28,6 +28,15 @@ const nativeFailureSchema = z
  * 机器码的完整清单与分类见[日志基座设计](../../../docs/design/log-base-plan-2026-11-03.md) §5.2 ✓
  * 与[本地文档支持设计](../../../docs/design/local-document-support-2026-11-05.md) §9 ✓。
  */
+
+/**
+ * **目标的状态** ✓：**原生侧归类的那一份** ✓ ⇒ ⇒ **一个封闭的小集合** ✓（§6.1 ✓）。
+ *
+ * **归类在原生侧** ✓ ⇒ ⇒ **处理在应用侧按状态选** ✓ ⇒ ⇒ **两件事分开** ✓。
+ *
+ * **它与应用层那一份是同一个集合** ✓ ⇒ ⇒ **名字对不上就红** ✓（解析失败 ⇒ 抛 ✓）。
+ */
+const targetStatusSchema = z.enum(['ready', 'changed', 'missing', 'unwritable', 'invalid']);
 
 export type NativeSelection = z.infer<typeof selectedSchema>;
 async function invoke(command: string, args?: Record<string, unknown>): Promise<unknown> {
@@ -57,13 +66,26 @@ export async function readNativeText(file: NativeSelection): Promise<string> {
   return z.string().parse(await invoke('read_native_text', {key: file.key}));
 }
 /**
- * 问一句：**这个文件还是应用手上那一版吗** ✓（§3.1 ✓）。
+ * 问一句：**这个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）。
  *
- * **只回一句是或不是** ✓ ⇒ ⇒ 摘要值不出原生侧 ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
- * **答不了的时候给机器码** ✓ ⇒ ⇒ 应用侧据此记 null（"无法证明一致" ✓ §2.3 ✓）。
+ * **它答的是那个集合里的一个** ✓ ⇒ ⇒ **不在了与写不进去也在里面** ✓ ⇒ ⇒
+ * **应用侧按状态选处理** ✓ ⇒ ⇒ **那两条分支因此走得到** ✓。
+ *
+ * **摘要值不出原生侧** ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
+ */
+export async function detectNativeTarget(key: string): Promise<TargetStatus> {
+  return targetStatusSchema.parse(await invoke('detect_native_target', {key}));
+}
+
+/**
+ * **还是那一版吗** ✓：**检测那一句的旧问法** ✓ ⇒ ⇒ 应用层还在用布尔的那一处 ✓
+ * ⇒ ⇒ **答"就绪"就是那一版** ✓ ⇒ ⇒ 其余都是"不是" ✓。
+ *
+ * **它只是上面那句的一个薄包装** ✓ ⇒ ⇒ **状态集合只定义一处** ✓ ⇒ ⇒
+ * **那一句仍然是唯一的检测入口** ✓（§3.1 ✓）。
  */
 export async function isNativeSynced(key: string): Promise<boolean> {
-  return z.boolean().parse(await invoke('is_native_synced', {key}));
+  return (await detectNativeTarget(key)) === 'ready';
 }
 /**
  * 问一句：**这两个文件在同一个目录里吗** ✓（§6.2 ✓）。
@@ -83,34 +105,12 @@ export async function isNativeSameDirectory(first: string, second: string): Prom
  * **只回一句是或不是** ✓ ⇒ ⇒ 目标没了 ⇒ ⇒ 回"否" ✓ ⇒ ⇒ **不是报错** ✓
  * ⇒ ⇒ 那是**关联还有效吗**的答案 ✓ ⇒ ⇒ **不是写失败的结果** ✓。
  *
- * **为什么不用 `is_native_synced` 代替** ✓：目标没了时它只会**报错**（`native-target-missing` ✓）
- * ⇒ ⇒ **那不是答案** ✓ ⇒ ⇒ 关联的有效性要有一句独立的问答 ✓。
+ * **它与检测那一句不是同一件事** ✓：那一句要读整个文件比摘要 ✓ ⇒ ⇒ 贵 ✓；
+ * 这一句只看它在不在 ✓ ⇒ ⇒ 便宜 ✓ ⇒ ⇒ **写完那一次验证读走它** ✓（§6.1 ✓）。
  */
 export async function isNativeTargetPresent(key: string): Promise<boolean> {
   return z.boolean().parse(await invoke('is_native_target_present', {key}));
 }
-/**
- * **目标的状态** ✓：**原生侧归类的那一份** ✓ ⇒ ⇒ **一个封闭的小集合** ✓（§6.1 ✓）。
- *
- * **归类在原生侧** ✓ ⇒ ⇒ **处理在应用侧按状态选** ✓ ⇒ ⇒ **两件事分开** ✓。
- */
-const targetStatusSchema = z.enum(['ready', 'changed', 'missing', 'unwritable', 'invalid']);
-
-/**
- * **状态 ⇒ 结果** ✓：**一处映射** ✓ ⇒ ⇒ **应用侧按这个集合选处理** ✓ ⇒ ⇒
- * **不是每个状态各写一堆判断** ✓（§6.1 ✓）。
- */
-const STATUS_OUTCOMES: Record<
-  z.infer<typeof targetStatusSchema>,
-  Exclude<WriteOutcome['kind'], 'failed'>
-> = {
-  ready: 'written',
-  changed: 'target-changed',
-  missing: 'missing',
-  unwritable: 'unwritable',
-  invalid: 'invalid',
-};
-
 /**
  * **写回原文件** ✓：走受保护的同步入口 ✓ ⇒ ⇒ **复核在命令内部** ✓（§3.1 ✓、§6.1 ✓）。
  *
@@ -125,21 +125,17 @@ export async function writeNativeSync(
   key: string,
   bytes: Uint8Array,
   intent: 'sync' | 'overwrite' | 'continue',
-): Promise<WriteOutcome> {
-  try {
-    const status = targetStatusSchema.parse(
-      await invoke('write_native_sync', {
-        key,
-        bytes: Array.from(bytes),
-        overwrite: intent === 'overwrite',
-        allowMissing: intent === 'continue',
-      }),
-    );
-    return {kind: STATUS_OUTCOMES[status]};
-  } catch (error) {
-    // **真失败** ✓ ⇒ ⇒ 机器码从共享词表来 ✓ ⇒ ⇒ 其余的失败原样带出去 ✓（§9 ✓）。
-    return {kind: 'failed', error};
-  }
+): Promise<TargetStatus> {
+  // **它也答一个状态** ✓ ⇒ ⇒ **写不成就是抛** ✓ ⇒ ⇒ **机器码不出这一层** ✓（§9 ✓）。
+  const status = targetStatusSchema.parse(
+    await invoke('write_native_sync', {
+      key,
+      bytes: Array.from(bytes),
+      overwrite: intent === 'overwrite',
+      allowMissing: intent === 'continue',
+    }),
+  );
+  return status;
 }
 /** 按句柄读文本 ✓：**反向同步要它** ✓（§6.5 ✓）。 */
 export async function readNativeTextByKey(key: string): Promise<string> {

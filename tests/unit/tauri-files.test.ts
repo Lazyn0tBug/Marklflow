@@ -1,5 +1,6 @@
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {
+  detectNativeTarget,
   isNativeSameDirectory,
   isNativeSynced,
   isNativeTargetPresent,
@@ -97,19 +98,29 @@ it('passes only the opaque key to read and release commands and validates read r
   native.invoke.mockResolvedValue(42);
   await expect(readNativeText(selected)).rejects.toThrow();
 });
-it('asks the native side whether the file is still the version the app has', async () => {
-  // **只回一句是或不是** ✓ ⇒ ⇒ 摘要值不出原生侧 ✓ ⇒ ⇒ 应用侧没有第二份事实 ✓（§3.4 ✓）。
-  native.invoke.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-  expect(await isNativeSynced(selected.key)).toBe(true);
-  expect(await isNativeSynced(selected.key)).toBe(false);
-  expect(native.invoke).toHaveBeenNthCalledWith(1, 'is_native_synced', {key: selected.key});
-  // **回的不是布尔就是坏数据** ✓ ⇒ ⇒ 不能悄悄当真 ✓。
+it('asks the native side what state that target is in', async () => {
+  // **它答的是那个集合里的一个** ✓ ⇒ ⇒ **不在了与写不进去也在里面** ✓ ⇒ ⇒
+  // **应用侧按状态选处理** ✓ ⇒ ⇒ **那两条分支因此走得到** ✓（§6.1 ✓）。
+  native.invoke.mockResolvedValueOnce('ready').mockResolvedValueOnce('missing');
+  expect(await detectNativeTarget(selected.key)).toBe('ready');
+  expect(await detectNativeTarget(selected.key)).toBe('missing');
+  expect(native.invoke).toHaveBeenNthCalledWith(1, 'detect_native_target', {key: selected.key});
+  // **回的不是集合里的一个就是坏数据** ✓ ⇒ ⇒ 不能悄悄当真 ✓。
   native.invoke.mockResolvedValueOnce('yes');
-  await expect(isNativeSynced(selected.key)).rejects.toThrow();
-  // **答不了的时候给机器码** ✓ ⇒ ⇒ 应用侧据此记 null ✓（§2.3 ✓）。
+  await expect(detectNativeTarget(selected.key)).rejects.toThrow();
+  // **答不了的时候给机器码** ✓ ⇒ ⇒ 应用侧据此处理 ✓（§9 ✓）。
   const failure = new Error('native state unavailable');
   native.invoke.mockRejectedValueOnce(failure);
-  await expect(isNativeSynced(selected.key)).rejects.toBe(failure);
+  await expect(detectNativeTarget(selected.key)).rejects.toBe(failure);
+});
+
+it('answers the old yes or no question from the same status', async () => {
+  // **它只是那句检测的一个薄包装** ✓ ⇒ ⇒ **状态集合只定义一处** ✓ ⇒ ⇒
+  // **答"就绪"就是那一版** ✓ ⇒ ⇒ 其余都是"不是" ✓。
+  native.invoke.mockResolvedValueOnce('ready').mockResolvedValueOnce('changed');
+  expect(await isNativeSynced(selected.key)).toBe(true);
+  expect(await isNativeSynced(selected.key)).toBe(false);
+  expect(native.invoke).toHaveBeenNthCalledWith(1, 'detect_native_target', {key: selected.key});
 });
 it('asks the native side whether two files sit in the same directory', async () => {
   // **只回一句是或不是** ✓ ⇒ ⇒ 路径不出原生侧 ✓ ⇒ ⇒ 应用侧拿不到路径 ✓（§3.4 ✓）。

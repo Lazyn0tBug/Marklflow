@@ -1,3 +1,4 @@
+import type {TargetStatus} from '../../src/application/workspace/targetStatus';
 import {describe, expect, it} from 'vitest';
 import {DocumentOpener} from '../../src/application/workspace/documentOpen';
 import {DocumentFileContexts} from '../../src/application/workspace/documentFileContext';
@@ -16,7 +17,7 @@ const file = (name: string, fileIdentity = 'f1'): ImportFile & {fileIdentity: st
   fileIdentity,
 });
 
-function setup(options: {sameVersion?: () => Promise<boolean>} = {}) {
+function setup(options: {sameVersion?: () => Promise<TargetStatus>} = {}) {
   const contexts = new DocumentFileContexts();
   const opened: string[] = [];
   const released: string[] = [];
@@ -32,7 +33,7 @@ function setup(options: {sameVersion?: () => Promise<boolean>} = {}) {
       sourceFormat: 'markdown',
     }),
     boundDocument: (reference) => contexts.documentFor(reference),
-    sameVersion: options.sameVersion ?? (async () => true),
+    detect: options.sameVersion ?? (async () => 'ready'),
     releaseHandle: async (handle) => {
       released.push(handle);
     },
@@ -66,7 +67,7 @@ describe('打开本地文件', () => {
         sourceFormat: 'markdown',
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: async () => true,
+      detect: async () => 'ready',
       releaseHandle: async () => {},
     });
     await opener.open(doc, file('本地.md'));
@@ -93,7 +94,7 @@ describe('打开本地文件', () => {
         sourceFormat: 'markdown',
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: async () => true,
+      detect: async () => 'ready',
       releaseHandle: async () => {},
     });
     await opener.open(doc, file('本地.md'));
@@ -114,7 +115,7 @@ describe('打开本地文件', () => {
         sourceFormat: 'markdown',
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: async () => true,
+      detect: async () => 'ready',
       releaseHandle: async () => {},
     });
     await opener.open({...doc, markdown: '一行\r\n两行'}, file('本地.md'));
@@ -133,7 +134,7 @@ describe('打开本地文件', () => {
         sourceFormat: 'markdown',
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: async () => true,
+      detect: async () => 'ready',
       releaseHandle: async (handle) => {
         released.push(handle);
       },
@@ -149,7 +150,7 @@ describe('打开本地文件', () => {
         sourceFormat: 'markdown',
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: async () => true,
+      detect: async () => 'ready',
       releaseHandle: async (handle) => {
         released.push(handle);
       },
@@ -182,7 +183,7 @@ describe('打开本地文件', () => {
         sourceFormat: 'markdown',
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: async () => false,
+      detect: async () => 'changed',
       releaseHandle: async () => {},
     });
     await opener.open(doc, file('本地.md'));
@@ -203,7 +204,7 @@ describe('打开本地文件', () => {
       }),
       boundDocument: (reference) => contexts.documentFor(reference),
       // **答不了** ✓ ⇒ ⇒ 那是"无法证明" ✓ ⇒ ⇒ 按变了处理 ✓ ⇒ ⇒ 问用户 ✓（§2.3 ✓）。
-      sameVersion: async () => {
+      detect: async () => {
         throw new Error('native state unavailable');
       },
       releaseHandle: async () => {},

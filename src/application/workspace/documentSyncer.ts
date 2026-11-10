@@ -1,5 +1,6 @@
 import type {DocumentRecord, SourceFormat} from '../../core/model/document';
 import type {DocumentFileContexts} from './documentFileContext';
+import type {TargetStatus} from './targetStatus';
 
 /**
  * 应用层同步 ✓（设计 §6.5 ✓）。
@@ -28,7 +29,7 @@ export type ConflictChoice = 'overwrite' | 'reload' | 'cancel';
 export type WriteIntent = 'sync' | 'overwrite' | 'continue';
 
 /**
- * 写回的结果 ✓：**那是目标的状态** ✓ ⇒ ⇒ 原生侧归类 ✓ ⇒ ⇒ 这里只说发生了什么 ✓。
+ * **目标的状态** ✓：**那个封闭的小集合** ✓ ⇒ ⇒ 原生侧归类 ✓ ⇒ ⇒ 这里只说发生了什么 ✓。
  *
  * **五个状态各有一个处理** ✓ ⇒ ⇒ **按状态选处理** ✓ ⇒ ⇒
  * **不是每个状态各写一堆逻辑** ✓ ⇒ ⇒ **检测与处理分开** ✓（§6.1 ✓）。
@@ -37,14 +38,9 @@ export type WriteIntent = 'sync' | 'overwrite' | 'continue';
  * **目标没了** ✓ ⇒ ⇒ **提示是否继续** ✓ ⇒ ⇒ **不是失败** ✓。
  * **写不进去** ✓ ⇒ ⇒ **提示是否另存** ✓ ⇒ ⇒ **不是失败** ✓。
  * **授权没了** ✓ ⇒ ⇒ **与写不进去同一支** ✓ ⇒ ⇒ **不是失败** ✓。
+ *
+ * **真失败由端口抛出来** ✓ ⇒ ⇒ **机器码留在端口那一层** ✓ ⇒ ⇒ 应用层只说发生了什么 ✓（§9 ✓）。
  */
-export type WriteOutcome =
-  | {kind: 'written'}
-  | {kind: 'target-changed'}
-  | {kind: 'missing'}
-  | {kind: 'unwritable'}
-  | {kind: 'invalid'}
-  | {kind: 'failed'; error: unknown};
 
 /** 冲突时问的那一次 ✓：对话框要说的那几句 ✓。 */
 export interface ConflictRequest {
@@ -111,8 +107,13 @@ export interface SyncRequest {
  * **Web 侧没有** ✓ ⇒ ⇒ 那三个答不了就抛 ✓ ⇒ ⇒ **整条同步逻辑在 Web 形态下不跑** ✓（§6.5 ✓）。
  */
 export interface SyncDiskPorts {
-  /** 磁盘上那份还是应用手上那一版吗 ✓（§3.1 ✓）：答不了就抛 ✓。 */
-  sameVersion(handle: string): Promise<boolean>;
+  /**
+   * **那个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）：答不了就抛 ✓。
+   *
+   * **它答的是那个集合里的一个** ✓ ⇒ ⇒ **不在了与写不进去也在里面** ✓ ⇒ ⇒
+   * **那两条分支因此走得到** ✓ ⇒ ⇒ **不是靠一个报错来说"不在了"** ✓。
+   */
+  detect(handle: string): Promise<TargetStatus>;
   /**
    * **那个目标还在吗** ✓（§3.1 ✓、§8.2 ✓）：答不了就抛 ✓。
    *
@@ -124,8 +125,10 @@ export interface SyncDiskPorts {
    * 把这批字节写进去 ✓。
    *
    * **两种写回、两个基准** ✓ ⇒ ⇒ `intent` 表达"这次是覆盖" ✓ ⇒ ⇒ 前端仍拿不到摘要值 ✓（§6.1 ✓）。
+   *
+   * **它也答一个状态** ✓ ⇒ ⇒ **写不成就是抛** ✓ ⇒ ⇒ **机器码不出这一层** ✓（§9 ✓）。
    */
-  write(handle: string, bytes: Uint8Array, intent: WriteIntent): Promise<WriteOutcome>;
+  write(handle: string, bytes: Uint8Array, intent: WriteIntent): Promise<TargetStatus>;
   /**
    * 磁盘上那份现在是什么 ✓（反向同步要它 ✓）。
    *
@@ -244,23 +247,34 @@ export class DocumentSyncer {
     const documentId = doc.id,
       revision = doc.revision;
     for (;;) {
-      let same: boolean;
+      // **问原生侧那个目标是什么状态** ✓ ⇒ ⇒ **检测在原生侧** ✓ ⇒ ⇒
+      // **应用侧只按状态选处理** ✓ ⇒ ⇒ **两件事分开** ✓（§6.1 ✓）。
+      let detected: TargetStatus;
       try {
-        same = await this.ports.sameVersion(binding.handle);
+        detected = await this.ports.detect(binding.handle);
       } catch (error) {
         const failed = this.failed(documentId, binding, error);
-        // **门没通过 ⇒ ⇒ 写没开始** ✓ ⇒ ⇒ **也要有那一次读** ✓ ⇒ ⇒
+        // **答不上 ⇒ ⇒ 写没开始** ✓ ⇒ ⇒ **也要有那一次读** ✓ ⇒ ⇒
         // **目标没了就答"不在"** ✓ ⇒ ⇒ 关联的有效性因此由读判断给 ✓ ⇒ ⇒ **不是失败推出来的** ✓。
         await this.verifyTarget(documentId, binding);
         return {writeBack: failed};
       }
 
-      if (same) {
-        const outcome = await this.write(binding, bytes, 'sync');
-        // **按状态选处理** ✓ ⇒ ⇒ **一个状态一个分支** ✓ ⇒ ⇒
-        // **检测在原生侧，处理在这里** ✓ ⇒ ⇒ **两件事分开** ✓（§6.1 ✓）。
-        switch (outcome.kind) {
-          case 'written': {
+      // **按状态选处理** ✓ ⇒ ⇒ **一个状态一个分支** ✓ ⇒ ⇒
+      // **检测那一问与写的那一次走同一套分支** ✓ ⇒ ⇒ **规则只有一处** ✓（§6.1 ✓）。
+      switch (detected) {
+        // **就绪** ⇒ ⇒ 写进去 ✓ ⇒ ⇒ **文件 = 草稿** ✓。
+        case 'ready': {
+          let written: TargetStatus;
+          try {
+            written = await this.ports.write(binding.handle, bytes, 'sync');
+          } catch (error) {
+            const failed = this.failed(documentId, binding, error);
+            // **写不进去 ⇒ ⇒ 也要有那一次读** ✓ ⇒ ⇒ 有效性不来自失败 ✓（§8.2 ✓）。
+            await this.verifyTarget(documentId, binding);
+            return {writeBack: failed};
+          }
+          if (written === 'ready') {
             this.applied(documentId, binding, () =>
               this.contexts.markWritten(documentId, revision),
             );
@@ -269,27 +283,25 @@ export class DocumentSyncer {
             return {writeBack: {kind: 'written', revision}};
           }
           // **目标在问答之后又变了** ⇒ ⇒ 重新分流 ✓ ⇒ ⇒ 回到上面那一句 ✓。
-          case 'target-changed':
-            continue;
+          if (written === 'changed') continue;
           // **目标没了** ⇒ ⇒ **提示是否继续** ✓ ⇒ ⇒ 是 ⇒ ⇒ **再进写检测** ✓（§6.1 ✓）。
-          case 'missing':
-            return this.handleMissing(doc, bytes, binding);
+          if (written === 'missing') return this.handleMissing(doc, bytes, binding);
           // **写不进去** ⇒ ⇒ **提示是否另存** ✓ ⇒ ⇒ 是 ⇒ ⇒ 换目标 ⇒ ⇒ **再进写检测** ✓（§6.1 ✓）。
-          case 'unwritable':
-          case 'invalid':
-            return this.handleUnwritable(doc, bytes, binding);
-          default: {
-            const failed = this.failed(documentId, binding, outcome.error);
-            // **写不进去 ⇒ ⇒ 也要有那一次读** ✓ ⇒ ⇒ 有效性不来自失败 ✓（§8.2 ✓）。
-            await this.verifyTarget(documentId, binding);
-            return {writeBack: failed};
-          }
+          return this.handleUnwritable(doc, bytes, binding);
         }
+        // **文件被外部改过** ✓ ⇒ ⇒ 分叉那一次 ✓ ⇒ ⇒ **三个选择** ✓ ⇒ ⇒
+        // **规则只有一处** ✓ ⇒ ⇒ 门的那一条也走它 ✓（§6.1 ✓）。
+        case 'changed':
+          return this.handleConflict(doc, bytes, binding);
+        // **目标没了** ⇒ ⇒ **提示是否继续** ✓ ⇒ ⇒ **那一条因此走得到** ✓ ⇒ ⇒
+        // **不是靠一个报错来说它** ✓（§6.1 ✓）。
+        case 'missing':
+          return this.handleMissing(doc, bytes, binding);
+        // **写不进去** ⇒ ⇒ **提示是否另存** ✓ ⇒ ⇒ **那一条因此走得到** ✓（§6.1 ✓）。
+        case 'unwritable':
+        case 'invalid':
+          return this.handleUnwritable(doc, bytes, binding);
       }
-
-      // **文件被外部改过** ✓ ⇒ ⇒ 分叉那一次 ✓ ⇒ ⇒ **三个选择** ✓ ⇒ ⇒
-      // **规则只有一处** ✓ ⇒ ⇒ 门的那一条也走它 ✓（§6.1 ✓）。
-      return this.handleConflict(doc, bytes, binding);
     }
   }
 
@@ -314,27 +326,33 @@ export class DocumentSyncer {
     for (;;) {
       const proceed = await this.ports.askGate('missing');
       if (!proceed) {
-        const failed = this.failed(documentId, binding, new Error('那个文件已经不在了'));
+        // **放弃 = 不写回** ✓ ⇒ ⇒ **两边都不动** ✓ ⇒ ⇒ **取消不算失败** ✓ ⇒ ⇒
+        // **`failure` 不写** ✓ ⇒ ⇒ 仍是未同步 ✓ ⇒ ⇒ **下次保存还会再问** ✓（§6.5 ✓）。
+        // ⇒ ⇒ **那一次读照旧要问** ✓ ⇒ ⇒ 目标没了 ⇒ ⇒ 状态因此说清为什么 ✓（§8.2 ✓）。
+        await this.verifyTarget(documentId, binding);
+        return {writeBack: {kind: 'cancelled'}};
+      }
+      // **再进写检测** ✓ ⇒ ⇒ 这一次**允许目标不存在** ✓ ⇒ ⇒ 其余复核照旧 ✓。
+      let written: TargetStatus;
+      try {
+        written = await this.ports.write(binding.handle, bytes, 'continue');
+      } catch (error) {
+        const failed = this.failed(documentId, binding, error);
         await this.verifyTarget(documentId, binding);
         return {writeBack: failed};
       }
-      // **再进写检测** ✓ ⇒ ⇒ 这一次**允许目标不存在** ✓ ⇒ ⇒ 其余复核照旧 ✓。
-      const outcome = await this.write(binding, bytes, 'continue');
-      if (outcome.kind === 'written') {
+      if (written === 'ready') {
         this.applied(documentId, binding, () => this.contexts.markWritten(documentId, revision));
         await this.verifyTarget(documentId, binding);
         return {writeBack: {kind: 'written', revision}};
       }
       // **它回来了而且变了** ⇒ ⇒ 那是冲突 ✓ ⇒ ⇒ 交给用户决定 ✓。
-      if (outcome.kind === 'target-changed') return this.handleConflict(doc, bytes, binding);
+      if (written === 'changed') return this.handleConflict(doc, bytes, binding);
       // **写不进去** ⇒ ⇒ 那一支 ✓ ⇒ ⇒ 提示是否另存 ✓。
-      if (outcome.kind === 'unwritable' || outcome.kind === 'invalid')
+      if (written === 'unwritable' || written === 'invalid')
         return this.handleUnwritable(doc, bytes, binding);
       // **又没了** ⇒ ⇒ **再问一次** ✓ ⇒ ⇒ 每一次重进之前都有一次用户的选择 ✓。
-      if (outcome.kind === 'missing') continue;
-      const failed = this.failed(documentId, binding, outcome.error);
-      await this.verifyTarget(documentId, binding);
-      return {writeBack: failed};
+      continue;
     }
   }
 
@@ -354,9 +372,10 @@ export class DocumentSyncer {
     const documentId = doc.id;
     const proceed = await this.ports.askGate('unwritable');
     if (!proceed) {
-      const failed = this.failed(documentId, binding, new Error('那个文件写不进去了'));
+      // **放弃 = 不写回** ✓ ⇒ ⇒ **两边都不动** ✓ ⇒ ⇒ **取消不算失败** ✓ ⇒ ⇒
+      // **`failure` 不写** ✓ ⇒ ⇒ 仍是未同步 ✓ ⇒ ⇒ **下次保存还会再问** ✓（§6.5 ✓）。
       await this.verifyTarget(documentId, binding);
-      return {writeBack: failed};
+      return {writeBack: {kind: 'cancelled'}};
     }
     // **换目标** ✓ ⇒ ⇒ **那边再过一次门** ✓ ⇒ ⇒ 答的是"写成了没有" ✓。
     const outcome = await this.ports.saveElsewhere({document: doc, bytes});
@@ -364,6 +383,11 @@ export class DocumentSyncer {
       // **那边读成功了 ⇒ ⇒ 关联就成立** ✓ ⇒ ⇒ 那边自己记好了 ✓ ⇒ ⇒ 这里不重复记 ✓（§4.1 ✓）。
       await this.verifyTarget(documentId, binding);
       return {writeBack: outcome};
+    }
+    // **用户取消 ⇒ ⇒ 那边没成** ✓ ⇒ ⇒ **取消不算失败** ✓ ⇒ ⇒ 两边都不动 ✓。
+    if (outcome.kind === 'cancelled') {
+      await this.verifyTarget(documentId, binding);
+      return {writeBack: {kind: 'cancelled'}};
     }
     const failed = this.failed(documentId, binding, new Error('换到新目标也没写成'));
     await this.verifyTarget(documentId, binding);
@@ -392,19 +416,23 @@ export class DocumentSyncer {
     if (choice === 'reload')
       return {writeBack: await this.reload(documentId, binding), conflict: choice};
     // **覆盖 = 正向写回** ✓ ⇒ ⇒ 带基准复核在端口内部 ✓（§6.1 ✓）。
-    const outcome = await this.write(binding, bytes, 'overwrite');
-    if (outcome.kind === 'written') {
+    let written: TargetStatus;
+    try {
+      written = await this.ports.write(binding.handle, bytes, 'overwrite');
+    } catch (error) {
+      const failed = this.failed(documentId, binding, error);
+      await this.verifyTarget(documentId, binding);
+      return {writeBack: failed};
+    }
+    if (written === 'ready') {
       this.applied(documentId, binding, () => this.contexts.markWritten(documentId, revision));
       await this.verifyTarget(documentId, binding);
       return {writeBack: {kind: 'written', revision}, conflict: choice};
     }
-    if (outcome.kind === 'target-changed') return this.handleConflict(doc, bytes, binding);
-    if (outcome.kind === 'missing') return this.handleMissing(doc, bytes, binding);
-    if (outcome.kind === 'unwritable' || outcome.kind === 'invalid')
-      return this.handleUnwritable(doc, bytes, binding);
-    const failed = this.failed(documentId, binding, outcome.error);
-    await this.verifyTarget(documentId, binding);
-    return {writeBack: failed};
+    // **覆盖期间目标又变了** ⇒ ⇒ 重新提示而不是覆盖 ✓（§6.1 ✓、M5-19 ✓）。
+    if (written === 'changed') return this.handleConflict(doc, bytes, binding);
+    if (written === 'missing') return this.handleMissing(doc, bytes, binding);
+    return this.handleUnwritable(doc, bytes, binding);
   }
 
   /**
@@ -425,23 +453,6 @@ export class DocumentSyncer {
       return;
     }
     this.applied(documentId, binding, () => this.contexts.markTargetPresent(documentId, present));
-  }
-
-  /**
-   * **写回** ✓：**端口抛了就当失败** ✓ ⇒ ⇒ 一次失败不会甩出这次保存 ✓。
-   *
-   * **端口自己答"目标又变了"** ✓ ⇒ ⇒ 那不是失败 ✓ ⇒ ⇒ 重新分流 ✓（§8.6 ✓）。
-   */
-  private async write(
-    binding: Binding,
-    bytes: Uint8Array,
-    intent: WriteIntent,
-  ): Promise<WriteOutcome> {
-    try {
-      return await this.ports.write(binding.handle, bytes, intent);
-    } catch (error) {
-      return {kind: 'failed', error};
-    }
   }
 
   /**

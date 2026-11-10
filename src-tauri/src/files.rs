@@ -149,7 +149,7 @@ struct Grant {
     /// **应用手上是哪个版本** ✓：读进来或写出去那一刻的字节摘要 ✓（§3.4 ✓）。
     ///
     /// **摘要只存在原生侧** ✓ ⇒ ⇒ 应用侧拿不到值 ✓ ⇒ ⇒ 只问一句 ✓
-    /// ⇒ ⇒ 这就是 `is_native_synced` 回答的那句 ✓。
+    /// ⇒ ⇒ 这就是 `detect_native_target` 回答的那句 ✓。
     digest: Option<String>,
     /// **用户看到的那一版** ✓：原生侧在**报告冲突那一刻**看到的摘要 ✓（§6.1 ✓）。
     ///
@@ -363,11 +363,15 @@ impl FileAccess {
         grant.digest = Some(digest.to_owned());
         Ok(())
     }
-    /// **这个文件还是应用手上那一版吗** ✓（§3.1 ✓）。
+    /// **这个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）。
     ///
     /// **答案在原生侧给** ✓ ⇒ ⇒ 应用侧既拿不到摘要、也不需要自己比 ✓（§3.4 ✓）。
+    /// **它答的是那个集合里的一个** ✓ ⇒ ⇒ **不在了与写不进去也在里面** ✓ ⇒ ⇒
+    /// **应用侧按状态选处理** ✓ ⇒ ⇒ **检测与处理分开** ✓ ⇒ ⇒
+    /// **那两条分支因此走得到** ✓（§6.1 ✓）。
+    ///
     /// **没有记过版本 ⇒ ⇒ 回答不了** ✓ ⇒ ⇒ 那是内部状态不可用 ✓ ⇒ ⇒ 不是"变了" ✓。
-    fn synced(&self, key: &str) -> Result<bool, String> {
+    fn detect(&self, key: &str) -> Result<TargetStatus, String> {
         let (path, digest) = {
             let grants = self.0.lock().map_err(internal_error)?;
             let grant = grants.get(key).ok_or("unknown-file-key")?;
@@ -377,25 +381,43 @@ impl FileAccess {
                 .ok_or_else(|| "native-internal-failed".to_string())?;
             (grant.path.clone(), digest)
         };
-        // **比的是当前磁盘上那份** ✓ ⇒ ⇒ 外部改过就答"不是" ✓。
+        // **目标还在吗** ✓ ⇒ ⇒ **不在了 ⇒ ⇒ 那是状态** ✓ ⇒ ⇒ **不是报错** ✓。
+        let length = match std::fs::metadata(&path) {
+            Ok(meta) => meta.len(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(TargetStatus::Missing)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                return Ok(TargetStatus::Unwritable)
+            }
+            Err(e) => return Err(io_error(&e)),
+        };
         // **先看大小** ✓ ⇒ ⇒ 超过读上限的文件一定不是应用手上那一版 ✓
         // ⇒ ⇒ 不必为了答一句话把它整个读进来 ✓。
-        let length = std::fs::metadata(&path).map_err(|e| io_error(&e))?.len();
         if length > READ_LIMIT {
-            return Ok(false);
+            return Ok(TargetStatus::Changed);
         }
-        let bytes = std::fs::read(&path).map_err(|e| io_error(&e))?;
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(TargetStatus::Missing)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                return Ok(TargetStatus::Unwritable)
+            }
+            Err(e) => return Err(io_error(&e)),
+        };
         let observed = crate::hash::sha256_hex(&bytes);
         if observed == digest {
             // **还是那一版** ⇒ ⇒ **没有未决的冲突** ✓ ⇒ ⇒ 丢掉上次看到的那一版 ✓。
             self.forget_seen(key)?;
-            return Ok(true);
+            return Ok(TargetStatus::Ready);
         }
         // **报告冲突的那一刻** ✓ ⇒ ⇒ **把当时看到的摘要记下来** ✓（§6.1 ✓）
         // ⇒ ⇒ 覆盖写回拿它当基准 ✓ ⇒ ⇒ **这不是令牌** ✓ ⇒ ⇒ 没有签发、消费、失效 ✓
         // ⇒ ⇒ 只是"上次看到的那一版"这一条事实 ✓ ⇒ ⇒ 下次报告冲突就覆盖它 ✓。
         self.remember_seen(key, &observed)?;
-        Ok(false)
+        Ok(TargetStatus::Changed)
     }
     /// **记下"用户看到的那一版"** ✓：报告冲突时看到的那份 ✓（§6.1 ✓）。
     fn remember_seen(&self, key: &str, digest: &str) -> Result<(), String> {
@@ -859,29 +881,32 @@ pub async fn write_native_bytes(
         }
     })
 }
-/// **问一句：这个文件还是应用手上那一版吗** ✓（§3.1 ✓）。
+/// **问一句：这个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）。
 ///
-/// **只回一句是或不是** ✓ ⇒ ⇒ 摘要值不出原生侧 ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
-/// **应用侧拿到的就是这一个布尔** ✓ ⇒ ⇒ "无法证明"由应用侧记 null ✓（§2.3 ✓）。
+/// **它答的是那个集合里的一个** ✓ ⇒ ⇒ **不在了与写不进去也在里面** ✓ ⇒ ⇒
+/// **应用侧按状态选处理** ✓ ⇒ ⇒ **检测与处理分开** ✓ ⇒ ⇒
+/// **那两条分支因此走得到** ✓ ⇒ ⇒ **不再靠一个报错来说"不在了"** ✓。
+///
+/// **摘要值不出原生侧** ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
 #[tauri::command]
-pub async fn is_native_synced(
+pub async fn detect_native_target(
     webview: tauri::Webview,
     access: tauri::State<'_, FileAccess>,
     key: String,
-) -> Result<bool, NativeFailure> {
-    in_command_span(WebCommand::IsNativeSynced, &webview, |started, cmd| {
-        let outcome = access.synced(&key);
+) -> Result<TargetStatus, NativeFailure> {
+    in_command_span(WebCommand::DetectNativeTarget, &webview, |started, cmd| {
+        let outcome = access.detect(&key);
         let elapsed = started.elapsed().as_millis();
         match outcome {
-            Ok(synced) => {
+            Ok(status) => {
                 tracing::info!(
                     event = "operation_result",
                             result = "ok",
                     command = cmd,
-                    synced,
+                    status = status.name(),
                     elapsed_ms = elapsed,
                 );
-                Ok(synced)
+                Ok(status)
             }
             Err(code) => {
                 tracing::warn!(
@@ -901,8 +926,8 @@ pub async fn is_native_synced(
 /// **只回一句是或不是** ✓ ⇒ ⇒ **目标没了 ⇒ ⇒ 回"否"** ✓ ⇒ ⇒ **不是报错** ✓
 /// ⇒ ⇒ 那是**关联还有效吗**的答案 ✓ ⇒ ⇒ **不是写失败的结果** ✓（§8.2 ✓）。
 ///
-/// **为什么要单独一句** ✓：目标没了时 `is_native_synced` 只会**报错**（`native-target-missing` ✓）
-/// ⇒ ⇒ **那不是答案** ✓ ⇒ ⇒ 关联的有效性要有一句独立的问答 ✓ ⇒ ⇒ **虽然多一步，但依赖关系清晰** ✓。
+/// **为什么要单独一句** ✓：目标是哪个文件、还在不在、是什么状态，**只有拿着路径的那一侧答得了** ✓
+/// ⇒ ⇒ **那不是应用侧能问的** ✓ ⇒ ⇒ **路径不出原生侧** ✓（§3.4 ✓）。
 #[tauri::command]
 pub async fn is_native_target_present(
     webview: tauri::Webview,
@@ -1327,7 +1352,7 @@ mod tests {
     }
 
     #[test]
-    fn synced_answers_yes_until_the_file_changes_underneath() {
+    fn detect_answers_ready_until_the_file_changes_underneath() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("version.md");
         std::fs::write(&path, b"first").unwrap();
@@ -1335,28 +1360,28 @@ mod tests {
         let grant = access.grant(path.clone(), true).unwrap();
         // **没读过 ⇒ ⇒ 答不了** ✓ ⇒ ⇒ 那不是"变了" ✓ ⇒ ⇒ 是内部状态不可用 ✓。
         assert_eq!(
-            access.synced(&grant.key).unwrap_err(),
+            access.detect(&grant.key).unwrap_err(),
             "native-internal-failed"
         );
-        // 读过一次 ⇒ ⇒ 应用手上有了那一版 ✓ ⇒ ⇒ 答"是" ✓。
+        // 读过一次 ⇒ ⇒ 应用手上有了那一版 ✓ ⇒ ⇒ 答"就绪" ✓。
         let content = read_content(&path).unwrap();
         access.record_digest(&grant.key, &content.digest).unwrap();
-        assert!(access.synced(&grant.key).unwrap());
-        // **应用外改过** ⇒ ⇒ 答"不是" ✓ ⇒ ⇒ 应用据此提示"已变化" ✓（§5.2 ✓）。
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
+        // **应用外改过** ⇒ ⇒ 答"变了" ✓ ⇒ ⇒ 应用据此提示"已变化" ✓（§5.2 ✓）。
         std::fs::write(&path, b"second").unwrap();
-        assert!(!access.synced(&grant.key).unwrap());
-        // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ⇒ ⇒ 之后答"是" ✓。
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Changed);
+        // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ⇒ ⇒ 之后答"就绪" ✓。
         commit_bytes(&path, b"third", None, false).unwrap();
         access
             .record_digest(&grant.key, &crate::hash::sha256_hex(b"third"))
             .unwrap();
-        assert!(access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
         // **不认识的 key** ✓ ⇒ ⇒ 稳定码 ✓。
-        assert_eq!(access.synced("not-a-key").unwrap_err(), "unknown-file-key");
+        assert_eq!(access.detect("not-a-key").unwrap_err(), "unknown-file-key");
     }
 
     #[test]
-    fn synced_reports_a_missing_file_by_its_own_code() {
+    fn a_missing_target_is_answered_as_a_status_not_as_an_error() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("gone.md");
         std::fs::write(&path, b"here").unwrap();
@@ -1365,11 +1390,9 @@ mod tests {
         let content = read_content(&path).unwrap();
         access.record_digest(&grant.key, &content.digest).unwrap();
         std::fs::remove_file(&path).unwrap();
-        // **文件没了** ⇒ ⇒ 那是它自己的码 ✓ ⇒ ⇒ 界面能说"关联已失效" ✓（§8.5 ✓）。
-        assert_eq!(
-            access.synced(&grant.key).unwrap_err(),
-            "native-target-missing"
-        );
+        // **文件没了** ⇒ ⇒ **那是状态** ✓ ⇒ ⇒ **不是报错** ✓ ⇒ ⇒
+        // **应用侧因此走得到"目标没了"那一条** ✓ ⇒ ⇒ **不靠失败来表达它** ✓（§6.1 ✓）。
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Missing);
     }
 
     #[test]
@@ -1535,7 +1558,7 @@ mod tests {
         access.record_digest(&grant.key, &content.digest).unwrap();
         // **取到的那份就是磁盘上那一版** ✓ ⇒ ⇒ 与问答用的是同一个比较 ✓。
         assert_eq!(access.expected_digest(&grant.key, false).unwrap(), content.digest);
-        assert!(access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
         // **不认识的 key** ✓ ⇒ ⇒ 稳定码 ✓。
         assert_eq!(
             access.expected_digest("not-a-key", false).unwrap_err(),
@@ -1556,14 +1579,14 @@ mod tests {
         let content = read_content(&path).unwrap();
         access.record_digest(&grant.key, &content.digest).unwrap();
         // **还没冲突 ⇒ ⇒ 没有"看到的那一版"** ✓ ⇒ ⇒ 覆盖写回复核不了 ✓。
-        assert!(access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
         assert_eq!(
             access.expected_digest(&grant.key, true).unwrap_err(),
             "native-internal-failed"
         );
         // **应用外改过 ⇒ ⇒ 报告冲突** ✓ ⇒ ⇒ **记下当时看到的那一份** ✓。
         std::fs::write(&path, b"external").unwrap();
-        assert!(!access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Changed);
         assert_eq!(
             access.expected_digest(&grant.key, true).unwrap(),
             crate::hash::sha256_hex(b"external")
@@ -1589,14 +1612,14 @@ mod tests {
         access.record_digest(&grant.key, &content.digest).unwrap();
         // **应用外改过 ⇒ ⇒ 报告冲突 ⇒ ⇒ 记下"看到的那一版"** ✓。
         std::fs::write(&path, b"external").unwrap();
-        assert!(!access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Changed);
         let seen = access.expected_digest(&grant.key, true).unwrap();
         // **目标还是用户看到的那一版 ⇒ ⇒ 复核通过 ⇒ ⇒ 写进去** ✓。
         commit_bytes(&path, b"draft", Some(&seen), false).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"draft");
         // **再改一次 ⇒ ⇒ 重新报告冲突 ⇒ ⇒ 记下新的那一版** ✓。
         std::fs::write(&path, b"external again").unwrap();
-        assert!(!access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Changed);
         let seen_again = access.expected_digest(&grant.key, true).unwrap();
         assert_eq!(seen_again, crate::hash::sha256_hex(b"external again"));
         // **用户点确认之后目标又变了 ⇒ ⇒ 与"看到的那一版"不符 ⇒ ⇒ 不写它** ✓。
@@ -1619,7 +1642,7 @@ mod tests {
         let content = read_content(&path).unwrap();
         access.record_digest(&grant.key, &content.digest).unwrap();
         std::fs::write(&path, b"external").unwrap();
-        assert!(!access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Changed);
         assert!(access.expected_digest(&grant.key, true).is_ok());
         // **写回去 ⇒ ⇒ 冲突解决** ✓ ⇒ ⇒ 那一版丢掉 ✓ ⇒ ⇒ 下次冲突重新记 ✓。
         let seen = access.expected_digest(&grant.key, true).unwrap();
@@ -1843,7 +1866,7 @@ mod tests {
             .record_digest(&grant.key, &crate::hash::sha256_hex(b"draft"))
             .unwrap();
         // **新文档初始即已同步** ✓ ⇒ ⇒ 那个授权答"是" ✓ ⇒ ⇒ 基线 = 写出的修订 ✓（§6.2 ✓、M5-5 ✓）。
-        assert!(access.synced(&grant.key).unwrap());
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
     }
 
     #[test]

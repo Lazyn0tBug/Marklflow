@@ -93,7 +93,7 @@ pub fn run() {
             files::print_native_pdf,
             files::write_native_bytes,
             files::write_native_sync,
-            files::is_native_synced,
+            files::detect_native_target,
             files::is_native_same_directory,
             files::is_native_target_present,
             files::release_native_file

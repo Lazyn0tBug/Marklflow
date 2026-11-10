@@ -3,8 +3,8 @@ import type {DiskPorts} from '../../../application/workspace/diskPorts';
 import {sourceFormatOf} from '../../policy/sourceFormat';
 import {extractPayloadFromHtml} from '../../storage/storage';
 import {
+  detectNativeTarget,
   isNativeSameDirectory,
-  isNativeSynced,
   isNativeTargetPresent,
   readNativeTextByKey,
   releaseNativeFile,
@@ -29,7 +29,10 @@ export type NativeDiskPorts = DiskPorts;
  */
 export const nativeDiskPorts: NativeDiskPorts = {
   sync: {
-    sameVersion: (handle) => isNativeSynced(handle),
+    /**
+     * **那个目标现在是什么状态** ✓ ⇒ ⇒ **检测在原生侧** ✓ ⇒ ⇒ 应用侧只按状态选处理 ✓（§6.1 ✓）。
+     */
+    detect: (handle) => detectNativeTarget(handle),
     /**
      * **那个目标还在吗** ✓ ⇒ ⇒ **只有原生侧答得了** ✓ ⇒ ⇒ 应用侧只存那个答案 ✓
      * ⇒ ⇒ **关联的有效性归它答** ✓ ⇒ ⇒ **不是写失败的结果** ✓（§8.2 ✓）。

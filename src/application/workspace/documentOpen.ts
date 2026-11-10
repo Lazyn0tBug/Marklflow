@@ -1,6 +1,7 @@
 import type {DocumentRecord} from '../../core/model/document';
 import type {BoundSelection, ImportFile, OpenResult} from './sourceImport';
 import type {DocumentFileContexts, FileReference} from './documentFileContext';
+import type {TargetStatus} from './targetStatus';
 
 /**
  * **打开一个本地文件** ✓：打开与绑定是同一件事 ✓（设计 §4.3 ✓）。
@@ -16,10 +17,10 @@ export interface DocumentOpenPorts<F extends ImportFile> {
   /** 这个文件绑在哪个文档上 ✓ ⇒ ⇒ 没有就是 undefined ✓。 */
   boundDocument(reference: string): string | undefined;
   /**
-   * 磁盘上那份还是不是应用手上那一版 ✓ ⇒ ⇒ **答不了就抛** ✓
+   * **那个目标现在是什么状态** ✓ ⇒ ⇒ **答不了就抛** ✓
    * ⇒ ⇒ 这里按"变了"处理 ✓ ⇒ ⇒ 交给用户决定 ✓（§5.2 ✓）。
    */
-  sameVersion(handle: string): Promise<boolean>;
+  detect(handle: string): Promise<TargetStatus>;
   /** 放掉这一次的句柄 ✓ ⇒ ⇒ 它没有成为绑定的凭据时才放 ✓（§5.1 三类句柄 ✓）。 */
   releaseHandle(handle: string): Promise<void>;
 }
@@ -66,7 +67,10 @@ export class DocumentOpener<F extends ImportFile> {
     const context = this.contexts.read(documentId);
     if (context === undefined) return undefined;
     try {
-      return {documentId, changed: !(await this.ports.sameVersion(context.file.handle))};
+      // **只有"变了"才是变了** ✓ ⇒ ⇒ **不在了与写不进去了也当变了** ✓ ⇒ ⇒
+      // **交给用户决定** ✓ ⇒ ⇒ 不静默覆盖 ✓（§5.2 ✓）。
+      const status = await this.ports.detect(context.file.handle);
+      return {documentId, changed: status !== 'ready'};
     } catch {
       // **答不了 ⇒ ⇒ 交给用户决定** ✓ ⇒ ⇒ 不当成"没变" ✓ ⇒ ⇒ 不静默覆盖 ✓（§5.2 ✓）。
       return {documentId, changed: true};

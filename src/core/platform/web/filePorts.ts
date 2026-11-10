@@ -1,6 +1,6 @@
 import type {FileReference} from '../../../application/workspace/documentFileContext';
 import type {DiskPorts} from '../../../application/workspace/diskPorts';
-import type {WriteOutcome} from '../../../application/workspace/documentSyncer';
+import type {TargetStatus} from '../../../application/workspace/targetStatus';
 import type {SourceFormat} from '../../model/document';
 
 /**
@@ -16,8 +16,12 @@ import type {SourceFormat} from '../../model/document';
  * ⇒ ⇒ **在碰到它们之前就停了** ✓（§6.5 ✓）。
  */
 
-/** Web 形态答不了"还是那一版吗" ✓ ⇒ ⇒ 抛 ✓（§6.5 ✓）。 */
-export async function webSameVersion(_handle: string): Promise<boolean> {
+/**
+ * Web 形态答不了"那个目标是什么状态" ✓ ⇒ ⇒ 抛 ✓（§6.5 ✓）。
+ *
+ * **浏览器没有本地文件** ✓ ⇒ ⇒ 没有目标可问 ✓ ⇒ ⇒ **整条写回逻辑不跑** ✓。
+ */
+export async function webDetect(_handle: string): Promise<TargetStatus> {
   throw new Error('浏览器没有可写的文件，没有同步目标');
 }
 
@@ -26,7 +30,7 @@ export async function webWrite(
   _handle: string,
   _bytes: Uint8Array,
   _intent: 'sync' | 'overwrite' | 'continue',
-): Promise<WriteOutcome> {
+): Promise<TargetStatus> {
   throw new Error('浏览器没有可写的文件，没有同步目标');
 }
 
@@ -85,7 +89,7 @@ export type WebDiskPorts = DiskPorts;
 /** **Web 形态那一套** ✓：**答不了就抛** ✓ ⇒ ⇒ 整条同步逻辑不跑 ✓。 */
 export const webDiskPorts: WebDiskPorts = {
   sync: {
-    sameVersion: webSameVersion,
+    detect: webDetect,
     write: (handle, bytes, intent) => webWrite(handle, bytes, intent),
     read: webRead,
     // **答不了就抛** ✓ ⇒ ⇒ 应用层按"答不上"处理 ✓（§6.5 ✓）。

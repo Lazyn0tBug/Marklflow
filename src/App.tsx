@@ -43,7 +43,7 @@ import {saveSource} from './application/workspace/sourceSave';
 import {createWebSourceImport} from './core/platform/web/sourceImport';
 import {createNativeSourceImport, nativeFileReference} from './core/platform/tauri/sourceImport';
 import {
-  isNativeSynced,
+  detectNativeTarget,
   listenNativeDrop,
   releaseNativeFile,
   selectNativeOpen,
@@ -132,7 +132,7 @@ export default function App() {
       open: (doc) => importOpen.current(doc),
       reference: nativeFileReference,
       boundDocument: (reference) => contexts.documentFor(reference),
-      sameVersion: (handle) => isNativeSynced(handle),
+      detect: (handle) => detectNativeTarget(handle),
       // **这一次没有成为绑定的凭据时才放** ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
       releaseHandle: (handle) => releaseNativeFile(handle),
     });
@@ -166,7 +166,7 @@ export default function App() {
   const syncer = useRef<DocumentSyncer | null>(null);
   if (!syncer.current)
     syncer.current = new DocumentSyncer(contexts, {
-      sameVersion: (handle) => diskPorts.current.sync.sameVersion(handle),
+      detect: (handle) => diskPorts.current.sync.detect(handle),
       targetPresent: (handle) => diskPorts.current.sync.targetPresent(handle),
       write: (handle, bytes, intent) => diskPorts.current.sync.write(handle, bytes, intent),
       read: (handle, format) => diskPorts.current.sync.read(handle, format),

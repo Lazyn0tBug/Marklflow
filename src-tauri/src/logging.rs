@@ -108,10 +108,10 @@ pub enum WebCommand {
     ///
     /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
     WriteNativeSync,
-    /// 问一句"这个文件还是应用手上那一版吗" ✓（§3.1 ✓）。
+    /// 问一句"这个目标现在是什么状态" ✓（§3.1 ✓、§6.1 ✓）。
     ///
     /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
-    IsNativeSynced,
+    DetectNativeTarget,
     /// 问一句"这两个文件在同一个目录里吗" ✓（§6.2 ✓）。
     ///
     /// **它在枚举里** ✓ ⇒ ⇒ 命令名有一处事实 ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
@@ -1348,7 +1348,7 @@ pub(crate) fn command_name(command: WebCommand) -> &'static str {
         WebCommand::ReadNativeText => "read_native_text",
         WebCommand::WriteNativeBytes => "write_native_bytes",
         WebCommand::WriteNativeSync => "write_native_sync",
-        WebCommand::IsNativeSynced => "is_native_synced",
+        WebCommand::DetectNativeTarget => "detect_native_target",
         WebCommand::IsNativeSameDirectory => "is_native_same_directory",
         WebCommand::IsNativeTargetPresent => "is_native_target_present",
         WebCommand::ReleaseNativeFile => "release_native_file",
@@ -1774,7 +1774,7 @@ mod tests {
             (WebCommand::ReadNativeText,"read_native_text"),
             (WebCommand::WriteNativeBytes,"write_native_bytes"),
             (WebCommand::WriteNativeSync,"write_native_sync"),
-            (WebCommand::IsNativeSynced,"is_native_synced"),
+            (WebCommand::DetectNativeTarget,"detect_native_target"),
             (WebCommand::IsNativeSameDirectory,"is_native_same_directory"),
             (WebCommand::IsNativeTargetPresent,"is_native_target_present"),
             (WebCommand::ReleaseNativeFile,"release_native_file"),
