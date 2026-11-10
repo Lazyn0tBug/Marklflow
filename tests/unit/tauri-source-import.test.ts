@@ -47,7 +47,7 @@ it('focuses the bound document and releases the selection it did not adopt', asy
   native.invoke.mockResolvedValueOnce(undefined);
   const opened: string[] = [];
   const importer = createNativeSourceImport(
-    {boundSelection: async () => ({documentId: 'bound-doc', changed: false})},
+    {boundSelection: async () => ({documentId: 'bound-doc', target: 'ready'})},
     async (doc) => {
       opened.push(doc.id);
       return {status: 'opened'};
@@ -66,7 +66,7 @@ it('focuses the bound document and releases the selection it did not adopt', asy
 it('reports the file as changed instead of overwriting the draft', async () => {
   native.invoke.mockResolvedValueOnce(undefined);
   const importer = createNativeSourceImport(
-    {boundSelection: async () => ({documentId: 'bound-doc', changed: true})},
+    {boundSelection: async () => ({documentId: 'bound-doc', target: 'changed'})},
     async () => ({status: 'opened'}),
   );
   const result = await importer.run([selection]);

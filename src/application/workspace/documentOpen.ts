@@ -67,13 +67,13 @@ export class DocumentOpener<F extends ImportFile> {
     const context = this.contexts.read(documentId);
     if (context === undefined) return undefined;
     try {
-      // **只有"变了"才是变了** ✓ ⇒ ⇒ **不在了与写不进去了也当变了** ✓ ⇒ ⇒
-      // **交给用户决定** ✓ ⇒ ⇒ 不静默覆盖 ✓（§5.2 ✓）。
-      const status = await this.ports.detect(context.file.handle);
-      return {documentId, changed: status !== 'ready'};
+      // **它答的是状态** ✓ ⇒ ⇒ **"没了"与"被改过"分得开** ✓ ⇒ ⇒
+      // **界面因此说得不一样** ✓ ⇒ ⇒ 不让用户去重载一个不存在的文件 ✓（§5.2 ✓、§8.5 ✓）。
+      const target = await this.ports.detect(context.file.handle);
+      return {documentId, target};
     } catch {
       // **答不了 ⇒ ⇒ 交给用户决定** ✓ ⇒ ⇒ 不当成"没变" ✓ ⇒ ⇒ 不静默覆盖 ✓（§5.2 ✓）。
-      return {documentId, changed: true};
+      return {documentId, target: 'changed'};
     }
   }
 }

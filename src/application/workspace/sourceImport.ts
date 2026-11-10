@@ -1,3 +1,4 @@
+import type {TargetStatus} from './targetStatus';
 import type {DocumentRecord} from '../../core/model/document';
 import {documentSchema} from '../../core/model/documentSchema';
 import {taskBudget} from '../tasks/budget';
@@ -15,8 +16,11 @@ export interface ImportFile {
 export interface BoundSelection {
   /** 已经绑在哪个文档上 ✓ ⇒ ⇒ 命中就聚焦那个标签页 ✓ ⇒ ⇒ 不新建 ✓。 */
   documentId: string;
-  /** 磁盘上那份还是不是应用手上那一版 ✓ ⇒ ⇒ 变了要问用户 ✓ ⇒ ⇒ 不静默覆盖 ✓。 */
-  changed: boolean;
+  /**
+   * **那个目标是什么状态** ✓ ⇒ ⇒ **"没了"与"被改过"是两件事** ✓ ⇒ ⇒
+   * **界面说得不一样** ✓ ⇒ ⇒ 不让用户去重载一个不存在的文件 ✓（§8.5 ✓）。
+   */
+  target: TargetStatus;
 }
 
 /**
@@ -67,7 +71,7 @@ export interface SourceImportPorts<F extends ImportFile> {
 }
 export interface ImportItemResult {
   name: string;
-  status: 'opened' | 'focused' | 'changed' | 'failed';
+  status: 'opened' | 'focused' | 'changed' | 'missing' | 'failed';
   documentId?: string;
   message: string;
 }
@@ -104,19 +108,29 @@ export class SourceImport<F extends ImportFile> {
             // **命中既有绑定** ✓ ⇒ ⇒ 聚焦那个标签页 ✓ ⇒ ⇒ 不新建、不覆盖、不清未同步提示 ✓（§5.2 ✓）。
             // **磁盘变了** ⇒ ⇒ 交给用户决定要不要重新载入 ✓ ⇒ ⇒ 不静默覆盖内存中的修改 ✓。
             release = true;
-            item = bound.changed
-              ? {
-                  name: file.name,
-                  status: 'changed',
-                  documentId: bound.documentId,
-                  message: '磁盘上的文件已变化，是否重新载入由你决定',
-                }
-              : {
-                  name: file.name,
-                  status: 'focused',
-                  documentId: bound.documentId,
-                  message: '已聚焦工作区已有文档，导入内容未覆盖',
-                };
+            // **目标没了** ✓ ⇒ ⇒ **那是另一件事** ✓ ⇒ ⇒ **说另一句话** ✓ ⇒ ⇒
+            // **不让用户去重载一个不存在的文件** ✓（§8.5 ✓）。
+            item =
+              bound.target === 'missing'
+                ? {
+                    name: file.name,
+                    status: 'missing',
+                    documentId: bound.documentId,
+                    message: '那个本地文件已经不在了，无法重新载入',
+                  }
+                : bound.target === 'ready'
+                  ? {
+                      name: file.name,
+                      status: 'focused',
+                      documentId: bound.documentId,
+                      message: '已聚焦工作区已有文档，导入内容未覆盖',
+                    }
+                  : {
+                      name: file.name,
+                      status: 'changed',
+                      documentId: bound.documentId,
+                      message: '磁盘上的文件已变化，是否重新载入由你决定',
+                    };
           } else {
             if (!/\.(md|markdown|txt|html|htm)$/i.test(file.name))
               throw new Error('仅支持 .md、.markdown、.txt 和可编辑 .html/.htm');

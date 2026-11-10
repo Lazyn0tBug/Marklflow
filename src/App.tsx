@@ -1070,7 +1070,10 @@ export default function App() {
         setImportResults(result.items);
         // **命中既有绑定的都聚焦** ✓ ⇒ ⇒ 不止第一个 ✓ ⇒ ⇒ 不新建、不覆盖 ✓（M4-4 ✓）。
         for (const item of result.items) {
-          if ((item.status === 'focused' || item.status === 'changed') && item.documentId)
+          if (
+            (item.status === 'focused' || item.status === 'changed' || item.status === 'missing') &&
+            item.documentId
+          )
             selectDocument(item.documentId);
         }
       }

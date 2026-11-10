@@ -173,7 +173,7 @@ describe('打开本地文件', () => {
     const doc = createNewDocument('本地.md');
     await opener.open(doc, file('本地.md'));
     // **命中既有绑定** ✓ ⇒ ⇒ 聚焦那个标签页 ✓ ⇒ ⇒ 不新建 ✓。
-    expect(await opener.bound(file('本地.md'))).toEqual({documentId: doc.id, changed: false});
+    expect(await opener.bound(file('本地.md'))).toEqual({documentId: doc.id, target: 'ready'});
     // **没绑过的文件** ⇒ ⇒ 没有 ✓ ⇒ ⇒ 走正常打开 ✓。
     expect(await opener.bound(file('别的.md', 'f2'))).toBeUndefined();
   });
@@ -195,7 +195,7 @@ describe('打开本地文件', () => {
     });
     await opener.open(doc, file('本地.md'));
     // **磁盘变了** ✓ ⇒ ⇒ 交给用户决定 ✓ ⇒ ⇒ 不静默覆盖 ✓（M4-9 ✓）。
-    expect(await opener.bound(file('本地.md'))).toEqual({documentId: doc.id, changed: true});
+    expect(await opener.bound(file('本地.md'))).toEqual({documentId: doc.id, target: 'changed'});
   });
 
   it('treats a question the native side cannot answer as changed', async () => {
@@ -217,6 +217,6 @@ describe('打开本地文件', () => {
       releaseHandle: async () => {},
     });
     await opener.open(doc, file('本地.md'));
-    expect(await opener.bound(file('本地.md'))).toEqual({documentId: doc.id, changed: true});
+    expect(await opener.bound(file('本地.md'))).toEqual({documentId: doc.id, target: 'changed'});
   });
 });

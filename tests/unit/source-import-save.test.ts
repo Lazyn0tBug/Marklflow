@@ -107,7 +107,7 @@ it('never opens invalid HTML, invalid source records or corrupt assets', async (
 });
 it('focuses the document an identity is already bound to instead of opening a second one', async () => {
   const {ports, docs, order, released} = setup();
-  ports.boundSelection = async () => ({documentId: 'bound-doc', changed: false});
+  ports.boundSelection = async () => ({documentId: 'bound-doc', target: 'ready'});
   const result = await new SourceImport(ports).run([file('same.md')]);
   expect(result.status === 'completed' && result.items[0]?.status).toBe('focused');
   expect(result.status === 'completed' && result.items[0]?.documentId).toBe('bound-doc'); // **不新建、不覆盖** ✓ ⇒ ⇒ 没有读、没有开 ✓。
@@ -117,13 +117,29 @@ it('focuses the document an identity is already bound to instead of opening a se
 });
 it('says the file changed on disk instead of overwriting the draft quietly', async () => {
   const {ports, docs, order, released} = setup();
-  ports.boundSelection = async () => ({documentId: 'bound-doc', changed: true});
+  ports.boundSelection = async () => ({documentId: 'bound-doc', target: 'changed'});
   const result = await new SourceImport(ports).run([file('changed.md')]);
   expect(result.status === 'completed' && result.items[0]?.status).toBe('changed');
   expect(result.status === 'completed' && result.items[0]?.documentId).toBe('bound-doc'); // **不静默覆盖** ✓ ⇒ ⇒ 草稿一个字没动 ✓。
   expect(docs).toHaveLength(0);
   expect(order).toEqual([]);
   expect(released).toEqual(['changed.md']);
+});
+it('says the file is gone instead of saying it changed', async () => {
+  const {ports, docs, order, released} = setup();
+  ports.boundSelection = async () => ({documentId: 'bound-doc', target: 'missing'});
+  const result = await new SourceImport(ports).run([file('gone.md')]);
+  const item = result.status === 'completed' ? result.items[0] : undefined;
+  // **目标没了 ⇒ ⇒ 那是另一件事** ✓ ⇒ ⇒ **说另一句话** ✓ ⇒ ⇒
+  // **不让用户去重载一个不存在的文件** ✓（§8.5 ✓）。
+  expect(item?.status).toBe('missing');
+  expect(item?.message).toContain('已经不在了');
+  expect(item?.message).not.toContain('已变化');
+  // **还是聚焦那个文档** ✓ ⇒ ⇒ 草稿一个字没动 ✓。
+  expect(item?.documentId).toBe('bound-doc');
+  expect(docs).toHaveLength(0);
+  expect(order).toEqual([]);
+  expect(released).toEqual(['gone.md']);
 });
 it('releases the grant of an item it could not open, and keeps the one it opened', async () => {
   const {ports, released} = setup();
