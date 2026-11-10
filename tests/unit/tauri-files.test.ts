@@ -1,11 +1,14 @@
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {
+  isNativeSameDirectory,
   isNativeSynced,
+  isNativeTargetPresent,
   listenNativeDrop,
   readNativeText,
   releaseNativeFile,
   selectNativeOpen,
   selectNativeSave,
+  writeNativeBytes,
 } from '../../src/core/platform/tauri/files';
 
 const native = vi.hoisted(() => ({isTauri: vi.fn(), invoke: vi.fn()}));
@@ -107,6 +110,47 @@ it('asks the native side whether the file is still the version the app has', asy
   const failure = new Error('native state unavailable');
   native.invoke.mockRejectedValueOnce(failure);
   await expect(isNativeSynced(selected.key)).rejects.toBe(failure);
+});
+it('asks the native side whether two files sit in the same directory', async () => {
+  // **只回一句是或不是** ✓ ⇒ ⇒ 路径不出原生侧 ✓ ⇒ ⇒ 应用侧拿不到路径 ✓（§3.4 ✓）。
+  native.invoke.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+  expect(await isNativeSameDirectory(selected.key, 'other-key')).toBe(true);
+  expect(await isNativeSameDirectory(selected.key, 'other-key')).toBe(false);
+  expect(native.invoke).toHaveBeenNthCalledWith(1, 'is_native_same_directory', {
+    firstKey: selected.key,
+    secondKey: 'other-key',
+  });
+  // **回的不是布尔就是坏数据** ✓ ⇒ ⇒ 不能悄悄当真 ✓。
+  native.invoke.mockResolvedValueOnce('yes');
+  await expect(isNativeSameDirectory(selected.key, 'other-key')).rejects.toThrow();
+});
+it('asks the native side whether that target is still there', async () => {
+  // **只回一句是或不是** ✓ ⇒ ⇒ 目标没了 ⇒ ⇒ 回"否" ✓ ⇒ ⇒ **不是报错** ✓（§8.2 ✓）。
+  native.invoke.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+  expect(await isNativeTargetPresent(selected.key)).toBe(true);
+  expect(await isNativeTargetPresent(selected.key)).toBe(false);
+  expect(native.invoke).toHaveBeenNthCalledWith(1, 'is_native_target_present', {
+    key: selected.key,
+  });
+  // **回的不是布尔就是坏数据** ✓ ⇒ ⇒ 不能悄悄当真 ✓。
+  native.invoke.mockResolvedValueOnce('yes');
+  await expect(isNativeTargetPresent(selected.key)).rejects.toThrow();
+});
+it('gives the save target its reference so the new document can bind to it', async () => {
+  native.invoke.mockResolvedValueOnce(selected);
+  const target = await selectNativeSave('report.md');
+  // **另存为要拿到新文件的引用** ✓ ⇒ ⇒ 新文档绑的是**那个文件** ✓（M5-5 ✓）。
+  expect(target!.reference).toBe(selected.reference);
+  expect(target!.name).toBe(selected.name);
+});
+it('writes bytes to a chosen target without the sync recheck', async () => {
+  native.invoke.mockResolvedValueOnce(undefined);
+  await writeNativeBytes(selected.key, new Uint8Array([104, 105]));
+  // **通用字节写入** ✓ ⇒ ⇒ **不走写回原文件那条路** ✓ ⇒ ⇒ 那里没有基线 ✓ ⇒ ⇒ 无从复核 ✓（§6.2 ✓）。
+  expect(native.invoke).toHaveBeenCalledExactlyOnceWith('write_native_bytes', {
+    key: selected.key,
+    bytes: [104, 105],
+  });
 });
 it('selects a save target without writing until save, then reports saved only after native success', async () => {
   native.invoke

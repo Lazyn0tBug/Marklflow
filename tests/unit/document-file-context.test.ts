@@ -47,18 +47,14 @@ describe('文档-文件上下文', () => {
     expect(contexts.documentFor('f1')).toBe('d1');
   });
 
-  it('重新关联换文件，且无法证明一致', () => {
+  it('没有"改绑"这个动作', () => {
     const contexts = new DocumentFileContexts();
     contexts.open('d1', binding('f1'), 3);
-    const context = contexts.reAssociate('d1', binding('f2'));
-    // **file 更新** ✓ ⇒ ⇒ 旧的索引让位 ✓。
-    expect(context.file.reference).toBe('f2');
-    expect(contexts.documentFor('f1')).toBeUndefined();
-    expect(contexts.documentFor('f2')).toBe('d1');
-    // **无法证明一致 ⇒ ⇒ 记 null ⇒ ⇒ 按未同步显示** ✓（§2.3 ✓、§5.5 ✓）。
-    expect(context.sync.lastSyncedRevision).toBeNull();
-    expect(syncStatus(context, 3)).toBe('unsynced');
-    // **关联不算同步** ✓ ⇒ ⇒ 草稿那份修订一个字没动 ✓ ⇒ ⇒ 这里管不到 ✓。
+    // **重新关联那个概念没有了** ✓ ⇒ ⇒ **不是"本期不做"** ✓ ⇒ ⇒
+    // **想让这份草稿落到另一个文件 ⇒ ⇒ 那是一次写** ✓ ⇒ ⇒ 由另存为承担 ✓（§4.1 ✓、§16 ✓）。
+    // ⇒ ⇒ 上下文上**没有那个方法** ✓ ⇒ ⇒ 用不上的概念不留着 ✓（《概念裁剪》§1 ✓）。
+    expect('reAssociate' in contexts).toBe(false);
+    expect(Object.getOwnPropertyNames(DocumentFileContexts.prototype)).not.toContain('reAssociate');
   });
 
   it('关掉文档，句柄跟着放掉', async () => {
@@ -115,6 +111,27 @@ describe('文档-文件上下文', () => {
     // **反向同步 ⇒ ⇒ 也清掉失败** ✓ ⇒ ⇒ 基线跟着那一版 ✓。
     expect(contexts.read('d1')?.sync.failure).toBeNull();
     expect(contexts.read('d1')?.sync.lastSyncedRevision).toBe(11);
+  });
+
+  it('另存为：新文档绑新文件，旧文档一个字不动', () => {
+    const contexts = new DocumentFileContexts();
+    contexts.open('d1', binding('f1'), 3);
+    // **另存为是一次转移** ✓ ⇒ ⇒ 产生**另一个文档** ✓ ⇒ ⇒ 旧文档不受影响 ✓（§4.3 ✓、§6.2 ✓）。
+    // **关联基于读成功** ✓ ⇒ ⇒ 那个答案由调用方给 ✓ ⇒ ⇒ **写成功不是关联** ✓（§4.1 ✓）。
+    const created = contexts.saveAs('d2', binding('f2'), 9, true);
+    expect(created.documentId).toBe('d2');
+    expect(created.file.reference).toBe('f2');
+    // **新文档初始即已同步** ✓ ⇒ ⇒ 基线 = 写出的修订 ✓ ⇒ ⇒ 那一行说"已同步" ✓（§6.2 ✓）。
+    expect(created.sync.lastSyncedRevision).toBe(9);
+    expect(syncStatus(created, 9)).toBe('synced');
+    // **有效性就是那次读的答案** ✓ ⇒ ⇒ 不是"写成功了所以它在" ✓（§8.2 ✓）。
+    expect(created.file.targetPresent).toBe(true);
+    // **旧文档继续同步它自己的文件** ✓ ⇒ ⇒ 两边互不相关 ✓。
+    expect(contexts.read('d1')?.file.reference).toBe('f1');
+    expect(contexts.read('d1')?.sync.lastSyncedRevision).toBe(3);
+    // **两个文档两个文件** ✓ ⇒ ⇒ 索引各归各的 ✓。
+    expect(contexts.documentFor('f1')).toBe('d1');
+    expect(contexts.documentFor('f2')).toBe('d2');
   });
 
   it('上下文里没有"冲突待决定"', () => {

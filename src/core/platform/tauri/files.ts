@@ -66,25 +66,78 @@ export async function isNativeSynced(key: string): Promise<boolean> {
   return z.boolean().parse(await invoke('is_native_synced', {key}));
 }
 /**
+ * 问一句：**这两个文件在同一个目录里吗** ✓（§6.2 ✓）。
+ *
+ * **只回一句是或不是** ✓ ⇒ ⇒ 路径不出原生侧 ✓ ⇒ ⇒ 应用侧拿不到路径 ✓（§3.4 ✓）。
+ * **为什么应用层要问** ✓：另存为到别的目录 ⇒ ⇒ 正文里的相对图片引用会按新位置解释 ✓
+ * ⇒ ⇒ 应用层据此提示用户 ✓ ⇒ ⇒ 而"在不在同一个目录"只有拿着路径的那一侧答得了 ✓（§1.3 ✓）。
+ */
+export async function isNativeSameDirectory(first: string, second: string): Promise<boolean> {
+  return z
+    .boolean()
+    .parse(await invoke('is_native_same_directory', {firstKey: first, secondKey: second}));
+}
+/**
+ * 问一句：**那个目标还在吗** ✓（§3.1 ✓、§8.2 ✓）。
+ *
+ * **只回一句是或不是** ✓ ⇒ ⇒ 目标没了 ⇒ ⇒ 回"否" ✓ ⇒ ⇒ **不是报错** ✓
+ * ⇒ ⇒ 那是**关联还有效吗**的答案 ✓ ⇒ ⇒ **不是写失败的结果** ✓。
+ *
+ * **为什么不用 `is_native_synced` 代替** ✓：目标没了时它只会**报错**（`native-target-missing` ✓）
+ * ⇒ ⇒ **那不是答案** ✓ ⇒ ⇒ 关联的有效性要有一句独立的问答 ✓。
+ */
+export async function isNativeTargetPresent(key: string): Promise<boolean> {
+  return z.boolean().parse(await invoke('is_native_target_present', {key}));
+}
+/**
+ * **目标的状态** ✓：**原生侧归类的那一份** ✓ ⇒ ⇒ **一个封闭的小集合** ✓（§6.1 ✓）。
+ *
+ * **归类在原生侧** ✓ ⇒ ⇒ **处理在应用侧按状态选** ✓ ⇒ ⇒ **两件事分开** ✓。
+ */
+const targetStatusSchema = z.enum(['ready', 'changed', 'missing', 'unwritable', 'invalid']);
+
+/**
+ * **状态 ⇒ 结果** ✓：**一处映射** ✓ ⇒ ⇒ **应用侧按这个集合选处理** ✓ ⇒ ⇒
+ * **不是每个状态各写一堆判断** ✓（§6.1 ✓）。
+ */
+const STATUS_OUTCOMES: Record<
+  z.infer<typeof targetStatusSchema>,
+  Exclude<WriteOutcome['kind'], 'failed'>
+> = {
+  ready: 'written',
+  changed: 'target-changed',
+  missing: 'missing',
+  unwritable: 'unwritable',
+  invalid: 'invalid',
+};
+
+/**
  * **写回原文件** ✓：走受保护的同步入口 ✓ ⇒ ⇒ **复核在命令内部** ✓（§3.1 ✓、§6.1 ✓）。
  *
- * **前端只说"这次是覆盖"** ✓ ⇒ ⇒ **基准由原生侧选** ✓ ⇒ ⇒ 前端拿不到摘要值 ✓（§3.4 ✓）。
- * **前端不能选择不复核** ✓ ⇒ ⇒ 两条路都复核 ✓ ⇒ ⇒ 目标变了就是 `write-target-changed` ✓。
+ * **原生侧答一个状态** ✓ ⇒ ⇒ 这里只做映射 ✓ ⇒ ⇒ **不判它意味着什么** ✓ ⇒ ⇒
+ * **那句话由应用侧按状态选** ✓（§6.1 ✓）。
  *
- * **机器码从共享词表来** ✓ ⇒ ⇒ 这里只认这一个码 ✓ ⇒ ⇒ 其余的失败原样带出去 ✓（§9 ✓）。
+ * **前端只说"这次是覆盖"** ✓ ⇒ ⇒ **基准由原生侧选** ✓ ⇒ ⇒ 前端拿不到摘要值 ✓（§3.4 ✓）。
+ * **前端不能选择不复核** ✓ ⇒ ⇒ 两条路都复核 ✓ ✓。
+ * **"这次允许目标不存在"** ✓ ⇒ ⇒ **用户说了继续** ✓ ⇒ ⇒ **其余复核照旧** ✓。
  */
 export async function writeNativeSync(
   key: string,
   bytes: Uint8Array,
-  overwrite: boolean,
+  intent: 'sync' | 'overwrite' | 'continue',
 ): Promise<WriteOutcome> {
   try {
-    await invoke('write_native_sync', {key, bytes: Array.from(bytes), overwrite});
-    return {kind: 'written'};
+    const status = targetStatusSchema.parse(
+      await invoke('write_native_sync', {
+        key,
+        bytes: Array.from(bytes),
+        overwrite: intent === 'overwrite',
+        allowMissing: intent === 'continue',
+      }),
+    );
+    return {kind: STATUS_OUTCOMES[status]};
   } catch (error) {
-    // **目标又变了** ✓ ⇒ ⇒ 那是**重新提示**的信号 ✓ ⇒ ⇒ **不是失败** ✓（§8.6 ✓）。
-    if (error instanceof FileFailure && error.code === 'write-target-changed')
-      return {kind: 'target-changed'};
+    // **真失败** ✓ ⇒ ⇒ 机器码从共享词表来 ✓ ⇒ ⇒ 其余的失败原样带出去 ✓（§9 ✓）。
     return {kind: 'failed', error};
   }
 }
@@ -95,7 +148,26 @@ export async function readNativeTextByKey(key: string): Promise<string> {
 export interface NativeSaveTarget extends ByteSaveTarget {
   /** 授权的 key ✓ —— 路径只在原生侧可见 ✓，前端只拿得到它 ✓。 */
   key: string;
+  /**
+   * 文件引用 ✓：**这个文件的会话内别名** ✓（§3.3 ✓）。
+   *
+   * **另存为要它** ✓ ⇒ ⇒ 新文档绑的是**那个文件** ✓ ⇒ ⇒ 再次打开它聚焦新文档 ✓（M5-5 ✓）。
+   */
+  reference: string;
+  /** 选中的文件名 ✓：新文档的标题与展示用 ✓。 */
+  name: string;
   release(): Promise<void>;
+}
+/**
+ * **按句柄写字节** ✓：**通用字节写入** ✓（§6.2 ✓）。
+ *
+ * **另存为走它** ✓ ⇒ ⇒ **不走写回原文件那条路** ✓ ⇒ ⇒ 目标是**新选的** ✓ ⇒ ⇒ 那里没有基线 ✓
+ * ⇒ ⇒ 无从复核 ✓ ⇒ ⇒ 而且**本来就要盖掉它** ✓ ⇒ ⇒ 用户在系统对话框里已经确认过 ✓。
+ */
+export async function writeNativeBytes(handle: string, bytes: Uint8Array): Promise<void> {
+  if (bytes.byteLength > NATIVE_WRITE_BYTE_LIMIT)
+    throw new Error(`写入超过 ${formatBytes(NATIVE_WRITE_BYTE_LIMIT)} 原生写入限制`);
+  await invoke('write_native_bytes', {key: handle, bytes: Array.from(bytes)});
 }
 export async function selectNativeSave(name: string): Promise<NativeSaveTarget | undefined> {
   const value = await invoke('select_native_save', {name});
@@ -103,13 +175,13 @@ export async function selectNativeSave(name: string): Promise<NativeSaveTarget |
   const file = selectedSchema.parse(value);
   return {
     key: file.key,
+    reference: file.reference,
+    name: file.name,
     async save(blob) {
+      // **先看大小再取字节** ✓ ⇒ ⇒ 超限的 blob 不会被转成字节数组 ✓（不白分配 ✓）。
       if (blob.size > NATIVE_WRITE_BYTE_LIMIT)
         throw new Error(`导出文件超过 ${formatBytes(NATIVE_WRITE_BYTE_LIMIT)} 原生写入限制`);
-      await invoke('write_native_bytes', {
-        key: file.key,
-        bytes: Array.from(new Uint8Array(await blob.arrayBuffer())),
-      });
+      await writeNativeBytes(file.key, new Uint8Array(await blob.arrayBuffer()));
       return 'saved';
     },
     release: () => releaseNativeFile(file.key),

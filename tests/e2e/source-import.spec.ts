@@ -34,7 +34,7 @@ async function boot(page: Page) {
   await page.goto('/');
   await ready(page);
   await page.locator('textarea').fill('# ORIGINAL\n\nKeep this source.');
-  await page.getByRole('button', {name: '保存', exact: true}).click();
+  await page.keyboard.press('ControlOrMeta+s');
   await ready(page);
 }
 async function results(page: Page) {
@@ -140,7 +140,7 @@ test('repeated Markdown selection focuses its existing Tab without overwriting e
   await input.setInputFiles(file);
   await results(page);
   await page.locator('textarea').fill('# LOCAL\n\nLocal edit.');
-  await page.getByRole('button', {name: '保存', exact: true}).click();
+  await page.keyboard.press('ControlOrMeta+s');
   await page.getByRole('tab', {name: /^ORIGINAL/}).click();
   await input.setInputFiles(file);
   await results(page);
@@ -158,7 +158,7 @@ test('preserves editable HTML identity and reopens the workspace version after i
   await page.locator('input[type=file]').setInputFiles(html(doc));
   await results(page);
   await page.locator('textarea').fill('# HTML_LOCAL\n\nNew workspace revision.');
-  await page.getByRole('button', {name: '保存', exact: true}).click();
+  await page.keyboard.press('ControlOrMeta+s');
   await expect
     .poll(async () => JSON.stringify(await readStored(page, doc.id)))
     .toContain('New workspace revision.');

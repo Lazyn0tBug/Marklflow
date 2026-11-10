@@ -54,7 +54,7 @@ test('saves undo and redo revisions and restores the selected document math pref
   const editor = page.locator('textarea');
   await expect(editor).toBeVisible();
   await editor.fill('# 最初');
-  await page.getByRole('button', {name: '保存', exact: true}).click();
+  await page.keyboard.press('ControlOrMeta+s');
   await editor.fill('# 更新');
   await editor.press('Control+z');
   await expect(editor).toHaveValue('# 最初');

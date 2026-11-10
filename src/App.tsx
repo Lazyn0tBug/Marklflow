@@ -50,12 +50,36 @@ import {
   type NativeSelection,
 } from './core/platform/tauri/files';
 import {isDesktopRuntime} from './core/platform/tauri/runtime';
+import {nativeDiskPorts} from './core/platform/tauri/filePorts';
+import {webDiskPorts} from './core/platform/web/filePorts';
+import {editableHtmlSource} from './core/export/editableSource';
+import {exportFile} from './application/exports/exportFile';
+import {
+  SYNC_FEEDBACK_TEXTS,
+  SYNC_FEEDBACK_TONES,
+  SAVE_AS_TEXTS,
+  SAVE_TO_TEXTS,
+  GATE_TEXTS,
+  CLOSE_TAB_TEXTS,
+} from './application/messages';
+import {SaveSplitButton} from './components/header/SaveSplitButton';
+import {ConflictDialog} from './components/workspace/ConflictDialog';
+import {useConflictPrompt} from './components/workspace/conflictPrompt';
 import {
   DocumentFileContexts,
   releaseDocumentFileContext,
   syncStatus as syncStatusOf,
 } from './application/workspace/documentFileContext';
 import {DocumentOpener} from './application/workspace/documentOpen';
+import {DocumentSyncer} from './application/workspace/documentSyncer';
+import {DocumentSaveAs} from './application/workspace/documentSaveAs';
+import {DocumentSaveTo} from './application/workspace/documentSaveTo';
+import {SourceBytes} from './application/workspace/sourceBytes';
+import {bindingState, saveControlView} from './application/workspace/saveControl';
+import {syncFeedback} from './application/workspace/syncFeedback';
+import {isSaveShortcut} from './application/workspace/saveShortcut';
+import {closeTabBeforeClose} from './application/workspace/closeTab';
+import type {DiskPorts} from './application/workspace/diskPorts';
 import type {ImportItemResult, OpenResult} from './application/workspace/sourceImport';
 import {
   WorkbenchPreviewRuntime,
@@ -111,6 +135,108 @@ export default function App() {
       sameVersion: (handle) => isNativeSynced(handle),
       // **这一次没有成为绑定的凭据时才放** ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
       releaseHandle: (handle) => releaseNativeFile(handle),
+    });
+  /*
+   * **平台给的那一半** ✓ ⇒ ⇒ **两端各一套** ✓ ⇒ ⇒ 差异落在实现上 ✓ ⇒ ⇒ 调用点不分叉 ✓（§6.5 ✓）。
+   *
+   * **放在 ref 里** ✓ ⇒ ⇒ **桌面端判定晚到一步也不影响** ✓ ⇒ ⇒ 服务那一份不用重建 ✓
+   * ⇒ ⇒ **同目标串行那把队不丢** ✓。
+   */
+  const diskPorts = useRef<DiskPorts>(webDiskPorts);
+  useEffect(() => {
+    diskPorts.current = desktop ? nativeDiskPorts : webDiskPorts;
+  }, [desktop]);
+  /*
+   * **冲突那一次提问** ✓ ⇒ ⇒ 问的那一方持有它 ✓ ⇒ ⇒ 上下文里不留"待用户决定" ✓（§4.1 ✓）。
+   */
+  const conflict = useConflictPrompt();
+  /*
+   * **宿主给的那两个** ✓ ⇒ ⇒ 问用户 ✓、反向同步回填 ✓。
+   *
+   * **放在 ref 里** ✓ ⇒ ⇒ 服务建一次就够 ✓ ⇒ ⇒ 回调拿到的却是当下的那一份 ✓。
+   *
+   * **落草稿不在这里** ✓ ⇒ ⇒ **草稿与写回不接成一个流程** ✓ ⇒ ⇒
+   * 草稿那边**自己报它自己** ✓（§6.1 ✓、§6.5 ✓）。
+   */
+  /** **当下是哪一个文档** ✓ ⇒ ⇒ 选目标时要知道拿哪一份比 ✓。 */
+  const currentDocument = useRef<string>('');
+  const applyPulled = useRef<(documentId: string, markdown: string) => number>(() => 0);
+  /** **待写字节从哪来** ✓ ⇒ ⇒ 按源格式而异 ✓（§6.1 ✓）。 */
+  const sourceBytes = useRef(new SourceBytes({editableHtml: editableHtmlSource})).current;
+  const syncer = useRef<DocumentSyncer | null>(null);
+  if (!syncer.current)
+    syncer.current = new DocumentSyncer(contexts, {
+      sameVersion: (handle) => diskPorts.current.sync.sameVersion(handle),
+      targetPresent: (handle) => diskPorts.current.sync.targetPresent(handle),
+      write: (handle, bytes, intent) => diskPorts.current.sync.write(handle, bytes, intent),
+      read: (handle, format) => diskPorts.current.sync.read(handle, format),
+      decide: (request) => conflict.ask(request),
+      applyPulled: async (documentId, markdown) => applyPulled.current(documentId, markdown),
+      /**
+       * **门没过 ⇒ ⇒ 问用户一次** ✓（§6.1 ✓）。
+       *
+       * **只答"是/否"** ✓ ⇒ ⇒ **下一步由应用层选** ✓ ⇒ ⇒ **宿主只管把那句话说出来** ✓。
+       */
+      askGate: async (reason) => confirm(GATE_TEXTS[reason]),
+      /**
+       * **换目标** ✓ ⇒ ⇒ **宿主把这一份写到新目标** ✓ ⇒ ⇒ **那边再过一次门** ✓ ⇒ ⇒
+       * **绑定在那边读成功之后才成立** ✓（§4.1 ✓）。
+       */
+      saveElsewhere: async ({document, bytes}) => {
+        const format = contexts.read(document.id)?.file.sourceFormat ?? 'markdown';
+        const suggestion = exportFile(document.meta.title || document.id, format);
+        const result = await saveTo.current!.saveTo({
+          document,
+          bytes,
+          suggestedName: suggestion.name,
+        });
+        if (result.kind === 'saved') return {kind: 'written', revision: result.revision};
+        // **用户取消 ⇒ ⇒ 那边没成** ✓ ⇒ ⇒ **不是失败** ✓ ⇒ ⇒ 两边都不动 ✓。
+        if (result.kind === 'cancelled') return {kind: 'cancelled'};
+        return {kind: 'failed', error: new Error('换到新目标也没写成')};
+      },
+    });
+  /**
+   * **选一个新目标** ✓ ⇒ ⇒ **跨目录那句话在那儿问** ✓（§6.2 ✓、M5-10 ✓）。
+   *
+   * **用户说不** ⇒ ⇒ **当没有目标** ✓ ⇒ ⇒ 规则那一侧就是"取消" ✓ ⇒ ⇒ 不写、不建立关联 ✓（§6.2 ✓）。
+   *
+   * **两条流程共用它** ✓ ⇒ ⇒ **另存为**与**写到新目标**问的是同一句 ✓ ⇒ ⇒ **规则只有一处** ✓。
+   */
+  const selectSaveTarget = async (suggestedName: string) => {
+    const target = await diskPorts.current.saveAs.selectTarget(suggestedName);
+    if (target === undefined) return undefined;
+    const source = contexts.read(currentDocument.current)?.file.handle;
+    // **没有原文件** ⇒ ⇒ 谈不上跨目录 ✓ ⇒ ⇒ 不问 ✓。
+    if (source === undefined) return target;
+    // **同目录由原生侧答** ✓ ⇒ ⇒ 路径不出原生侧 ✓（§3.4 ✓）。
+    if (await diskPorts.current.sameDirectory(source, target.handle)) return target;
+    if (confirm(SAVE_AS_TEXTS.crossDirectory)) return target;
+    // **不要了** ⇒ ⇒ 放掉这次的授权 ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
+    await diskPorts.current.saveAs.releaseHandle(target.handle).catch(() => {});
+    return undefined;
+  };
+  const saver = useRef<DocumentSaveAs | null>(null);
+  if (!saver.current)
+    saver.current = new DocumentSaveAs(contexts, {
+      selectTarget: selectSaveTarget,
+      write: (handle, bytes) => diskPorts.current.saveAs.write(handle, bytes),
+      releaseHandle: (handle) => diskPorts.current.saveAs.releaseHandle(handle),
+      targetPresent: (handle) => diskPorts.current.saveAs.targetPresent(handle),
+      createDocument: async (source) => {
+        const created = createNewDocument(source.meta.title || source.id);
+        await saveDocument(created);
+        return {...created, markdown: source.markdown};
+      },
+    });
+  /** **写到新目标** ✓ ⇒ ⇒ **关联为空时那一次保存** ✓ ⇒ ⇒ **写成功即建立关联** ✓（§8.2 ✓）。 */
+  const saveTo = useRef<DocumentSaveTo | null>(null);
+  if (!saveTo.current)
+    saveTo.current = new DocumentSaveTo(contexts, {
+      selectTarget: selectSaveTarget,
+      write: (handle, bytes) => diskPorts.current.saveAs.write(handle, bytes),
+      releaseHandle: (handle) => diskPorts.current.saveAs.releaseHandle(handle),
+      targetPresent: (handle) => diskPorts.current.saveAs.targetPresent(handle),
     });
   const [storageWarnings, setStorageWarnings] = useState<string[]>([]);
   const [recoveryCount, setRecoveryCount] = useState(0);
@@ -294,6 +420,8 @@ export default function App() {
     ) : null;
 
   // 当前活动文档
+  // **当下是哪一个文档** ✓ ⇒ ⇒ 选目标时要知道拿哪一份比 ✓。
+  currentDocument.current = currentDocId;
   const currentSession = sessions.documentIds.includes(currentDocId)
     ? sessions.read(currentDocId)
     : undefined;
@@ -305,6 +433,14 @@ export default function App() {
    */
   const currentContext = currentDoc ? contexts.read(currentDoc.id) : undefined;
   const syncStatus = syncStatusOf(currentContext, currentDoc?.revision ?? 0);
+  /**
+   * **顶栏那个控件的形状** ✓ ⇒ ⇒ **可用性是派生出来的** ✓ ⇒ ⇒ 界面不自己判 ✓（§8.6 ✓）。
+   *
+   * **三种关联状态，三个形状** ✓ ⇒ ⇒ **关联状态来自读判断** ✓ ⇒ ⇒ 不是写失败推出来的 ✓（§8.2 ✓）。
+   *
+   * **Web 端整组灰掉** ✓ ⇒ ⇒ 那里永远选不到新目标 ✓ ⇒ ⇒ 另存为也不在那个菜单里 ✓（§8.2 ✓）。
+   */
+  const saveView = saveControlView(bindingState(currentContext), desktop);
   const kind = previewMode === 'a4' ? 'preview.a4' : 'preview.flow';
   const previewView: PreviewView =
     preview.documentId === currentDocId && preview.kind === kind
@@ -330,6 +466,7 @@ export default function App() {
       return false;
     }
   };
+  // **草稿落盘那一个入口** ✓ ⇒ ⇒ **它自己自动发生** ✓ ⇒ ⇒ **与写回不接成一个流程** ✓（§6.1 ✓）。
   const queueSave = (doc: DocumentRecord) => {
     const prior = pendingSaves.current.get(doc.id);
     if (prior) clearTimeout(prior.timer);
@@ -424,14 +561,21 @@ export default function App() {
   const closeTab = async (id: string) => {
     if (!sessions.documentIds.includes(id)) return;
     const value = sessions.read(id);
-    if (value.dirty) {
-      if (!confirm('文档“' + value.document.meta.title + '”尚未保存。保存后关闭标签页？')) return;
-      const pending = pendingSaves.current.get(id);
-      if (pending) clearTimeout(pending.timer);
-      pendingSaves.current.delete(id);
-      if (!(await persist(value.document))) return;
-      if (!sessions.documentIds.includes(id) || sessions.read(id).dirty) return;
-    }
+    const context = contexts.read(id);
+    // **关之前那几步在应用层** ✓ ⇒ ⇒ 这里只管把端口接上 ✓ ⇒ ⇒ 规则只有一处 ✓。
+    await closeTabBeforeClose(value.document, syncStatusOf(context, value.document.revision), {
+      // **问一句** ✓ ⇒ ⇒ **说清关掉会怎样** ✓ ⇒ ⇒ 用户知道自己在答应什么 ✓。
+      confirm: async (reason) => confirm(CLOSE_TAB_TEXTS[reason]),
+      persist: async (doc) => {
+        // **去抖里那一次不等了** ✓ ⇒ ⇒ 落盘落的是当下这一份 ✓。
+        const pending = pendingSaves.current.get(doc.id);
+        if (pending) clearTimeout(pending.timer);
+        pendingSaves.current.delete(doc.id);
+        return persist(doc);
+      },
+      writeBack: (doc) => writeBackDocument(doc),
+    });
+    // **关得掉** ✓ ⇒ ⇒ **标签页不会再被困住** ✓ ⇒ ⇒ 写不进去也关 ✓（§16 ✓）。
     if (id === currentDocId) capturePosition();
     removeSession(id);
   };
@@ -625,13 +769,206 @@ export default function App() {
     [currentDoc, handleMarkdownChange],
   );
 
-  const handleSaveImmediately = () => {
-    if (!currentDoc) return;
-    const pending = pendingSaves.current.get(currentDoc.id);
+  /**
+   * **立即落盘** ✓：去抖里那一次不等了 ✓ ⇒ ⇒ **两端一样** ✓（§6.4 ✓）。
+   */
+  const flushDraft = async (doc: DocumentRecord) => {
+    const pending = pendingSaves.current.get(doc.id);
     if (pending) clearTimeout(pending.timer);
-    pendingSaves.current.delete(currentDoc.id);
-    void persist(currentDoc);
+    pendingSaves.current.delete(doc.id);
+    await persist(doc);
   };
+
+  /**
+   * **反向同步回填** ✓：把文件的当前内容放进草稿 ✓ ⇒ ⇒ 交回落定后的修订 ✓（§6.5 ✓）。
+   *
+   * **本地改动不保留** ✓ ⇒ ⇒ 那是用户选的那一次 ✓ ⇒ ⇒ **修订照样往前** ✓ ⇒ ⇒ 基线跟着它 ✓。
+   */
+  const applyPulledToDraft = (documentId: string, markdown: string): number => {
+    const current = sessions.read(documentId).document;
+    const doc: DocumentRecord = {...current, markdown, revision: current.revision + 1};
+    const title = deriveDocumentTitle(markdown);
+    if (title) doc.meta = {...doc.meta, title};
+    sessions.update(doc);
+    sessionChanged((value) => value + 1);
+    setDocuments((previous) => previous.map((value) => (value.id === doc.id ? doc : value)));
+    return doc.revision;
+  };
+  applyPulled.current = applyPulledToDraft;
+
+  /**
+   * **写回文件** ✓（§6.4 ✓、§6.5 ✓）：**保存 = 写回文件** ✓ ⇒ ⇒ 草稿先落盘 ✓ ⇒ ⇒ 之后才写文件 ✓。
+   *
+   * **没有同步目标** ⇒ ⇒ **入口已经灰掉** ✓ ⇒ ⇒ 走不到这一步 ✓（§8.2 ✓）。
+   */
+  const writeBackDocument = async (doc: DocumentRecord) => {
+    const context = contexts.read(doc.id);
+    // **没有同步目标** ⇒ ⇒ **入口已经灰掉** ✓ ⇒ ⇒ 走不到这一步 ✓（§8.2 ✓）。
+    if (context === undefined) return undefined;
+    let bytes: Uint8Array;
+    try {
+      // **待写字节随源格式而异** ✓ ⇒ ⇒ **冻结的那一份** ✓ ⇒ ⇒ 草稿与文件差一个按键不会发生 ✓（§6.1 ✓）。
+      bytes = await sourceBytes.bytesFor(doc, context.file.sourceFormat);
+    } catch (error) {
+      await reportFailure({category: 'save-failed', detail: String(error), cause: error});
+      return undefined;
+    }
+    const outcome = await syncer.current!.save({document: doc, bytes});
+    // **写回失败** ⇒ ⇒ 报**保存文件错误** ✓ ⇒ ⇒ 草稿不动 ✓ ⇒ ⇒ 状态区那一行说现在是什么状态 ✓（§9 ✓）。
+    if (outcome.writeBack.kind === 'failed')
+      await reportFailure({
+        category: 'save-failed',
+        detail: String(outcome.writeBack.error),
+        cause: outcome.writeBack.error,
+      });
+    // **反馈说"刚才那一次"** ✓ ⇒ ⇒ 常驻行说"现在是什么状态" ✓ ⇒ ⇒ 不重复 ✓（§6.1 ✓）。
+    const feedback = syncFeedback(outcome);
+    if (feedback)
+      pushNotice({
+        tone: SYNC_FEEDBACK_TONES[feedback.kind],
+        message: SYNC_FEEDBACK_TEXTS[feedback.kind],
+      });
+    sessionChanged((value) => value + 1);
+    return outcome.writeBack;
+  };
+
+  /**
+   * **写到新目标** ✓（§8.2 ✓）：**关联为空时那一次保存** ✓ ⇒ ⇒ 弹原生对话框 ✓ ⇒ ⇒
+   * **文件名留空** ✓ ⇒ ⇒ 用户自己填 ✓ ⇒ ⇒ **写成功即建立关联** ✓ ⇒ ⇒
+   * **这一份还是这一份** ✓ ⇒ ⇒ 草稿一个字不动 ✓。
+   */
+  const saveToNewTarget = async (doc: DocumentRecord) => {
+    // **没有绑定 ⇒ ⇒ 载荷类型按 Markdown 算** ✓ ⇒ ⇒ **那是应用里新建的那一份** ✓。
+    const suggestion = exportFile(doc.meta.title || doc.id, 'markdown');
+    let bytes: Uint8Array;
+    try {
+      bytes = await sourceBytes.bytesFor(doc, 'markdown');
+    } catch (error) {
+      await reportFailure({category: 'save-failed', detail: String(error), cause: error});
+      return undefined;
+    }
+    const result = await saveTo.current!.saveTo({
+      document: doc,
+      bytes,
+      suggestedName: suggestion.name,
+    });
+    if (result.kind === 'cancelled') {
+      // **取消不是失败** ✓ ⇒ ⇒ 一句告知 ✓（§9 ✓）。
+      pushNotice({tone: 'info', message: SAVE_TO_TEXTS.cancelled});
+      return undefined;
+    }
+    if (result.kind === 'already-bound') {
+      pushNotice({tone: 'warning', message: SAVE_TO_TEXTS.alreadyBound});
+      return undefined;
+    }
+    if (result.kind === 'unconfirmed') {
+      // **写出去了，但读没有确认** ✓ ⇒ ⇒ **关联不成立** ✓ ⇒ ⇒ 说清那一句 ✓（§8.5 ✓）。
+      pushNotice({tone: 'warning', message: SAVE_TO_TEXTS.unconfirmed});
+      return undefined;
+    }
+    if (result.kind === 'failed') {
+      await reportFailure({
+        category: 'save-failed',
+        detail: String(result.error),
+        cause: result.error,
+      });
+      return undefined;
+    }
+    pushNotice({tone: 'success', message: SAVE_TO_TEXTS.saved});
+    sessionChanged((value) => value + 1);
+    return result;
+  };
+
+  const handleWriteBack = async () => {
+    const doc = currentDoc;
+    if (!doc) return;
+    // **关联为空 ⇒ ⇒ 这一次保存是"写到新目标"** ✓ ⇒ ⇒ 写成功即建立关联 ✓（§8.2 ✓）。
+    if (contexts.read(doc.id) === undefined) {
+      await saveToNewTarget(doc);
+      return;
+    }
+    await writeBackDocument(doc);
+  };
+
+  /**
+   * **另存为** ✓（§6.2 ✓）：**产生另一个文档** ✓ ⇒ ⇒ 旧文档不受影响 ✓。
+   */
+  const handleSaveAs = async () => {
+    const doc = currentDoc;
+    if (!doc) return;
+    // **载荷类型随这份文档** ✓ ⇒ ⇒ 另存的那一份是同一种形状 ✓ ⇒ ⇒ 建议的文件名复用导出契约 ✓（§6.2 ✓）。
+    const format = contexts.read(doc.id)?.file.sourceFormat ?? 'markdown';
+    const suggestion = exportFile(doc.meta.title || doc.id, format);
+    let bytes: Uint8Array;
+    try {
+      bytes = await sourceBytes.bytesFor(doc, format);
+    } catch (error) {
+      await reportFailure({category: 'save-failed', detail: String(error), cause: error});
+      return;
+    }
+    const result = await saver.current!.saveAs({
+      document: doc,
+      bytes,
+      suggestedName: suggestion.name,
+    });
+    if (result.kind === 'cancelled') {
+      pushNotice({tone: 'info', message: SAVE_AS_TEXTS.cancelled});
+      return;
+    }
+    if (result.kind === 'already-bound') {
+      pushNotice({tone: 'warning', message: SAVE_AS_TEXTS.alreadyBound});
+      return;
+    }
+    if (result.kind === 'unconfirmed') {
+      // **写出去了，但读没有确认** ✓ ⇒ ⇒ **关联不成立** ✓ ⇒ ⇒ 说清那一句 ✓（§8.5 ✓）。
+      pushNotice({tone: 'warning', message: SAVE_AS_TEXTS.unconfirmed});
+      return;
+    }
+    if (result.kind === 'failed') {
+      await reportFailure({
+        category: 'save-failed',
+        detail: String(result.error),
+        cause: result.error,
+      });
+      return;
+    }
+    // **成功** ⇒ ⇒ **新文档** ✓ ⇒ ⇒ 初始即已同步 ✓ ⇒ ⇒ **切过去** ✓ ⇒ ⇒ 旧文档一个字不动 ✓（§6.2 ✓）。
+    openSaved.current(result.document);
+    pushNotice({tone: 'success', message: SAVE_AS_TEXTS.saved});
+  };
+
+  /**
+   * **快捷键** ✓：`Ctrl/Cmd+S` ✓ ⇒ ⇒ **桌面端与按钮完全相同的动作** ✓（§6.3 ✓）
+   * ⇒ ⇒ 写回文件 ✓；**Web 端没有同步目标** ⇒ ⇒ **立即落盘** ✓（§8.2 ✓）。
+   */
+  const handleShortcutSave = useCallback(async () => {
+    const doc = currentDoc;
+    if (!doc) return;
+    // **去抖里那一次不等了** ✓ ⇒ ⇒ 桌面端由写回那一步落盘 ✓ ⇒ ⇒ 不会存两遍 ✓。
+    if (desktop) {
+      // **去抖里那一次不等了** ✓ ⇒ ⇒ 写回那一步落盘 ✓ ⇒ ⇒ 不会存两遍 ✓。
+      const pending = pendingSaves.current.get(doc.id);
+      if (pending) clearTimeout(pending.timer);
+      pendingSaves.current.delete(doc.id);
+      await handleWriteBack();
+      return;
+    }
+    await flushDraft(doc);
+  }, [currentDoc, desktop]);
+
+  /**
+   * **`Ctrl/Cmd+S`** ✓（设计 §6.3 ✓）：**桌面端与按钮完全相同的动作** ✓ ⇒ ⇒ 写回文件 ✓；
+   * **Web 端没有同步目标** ⇒ ⇒ **立即落盘** ✓（§8.2 ✓）。
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isSaveShortcut(event)) return;
+      event.preventDefault();
+      void handleShortcutSave();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleShortcutSave]);
 
   openSaved.current = (doc: DocumentRecord) => {
     capturePosition();
@@ -722,46 +1059,6 @@ export default function App() {
     }
   };
   nativeFlow.current = runNativeBatch;
-  /**
-   * **重新关联** ✓（设计 §5.5 ✓）：把当前这份草稿指向另一个本地文件 ✓。
-   *
-   * **草稿一个字不动** ✓ ⇒ ⇒ 只把绑定指回那个文件 ✓ ⇒ ⇒ 基线记 null ⇒ ⇒ 按未同步显示 ✓。
-   * **取消 / 失败不改变草稿、修订或编辑状态** ✓（§5.5 ✓）。
-   */
-  const reassociateNative = async () => {
-    const id = currentDocId;
-    if (!id || !desktop) return;
-    let files: NativeSelection[] | undefined;
-    try {
-      files = await selectNativeOpen();
-    } catch (error) {
-      setImportResults([
-        {
-          name: '重新关联',
-          status: 'failed',
-          message: error instanceof Error ? error.message : String(error),
-        },
-      ]);
-      void reportFailure({category: 'import-rejected', detail: String(error), cause: error});
-      return;
-    }
-    // **用户没选** ⇒ ⇒ 什么都不做 ✓ ⇒ ⇒ 不是失败 ✓（§9 ✓）。
-    if (!files || !files.length) return;
-    const file = files[0];
-    if (!file) return;
-    // **那个文件已经绑在别的文档上** ✓ ⇒ ⇒ 聚焦那个文档 ✓ ⇒ ⇒ 这次的句柄放掉 ✓（§5.5 ✓）。
-    const bound = contexts.documentFor(file.reference);
-    if (bound && bound !== id) {
-      await releaseNativeFile(file.key).catch(() => {});
-      selectDocument(bound);
-      return;
-    }
-    // **换绑** ✓ ⇒ ⇒ 旧句柄放掉 ✓ ⇒ ⇒ 新句柄成为绑定的凭据 ✓。
-    const previous = contexts.release(id);
-    if (previous) await releaseNativeFile(previous.handle).catch(() => {});
-    contexts.reAssociate(id, nativeFileReference(file));
-    sessionChanged((value) => value + 1);
-  };
   const handleOpenNative = async () => {
     if (importBusy) return;
     let files: NativeSelection[] | undefined;
@@ -1100,7 +1397,9 @@ export default function App() {
         isDark={isDark}
         onThemeToggle={() => setIsDark((prev) => !prev)}
         isDirty={isDirty}
-        onSave={handleSaveImmediately}
+        saveView={saveView}
+        onWriteBack={() => void handleWriteBack()}
+        onSaveAs={() => void handleSaveAs()}
         onOpenExport={() => setExportModalOpen(true)}
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
         onOpenMessages={import.meta.env.DEV ? () => setMessageGalleryOpen(true) : undefined}
@@ -1108,13 +1407,6 @@ export default function App() {
         fileName={currentContext?.file.displayName}
         filePath={currentContext?.file.displayPath}
         syncStatus={syncStatus}
-        {...(desktop
-          ? {
-              onReassociate: () => {
-                void reassociateNative();
-              },
-            }
-          : {})}
       />
 
       {/* Main Workbench Layout */}
@@ -1251,7 +1543,16 @@ export default function App() {
         revision={currentDoc.revision}
         isDirty={isDirty}
         syncStatus={syncStatus}
+        onRetrySync={() => void handleWriteBack()}
       />
+
+      {/* **冲突那一次提问** ✓ ⇒ ⇒ **走对话框不走通知** ✓ ⇒ ⇒ 决定留在原地 ✓（§8.6 ✓）。 */}
+      {conflict.request ? (
+        <ConflictDialog
+          displayName={conflict.request.displayName}
+          onChoose={(choice) => conflict.answer(choice)}
+        />
+      ) : null}
 
       {/* Export Modal */}
       <ExportModal

@@ -4,6 +4,7 @@ import type {
   ConflictChoice,
   ConflictRequest,
   DocumentSyncPorts,
+  WriteBackResult,
   WriteIntent,
   WriteOutcome,
 } from '../../src/application/workspace/documentSyncer';
@@ -39,11 +40,13 @@ interface Harness {
 function setup(
   options: {
     sameVersion?: () => Promise<boolean>;
+    targetPresent?: () => Promise<boolean>;
     write?: () => Promise<WriteOutcome>;
     read?: () => Promise<string>;
     decide?: () => Promise<ConflictChoice>;
-    persistDraft?: () => Promise<void>;
     applyPulled?: () => Promise<number>;
+    askGate?: () => Promise<boolean>;
+    saveElsewhere?: () => Promise<WriteBackResult>;
   } = {},
 ): Harness {
   const contexts = new DocumentFileContexts();
@@ -51,13 +54,13 @@ function setup(
     writes: {handle: string; intent: WriteIntent}[] = [],
     decided: ConflictRequest[] = [];
   const ports: DocumentSyncPorts = {
-    persistDraft: async () => {
-      calls.push('persistDraft');
-      await options.persistDraft?.();
-    },
     sameVersion: async (handle) => {
       calls.push('sameVersion:' + handle);
       return options.sameVersion ? options.sameVersion() : true;
+    },
+    targetPresent: async (handle) => {
+      calls.push('targetPresent:' + handle);
+      return options.targetPresent ? options.targetPresent() : true;
     },
     write: async (handle, _bytes, intent) => {
       calls.push('write:' + intent);
@@ -77,6 +80,14 @@ function setup(
       calls.push('applyPulled:' + markdown);
       return options.applyPulled ? options.applyPulled() : documentId.length;
     },
+    askGate: async (reason) => {
+      calls.push('askGate:' + reason);
+      return options.askGate ? options.askGate() : true;
+    },
+    saveElsewhere: async () => {
+      calls.push('saveElsewhere');
+      return options.saveElsewhere ? options.saveElsewhere() : {kind: 'written', revision: 1};
+    },
   };
   return {contexts, syncer: new DocumentSyncer(contexts, ports), calls, writes, decided};
 }
@@ -89,30 +100,29 @@ describe('应用层同步', () => {
     const doc = createNewDocument('没有目标.md');
     const outcome = await syncer.save({document: doc, bytes});
     // **一个磁盘端口都不问** ✓ ⇒ ⇒ Web 形态就是这样 ✓ ⇒ ⇒ 整条同步逻辑不跑 ✓（§6.5 ✓）。
-    expect(calls).toEqual(['persistDraft']);
+    expect(calls).toEqual([]);
     // **没有同步目标 ⇒ ⇒ 写回不适用** ✓ ⇒ ⇒ 报"不适用" ✓ ⇒ ⇒ **入口已经灰掉** ✓（§8.2 ✓）
     // ⇒ ⇒ **走不到这一步** ✓ ⇒ ⇒ **不提示要不要另存** ✓ ⇒ ⇒ 这里不问、也不自动做 ✓。
     expect(outcome.writeBack).toEqual({kind: 'not-applicable'});
     expect(outcome.conflict).toBeUndefined();
-    // **草稿那一半照样落** ✓ ⇒ ⇒ 草稿与写回是分开的两件事 ✓。
-    expect(outcome.draft).toEqual({kind: 'saved'});
     expect(contexts.read(doc.id)).toBeUndefined();
   });
 
-  it('草稿没存住时写回是未尝试', async () => {
-    const {syncer, calls, contexts} = setup({
-      persistDraft: async () => {
-        throw new Error('落盘失败');
-      },
-    });
-    const doc = createNewDocument('草稿失败.md');
+  it('写回结果只有五种，没有"未尝试"', async () => {
+    const {syncer, contexts} = setup();
+    const doc = createNewDocument('五种.md');
     contexts.open(doc.id, binding('f1'), doc.revision);
     const outcome = await syncer.save({document: doc, bytes});
-    // **草稿失败 ⇒ ⇒ 本次保存结束** ✓ ⇒ ⇒ 不同步一份没存住的草稿 ✓（§6.5 ✓）。
-    expect(outcome.draft.kind).toBe('failed');
-    expect(outcome.writeBack).toEqual({kind: 'not-attempted'});
-    // **一个磁盘端口都不问** ✓ ⇒ ⇒ 原文件一个字节没动 ✓。
-    expect(calls).toEqual(['persistDraft']);
+    // **草稿与写回不接成一个流程** ✓ ⇒ ⇒ 草稿那边**自己报它自己** ✓ ⇒ ⇒
+    // **写回不保证草稿已落盘** ✓ ⇒ ⇒ **没有"草稿没存住所以没试"这种结果** ✓（§6.1 ✓、§6.5 ✓）。
+    expect(outcome.writeBack.kind).toBe('written');
+    // **结果里只有文件那一句** ✓ ⇒ ⇒ 没有草稿那一栏 ✓。
+    expect(Object.keys(outcome).sort()).toEqual([
+      'conflict',
+      'documentId',
+      'revision',
+      'writeBack',
+    ]);
   });
 
   it('文件还是那一版时写回，基线跟着走到写出的那一版', async () => {
@@ -121,7 +131,8 @@ describe('应用层同步', () => {
     contexts.open(doc.id, binding('f1'), doc.revision);
     const outcome = await syncer.save({document: doc, bytes});
     expect(outcome.writeBack).toEqual({kind: 'written', revision: doc.revision});
-    expect(calls).toEqual(['persistDraft', 'sameVersion:f1', 'write:sync']);
+    // **写完之后跟一次验证读** ✓ ⇒ ⇒ **写完成的定义里含着它** ✓（§6.1 ✓、§8.2 ✓）。
+    expect(calls).toEqual(['sameVersion:f1', 'write:sync', 'targetPresent:f1']);
     // **写回成功 ⇒ ⇒ 基线 = 写出的冻结修订** ✓（§6.5 ✓）。
     expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBe(doc.revision);
     // **成功 ⇒ ⇒ 没有失败** ✓。
@@ -142,12 +153,7 @@ describe('应用层同步', () => {
     expect(outcome.writeBack).toEqual({kind: 'reloaded', revision: 9});
     // **不弹提示** ✓ ⇒ ⇒ 没有问用户 ✓。
     expect(calls).not.toContain('decide');
-    expect(calls).toEqual([
-      'persistDraft',
-      'sameVersion:f1',
-      'read:f1',
-      'applyPulled:磁盘上的新内容',
-    ]);
+    expect(calls).toEqual(['sameVersion:f1', 'read:f1', 'applyPulled:磁盘上的新内容']);
     // **没有人在场 ⇒ ⇒ 没有 conflict** ✓ ⇒ ⇒ 反馈**不说"本地改动不保留"** ✓。
     expect(outcome.conflict).toBeUndefined();
     // **草稿取文件的版本 ⇒ ⇒ 基线跟着更新** ✓。
@@ -210,7 +216,7 @@ describe('应用层同步', () => {
   });
 
   it('写不进去时草稿不动、绑定不变，并记下失败', async () => {
-    const {syncer, contexts} = setup({
+    const {syncer, contexts, calls} = setup({
       write: async () => ({kind: 'failed', error: new Error('IO 失败')}),
     });
     const doc = createNewDocument('写不进.md');
@@ -219,9 +225,69 @@ describe('应用层同步', () => {
     expect(outcome.writeBack.kind).toBe('failed');
     // **草稿不动** ✓ ⇒ ⇒ **绑定不变** ✓ ⇒ ⇒ 基线不变 ✓（§6.5 ✓）。
     expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBe(doc.revision);
+    // **写不进去 ⇒ ⇒ 也要有那一次读** ✓ ⇒ ⇒ 有效性不来自失败 ✓（§8.2 ✓）。
+    expect(calls).toContain('targetPresent:f1');
     // **失败记下来** ✓ ⇒ ⇒ 失败优先于基线 ✓ ⇒ ⇒ 界面说失败，不说"已同步" ✓（§2.3 ✓）。
     expect(contexts.read(doc.id)?.sync.failure).toEqual({kind: 'write-failed'});
     expect(syncStatus(contexts.read(doc.id), doc.revision)).toBe('failed');
+  });
+
+  it('目标没了就问要不要继续，说继续就再进一次门', async () => {
+    let attempts = 0;
+    const {syncer, calls, writes, contexts} = setup({
+      write: async () => {
+        attempts += 1;
+        // **第一次答"不在"** ✓ ⇒ ⇒ **用户说继续之后那一次才写进去** ✓。
+        return attempts === 1 ? {kind: 'missing'} : {kind: 'written'};
+      },
+    });
+    const doc = createNewDocument('没了.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **问一次** ✓ ⇒ ⇒ 问的是"目标没了"那一句 ✓（§6.1 ✓）。
+    expect(calls).toContain('askGate:missing');
+    // **再进一次门** ✓ ⇒ ⇒ 那一次**允许目标不存在** ✓ ⇒ ⇒ 其余复核照旧 ✓。
+    expect(writes.map((w) => w.intent)).toEqual(['sync', 'continue']);
+    expect(outcome.writeBack).toEqual({kind: 'written', revision: doc.revision});
+  });
+
+  it('目标没了而用户说不，就放弃', async () => {
+    const {syncer, calls, contexts} = setup({
+      write: async () => ({kind: 'missing'}),
+      askGate: async () => false,
+    });
+    const doc = createNewDocument('没了.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **放弃 ⇒ ⇒ 两边都不动** ✓ ⇒ ⇒ 结果是失败 ✓ ⇒ ⇒ **不再重进** ✓。
+    expect(outcome.writeBack.kind).toBe('failed');
+    expect(calls).toEqual(['sameVersion:f1', 'write:sync', 'askGate:missing', 'targetPresent:f1']);
+  });
+
+  it('写不进去就问要不要另存，说是就换目标', async () => {
+    const {syncer, calls, contexts} = setup({
+      write: async () => ({kind: 'unwritable'}),
+    });
+    const doc = createNewDocument('写不进.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **问的是"写不进去"那一句** ✓ ⇒ ⇒ **是 ⇒ ⇒ 换目标** ✓（§6.1 ✓）。
+    expect(calls).toContain('askGate:unwritable');
+    expect(calls).toContain('saveElsewhere');
+    expect(outcome.writeBack).toEqual({kind: 'written', revision: 1});
+  });
+
+  it('写不进去而用户说不，就放弃', async () => {
+    const {syncer, calls, contexts} = setup({
+      write: async () => ({kind: 'unwritable'}),
+      askGate: async () => false,
+    });
+    const doc = createNewDocument('写不进.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **放弃 ⇒ ⇒ 两边都不动** ✓ ⇒ ⇒ 结果是失败 ✓ ⇒ ⇒ **不换目标** ✓。
+    expect(outcome.writeBack.kind).toBe('failed');
+    expect(calls).not.toContain('saveElsewhere');
   });
 
   it('端口抛了就是失败，不会甩出这次保存', async () => {
@@ -236,6 +302,48 @@ describe('应用层同步', () => {
     const outcome = await syncer.save({document: doc, bytes});
     expect(outcome.writeBack.kind).toBe('failed');
     expect(contexts.read(doc.id)?.sync.failure).toEqual({kind: 'write-failed'});
+  });
+
+  it('写完之后跟一次验证读，答案就是关联的有效性', async () => {
+    const {syncer, calls, contexts} = setup({targetPresent: async () => false});
+    const doc = createNewDocument('目标没了.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    await syncer.save({document: doc, bytes});
+    // **每一次写之后都跟一次读** ✓ ⇒ ⇒ **写完成的定义里含着它** ✓（§6.1 ✓）。
+    expect(calls).toEqual(['sameVersion:f1', 'write:sync', 'targetPresent:f1']);
+    // **答案写进上下文** ✓ ⇒ ⇒ **关联的有效性由读判断给** ✓ ⇒ ⇒ **不是写的结果** ✓（§8.2 ✓）。
+    expect(contexts.read(doc.id)?.file.targetPresent).toBe(false);
+  });
+
+  it('门没通过时也有那一次读，目标没了就答不在', async () => {
+    const {syncer, calls, contexts} = setup({
+      sameVersion: async () => {
+        throw new Error('native-target-missing');
+      },
+      targetPresent: async () => false,
+    });
+    const doc = createNewDocument('门没过.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    await syncer.save({document: doc, bytes});
+    // **门没通过 ⇒ ⇒ 写没开始** ✓ ⇒ ⇒ **也要有那一次读** ✓ ⇒ ⇒
+    // ⇒ ⇒ 关联的有效性因此由读判断给 ✓ ⇒ ⇒ **不是失败推出来的** ✓（§8.2 ✓）。
+    expect(calls).toContain('targetPresent:f1');
+    expect(contexts.read(doc.id)?.file.targetPresent).toBe(false);
+  });
+
+  it('答不了那个目标还在吗时不猜，留着上一次读到的判断', async () => {
+    const {syncer, contexts} = setup({
+      targetPresent: async () => {
+        throw new Error('原生侧答不了');
+      },
+    });
+    const doc = createNewDocument('答不了目标.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **答不了 ⇒ ⇒ 不知道** ✓ ⇒ ⇒ **不猜** ✓ ⇒ ⇒ **不让这次写因此失败** ✓。
+    expect(outcome.writeBack).toEqual({kind: 'written', revision: doc.revision});
+    // **上一次读到的判断留着** ✓ ⇒ ⇒ 它是**点时事实** ✓（§8.2 ✓）。
+    expect(contexts.read(doc.id)?.file.targetPresent).toBe(true);
   });
 
   it('答不了"还是不是那一版"时按失败算', async () => {
@@ -317,27 +425,26 @@ describe('应用层同步', () => {
     expect(syncStatus(contexts.read(second.id), second.revision + 1)).toBe('unsynced');
   });
 
-  it('重新关联之后的那次写回不更新当前上下文', async () => {
+  it('标签页关掉之后那次还在飞行的写回不更新任何上下文', async () => {
     const {syncer, contexts} = setup();
-    const doc = createNewDocument('换文件.md');
+    const doc = createNewDocument('关掉了.md');
     contexts.open(doc.id, binding('f1'), doc.revision);
     const pending = syncer.save({document: doc, bytes});
-    // **重新关联** ✓ ⇒ ⇒ 绑定换了 ✓。
-    contexts.reAssociate(doc.id, binding('f2'));
+    // **标签页关掉 ⇒ ⇒ 上下文连同句柄一起收走** ✓（§4.1 ✓）。
+    contexts.release(doc.id);
     const outcome = await pending;
     // **结果仍然只对原目标成立** ✓ ⇒ ⇒ 报告它 ✓。
     expect(outcome.writeBack).toEqual({kind: 'written', revision: doc.revision});
-    // **当前上下文不动** ✓ ⇒ ⇒ 新绑定的基线仍是 null ✓ ⇒ ⇒ 按未同步显示 ✓（§6.1 ✓）。
-    expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBeNull();
-    expect(contexts.read(doc.id)?.file.reference).toBe('f2');
+    // **当前上下文不动** ✓ ⇒ ⇒ **失效结果只报告原目标的实际结果** ✓ ⇒ ⇒ 不更新任何东西 ✓（§6.1 ✓）。
+    expect(contexts.read(doc.id)).toBeUndefined();
   });
 
   it('对同一目标的两次保存不交错', async () => {
     const order: string[] = [];
     const contexts = new DocumentFileContexts();
     const syncer = new DocumentSyncer(contexts, {
-      persistDraft: async () => {},
       sameVersion: async () => true,
+      targetPresent: async () => true,
       write: async (handle) => {
         order.push('write:' + handle);
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -347,6 +454,8 @@ describe('应用层同步', () => {
       read: async () => '',
       decide: async () => 'cancel',
       applyPulled: async () => 0,
+      askGate: async () => true,
+      saveElsewhere: async () => ({kind: 'written', revision: 1}),
     });
     const doc = createNewDocument('串行.md');
     contexts.open(doc.id, binding('f1'), doc.revision);

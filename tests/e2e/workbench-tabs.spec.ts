@@ -271,7 +271,26 @@ test('closing saved tabs preserves workspace files including when the last tab i
   await expect(tab(page, 'Beta')).toHaveCount(1);
 });
 
-test('save failure while closing a dirty tab keeps its draft and tab available', async ({page}) => {
+test('closing a tab asks only about the write, and a tab with nothing to write closes silently', async ({
+  page,
+}) => {
+  await boot(page);
+  const dialogs = recordDialogs(page);
+  // **刚打开未改动的文档** ✓ ⇒ ⇒ **不提示** ✓（M5-8 ✓）。
+  await page.getByTitle('创建新空白 Markdown 文档').click();
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await page.getByRole('button', {name: '关闭 新建 Markdown 文档', exact: true}).click();
+  await expect(page.getByRole('tab')).toHaveCount(1);
+  expect(dialogs).toHaveLength(0);
+  // **改了但没有要写回的文件** ✓ ⇒ ⇒ **不提示** ✓ ⇒ ⇒ **那一句只问写回文件** ✓（§16 ✓）。
+  // ⇒ ⇒ **草稿那边自己报它自己** ✓ ⇒ ⇒ **关掉不丢** ✓。
+  await page.locator('textarea').fill(source('UNSAVED'));
+  await page.getByRole('button', {name: '关闭 UNSAVED', exact: true}).click();
+  expect(dialogs).toHaveLength(0);
+  await expect(tab(page, 'UNSAVED')).toHaveCount(0);
+});
+
+test('a failed draft save while closing is reported but does not trap the tab', async ({page}) => {
   await boot(page);
   await create(page, 'Beta');
   await page.evaluate(() => {
@@ -285,11 +304,14 @@ test('save failure while closing a dirty tab keeps its draft and tab available',
   // **这一条是草稿没存住** ✓ ⇒ ⇒ 类别是 `storage-write-failed` ✓ ⇒ ⇒ 不是"保存失败" ✓
   // ⇒ ⇒ **"保存"现在指写回文件** ✓（设计 §6.4 ✓）⇒ ⇒ 写回失败才是那一条 ✓。
   await expect(page.getByText(/（storage-write-failed · e-\d+）/)).toBeVisible();
-  // 那个"还没保存，要先保存吗"的**确认**弹窗还在 ✓ ⇒ ⇒ 但**失败**不再用弹窗告知 ✓ ⇒ ⇒ 通知面给 ✓。
+  // **失败不再用弹窗告知** ✓ ⇒ ⇒ 通知面给 ✓。
   expect(dialogs.some((value) => value.includes('没能存下来'))).toBe(false);
-  await expect(tab(page, 'UNSAVED')).toBeVisible();
+  // **标签页不会被困住** ✓ ⇒ ⇒ 写不进去也关得掉 ✓ ⇒ ⇒ **关掉不丢** ✓ ⇒ ⇒
+  // **内容还在工作区** ✓ ⇒ ⇒ 重新打开还在 ✓（§16 ✓）。
+  await expect(tab(page, 'UNSAVED')).toHaveCount(0);
+  await page.getByText('UNSAVED', {exact: true}).click();
+  await ready(page, 'UNSAVED');
   await expect(page.locator('textarea')).toHaveValue(source('UNSAVED'));
-  await expect(tab(page, 'UNSAVED')).toHaveAttribute('title', /未保存/);
 });
 
 test('production tabs and their compute pipeline run on ordinary HTTP', async ({page}) => {

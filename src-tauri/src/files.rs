@@ -14,6 +14,32 @@ use crate::logging;
 use crate::logging::WebCommand;
 use crate::source_guard;
 
+/// **规范名** ✓：canonicalize 解析符号链接与相对分量 ✓（§3.3 ✓）。
+///
+/// **文件还不存在时**（另存为选中的目标 ✓）⇒ ⇒ canonicalize 整个路径会失败 ✓
+/// ⇒ ⇒ 那就**规范化它的父目录**再接上文件名 ✓ ⇒ ⇒ 与它稍后存在时得到的是同一个名字 ✓
+/// ⇒ ⇒ **同一个文件始终是同一个引用** ✓ ⇒ ⇒ 再次打开它聚焦那个文档 ✓（M5-5 ✓）。
+fn canonical_name(path: &Path) -> PathBuf {
+    match std::fs::canonicalize(path) {
+        Ok(canonical) => canonical,
+        Err(_) => match (path.parent(), path.file_name()) {
+            (Some(parent), Some(name)) => match std::fs::canonicalize(parent) {
+                Ok(parent) => parent.join(name),
+                Err(_) => path.to_path_buf(),
+            },
+            _ => path.to_path_buf(),
+        },
+    }
+}
+
+/// **一个路径所在的目录** ✓：规范化它 ✓ ⇒ ⇒ 两边都规范化过 ⇒ ⇒ 比的是同一个目录 ✓。
+fn directory_of(path: &Path) -> PathBuf {
+    match path.parent() {
+        Some(parent) => std::fs::canonicalize(parent).unwrap_or_else(|_| parent.to_path_buf()),
+        None => PathBuf::new(),
+    }
+}
+
 /// 取调用方身份并按允许范围判定。拒绝时返回共享稳定拒绝码。
 /// 五个受保护入口都在任何文件、对话框或授权撤销的副作用之前调用它。
 /// 判定结果留痕：守卫决策是安全事件，任何构建都该可观测。
@@ -162,6 +188,54 @@ pub struct NativeFailure {
 }
 /// **超过大小上限**这一类的机器码 ✓：一处定义 ✓ ⇒ ⇒ 命令体据此把上限带出去 ✓。
 const FILE_TOO_LARGE: &str = "file-too-large";
+
+/// **目标现在是什么状态** ✓：**一个封闭的小集合** ✓（§6.1 ✓）。
+///
+/// **原生侧只做检测与归类** ✓ ⇒ ⇒ **处理在应用侧按状态选** ✓ ⇒ ⇒
+/// **两件事分开** ✓ ⇒ ⇒ **不是每个状态各写一堆逻辑** ✓ ⇒ ⇒
+/// **一处分类，一处处理** ✓。
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TargetStatus {
+    /// **在、还是那一版、写进去了** ✓ ⇒ ⇒ 这一次成了 ✓。
+    Ready,
+    /// **在、但被外部改过** ✓ ⇒ ⇒ **冲突** ✓ ⇒ ⇒ 交给用户决定 ✓（§6.1 ✓）。
+    Changed,
+    /// **不在了** ✓ ⇒ ⇒ **提示是否继续** ✓（§6.1 ✓）。
+    Missing,
+    /// **在、但写不进去** ✓（没权限 ✓ / 被占用 ✓）⇒ ⇒ **提示是否另存** ✓（§6.1 ✓）。
+    Unwritable,
+    /// **授权没了** ✓（句柄失效 ✓）⇒ ⇒ **与不可写同一支** ✓ ⇒ ⇒ 提示是否另存 ✓。
+    Invalid,
+}
+
+impl TargetStatus {
+    /// **这个名字** ✓：**线上只有一处事实** ✓ ⇒ ⇒ 日志与页面回传的名字必然一致 ✓。
+    pub fn name(self) -> &'static str {
+        match self {
+            TargetStatus::Ready => "ready",
+            TargetStatus::Changed => "changed",
+            TargetStatus::Missing => "missing",
+            TargetStatus::Unwritable => "unwritable",
+            TargetStatus::Invalid => "invalid",
+        }
+    }
+}
+
+/// **这个失败码归到哪个状态** ✓ ⇒ ⇒ **检测在这里归类一次** ✓ ⇒ ⇒
+/// 应用侧只按状态选处理 ✓ ⇒ ⇒ **归类与处理分开** ✓。
+///
+/// **归不进状态的 ⇒ ⇒ 那是真的失败** ✓ ⇒ ⇒ 走失败那条路 ✓ ⇒ ⇒
+/// **上限这类要带参数的事实仍然是失败** ✓（§9 ✓）。
+fn status_of(code: &str) -> Option<TargetStatus> {
+    match code {
+        "write-target-changed" => Some(TargetStatus::Changed),
+        "native-target-missing" => Some(TargetStatus::Missing),
+        "native-permission-denied" => Some(TargetStatus::Unwritable),
+        "unknown-file-key" | "file-capability-mismatch" => Some(TargetStatus::Invalid),
+        _ => None,
+    }
+}
 impl NativeFailure {
     fn from_code(code: String) -> Self {
         NativeFailure {
@@ -238,7 +312,7 @@ impl FileAccess {
     /// **不做大小写折叠** ✓：大小写不敏感的文件系统上 `A.md` 与 `a.md` 常常是同一个文件 ✓，
     /// 而跨平台的字符串规范化规则本设计明确拒绝制定 ✓。
     fn reference_of(&self, path: &Path) -> Result<String, String> {
-        let canonical = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let canonical = canonical_name(path);
         let mut references = self.1.lock().map_err(internal_error)?;
         if let Some(token) = references.get(&canonical) {
             return Ok(token.clone());
@@ -246,6 +320,28 @@ impl FileAccess {
         let token = uuid::Uuid::new_v4().to_string();
         references.insert(canonical, token.clone());
         Ok(token)
+    }
+    /// **这两个授权指向的文件在同一个目录里吗** ✓（§6.2 ✓）。
+    ///
+    /// **只答是或不是** ✓ ⇒ ⇒ 路径不出原生侧 ✓ ⇒ ⇒ 应用侧不持有路径 ✓（§1.3 ✓、§3.4 ✓）。
+    fn same_directory(&self, first: &str, second: &str) -> Result<bool, String> {
+        let first = self.path(first, false)?;
+        let second = self.path(second, false)?;
+        Ok(directory_of(&first) == directory_of(&second))
+    }
+    /// **那个目标还在吗** ✓（§3.1 ✓、§8.2 ✓）。
+    ///
+    /// **只答是或不是** ✓ ⇒ ⇒ **目标没了 ⇒ ⇒ 回"否"** ✓ ⇒ ⇒ **不是报错** ✓
+    /// ⇒ ⇒ 那是**关联还有效吗**的答案 ✓ ⇒ ⇒ **不是写失败的结果** ✓（§8.2 ✓）。
+    ///
+    /// **别的 IO 失败仍然报错** ✓ ⇒ ⇒ 答不了就答不了 ✓ ⇒ ⇒ **不拿一个猜出来的"否"吓人** ✓。
+    fn target_present(&self, key: &str) -> Result<bool, String> {
+        let path = self.path(key, false)?;
+        match std::fs::metadata(&path) {
+            Ok(_) => Ok(true),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(e) => Err(io_error(&e)),
+        }
     }
     /// 撤销授权。探针用它在受控初始化结束时回收自己的授权；
     /// 正常的 release_native_file 业务清理不受影响。
@@ -385,7 +481,15 @@ pub fn read_content(path: &Path) -> Result<ReadContent, String> {
 /// **期望摘要是可选的** ✓ ⇒ ⇒ **不给**就是无条件写 ✓（新文件 ✓、另存为选的新目标 ✓）
 /// ⇒ ⇒ **给了**就是"只在这个版本上写" ✓ ⇒ ⇒ 匹配才提交 ✓ ⇒ ⇒ 不匹配 ⇒ 清理临时文件 ✓
 /// ⇒ ⇒ 报 `write-target-changed` ✓ ⇒ ⇒ **调用方自己决定下一步** ✓。
-pub fn commit_bytes(path: &Path, bytes: &[u8], expected: Option<&str>) -> Result<(), String> {
+///
+/// **目标允许不存在** ✓ ⇒ ⇒ **用户说了继续** ✓ ⇒ ⇒ **目标没了就创建它** ✓
+/// ⇒ ⇒ **其余复核照旧** ✓ ⇒ ⇒ **目标还在却变了 ⇒ ⇒ 照样不写它** ✓ ⇒ ⇒ **复核没有变松** ✓（§6.1 ✓）。
+pub fn commit_bytes(
+    path: &Path,
+    bytes: &[u8],
+    expected: Option<&str>,
+    allow_missing: bool,
+) -> Result<(), String> {
     if bytes.len() > WRITE_LIMIT {
         return Err(FILE_TOO_LARGE.into());
     }
@@ -411,10 +515,16 @@ pub fn commit_bytes(path: &Path, bytes: &[u8], expected: Option<&str>) -> Result
     // **临时文件已就位、还没替换** ✓ ⇒ ⇒ 这是复核的最后一刻 ✓。
     // **比对的是目标当前的摘要** ✓ ⇒ ⇒ 外部改过就答"变了" ✓ ⇒ ⇒ 不动它 ✓。
     if let Some(expected) = expected {
-        let current = std::fs::read(path).map_err(|e| io_error(&e))?;
-        if crate::hash::sha256_hex(&current) != expected {
-            // **临时文件随这一句一起被丢掉** ✓ ⇒ ⇒ 目录不留残骸 ✓。
-            return Err("write-target-changed".into());
+        match std::fs::read(path) {
+            Ok(current) => {
+                if crate::hash::sha256_hex(&current) != expected {
+                    // **临时文件随这一句一起被丢掉** ✓ ⇒ ⇒ 目录不留残骸 ✓。
+                    return Err("write-target-changed".into());
+                }
+            }
+            // **目标没了而用户说了继续** ✓ ⇒ ⇒ **创建它** ✓ ⇒ ⇒ **复核照旧，只是这一支放行** ✓。
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound && allow_missing => {}
+            Err(e) => return Err(io_error(&e)),
         }
     }
     temp.persist(path).map_err(|e| io_error(&e.error))?;
@@ -637,41 +747,74 @@ pub async fn write_native_sync(
     key: String,
     bytes: Vec<u8>,
     overwrite: bool,
-) -> Result<(), NativeFailure> {
+    allow_missing: bool,
+) -> Result<TargetStatus, NativeFailure> {
     in_command_span(WebCommand::WriteNativeSync, &webview, |started, cmd| {
         let outcome = access.path(&key, true).and_then(|path| {
             // **要复核的那一份** ✓：普通写回比"应用手上那一版" ✓、覆盖写回比"用户看到的那一版" ✓
             // ⇒ ⇒ **原生侧自己取** ✓ ⇒ ⇒ 前端不传期望摘要 ✓（§6.1 ✓）。
             let expected = access.expected_digest(&key, overwrite)?;
-            commit_bytes(&path, &bytes, Some(&expected))?;
-            // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
-            access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
-            // **写完了就没有未决的冲突了** ✓ ⇒ ⇒ 丢掉"上次看到的那一版" ✓ ⇒ ⇒ 下次冲突重新记 ✓。
-            access.forget_seen(&key)?;
-            Ok(())
+            match commit_bytes(&path, &bytes, Some(&expected), allow_missing) {
+                Ok(()) => {
+                    // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
+                    access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
+                    // **写完了就没有未决的冲突了** ✓ ⇒ ⇒ 丢掉"上次看到的那一版" ✓ ⇒ ⇒ 下次冲突重新记 ✓。
+                    access.forget_seen(&key)?;
+                    Ok(TargetStatus::Ready)
+                }
+                Err(code) => {
+                    // **报告冲突的那一刻** ✓ ⇒ ⇒ **把当时看到的那一份记下来** ✓ ⇒ ⇒
+                    // **覆盖写回拿它当基准** ✓ ⇒ ⇒ **这不是令牌** ✓（§6.1 ✓）。
+                    if code == "write-target-changed" {
+                        if let Ok(current) = std::fs::read(&path) {
+                            let _ = access.remember_seen(&key, &crate::hash::sha256_hex(&current));
+                        }
+                    }
+                    // **归类只有一处** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓。
+                    match status_of(&code) {
+                        Some(status) => Ok(status),
+                        None => Err(code),
+                    }
+                }
+            }
         });
         let elapsed = started.elapsed().as_millis();
         match outcome {
-            Ok(()) => {
+            Ok(status) => {
                 tracing::info!(
                     event = "operation_result",
                             result = "ok",
                     command = cmd,
+                    status = status.name(),
                     bytes = bytes.len(),
                     elapsed_ms = elapsed,
                 );
-                Ok(())
+                Ok(status)
             }
-            Err(code) => {
-                tracing::warn!(
-                    event = "operation_result",
-                            result = "error",
-                    command = cmd,
-                    reason_code = code,
-                    elapsed_ms = elapsed,
-                );
-                Err(code)
-            }
+            // **这些不是失败，是分支** ✓ ⇒ ⇒ **归到状态里** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓
+            // ⇒ ⇒ **检测与处理分开** ✓ ⇒ ⇒ 不是每个状态在原生侧写一堆逻辑 ✓。
+            Err(code) => match status_of(&code) {
+                Some(status) => {
+                    tracing::info!(
+                        event = "operation_result",
+                                result = "ok",
+                        command = cmd,
+                        status = status.name(),
+                        elapsed_ms = elapsed,
+                    );
+                    Ok(status)
+                }
+                None => {
+                    tracing::warn!(
+                        event = "operation_result",
+                                result = "error",
+                        command = cmd,
+                                reason_code = code,
+                        elapsed_ms = elapsed,
+                    );
+                    Err(code)
+                }
+            },
         }
     })
 }
@@ -686,7 +829,7 @@ pub async fn write_native_bytes(
         let outcome = access.path(&key, true).and_then(|path| {
             // **通用入口不复核** ✓ ⇒ ⇒ 它写的是选择器刚给的目标 ✓ ⇒ ⇒ 那里没有基线 ✓。
             // **原文件写回走 `write_native_sync`** ✓ ⇒ ⇒ 那条才复核 ✓（§3.2 ✓）。
-            commit_bytes(&path, &bytes, None)?;
+            commit_bytes(&path, &bytes, None, false)?;
             // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
             access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
             Ok(())
@@ -747,6 +890,85 @@ pub async fn is_native_synced(
                     command = cmd,
                     reason_code = code,
                     elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
+}
+/// **问一句：那个目标还在吗** ✓（§3.1 ✓、§8.2 ✓）。
+///
+/// **只回一句是或不是** ✓ ⇒ ⇒ **目标没了 ⇒ ⇒ 回"否"** ✓ ⇒ ⇒ **不是报错** ✓
+/// ⇒ ⇒ 那是**关联还有效吗**的答案 ✓ ⇒ ⇒ **不是写失败的结果** ✓（§8.2 ✓）。
+///
+/// **为什么要单独一句** ✓：目标没了时 `is_native_synced` 只会**报错**（`native-target-missing` ✓）
+/// ⇒ ⇒ **那不是答案** ✓ ⇒ ⇒ 关联的有效性要有一句独立的问答 ✓ ⇒ ⇒ **虽然多一步，但依赖关系清晰** ✓。
+#[tauri::command]
+pub async fn is_native_target_present(
+    webview: tauri::Webview,
+    access: tauri::State<'_, FileAccess>,
+    key: String,
+) -> Result<bool, NativeFailure> {
+    in_command_span(WebCommand::IsNativeTargetPresent, &webview, |started, cmd| {
+        let outcome = access.target_present(&key);
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(present) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                    command = cmd,
+                    present,
+                    elapsed_ms = elapsed,
+                );
+                Ok(present)
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                    command = cmd,
+                    reason_code = code,
+                    elapsed_ms = elapsed,
+                );
+                Err(code)
+            }
+        }
+    })
+}
+/// **问一句：这两个文件在同一个目录里吗** ✓（§6.2 ✓）。
+///
+/// **只回一句是或不是** ✓ ⇒ ⇒ 路径不出原生侧 ✓ ⇒ ⇒ 应用侧拿不到路径 ✓（§3.4 ✓）。
+/// **为什么要有这一句** ✓：另存为到别的目录 ⇒ ⇒ 正文里的相对图片引用会按新位置解释 ✓
+/// ⇒ ⇒ 应用层要据此提示用户 ✓ ⇒ ⇒ 而"在不在同一个目录"只有拿着路径的那一侧答得了 ✓（§1.3 ✓）。
+#[tauri::command]
+pub async fn is_native_same_directory(
+    webview: tauri::Webview,
+    access: tauri::State<'_, FileAccess>,
+    first_key: String,
+    second_key: String,
+) -> Result<bool, NativeFailure> {
+    in_command_span(WebCommand::IsNativeSameDirectory, &webview, |started, cmd| {
+        let outcome = access.same_directory(&first_key, &second_key);
+        let elapsed = started.elapsed().as_millis();
+        match outcome {
+            Ok(same) => {
+                tracing::info!(
+                    event = "operation_result",
+                            result = "ok",
+                            command = cmd,
+                            same,
+                            elapsed_ms = elapsed,
+                );
+                Ok(same)
+            }
+            Err(code) => {
+                tracing::warn!(
+                    event = "operation_result",
+                            result = "error",
+                            command = cmd,
+                            reason_code = code,
+                            elapsed_ms = elapsed,
                 );
                 Err(code)
             }
@@ -1005,15 +1227,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("saved.md");
         std::fs::write(&path, b"old bytes").unwrap();
-        commit_bytes(&path, "新🙂内容".as_bytes(), None).unwrap();
+        commit_bytes(&path, "新🙂内容".as_bytes(), None, false).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), "新🙂内容".as_bytes());
         let new_path = dir.path().join("new.md");
-        commit_bytes(&new_path, b"new target", None).unwrap();
+        commit_bytes(&new_path, b"new target", None, false).unwrap();
         assert_eq!(std::fs::read(&new_path).unwrap(), b"new target");
         let empty_path = dir.path().join("empty.md");
         std::fs::write(&empty_path, b"").unwrap();
         assert_eq!(read_content(&empty_path).unwrap().text, "");
-        commit_bytes(&empty_path, b"", None).unwrap();
+        commit_bytes(&empty_path, b"", None, false).unwrap();
         assert_eq!(std::fs::read(&empty_path).unwrap(), b"");
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 3);
     }
@@ -1025,7 +1247,7 @@ mod tests {
         std::fs::create_dir(&path).unwrap();
         std::fs::write(path.join("keep"), b"intact").unwrap();
         assert_eq!(
-            commit_bytes(&path, b"replacement", None).unwrap_err(),
+            commit_bytes(&path, b"replacement", None, false).unwrap_err(),
             "not-a-regular-target"
         );
         assert_eq!(std::fs::read(path.join("keep")).unwrap(), b"intact");
@@ -1038,7 +1260,7 @@ mod tests {
         let path = dir.path().join("target.md");
         std::fs::write(&path, b"original").unwrap();
         assert_eq!(
-            commit_bytes(&path, &vec![0; WRITE_LIMIT + 1], None).unwrap_err(),
+            commit_bytes(&path, &vec![0; WRITE_LIMIT + 1], None, false).unwrap_err(),
             "file-too-large"
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"original");
@@ -1124,7 +1346,7 @@ mod tests {
         std::fs::write(&path, b"second").unwrap();
         assert!(!access.synced(&grant.key).unwrap());
         // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ⇒ ⇒ 之后答"是" ✓。
-        commit_bytes(&path, b"third", None).unwrap();
+        commit_bytes(&path, b"third", None, false).unwrap();
         access
             .record_digest(&grant.key, &crate::hash::sha256_hex(b"third"))
             .unwrap();
@@ -1150,6 +1372,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn target_present_answers_yes_and_says_no_when_the_file_is_gone() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("there.md");
+        std::fs::write(&path, b"here").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        // **在** ⇒ ⇒ 答"是" ✓ ⇒ ⇒ 那是"关联还有效吗"的答案 ✓（§8.2 ✓）。
+        assert!(access.target_present(&grant.key).unwrap());
+        // **没了** ⇒ ⇒ 答"否" ✓ ⇒ ⇒ **不是报错** ✓ ⇒ ⇒ 那是答案，不是失败 ✓。
+        std::fs::remove_file(&path).unwrap();
+        assert!(!access.target_present(&grant.key).unwrap());
+        // **不认识的 key** ✓ ⇒ ⇒ 稳定码 ✓ ⇒ ⇒ 答不了就答不了 ✓。
+        assert_eq!(
+            access.target_present("not-a-key").unwrap_err(),
+            "unknown-file-key"
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn commit_bytes_preserves_target_permissions() {        use std::os::unix::fs::PermissionsExt;
@@ -1157,7 +1398,7 @@ mod tests {
         let path = dir.path().join("mode.md");
         std::fs::write(&path, b"old").unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
-        commit_bytes(&path, b"new", None).unwrap();
+        commit_bytes(&path, b"new", None, false).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"new");
         let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o644);
@@ -1176,14 +1417,14 @@ mod tests {
 
         // **目标还是那一版** ⇒ ⇒ 复核通过 ⇒ ⇒ 写进去 ✓ ⇒ ⇒ 基线跟着更新 ✓。
         let expected = access.expected_digest(&grant.key, false).unwrap();
-        commit_bytes(&path, b"draft", Some(&expected)).unwrap();
+        commit_bytes(&path, b"draft", Some(&expected), false).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"draft");
 
         // **应用外改过** ⇒ ⇒ 复核不匹配 ⇒ ⇒ **不写它** ✓ ⇒ ⇒ 文件内容原样 ✓。
         std::fs::write(&path, b"external").unwrap();
         let stale = access.expected_digest(&grant.key, false).unwrap();
         assert_eq!(
-            commit_bytes(&path, b"draft again", Some(&stale)).unwrap_err(),
+            commit_bytes(&path, b"draft again", Some(&stale), false).unwrap_err(),
             "write-target-changed"
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"external");
@@ -1194,6 +1435,87 @@ mod tests {
             .filter(|entry| entry.file_name() != "sync.md")
             .count();
         assert_eq!(leftovers, 0);
+    }
+
+    /// **目标没了 ⇒ ⇒ 归到"不在"那个状态** ✓ ⇒ ⇒ **不是失败** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓。
+    #[test]
+    fn a_missing_target_is_a_status_not_a_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gone.md");
+        std::fs::write(&path, b"here").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+        std::fs::remove_file(&path).unwrap();
+        let expected = access.expected_digest(&grant.key, false).unwrap();
+        // **目标没了** ⇒ ⇒ 那个码归到 `missing` ✓ ⇒ ⇒ **不是真失败** ✓。
+        let code = commit_bytes(&path, b"draft", Some(&expected), false).unwrap_err();
+        assert_eq!(code, "native-target-missing");
+        assert_eq!(status_of(&code), Some(TargetStatus::Missing));
+        // **真失败归不进状态** ✓ ⇒ ⇒ 上限那一类仍然是失败 ✓（§9 ✓）。
+        assert_eq!(status_of("file-too-large"), None);
+        assert_eq!(status_of("native-io-failed"), None);
+    }
+
+    /// **用户说了继续 ⇒ ⇒ 目标允许不存在** ✓ ⇒ ⇒ **创建它** ✓ ⇒ ⇒ **其余复核照旧** ✓。
+    #[test]
+    fn an_allowed_missing_target_is_created_and_written() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("recreated.md");
+        std::fs::write(&path, b"here").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        // **应用手上是那一版** ✓ ⇒ ⇒ 授权里记着它 ✓ ⇒ ⇒ 之后它没了也还有基准 ✓。
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+        std::fs::remove_file(&path).unwrap();
+        let expected = access.expected_digest(&grant.key, false).unwrap();
+        // **目标不在且不允许** ⇒ ⇒ 不写它 ✓。
+        assert_eq!(
+            commit_bytes(&path, b"draft", Some(&expected), false).unwrap_err(),
+            "native-target-missing"
+        );
+        assert!(!path.exists());
+        // **允许了** ⇒ ⇒ 创建它并写进去 ✓。
+        commit_bytes(&path, b"draft", Some(&expected), true).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"draft");
+    }
+
+    /// **允许目标不存在也不等于放弃复核** ✓ ⇒ ⇒ 目标还在却变了 ⇒ ⇒ 照样不写它 ✓。
+    #[test]
+    fn allowing_a_missing_target_does_not_loosen_the_recheck() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("changed.md");
+        std::fs::write(&path, b"base").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+        std::fs::write(&path, b"external").unwrap();
+        let expected = access.expected_digest(&grant.key, false).unwrap();
+        // **目标还在但变了** ⇒ ⇒ **允许不存在也不放过它** ✓ ⇒ ⇒ 复核没有变松 ✓。
+        assert_eq!(
+            commit_bytes(&path, b"draft", Some(&expected), true).unwrap_err(),
+            "write-target-changed"
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), b"external");
+    }
+
+    /// **每个状态归到哪一处** ✓ ⇒ ⇒ **归类只有一处** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓。
+    #[test]
+    fn every_status_has_one_place_that_classifies_it() {
+        assert_eq!(status_of("write-target-changed"), Some(TargetStatus::Changed));
+        assert_eq!(status_of("native-target-missing"), Some(TargetStatus::Missing));
+        assert_eq!(
+            status_of("native-permission-denied"),
+            Some(TargetStatus::Unwritable)
+        );
+        assert_eq!(status_of("unknown-file-key"), Some(TargetStatus::Invalid));
+        assert_eq!(
+            status_of("file-capability-mismatch"),
+            Some(TargetStatus::Invalid)
+        );
     }
 
     /// **期望摘要由原生侧取** ✓ ⇒ ⇒ 前端不传 ✓ ⇒ ⇒ 没记过版本就复核不了 ✓。
@@ -1270,7 +1592,7 @@ mod tests {
         assert!(!access.synced(&grant.key).unwrap());
         let seen = access.expected_digest(&grant.key, true).unwrap();
         // **目标还是用户看到的那一版 ⇒ ⇒ 复核通过 ⇒ ⇒ 写进去** ✓。
-        commit_bytes(&path, b"draft", Some(&seen)).unwrap();
+        commit_bytes(&path, b"draft", Some(&seen), false).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"draft");
         // **再改一次 ⇒ ⇒ 重新报告冲突 ⇒ ⇒ 记下新的那一版** ✓。
         std::fs::write(&path, b"external again").unwrap();
@@ -1280,7 +1602,7 @@ mod tests {
         // **用户点确认之后目标又变了 ⇒ ⇒ 与"看到的那一版"不符 ⇒ ⇒ 不写它** ✓。
         std::fs::write(&path, b"external third").unwrap();
         assert_eq!(
-            commit_bytes(&path, b"draft again", Some(&seen_again)).unwrap_err(),
+            commit_bytes(&path, b"draft again", Some(&seen_again), false).unwrap_err(),
             "write-target-changed"
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"external third");
@@ -1301,7 +1623,7 @@ mod tests {
         assert!(access.expected_digest(&grant.key, true).is_ok());
         // **写回去 ⇒ ⇒ 冲突解决** ✓ ⇒ ⇒ 那一版丢掉 ✓ ⇒ ⇒ 下次冲突重新记 ✓。
         let seen = access.expected_digest(&grant.key, true).unwrap();
-        commit_bytes(&path, b"draft", Some(&seen)).unwrap();
+        commit_bytes(&path, b"draft", Some(&seen), false).unwrap();
         access.record_digest(&grant.key, &crate::hash::sha256_hex(b"draft")).unwrap();
         access.forget_seen(&grant.key).unwrap();
         assert_eq!(
@@ -1505,6 +1827,62 @@ mod tests {
         assert_ne!(access.grant(other, true).unwrap().reference, first.reference);
     }
 
+    #[test]
+    fn writing_to_a_target_that_does_not_exist_yet_creates_it_and_becomes_the_baseline() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("new.md");
+        let access = FileAccess::default();
+        // **另存为选中的目标** ✓ ⇒ ⇒ **那个文件还不存在** ✓ ⇒ ⇒ 授权照样签发 ✓（size 0 ✓）。
+        let grant = access.grant(path.clone(), true).unwrap();
+        assert!(!path.exists());
+        // **通用字节写入不复核** ✓ ⇒ ⇒ 那里没有基线 ✓ ⇒ ⇒ 无从复核 ✓ ⇒ ⇒ 直接写进去 ✓（§6.2 ✓）。
+        commit_bytes(&path, b"draft", None, false).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"draft");
+        // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
+        access
+            .record_digest(&grant.key, &crate::hash::sha256_hex(b"draft"))
+            .unwrap();
+        // **新文档初始即已同步** ✓ ⇒ ⇒ 那个授权答"是" ✓ ⇒ ⇒ 基线 = 写出的修订 ✓（§6.2 ✓、M5-5 ✓）。
+        assert!(access.synced(&grant.key).unwrap());
+    }
+
+    #[test]
+    fn two_files_answer_whether_they_are_in_the_same_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let other = tempfile::tempdir().unwrap();
+        let access = FileAccess::default();
+        let first = access.grant(dir.path().join("a.md"), true).unwrap();
+        let second = access.grant(dir.path().join("b.md"), true).unwrap();
+        let elsewhere = access.grant(other.path().join("c.md"), true).unwrap();
+        // **同一个目录** ✓ ⇒ ⇒ 是或不是那一问答"是" ✓（§6.2 ✓）。
+        assert!(access.same_directory(&first.key, &second.key).unwrap());
+        // **不同的目录** ✓ ⇒ ⇒ 答"不是" ✓ ⇒ ⇒ 应用层据此提示相对引用会失效 ✓。
+        assert!(!access.same_directory(&first.key, &elsewhere.key).unwrap());
+        // **答不了的问号就是答不了** ✓ ⇒ ⇒ 报那个码 ✓ ⇒ ⇒ 不猜 ✓。
+        assert_eq!(
+            access.same_directory(&first.key, "unknown-key").unwrap_err(),
+            "unknown-file-key"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_that_does_not_exist_yet_gets_the_reference_it_will_have() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("real");
+        std::fs::create_dir(&real).unwrap();
+        let link = dir.path().join("link");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        let path = link.join("new.md");
+        let access = FileAccess::default();
+        // **另存为选中的目标** ✓ ⇒ ⇒ **那个文件还不存在** ✓ ⇒ ⇒ 引用先按这个名字记下 ✓。
+        let before = access.grant(path.clone(), true).unwrap();
+        std::fs::write(real.join("new.md"), b"x").unwrap();
+        // 文件写出来之后再打开它 ✓ ⇒ ⇒ **同一个文件** ✓ ⇒ ⇒ **同一个引用** ✓（M5-5 ✓）。
+        let after = access.grant(path, true).unwrap();
+        assert_eq!(before.reference, after.reference);
+    }
+
     #[cfg(unix)]
     #[test]
     fn a_symbolic_link_shares_the_reference_of_its_target() {
@@ -1546,7 +1924,7 @@ mod tests {
             .unwrap();
         // 写不进被占用的文件 ⇒ IO 家族的码 ✓：具体归到"权限"还是"其余"，
         // 取决于操作系统对共享冲突的归类 ✓，这里只断言它是 IO 失败 ✓。
-        let code = commit_bytes(&path, b"replacement", None).unwrap_err();
+        let code = commit_bytes(&path, b"replacement", None, false).unwrap_err();
         assert!(
             code == "native-permission-denied" || code == "native-io-failed",
             "unexpected code {code}"

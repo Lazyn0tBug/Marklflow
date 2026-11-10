@@ -13,6 +13,8 @@
  * ⇒ ⇒ 少一份会漂的副本 ✓ ⇒ ⇒ 少一次误判 ✓。
  */
 
+import type {SourceFormat} from '../../core/model/document';
+
 /**
  * 文件引用 ✓（file 面 ✓）：这个文档对应磁盘上的哪个文件 ✓。
  *
@@ -28,7 +30,20 @@ export interface FileReference {
   /** 人类可读的定位串 ✓：**可选** ✓ ⇒ ⇒ 只是展示 ✓ ⇒ ⇒ 不作标识 ✓ ⇒ ⇒ 不用于寻址 ✓。 */
   displayPath?: string | undefined;
   /** 这个文件按哪种载荷读进来的 ✓ ⇒ ⇒ 界面据此决定标题区怎么写 ✓。 */
-  sourceFormat: 'markdown' | 'editable-html';
+  sourceFormat: SourceFormat;
+  /**
+   * **那个目标还在吗** ✓：**读判断给的答案** ✓（§8.2 ✓）。
+   *
+   * **只有原生侧答得了** ✓ ⇒ ⇒ 应用侧只是**存下那个答案** ✓ ⇒ ⇒ **不是自己判的** ✓（§1.2 ✓）
+   * ⇒ ⇒ **不是摘要那种副本** ✓（§3.4 ✓）。
+   *
+   * **每一次写之后都跟一次验证读** ✓ ⇒ ⇒ **每次写完都刷新** ✓ ⇒ ⇒ **写失败时也刷新** ✓
+   * ⇒ ⇒ ⇒ **关联的有效性不来自写的成败** ✓（§6.1 ✓）。
+   *
+   * **undefined = 还没失效过** ✓ ⇒ ⇒ 按有效处理 ✓ ⇒ ⇒ 它是**点时事实** ✓
+   * ⇒ ⇒ 没有后台监视 ⇒ ⇒ 过期了就等下一次碰到它才知道 ✓（§13 ✓）。
+   */
+  targetPresent?: boolean | undefined;
 }
 
 /** 一致性 ✓（sync 面 ✓）：草稿与文件差多少 ✓。 */
@@ -60,11 +75,12 @@ export interface DocumentFileContext {
 /**
  * 界面读的那一个状态 ✓（§2.2 ✓、§8.6 ✓）。
  *
- * **四种说法** ✓ ⇒ ⇒ 派生顺序按 §2.3 ✓：**先问有没有同步目标** ✓ ⇒ ⇒ 没有就是 `none` ✓；
+ * **五种说法** ✓ ⇒ ⇒ 派生顺序按 §2.3 ✓：**先问有没有同步目标** ✓ ⇒ ⇒ 没有就是 `none` ✓；
+ * **再问那个目标还在不在** ✓ ⇒ ⇒ 读判断答"不在" ⇒ ⇒ `target-missing` ✓（**不撒谎** ✓）；
  * **再问上一次写回是不是失败了** ✓ ⇒ ⇒ 是就是 `failed` ✓（**失败优先于基线** ✓）；
  * **最后比基线** ✓ ⇒ ⇒ 相等 `synced` ✓、不等 `unsynced` ✓。
  */
-export type SyncStatus = 'none' | 'synced' | 'unsynced' | 'failed';
+export type SyncStatus = 'none' | 'target-missing' | 'synced' | 'unsynced' | 'failed';
 
 /** 打开的结果 ✓：要么新绑定 ✓，要么这个文件已经绑在别处 ✓。 */
 export type OpenOutcome =
@@ -106,7 +122,11 @@ export class DocumentFileContexts {
    *
    * **基线由调用方给** ✓ ⇒ ⇒ 新建时给修订 ✓ ⇒ ⇒ 命中已有内容时按内容是否相同给修订或 null ✓（§2.3 ✓）。
    *
-   * **同一文件已绑在这个文档上 ⇒ ⇒ 重新绑定** ✓ ⇒ ⇒ 换用这次的句柄 ✓。
+   * **绑定是这次读建立的** ✓ ⇒ ⇒ **打开就是一次读** ✓ ⇒ ⇒ 读成功了 ⇒ ⇒ **关联成立** ✓
+   * ⇒ ⇒ **关联始终基于读成功** ✓ ⇒ ⇒ **写成功不是关联** ✓（§4.1 ✓）。
+   *
+   * **同一文件已绑在这个文档上 ⇒ ⇒ 换用这次的句柄** ✓ ⇒ ⇒ **不是"改绑"** ✓ ⇒ ⇒
+   * 那个动作本来就不存在 ✓（§4.1 ✓、§16 ✓）。
    * **绑在别的文档上 ⇒ ⇒ 不抢** ✓ ⇒ ⇒ 交回去让调用方聚焦那个标签页 ✓。
    */
   open(documentId: string, file: FileReference, revision: number | null): OpenOutcome {
@@ -115,7 +135,8 @@ export class DocumentFileContexts {
       return {kind: 'already-bound', documentId: existing};
     const context: DocumentFileContext = {
       documentId,
-      file,
+      // **打开就是一次读** ✓ ⇒ ⇒ 读成功了 ⇒ ⇒ **那个文件在** ✓ ⇒ ⇒ 有效性为真 ✓。
+      file: {...file, targetPresent: file.targetPresent ?? true},
       sync: {lastSyncedRevision: revision, failure: null},
     };
     this.byDocument.set(documentId, context);
@@ -124,19 +145,60 @@ export class DocumentFileContexts {
   }
 
   /**
-   * **重新关联** ✓（§4.3 re-associate ✓、§5.5 ✓）。
+   * **另存为** ✓（§4.3 `save-as` ✓、§6.2 ✓）。
    *
-   * **读**：选择结果 ✓。
-   * **写**：file 更新 ✓、`lastSyncedRevision = null` ✓（无法证明与某个修订一致 ✓）。
-   * **不变量**：**不读盘覆盖草稿** ✓ ⇒ ⇒ 关联不算同步 ✓ ⇒ ⇒ 按未同步显示 ✓。
+   * **读**：新文档 id、选中的文件、写出的修订 ✓、**读判断的答案** ✓。
+   * **写**：file 就位 ✓、`lastSyncedRevision` = 写出的修订 ✓、`failure` 清掉 ✓。
+   * **不变量**：**旧文档不受影响** ✓ ⇒ ⇒ 旧文档继续同步它自己的文件 ✓ ⇒ ⇒ 两边互不相关 ✓。
+   *
+   * **新文档初始即已同步** ✓ ⇒ ⇒ 基线 = 写出的修订 ✓ ⇒ ⇒ 那一行说"已同步" ✓（§6.2 ✓、M5-5 ✓）。
+   *
+   * **它不是"改指绑定"** ✓ ⇒ ⇒ 旧文档的 file 与基线一个字不动 ✓ ⇒ ⇒ 两个文档两个文件 ✓。
    */
-  reAssociate(documentId: string, file: FileReference): DocumentFileContext {
-    const previous = this.byDocument.get(documentId);
-    if (previous !== undefined) this.byReference.delete(previous.file.reference);
+  saveAs(
+    documentId: string,
+    file: FileReference,
+    revision: number,
+    present: boolean,
+  ): DocumentFileContext {
+    return this.bind(documentId, file, revision, present);
+  }
+
+  /**
+   * **写到新目标** ✓（§8.2 ✓）：**这一份**绑上那个文件 ✓。
+   *
+   * **关联基于读成功** ✓ ⇒ ⇒ **写成功不是关联** ✓ ⇒ ⇒ **写之后那次读成功了才是** ✓
+   * ⇒ ⇒ **没有"改绑"这个动作** ✓（§4.1 ✓）。
+   *
+   * **草稿一个字不动** ✓ ⇒ ⇒ 这一份还是这一份 ✓ ⇒ ⇒ 基线 = 写出的那一版 ✓ ⇒ ⇒ 初始即已同步 ✓。
+   */
+  bindTo(
+    documentId: string,
+    file: FileReference,
+    revision: number,
+    present: boolean,
+  ): DocumentFileContext {
+    return this.bind(documentId, file, revision, present);
+  }
+
+  /**
+   * **绑定一个文件** ✓：**两种入口同一个动作** ✓ ⇒ ⇒ 规则只有一处 ✓ ⇒ ⇒
+   * **另存为**（新文档 ✓）与**写到新目标**（这一份 ✓）共用它 ✓。
+   *
+   * **`present` 是读判断的答案** ✓ ⇒ ⇒ **调用方必须先读成功** ✓ ⇒ ⇒
+   * **关联始终基于读成功** ✓ ⇒ ⇒ **写成功不是关联** ✓（§4.1 ✓）。
+   */
+  private bind(
+    documentId: string,
+    file: FileReference,
+    revision: number,
+    present: boolean,
+  ): DocumentFileContext {
     const context: DocumentFileContext = {
       documentId,
-      file,
-      sync: {lastSyncedRevision: null, failure: null},
+      // **有效性来自那次读** ✓ ⇒ ⇒ 不是"写成功了所以它在" ✓（§8.2 ✓）。
+      file: {...file, targetPresent: present},
+      sync: {lastSyncedRevision: revision, failure: null},
     };
     this.byDocument.set(documentId, context);
     this.byReference.set(file.reference, documentId);
@@ -178,6 +240,20 @@ export class DocumentFileContexts {
     const context = this.byDocument.get(documentId);
     if (context === undefined) return;
     context.sync = {...context.sync, failure: {kind: 'write-failed'}};
+  }
+
+  /**
+   * **刷新"那个目标还在吗"** ✓ ⇒ ⇒ **那是读判断的答案** ✓ ⇒ ⇒ 应用侧只存它 ✓（§8.2 ✓）。
+   *
+   * **每一次写之后都调** ✓ ⇒ ⇒ **写成功与写失败都刷** ✓ ⇒ ⇒
+   * **关联的有效性不来自写的成败** ✓ ⇒ ⇒ **不是失败推出来的** ✓。
+   *
+   * **只改这一个字段** ✓ ⇒ ⇒ 绑定不变 ✓ ⇒ ⇒ 基线不变 ✓ ⇒ ⇒ 草稿不动 ✓。
+   */
+  markTargetPresent(documentId: string, present: boolean): void {
+    const context = this.byDocument.get(documentId);
+    if (context === undefined) return;
+    context.file = {...context.file, targetPresent: present};
   }
 
   /**
@@ -227,6 +303,9 @@ export async function releaseDocumentFileContext(
  */
 export function syncStatus(context: DocumentFileContext | undefined, revision: number): SyncStatus {
   if (context === undefined) return 'none';
+  // **那个目标不在了** ✓ ⇒ ⇒ **说清为什么保存灰着** ✓ ⇒ ⇒ **不撒谎** ✓（§8.2 ✓）。
+  // ⇒ ⇒ **这是读判断给的** ✓ ⇒ ⇒ **不是写失败推出来的** ✓。
+  if (context.file.targetPresent === false) return 'target-missing';
   // **取消不算失败** ✓ ⇒ ⇒ 它不写这个字段 ✓ ⇒ ⇒ 这里只看写回失败 ✓。
   if (context.sync.failure !== null) return 'failed';
   if (context.sync.lastSyncedRevision === null) return 'unsynced';

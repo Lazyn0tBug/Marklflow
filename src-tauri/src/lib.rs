@@ -94,6 +94,8 @@ pub fn run() {
             files::write_native_bytes,
             files::write_native_sync,
             files::is_native_synced,
+            files::is_native_same_directory,
+            files::is_native_target_present,
             files::release_native_file
         ]);
     // 日志基座在业务事件之前就位：守卫判定属安全事件，任何构建都该留痕。

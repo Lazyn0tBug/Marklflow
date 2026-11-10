@@ -15,7 +15,6 @@ import {
   Moon,
   Sun,
   ShieldCheck,
-  Save,
   Sigma,
   PanelLeftClose,
   PanelLeftOpen,
@@ -23,10 +22,11 @@ import {
   ChevronDown,
   Check,
   MessageSquare,
-  Link2,
 } from 'lucide-react';
 import {SYNC_STATUS_TEXTS} from '../../application/messages';
 import type {SyncStatus} from '../../application/workspace/documentFileContext';
+import type {SaveControlView} from '../../application/workspace/saveControl';
+import {SaveSplitButton} from './SaveSplitButton';
 
 export type ViewMode = 'split' | 'edit' | 'reading' | 'a4';
 
@@ -54,7 +54,14 @@ export interface TopBarProps {
   isDark: boolean;
   onThemeToggle: () => void;
   isDirty: boolean;
-  onSave: () => void;
+  /**
+   * **那个分裂按钮的形状** ✓ ⇒ ⇒ **界面不自己判** ✓（§8.6 ✓）。
+   */
+  saveView: SaveControlView;
+  /** 主区：写回文件 ✓（§6.4 ✓）。 */
+  onWriteBack: () => void;
+  /** 菜单里另存为 ✓（§6.2 ✓）。 */
+  onSaveAs: () => void;
   onOpenExport: () => void;
   onOpenRoadmap: () => void;
   /**
@@ -72,10 +79,6 @@ export interface TopBarProps {
   filePath?: string | undefined;
   /** 同步维度 ✓：标题旁的未同步标记 ✓（设计 §8.3 ✓）。 */
   syncStatus: SyncStatus;
-  /**
-   * 重新关联 ✓（设计 §5.5 ✓）⇒ ⇒ **只有桌面端有** ✓（Web 端没有本地文件 ✓）。
-   */
-  onReassociate?: (() => void) | undefined;
 }
 
 const WIDTH_OPTIONS: {label: string; value: number | 'full'; desc: string}[] = [
@@ -104,7 +107,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   isDark,
   onThemeToggle,
   isDirty,
-  onSave,
+  saveView,
+  onWriteBack,
+  onSaveAs,
   onOpenExport,
   onOpenRoadmap,
   onOpenMessages,
@@ -112,7 +117,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   fileName,
   filePath,
   syncStatus,
-  onReassociate,
 }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
   const settingsRef = useRef<HTMLDialogElement>(null);
@@ -363,25 +367,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {onReassociate && (
-          <button
-            onClick={onReassociate}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer"
-            title="把这份草稿指向另一个本地文件（草稿内容不变）"
-          >
-            <Link2 className="w-3.5 h-3.5" />
-            <span>重新关联</span>
-          </button>
-        )}
-
-        <button
-          onClick={onSave}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-700/80 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors whitespace-nowrap cursor-pointer"
-          title="保存当前修改到本地 IndexedDB"
-        >
-          <Save className="w-3.5 h-3.5" />
-          <span>保存</span>
-        </button>
+        {/* **分裂按钮** ✓ ⇒ ⇒ 主区 = 写回文件 ✓ ⇒ ⇒ 箭头 = 菜单 ✓（§8.2 ✓）。 */}
+        <SaveSplitButton view={saveView} onWriteBack={onWriteBack} onSaveAs={onSaveAs} />
 
         <button
           onClick={onOpenExport}

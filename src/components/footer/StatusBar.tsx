@@ -5,8 +5,13 @@
  */
 
 import React from 'react';
-import {Database, CheckCircle, Clock, Cpu} from 'lucide-react';
-import {DRAFT_STATUS_TEXTS, SYNC_STATUS_TEXTS} from '../../application/messages';
+import {Database, CheckCircle, Clock, Cpu, AlertTriangle} from 'lucide-react';
+import {
+  DRAFT_STATUS_TEXTS,
+  SYNC_STATUS_TEXTS,
+  SYNC_FAILURE_HINT,
+  SYNC_FAILURE_RETRY,
+} from '../../application/messages';
 import type {SyncStatus} from '../../application/workspace/documentFileContext';
 
 interface StatusBarProps {
@@ -22,6 +27,12 @@ interface StatusBarProps {
    * **没有同步目标时是 'none'** ✓ ⇒ ⇒ **那一行不显示** ✓ ⇒ ⇒ 只剩草稿那一行 ✓。
    */
   syncStatus: SyncStatus;
+  /**
+   * **重试入口** ✓（设计 §8.6 ✓）。
+   *
+   * **失败是常驻状态** ✓ ⇒ ⇒ **给重试入口** ✓ ⇒ ⇒ 用户不必关掉页面重来 ✓。
+   */
+  onRetrySync?: (() => void) | undefined;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -32,6 +43,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   revision,
   isDirty,
   syncStatus,
+  onRetrySync,
 }) => {
   const estimatedReadingMinutes = Math.max(Math.ceil(charCount / 400), 1);
 
@@ -61,6 +73,30 @@ export const StatusBar: React.FC<StatusBarProps> = ({
               <span className="text-teal-400 flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" />
                 {SYNC_STATUS_TEXTS.synced}
+              </span>
+            ) : syncStatus === 'target-missing' ? (
+              /* **目标不在了** ✓ ⇒ ⇒ **说清为什么保存灰着** ✓ ⇒ ⇒ **另存为是出路** ✓（§8.2 ✓）。
+               * **这是读判断给的** ✓ ⇒ ⇒ **不是写失败推出来的** ✓ ⇒ ⇒ **不撒谎** ✓。 */
+              <span className="text-red-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {SYNC_STATUS_TEXTS['target-missing']}
+              </span>
+            ) : syncStatus === 'failed' ? (
+              /* **失败是常驻状态** ✓ ⇒ ⇒ 它有自己那一行 ✓ ⇒ ⇒ **不是一条通知** ✓（§8.6 ✓）。
+               * **说明草稿已在工作区、失败的是文件** ✓ ⇒ ⇒ **给重试入口** ✓。 */
+              <span className="text-red-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {SYNC_STATUS_TEXTS.failed}
+                <span className="text-neutral-400">{SYNC_FAILURE_HINT}</span>
+                {onRetrySync ? (
+                  <button
+                    type="button"
+                    onClick={onRetrySync}
+                    className="underline text-neutral-300 hover:text-neutral-100"
+                  >
+                    {SYNC_FAILURE_RETRY}
+                  </button>
+                ) : null}
               </span>
             ) : (
               <span className="text-amber-400">● {SYNC_STATUS_TEXTS.unsynced}</span>

@@ -2,6 +2,7 @@ import {createSourceImport} from '../sourceImport';
 import type {BoundSelection, OpenResult} from '../../../application/workspace/sourceImport';
 import type {FileReference} from '../../../application/workspace/documentFileContext';
 import type {DocumentRecord} from '../../model/document';
+import {sourceFormatOf} from '../../policy/sourceFormat';
 import {readNativeText, releaseNativeFile, type NativeSelection} from './files';
 
 /**
@@ -20,13 +21,14 @@ export interface NativeSourceImportPlatform {
  * 从选择结果里取出文件引用 ✓：引用 ✓、访问句柄 ✓、文件名 ✓、载荷类型 ✓。
  *
  * **载荷类型看扩展名** ✓ ⇒ ⇒ 可编辑的 HTML 走 HTML 载荷路径 ✓ ⇒ ⇒ 不按 Markdown 导入 ✓（M4-2 ✓）。
+ * **那一条在一处决定** ✓ ⇒ ⇒ 另存为选完目标也用它 ✓ ⇒ ⇒ 同一个文件前后一个格式 ✓。
  */
 export function nativeFileReference(file: NativeSelection): FileReference {
   return {
     reference: file.reference,
     handle: file.key,
     displayName: file.name,
-    sourceFormat: /\.html?$/i.test(file.name) ? 'editable-html' : 'markdown',
+    sourceFormat: sourceFormatOf(file.name),
   };
 }
 

@@ -27,6 +27,14 @@ export interface ThemeSpec {
   };
 }
 
+/**
+ * **这个文件按哪种载荷读进来** ✓（设计 §3.3 ✓、§6.1 ✓）。
+ *
+ * **一处定义** ✓ ⇒ ⇒ 写回那一份字节按它选 ✓ ⇒ ⇒ 纯模块与平台层用同一份 ✓。
+ * **只有两种** ✓ ⇒ ⇒ 写回的内容随它而异 ✓ ⇒ ⇒ 没有第三种"不知道" ✓。
+ */
+export type SourceFormat = 'markdown' | 'editable-html';
+
 export interface DocumentAsset {
   source: string;
   mime: string;

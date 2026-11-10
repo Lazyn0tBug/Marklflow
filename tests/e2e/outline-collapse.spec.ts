@@ -90,7 +90,8 @@ test('finds a hidden heading by search without folding the result', async ({page
   await page.getByPlaceholder('搜索标题大纲...').fill('五级');
   await expect(row(page, '五级')).toHaveCount(1);
   // 搜索期间没有可折叠的对象，折叠按钮不渲染。
-  await expect(page.locator('button[aria-expanded]')).toHaveCount(0);
+  // **限定在大纲那一侧** ✓ ⇒ ⇒ 顶栏那个菜单按钮的 aria-expanded 不算 ✓。
+  await expect(page.locator('aside button[aria-expanded]')).toHaveCount(0);
   await page.getByPlaceholder('搜索标题大纲...').fill('');
   await expect(row(page, '五级')).toHaveCount(0);
 });
