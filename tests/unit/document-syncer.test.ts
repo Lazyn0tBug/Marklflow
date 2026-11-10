@@ -280,6 +280,20 @@ describe('应用层同步', () => {
     expect(calls).toEqual(['detect:f1', 'write:sync', 'askGate:missing', 'targetPresent:f1']);
   });
 
+  it('检测那一句答"写不进去"，就走另存那一条分支', async () => {
+    const {syncer, calls, contexts} = setup({
+      detect: async () => 'unwritable',
+    });
+    const doc = createNewDocument('写不进.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **那一条因此走得到** ✓ ⇒ ⇒ **问的是"写不进去"** ✓ ⇒ ⇒ **不是失败** ✓（§6.1 ✓）。
+    expect(calls).toContain('askGate:unwritable');
+    // **用户说是 ⇒ ⇒ 换目标** ✓ ⇒ ⇒ **那边再过一次门** ✓。
+    expect(calls).toContain('saveElsewhere');
+    expect(outcome.writeBack).toEqual({kind: 'written', revision: 1});
+  });
+
   it('写不进去就问要不要另存，说是就换目标', async () => {
     const {syncer, calls, contexts} = setup({
       write: async () => 'unwritable',

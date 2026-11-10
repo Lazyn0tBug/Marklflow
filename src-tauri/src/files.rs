@@ -222,6 +222,16 @@ impl TargetStatus {
     }
 }
 
+/// **这个 IO 错误归到哪个状态** ✓ ⇒ ⇒ **直接按系统给的错误码判** ✓ ⇒ ⇒
+/// **不在了与写不进去了各归一个** ✓ ⇒ ⇒ **别的错误仍然是失败** ✓ ⇒ ⇒ **不猜** ✓。
+fn status_of_io(error: &std::io::Error) -> Option<TargetStatus> {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => Some(TargetStatus::Missing),
+        std::io::ErrorKind::PermissionDenied => Some(TargetStatus::Unwritable),
+        _ => None,
+    }
+}
+
 /// **这个失败码归到哪个状态** ✓ ⇒ ⇒ **检测在这里归类一次** ✓ ⇒ ⇒
 /// 应用侧只按状态选处理 ✓ ⇒ ⇒ **归类与处理分开** ✓。
 ///
@@ -427,13 +437,10 @@ impl FileAccess {
         // **目标还在吗** ✓ ⇒ ⇒ **不在了 ⇒ ⇒ 那是状态** ✓ ⇒ ⇒ **不是报错** ✓。
         let length = match std::fs::metadata(&path) {
             Ok(meta) => meta.len(),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                return Ok(TargetStatus::Missing)
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-                return Ok(TargetStatus::Unwritable)
-            }
-            Err(e) => return Err(io_error(&e)),
+            Err(e) => match status_of_io(&e) {
+                Some(status) => return Ok(status),
+                None => return Err(io_error(&e)),
+            },
         };
         // **先看大小** ✓ ⇒ ⇒ 超过读上限的文件一定不是应用手上那一版 ✓
         // ⇒ ⇒ 不必为了答一句话把它整个读进来 ✓。
@@ -442,13 +449,10 @@ impl FileAccess {
         }
         let bytes = match std::fs::read(&path) {
             Ok(bytes) => bytes,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                return Ok(TargetStatus::Missing)
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-                return Ok(TargetStatus::Unwritable)
-            }
-            Err(e) => return Err(io_error(&e)),
+            Err(e) => match status_of_io(&e) {
+                Some(status) => return Ok(status),
+                None => return Err(io_error(&e)),
+            },
         };
         let observed = crate::hash::sha256_hex(&bytes);
         if observed == digest {
