@@ -443,6 +443,20 @@ pub fn run_id() -> &'static str {
     RUN_ID.get().map(String::as_str).unwrap_or("")
 }
 
+/// **这个构建的 commit** ✓（构建时烤进去 ✓）⇒ ⇒ 日志因此能说出**是哪个构建** ✓ ⇒ ⇒
+/// 不用问人 ✓ ⇒ ⇒ 也不用靠时间戳猜 ✓。
+///
+/// **它随运行标记落笔** ✓ ⇒ ⇒ 一条就覆盖整轮 ✓ ⇒ ⇒ 每条记录不必重复 ✓。
+fn build_commit() -> &'static str {
+    option_env!("MARKFLOW_BUILD_COMMIT").unwrap_or("unknown")
+}
+
+/// **这个构建的时间** ✓（UTC ✓）⇒ ⇒ 与 commit 一起 ⇒ ⇒ 说清**什么时候出的那个包** ✓ ⇒ ⇒
+/// "这个包是新的吗"从日志就能答 ✓。
+fn build_time() -> &'static str {
+    option_env!("MARKFLOW_BUILD_TIME").unwrap_or("unknown")
+}
+
 /// 初始化日志基座。目录不可用时应用继续运行，只把文件 sink 标为不可用。
 ///
 /// 调用时机：应用的 setup 钩子里，且必须早于任何业务事件。
@@ -538,6 +552,8 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
             os = std::env::consts::OS,
             arch = std::env::consts::ARCH,
             app_version = env!("CARGO_PKG_VERSION"),
+            build_commit = build_commit(),
+            build_time = build_time(),
             config_source = source.as_str(),
             log_level = level_name(level),
             log_format = if json { "json" } else { "text" },
@@ -1973,5 +1989,17 @@ mod tests {
     fn formats_utc_timestamps() {
         let time = UNIX_EPOCH + Duration::from_millis(1_700_000_000_123);
         assert_eq!(iso_timestamp(time), "2023-11-14T22:13:20.123Z");
+    }
+
+    #[test]
+    fn the_run_marker_carries_the_build_identity() {
+        // **日志能说出是哪个构建** ✓ ⇒ ⇒ 不用问人那个包是不是新的 ✓。
+        assert!(build_commit().len() >= 7, "构建标识不该是空的");
+        // **构建时刻是 UTC 时刻** ✓ ⇒ ⇒ 形状固定 ✓ ⇒ ⇒ 与日志自己的时刻一个读法 ✓。
+        let time = build_time();
+        assert!(
+            time == "unknown" || (time.len() == 20 && time.ends_with('Z')),
+            "构建时刻的形状不对：{time}"
+        );
     }
 }

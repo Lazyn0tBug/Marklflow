@@ -76,9 +76,21 @@ export function rejectionSource(reason: unknown): string {
   if (reason instanceof Error) {
     const frame = topFrame(reason.stack);
     // **不含空格** ✓ ⇒ ⇒ 日志里那一条**始终是一行** ✓ ⇒ ⇒ 不用靠"续写上一个字段"还原 ✓。
-    return frame ? `${reason.name}@${frame}` : reason.name;
+    // **没有可指的位置就明说"没有"** ✓ ⇒ ⇒ 不与"不是 Error"混成一句话 ✓ ⇒ ⇒
+    // 一次就能分清是"栈不可用"还是"根本没有栈" ✓。
+    return frame ? `${reason.name}@${frame}` : `${reason.name}@no-frame`;
   }
-  return 'rejection';
+  // **不是 Error ⇒ 说明它是哪一种值** ✓ ⇒ ⇒ 原生命令失败拒绝的是**字符串** ✓
+  // ⇒ ⇒ 与"栈不可用"分得开 ✓ ⇒ ⇒ 看日志就知道问题在哪一侧 ✓ ⇒ ⇒
+  // **只说种类，不说内容** ✓ ⇒ ⇒ 不带用户数据 ✓。
+  return `rejection:${kindOf(reason)}`;
+}
+
+/** 那个值是哪一种 ✓（只说种类 ✓ ⇒ ⇒ 内容一个字都不带 ✓）。 */
+function kindOf(reason: unknown): string {
+  if (reason === null) return 'null';
+  if (reason === undefined) return 'undefined';
+  return typeof reason;
 }
 
 /**

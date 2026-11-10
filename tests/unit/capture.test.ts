@@ -130,5 +130,16 @@ it('the rejection source says only the kind when no frame of ours is there', () 
   const error = new TypeError('boom');
   error.stack = 'TypeError: boom\n    at read (file:///C:/Users/someone/notes.md:12:5)';
   // **没有我们的帧就只说种类** ✓ ⇒ ⇒ 不拿用户路径凑数 ✓ ⇒ ⇒ 日志仍然说得清是哪种错 ✓。
-  expect(rejectionSource(error)).toBe('TypeError');
+  expect(rejectionSource(error)).toBe('TypeError@no-frame');
+});
+
+it('the rejection source says what kind of value was rejected', () => {
+  // **原生命令失败拒绝的是字符串** ✓ ⇒ ⇒ 与"栈不可用"分得开 ✓ ⇒ ⇒
+  // 看日志就知道问题在哪一侧 ✓ ⇒ ⇒ 不用再猜 ✓。
+  expect(rejectionSource('command not allowed')).toBe('rejection:string');
+  expect(rejectionSource(undefined)).toBe('rejection:undefined');
+  expect(rejectionSource(null)).toBe('rejection:null');
+  expect(rejectionSource({code: 7})).toBe('rejection:object');
+  // **内容一个字都不带** ✓ ⇒ ⇒ 不落用户数据 ✓。
+  expect(rejectionSource('/Users/someone/notes.md')).not.toContain('notes.md');
 });
