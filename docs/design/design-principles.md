@@ -44,7 +44,7 @@
 - **观点**：拥有事实的一方回答关于它的问题。应用层不替拥有者做判断。
 - **问句**：这是不是在替拥有者做判断？
 - **反例**：应用侧存一份磁盘摘要、自己比较 ⇒ ⇒ 两份摘要要同步 ⇒ ⇒ 同步失败就是误判。
-- **落点**：`is_native_synced` 只回布尔，不回摘要 ✓；复核在 `write_native_sync` 内部（临时文件写完后、rename 之前）✓；原生侧不判"该同步还是该反向" ✓。
+- **落点**：`detect_native_target` 只回**状态**（`ready` / `changed` / `missing` / `unwritable` / `invalid` ✓），不回摘要 ✓；复核在 `write_native_sync` 内部（临时文件写完后、rename 之前）✓；原生侧不判"该同步还是该反向" ✓。
 
 ### 1.3 概念留在应用层，当且仅当应用层自己要用它回答一个问题
 
@@ -61,7 +61,7 @@
 - **观点**：能脱离宿主单测的规则，就放进纯模块；宿主给端口，平台差异留在平台那一侧。
 - **问句**：这段判断要不要起浏览器、开桌面外壳才测得了？
 - **反例**：把"文件变没变"的判定写在组件里 ⇒ ⇒ 测它要起浏览器 ⇒ ⇒ 没人测。
-- **落点**：`src/application/workspace/documentOpen.ts`（宿主只给 `open`/`reference`/`boundDocument`/`sameVersion`/`releaseHandle` 五个端口）✓；`scripts/check-module-boundaries.ts`（纯模块不许 import 非纯模块）✓；`src/application/workspace/outlineState.ts` 同一范式 ✓。
+- **落点**：`src/application/workspace/documentOpen.ts`（宿主只给 `open`/`reference`/`boundDocument`/`detect`/`releaseHandle` 五个端口 ✓ ⇒ ⇒ **`detect` 答状态** ✓）✓；`scripts/check-module-boundaries.ts`（纯模块不许 import 非纯模块）✓；`src/application/workspace/outlineState.ts` 同一范式 ✓。
 
 ### 1.5 平台差异是端口的实现差异，不是调用点的分支
 
@@ -117,7 +117,7 @@
 | 磁盘内容的摘要只存原生侧，应用侧只问一句"还是那一份吗"                                                                                                                                                             | 同上 §3.4                                                                 | 1.1 / 1.2 | 成立                                                                                               |
 | 打开的文件可写：用户选中即表达编辑意图                                                                                                                                                                             | 同上 §3.2                                                                 | 1.2       | 成立                                                                                               |
 | 文件引用 = 规范名的会话内别名（原生侧随机 token），不作路径摘要                                                                                                                                                    | 同上 §3.3                                                                 | 1.1       | 成立                                                                                               |
-| 原生侧问"还是不是上次同步的那一版"（`is_native_synced`），不提供带期望摘要的写入                                                                                                                                   | 同上 §3.1                                                                 | 1.2       | 成立                                                                                               |
+| 原生侧问"那个目标是什么状态"（`detect_native_target`），不提供带期望摘要的写入                                                                                                                                     | 同上 §3.1                                                                 | 1.2       | 成立                                                                                               |
 | 草稿是唯一存放处，自动持久化；文件是草稿的一个同步目标                                                                                                                                                             | 同上 §0 / §2.1                                                            | 1.3       | 成立                                                                                               |
 | "保存"只指写回文件；草稿落盘自动发生；同步绝不定时自动                                                                                                                                                             | 同上 §6.4                                                                 | 1.3       | 成立                                                                                               |
 | 冲突消解是三个选择：覆盖=正向同步、重载=反向同步、取消=不动；不做行级冲突解决                                                                                                                                      | 同上 §0（源自 `5bb8f77`）                                                 | 1.3       | 成立                                                                                               |
