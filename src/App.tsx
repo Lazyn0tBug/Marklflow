@@ -801,6 +801,13 @@ export default function App() {
    *
    * **没有同步目标** ⇒ ⇒ **入口已经灰掉** ✓ ⇒ ⇒ 走不到这一步 ✓（§8.2 ✓）。
    */
+  /**
+   * **在飞的那一次写回** ✓ ⇒ ⇒ 另存为切换之前要等它 ✓ ⇒ ⇒ **M5-11** ✓。
+   *
+   * **迟到的那次只影响原上下文** ✓ ⇒ ⇒ 由 `applied` 核对绑定身份保证 ✓ ⇒ ⇒
+   * **切换与它不冲突** ✓ ⇒ ⇒ **只是顺序** ✓。
+   */
+  const pendingWrite = useRef<Promise<unknown> | null>(null);
   const writeBackDocument = async (doc: DocumentRecord) => {
     const context = contexts.read(doc.id);
     // **没有同步目标** ⇒ ⇒ **入口已经灰掉** ✓ ⇒ ⇒ 走不到这一步 ✓（§8.2 ✓）。
@@ -830,6 +837,16 @@ export default function App() {
       });
     sessionChanged((value) => value + 1);
     return outcome.writeBack;
+  };
+  /**
+   * **把这一次记成"在飞"** ✓ ⇒ ⇒ 另存为切换之前等它 ✓ ⇒ ⇒ 顺序有保证 ✓（M5-11 ✓）。
+   *
+   * **失败也要等完** ✓ ⇒ ⇒ 别让一次失败把切换卡住 ✓ ⇒ ⇒ 失败自己报它自己 ✓。
+   */
+  const startWriteBack = (doc: DocumentRecord) => {
+    const run = writeBackDocument(doc);
+    pendingWrite.current = run.catch(() => {});
+    return run;
   };
 
   /**
@@ -887,7 +904,7 @@ export default function App() {
       await saveToNewTarget(doc);
       return;
     }
-    await writeBackDocument(doc);
+    await startWriteBack(doc);
   };
 
   /**
@@ -932,6 +949,9 @@ export default function App() {
       });
       return;
     }
+    // **等已发出的同步完成再切换** ✓ ⇒ ⇒ **M5-11** ✓ ⇒ ⇒
+    // **迟到的那次只影响原上下文** ✓ ⇒ ⇒ 那边自己核对绑定身份 ✓ ⇒ ⇒ **顺序有保证** ✓。
+    if (pendingWrite.current) await pendingWrite.current;
     // **成功** ⇒ ⇒ **新文档** ✓ ⇒ ⇒ 初始即已同步 ✓ ⇒ ⇒ **切过去** ✓ ⇒ ⇒ 旧文档一个字不动 ✓（§6.2 ✓）。
     openSaved.current(result.document);
     pushNotice({tone: 'success', message: SAVE_AS_TEXTS.saved});

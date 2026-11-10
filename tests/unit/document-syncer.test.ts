@@ -472,6 +472,22 @@ describe('应用层同步', () => {
     expect(syncStatus(contexts.read(second.id), second.revision + 1)).toBe('unsynced');
   });
 
+  it('另存为之后那次还在飞行的写回只更新原上下文', async () => {
+    const {syncer, contexts} = setup();
+    const doc = createNewDocument('原文档.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const pending = syncer.save({document: doc, bytes});
+    // **另存为 ⇒ ⇒ 这一份绑到新文件** ✓ ⇒ ⇒ **在飞的那次是对旧文件的那次** ✓。
+    // **基线给一个不一样的修订** ✓ ⇒ ⇒ 迟到的那次若串过来就看得出来 ✓。
+    contexts.bindTo(doc.id, binding('f2'), doc.revision + 5, true);
+    const outcome = await pending;
+    // **结果仍然只对原目标成立** ✓ ⇒ ⇒ 报告它 ✓。
+    expect(outcome.writeBack).toEqual({kind: 'written', revision: doc.revision});
+    // **当前上下文不动** ✓ ⇒ ⇒ **新绑定的基线不变** ✓ ⇒ ⇒ **迟到的那次不串过来** ✓（M5-11 ✓）。
+    expect(contexts.read(doc.id)?.file.reference).toBe('f2');
+    expect(contexts.read(doc.id)?.sync.lastSyncedRevision).toBe(doc.revision + 5);
+  });
+
   it('标签页关掉之后那次还在飞行的写回不更新任何上下文', async () => {
     const {syncer, contexts} = setup();
     const doc = createNewDocument('关掉了.md');
