@@ -50,6 +50,10 @@ const modules = {
   probe: join(repo, 'src-tauri/src/probe.rs'),
   // 运行期配置：日志基座与探针装配都从它取值 ✓，它自己也要编 ✓。
   config: join(repo, 'src-tauri/src/config.rs'),
+  // **字节摘要只有这一份实现** ✓：文件摘要与 PDF 留证共用它 ✓。
+  // **它必须在清单里** ✓：files 与 pdf_print 都用 crate::hash ✓ ⇒ ⇒
+  // 少了它，夹具编不过 ✓ ⇒ ⇒ 而**这个错本机看不见** ✓（macOS 上没装 Windows 目标 ✓ ⇒ ⇒ 整个检查跳过 ✓）。
+  hash: join(repo, 'src-tauri/src/hash.rs'),
 };
 
 /** 跑一条命令；失败时返回其输出，不抛。 */
