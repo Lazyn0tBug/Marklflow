@@ -343,6 +343,12 @@ export interface ProblemReport {
   diagnosticId?: string;
   detail?: string;
   cause?: unknown;
+  /**
+   * **定位串** ✓：**在我们自己的构建产物里的位置** ✓ ⇒ ⇒ **不含用户数据** ✓ ⇒ ⇒
+   * **可以进日志** ✓（基座 §5.2 ✓）⇒ ⇒ **日志因此能指出是哪儿** ✓ ⇒ ⇒
+   * **原始异常 message 仍然只进控制台** ✓。
+   */
+  source?: string;
 }
 
 /** 消息端口：应用层只认这个接口 ✓，不认 console、不认 log_event ✓。 */

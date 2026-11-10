@@ -64,11 +64,33 @@ export function reactSource(componentStack?: string | null): string {
   return frame ?? 'react';
 }
 
-/** 拒绝的来源标识 ✓：异常的类型与消息 ✓ ⇒ ⇒ 同一个拒绝收敛成一条 ✓。 */
+/**
+ * **拒绝的来源标识** ✓：**一个定位串** ✓ ⇒ ⇒ **异常的类型 + 抛出位置** ✓ ⇒ ⇒
+ * **同一个抛出点每次都一样** ✓ ⇒ ⇒ 循环收敛成一条 ✓。
+ *
+ * **不带原始异常 message** ✓ ⇒ ⇒ **日志里不落用户数据** ✓（基座 §5.2 ✓）⇒ ⇒
+ * **但日志能指出是哪儿** ✓ ⇒ ⇒ **下一次同样的事，看日志就够** ✓ ⇒ ⇒
+ * **不必再开控制台找那一行** ✓ ⇒ ⇒ **原文仍在控制台** ✓（浏览器自己打 ✓）。
+ */
 export function rejectionSource(reason: unknown): string {
-  if (reason instanceof Error) return `${reason.name}: ${reason.message}`.slice(0, 120);
-  if (typeof reason === 'string') return reason.slice(0, 120);
+  if (reason instanceof Error) {
+    const frame = topFrame(reason.stack);
+    return frame ? `${reason.name} at ${frame}` : reason.name;
+  }
   return 'rejection';
+}
+
+/**
+ * **栈顶那一帧的位置** ✓：**文件 + 行** ✓ ⇒ ⇒ **在我们自己的构建产物里** ✓ ⇒ ⇒
+ * **不含用户数据** ✓ ⇒ ⇒ **可以进日志** ✓（基座 §5.2 ✓）。
+ */
+function topFrame(stack: string | undefined): string | undefined {
+  if (!stack) return undefined;
+  for (const line of stack.split('\n')) {
+    const match = /\(?([^()\s]+):(\d+):(\d+)\)?\s*$/.exec(line.trim());
+    if (match) return `${match[1]}:${match[2]}`;
+  }
+  return undefined;
 }
 
 /**

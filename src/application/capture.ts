@@ -89,7 +89,8 @@ export class ErrorCapture {
     if (!this.allow()) return false;
     this.seen.add(`${category}:${source}`);
     if (key) this.reported.add(key);
-    await this.deliver({category, detail: describeError(error), cause: error});
+    // **定位串一起带上** ✓ ⇒ ⇒ 原生侧那一条因此能指出是哪儿 ✓ ⇒ ⇒ **日志可定位** ✓。
+    await this.deliver({category, detail: describeError(error), cause: error, source});
     return true;
   }
 

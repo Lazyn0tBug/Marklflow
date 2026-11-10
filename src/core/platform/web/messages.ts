@@ -15,6 +15,8 @@ export const webMessagePort: MessagePort = {
       report.category,
       report.diagnosticId ?? '',
       report.cause ?? report.detail ?? '',
+      // **定位串也在这儿** ✓ ⇒ ⇒ 与日志里那一条对得上 ✓ ⇒ ⇒ 找出处不用两处对 ✓。
+      report.source ?? '',
     );
   },
 };

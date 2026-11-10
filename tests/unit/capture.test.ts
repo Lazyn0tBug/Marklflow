@@ -1,5 +1,6 @@
 import {it, expect, vi, afterEach} from 'vitest';
 import {ErrorCapture, describeError} from '../../src/application/capture';
+import {rejectionSource} from '../../src/core/platform/web/capture';
 import type {ProblemReport} from '../../src/application/messages';
 
 /**
@@ -94,4 +95,18 @@ it('describes the raw text of anything it is handed', () => {
   expect(describeError(new Error('坏了'))).toContain('坏了');
   expect(describeError('一句话')).toBe('一句话');
   expect(describeError({code: 'x'})).toContain('x');
+});
+
+it('the rejection source points at the place and keeps the message out', () => {
+  const error = new TypeError('Cannot read properties of undefined');
+  error.stack =
+    'TypeError: Cannot read properties of undefined\n    at saveTo (http://tauri.localhost/assets/index.js:1204:17)\n    at run (http://tauri.localhost/assets/index.js:900:5)';
+  const source = rejectionSource(error);
+  // **指出是哪儿** ✓ ⇒ ⇒ **日志因此能定位** ✓ ⇒ ⇒ 不必再开控制台找那一行 ✓。
+  expect(source).toContain('TypeError');
+  expect(source).toContain('index.js:1204');
+  // **原始 message 不在里面** ✓ ⇒ ⇒ **日志里不落用户数据** ✓（基座 §5.2 ✓）。
+  expect(source).not.toContain('Cannot read properties');
+  // **同一个抛出点每次都一样** ✓ ⇒ ⇒ 循环收敛成一条 ✓。
+  expect(rejectionSource(error)).toBe(source);
 });

@@ -224,6 +224,12 @@ pub struct WebEventPayload {
     pub error_category: Option<WebErrorCategory>,
     #[serde(default)]
     pub bytes: Option<u64>,
+    /// **定位串** ✓：**页面上那个问题出在哪儿** ✓ ⇒ ⇒ **在我们自己的构建产物里** ✓ ⇒ ⇒
+    /// **不含用户数据** ✓ ⇒ ⇒ **日志因此能指出是哪儿** ✓（基座 §5.2 ✓）。
+    ///
+    /// **有界** ✓ ⇒ ⇒ 日志里那一条不会变长 ✓ ⇒ ⇒ 超出就截断 ✓。
+    #[serde(default)]
+    pub source: Option<String>,
 }
 
 /// web 侧请求的处理结果：accepted（已校验并入队）、dropped（超限丢弃）、rejected（不合规拒收）。
@@ -685,6 +691,11 @@ fn record_web_event_for(
     }
     if let Some(bytes) = event.bytes {
         fields.insert("bytes".to_owned(), bytes.to_string());
+    }
+    if let Some(source) = event.source {
+        // **定位串进日志** ✓ ⇒ ⇒ **下一次同样的事，看日志就知道是哪儿** ✓ ⇒ ⇒
+        // **不必再开控制台找那一行** ✓ ⇒ ⇒ **有界** ✓ ⇒ ⇒ 不会撑爆那一行 ✓。
+        fields.insert("source".to_owned(), source.chars().take(200).collect());
     }
     let level = if event.event == WebEventKind::PageError {
         "WARN"
@@ -1825,6 +1836,29 @@ mod tests {
         let record = receiver.try_recv().expect("记录已入队");
         let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
         assert!(text.contains("\"error_category\":\"export-failed\""),"日志里的类别名不对：{text}");
+    }
+
+    #[test]
+    fn a_page_error_carries_the_place_it_happened_at() {
+        // **定位串进日志** ✓ ⇒ ⇒ **下一次同样的事，看日志就知道是哪儿** ✓ ⇒ ⇒
+        // **不必再开控制台找那一行** ✓（基座 §5.2 ✓：只传类别与定位串，不传原文 message ✓）。
+        let (emitter, receiver, _health) = test_emitter(8);
+        assert_eq!(
+            record_web_event_for(
+                &web_identity("main", "main"),
+                r#"{"event":"page_error","error_category":"rejection","source":"TypeError at http://tauri.localhost/assets/index.js:1234:9"}"#.to_owned(),
+                &emitter
+            ),
+            WEB_ACCEPTED
+        );
+        let record = receiver.try_recv().expect("记录已入队");
+        let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
+        assert!(
+            text.contains("\"source\":\"TypeError at http://tauri.localhost/assets/index.js:1234:9\""),
+            "日志里没有定位串：{text}"
+        );
+        // **原文 message 仍然不进日志** ✓ ⇒ ⇒ 用户数据不落日志 ✓。
+        assert!(!text.contains("message"),"日志里落了原始异常文本：{text}");
     }
 
     #[test]
