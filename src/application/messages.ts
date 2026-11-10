@@ -354,4 +354,28 @@ export interface ProblemReport {
 /** 消息端口：应用层只认这个接口 ✓，不认 console、不认 log_event ✓。 */
 export interface MessagePort {
   report(report: ProblemReport): Promise<void>;
+  /**
+   * **回传一条业务事件** ✓ ⇒ ⇒ 原生侧记进**同一份日志** ✓ ⇒ ⇒
+   * 页面那次调用与原生侧那条记录**对得上** ✓ ⇒ ⇒ 出了问题能一路串起来 ✓。
+   *
+   * **只有那几样字段** ✓ ⇒ ⇒ 不带自由正文 ✓ ⇒ ⇒ 用户数据不落日志 ✓。
+   */
+  event(event: WebEvent): Promise<void>;
+}
+
+/**
+ * **页面侧能回传的业务事件** ✓：**四种** ✓ ⇒ ⇒ 与原生侧那份枚举同名 ✓ ⇒ ⇒
+ * 两边对得上 ✓ ⇒ ⇒ 未知的一律被原生侧拒收 ✓。
+ */
+export type WebEventKind = 'page_ready' | 'call_started' | 'call_finished' | 'page_error';
+
+/** 一条业务事件的字段 ✓：**有界的几样** ✓ ⇒ ⇒ 没有自由正文 ✓。 */
+export interface WebEvent {
+  kind: WebEventKind;
+  /** **这一次调用的标识** ✓ ⇒ ⇒ 与原生侧那条记录对得上 ✓。 */
+  callId?: string;
+  /** **原生侧那个命令** ✓（原生侧那份枚举的拼写 ✓）⇒ ⇒ 未知的一律被拒 ✓。 */
+  command?: string;
+  /** **结果** ✓（原生侧那份枚举的拼写 ✓）⇒ ⇒ 未知的一律被拒 ✓。 */
+  result?: string;
 }

@@ -1,4 +1,4 @@
-import type {MessagePort, ProblemReport} from '../../../application/messages';
+import type {MessagePort, ProblemReport, WebEvent} from '../../../application/messages';
 import {pageBuildCommit} from '../buildInfo';
 
 /**
@@ -14,6 +14,25 @@ import {pageBuildCommit} from '../buildInfo';
  * 应用层不碰 log_event ✓：走这个端口 ✓。
  */
 export const tauriMessagePort: MessagePort = {
+  /**
+   * **业务事件进原生日志** ✓ ⇒ ⇒ 与页面侧的错误**同一份日志** ✓ ⇒ ⇒
+   * 页面那次调用与原生侧那条命令记录**对得上** ✓ ⇒ ⇒ 出了问题能一路串起来 ✓。
+   *
+   * **只发那几样字段** ✓ ⇒ ⇒ 载荷仍是封闭形状 ✓ ⇒ ⇒ 原生侧未知的一律拒收 ✓。
+   */
+  async event(event: WebEvent): Promise<void> {
+    const native = await import('@tauri-apps/api/core');
+    if (!native.isTauri()) return;
+    await native.invoke('log_event', {
+      payload: JSON.stringify({
+        event: event.kind,
+        ...(event.callId === undefined ? {} : {call_id: event.callId}),
+        ...(event.command === undefined ? {} : {command: event.command}),
+        ...(event.result === undefined ? {} : {result: event.result}),
+        build: pageBuildCommit,
+      }),
+    });
+  },
   async report(report: ProblemReport): Promise<void> {
     const native = await import('@tauri-apps/api/core');
     if (!native.isTauri()) return;

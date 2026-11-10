@@ -1,4 +1,4 @@
-import type {MessagePort, ProblemReport} from '../../../application/messages';
+import type {MessagePort, ProblemReport, WebEvent} from '../../../application/messages';
 
 /**
  * 浏览器构建的出口 ✓：**原始文本进控制台** ✓（这里没有原生日志可去 ✓），
@@ -9,6 +9,19 @@ import type {MessagePort, ProblemReport} from '../../../application/messages';
  * 应用层不碰 console ✓：走这个端口 ✓。
  */
 export const webMessagePort: MessagePort = {
+  /**
+   * **业务事件也进控制台** ✓ ⇒ ⇒ 浏览器构建里**看得见页面做了什么** ✓ ⇒ ⇒
+   * 与原生构建的日志对得上同一套事件名 ✓ ⇒ ⇒ 两边读法一致 ✓。
+   */
+  async event(event: WebEvent): Promise<void> {
+    console.info(
+      '[event]',
+      event.kind,
+      event.callId ?? '',
+      event.command ?? '',
+      event.result ?? '',
+    );
+  },
   async report(report: ProblemReport): Promise<void> {
     console.error(
       '[message]',

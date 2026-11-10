@@ -1,6 +1,7 @@
 import {ErrorCapture} from '../../../application/capture';
-import type {MessageCategory} from '../../../application/messages';
+import type {MessageCategory, WebEvent} from '../../../application/messages';
 import {reportFailure} from '../failures';
+import {resolveMessagePort} from '../messages';
 
 /**
  * 捕获的接线：浏览器的三个捕获点 ⇒ 一份策略 ⇒ **失败的那个出口** ✓。
@@ -30,6 +31,25 @@ let appReady = false;
 /** 工作台起来了 ✓：应用第一次提交之后调它 ✓。 */
 export function markAppReady(): void {
   appReady = true;
+  // **页面告诉原生侧"我起来了"** ✓ ⇒ ⇒ 原生侧因此知道页面到这一步了 ✓ ⇒ ⇒
+  // 与它自己的启动标记对得上 ✓ ⇒ ⇒ 页面没起来时 ⇒ ⇒ 那几段记录知道缺的是哪一段 ✓ ⇒ ⇒
+  // 不用猜 ✓。
+  void reportEvent({kind: 'page_ready'});
+}
+
+/**
+ * **回传一条业务事件** ✓ ⇒ ⇒ 原生侧记进**同一份日志** ✓ ⇒ ⇒
+ * 页面那次调用与原生侧那条记录**对得上** ✓ ⇒ ⇒ 出了问题能一路串起来 ✓。
+ *
+ * **通道失败被吞掉** ✓ ⇒ ⇒ 不因此把应用带崩 ✓ ⇒ ⇒ 也不递归报告自己 ✓（与失败出口同一条 ✓）。
+ */
+export async function reportEvent(event: WebEvent): Promise<void> {
+  try {
+    const port = await resolveMessagePort();
+    await port.event(event);
+  } catch {
+    // 事件通道自己失败 ⇒ 就这样 ✓。
+  }
 }
 
 /** 工作台起来过吗 ✓：没起来 ⇒ 崩在最外层 ⇒ 类别是"起不来" ✓。 */
