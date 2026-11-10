@@ -1,10 +1,12 @@
 import {readTauriPlatformInfo} from '../../../src/core/platform/tauri/runtime';
 import {
-  isNativeSynced,
+  detectNativeTarget,
   readNativeText,
+  readNativeTextByKey,
   releaseNativeFile,
   selectNativeOpen,
   selectNativeSave,
+  writeNativeSync,
 } from '../../../src/core/platform/tauri/files';
 import {
   CANCELLED_NOTE,
@@ -118,24 +120,70 @@ async function askSynced() {
   const file = files[0]!;
   const text = await readNativeText(file);
   lastKey = file.key;
-  const synced = await isNativeSynced(file.key);
+  // **它答的是状态** ✓ ⇒ ⇒ "不在了"与"被改过"分得开 ✓ ⇒ ⇒ 报告能说清是哪一种 ✓。
+  const target = await detectNativeTarget(file.key);
   return {
     step: '问一句',
     status: 'ok' as const,
-    message: synced ? '刚读完就问：还是那一版' : '刚读完就问：不是那一版（不应发生）',
-    data: {preview: previewText(text), synced},
+    message: target === 'ready' ? '刚读完就问：就绪' : '刚读完就问：' + target + '（不应发生）',
+    data: {preview: previewText(text), target},
   };
 }
 
 async function askAgain() {
   if (!lastKey)
     return {step: '再问一句', status: 'cancelled' as const, message: '先做"问一句"那一步'};
-  const synced = await isNativeSynced(lastKey);
+  // **它答的是状态** ✓ ⇒ ⇒ **文件被删掉 ⇒ ⇒ 答"不在了"** ✓ ⇒ ⇒ **不是报错** ✓ ⇒ ⇒
+  // **报告能说清"没了"还是"被改过"** ✓。
+  const target = await detectNativeTarget(lastKey);
+  const messages: Record<string, string> = {
+    ready: '还是那一版',
+    changed: '被改过了（文件在应用外被改过）',
+    missing: '不在了（文件被移走或删掉了）',
+    unwritable: '写不进去了',
+    invalid: '授权没了',
+  };
   return {
     step: '再问一句',
     status: 'ok' as const,
-    message: synced ? '还是那一版' : '不是那一版（文件在应用外被改过）',
-    data: {synced},
+    message: messages[target] ?? target,
+    data: {target},
+  };
+}
+
+/**
+ * **写回落到磁盘** ✓（M5-b4 的原生那半 ✓）。
+ *
+ * **打开 ⇒ ⇒ 读一次** ✓ ⇒ ⇒ 原生侧记下"应用手上那一版" ✓ ⇒ ⇒
+ * **写回** ✓ ⇒ ⇒ **再读一次** ✓ ⇒ ⇒ **磁盘上就是那一份** ✓ ⇒ ⇒ **逐字节相同** ✓。
+ */
+async function writeBackToDisk() {
+  const files = await selectNativeOpen();
+  if (!files) return {step: '写回落到磁盘', status: 'cancelled' as const, message: CANCELLED_NOTE};
+  const file = files[0]!;
+  // **先读一次** ✓ ⇒ ⇒ 那一份成了基线 ✓ ⇒ ⇒ 写回才有得复核 ✓。
+  const before = await readNativeText(file);
+  const payload = '原生写回探针 ' + new Date().toISOString() + '\n';
+  // **走写回那条命令** ✓ ⇒ ⇒ 复核在它内部 ✓ ⇒ ⇒ 答的是状态 ✓。
+  const target = await writeNativeSync(file.key, new TextEncoder().encode(payload), 'sync');
+  const after = await readNativeText(file);
+  return {
+    step: '写回落到磁盘',
+    status: 'ok' as const,
+    message:
+      target === 'ready'
+        ? after === payload
+          ? '写回成功，磁盘上逐字节相同'
+          : '写回成功，但磁盘上的内容不是写下去的那一份（不符合预期）'
+        : '写回没有成功：' + target,
+    data: {
+      target,
+      before: previewText(before),
+      after: previewText(after),
+      // **写下去的那一份** ✓ ⇒ ⇒ 留着它就能自己比 ✓。
+      written: previewText(payload),
+      identical: after === payload,
+    },
   };
 }
 
@@ -148,6 +196,7 @@ const buttons: Record<string, () => Promise<StepOutcome>> = {
   释放: releaseOpenKey,
   问一句: askSynced,
   再问一句: askAgain,
+  写回落到磁盘: writeBackToDisk,
 };
 
 for (const [name, run] of Object.entries(buttons)) {
