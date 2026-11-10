@@ -693,6 +693,9 @@ fn record_web_event_for(
     // 只放业务字段：origin 与身份由发送口统一加（页面不能覆盖）。
     let mut fields: BTreeMap<String, String> = BTreeMap::new();
     fields.insert("page_event".to_owned(), event_kind_name(event.event).to_owned());
+    // **web 记录也带它被记下的地方** ✓ ⇒ ⇒ **每条记录都有位置** ✓ ⇒ ⇒
+    // 页面侧的问题位置在 `source` 里 ✓ ⇒ ⇒ 这一条说的是**原生侧在哪一处收下它** ✓。
+    fields.insert("at".to_owned(), location_of(file!(), line!()));
     if let Some(call_id) = &event.call_id {
         fields.insert("call_id".to_owned(), call_id.clone());
     }
@@ -918,9 +921,31 @@ where
             .get("event")
             .cloned()
             .unwrap_or_else(|| event.metadata().name().to_owned());
+        // **每条原生记录都带它发生的地方** ✓ ⇒ ⇒ 日志能指出**在我们代码的哪一处** ✓ ⇒ ⇒
+        // **一处机制** ✓：位置由 tracing 的调用点元数据给出 ✓ ⇒ ⇒ 发射点不用手写 ✓。
+        if let Some(at) = callsite_location(event.metadata()) {
+            fields.insert("at".to_owned(), at);
+        }
         let level = event.metadata().level();
         self.emitter.emit_native(level.as_str(), &name, fields, span);
     }
+}
+
+/// **调用点的位置** ✓：**我们自己的源文件与行** ✓ ⇒ ⇒ **不是用户的路径** ✓ ⇒ ⇒
+/// **不含用户数据** ✓ ⇒ ⇒ **可以进日志** ✓（基座 §5.2 ✓）。
+///
+/// **空格换成下划线** ✓ ⇒ ⇒ 日志里那一条**始终是一行** ✓ ⇒ ⇒
+/// 与页面侧的定位串同一套规矩 ✓ ⇒ ⇒ 两边读法一致 ✓。
+fn callsite_location(meta: &tracing::Metadata<'_>) -> Option<String> {
+    let file = meta.file()?;
+    let line = meta.line()?;
+    Some(location_of(file, line))
+}
+
+/// **位置串** ✓：**我们自己的源文件与行** ✓ ⇒ ⇒ **空格换成下划线** ✓ ⇒ ⇒
+/// 日志里那一条**始终是一行** ✓ ⇒ ⇒ 与页面侧的定位串同一套规矩 ✓。
+fn location_of(file: &str, line: u32) -> String {
+    format!("{file}:{line}").replace(' ', "_")
 }
 
 /// 写线程：追加、轮转、同步到 stdout、健康摘要。
@@ -1989,6 +2014,32 @@ mod tests {
     fn formats_utc_timestamps() {
         let time = UNIX_EPOCH + Duration::from_millis(1_700_000_000_123);
         assert_eq!(iso_timestamp(time), "2023-11-14T22:13:20.123Z");
+    }
+
+    #[test]
+    fn every_native_record_says_where_it_happened() {
+        let (emitter, receiver, _health) = test_emitter(4);
+        let layer = RecordLayer {
+            emitter,
+            level: tracing::level_filters::LevelFilter::INFO,
+        };
+        let subscriber = tracing_subscriber::registry().with(layer);
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!(event = "source_decision", command = "read_native_text");
+        });
+        let record = receiver.try_recv().expect("记录已入队");
+        let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
+        // **每条原生记录都带它在我们代码的哪一处** ✓ ⇒ ⇒ 日志能指出地方 ✓。
+        assert!(text.contains("\"at\":\"src/logging.rs:"), "记录里没有位置：{text}");
+        // **位置来自调用点** ✓ ⇒ ⇒ 不是发射口自己 ✓ ⇒ ⇒ 是那条事件真正发出的地方 ✓。
+        let line = text
+            .split("\"at\":\"src/logging.rs:")
+            .nth(1)
+            .and_then(|rest| rest.split('"').next())
+            .expect("位置里有行号");
+        assert!(line.parse::<u32>().is_ok(), "位置里的行号不对：{line}");
+        // **不含空格** ✓ ⇒ ⇒ 那一条始终是一行 ✓。
+        assert!(!text.contains("at\": \""));
     }
 
     #[test]
