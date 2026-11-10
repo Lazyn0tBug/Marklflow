@@ -60,3 +60,31 @@ it('does not take the application down when the channel fails', async () => {
   await expect(reportFailure({category: 'save-failed'})).resolves.toBeTruthy();
   spy.mockRestore();
 });
+
+it('carries the locator to the log, so the log says where it happened', async () => {
+  native.isTauri.mockReturnValue(true);
+  await reportFailure({
+    category: 'rejection',
+    source: 'TypeError@http://tauri.localhost/assets/index.js:1234',
+  });
+  // **定位串进了载荷** ✓ ⇒ ⇒ 原生那条日志因此能指出是哪儿 ✓ ⇒ ⇒ 不用开控制台 ✓。
+  //
+  // **这一跳以前是断的** ✓：捕获器算出了定位串 ✓，原生侧也会写它 ✓，
+  // 但**中间那个失败出口没转发** ✓ ⇒ ⇒ 两端的测试都绿 ✓ ⇒ ⇒ 日志里啥也没有 ✓。
+  const payload = String(native.invoke.mock.calls[0]?.[1]?.payload);
+  expect(payload).toContain('source');
+  expect(payload).toContain('index.js:1234');
+  // **原文仍然不进载荷** ✓ ⇒ ⇒ 用户数据不落日志 ✓（基座 §5.2 ✓）。
+  expect(payload).not.toContain('detail');
+});
+
+it('puts the locator in the browser console line as well', async () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  await reportFailure({
+    category: 'rejection',
+    source: 'TypeError@http://localhost:1420/index.js:1234',
+  });
+  // 控制台那一句与日志那一条**对得上** ✓ ⇒ ⇒ 找出处不用两处对 ✓。
+  expect(spy.mock.calls[0]?.[4]).toBe('TypeError@http://localhost:1420/index.js:1234');
+  spy.mockRestore();
+});
