@@ -32,7 +32,7 @@ interface Harness {
   contexts: DocumentFileContexts;
   syncer: DocumentSyncer;
   calls: string[];
-  writes: {handle: string; intent: WriteIntent}[];
+  writes: {handle: string; intent: WriteIntent; bytes: Uint8Array}[];
   decided: ConflictRequest[];
 }
 
@@ -51,7 +51,7 @@ function setup(
 ): Harness {
   const contexts = new DocumentFileContexts();
   const calls: string[] = [],
-    writes: {handle: string; intent: WriteIntent}[] = [],
+    writes: {handle: string; intent: WriteIntent; bytes: Uint8Array}[] = [],
     decided: ConflictRequest[] = [];
   const ports: DocumentSyncPorts = {
     detect: async (handle) => {
@@ -62,9 +62,9 @@ function setup(
       calls.push('targetPresent:' + handle);
       return options.targetPresent ? options.targetPresent() : true;
     },
-    write: async (handle, _bytes, intent) => {
+    write: async (handle, sent, intent) => {
       calls.push('write:' + intent);
-      writes.push({handle, intent});
+      writes.push({handle, intent, bytes: sent});
       return options.write ? options.write() : 'ready';
     },
     read: async (handle) => {
@@ -106,6 +106,17 @@ describe('应用层同步', () => {
     expect(outcome.writeBack).toEqual({kind: 'not-applicable'});
     expect(outcome.conflict).toBeUndefined();
     expect(contexts.read(doc.id)).toBeUndefined();
+  });
+
+  it('写出去的就是冻结的那一批字节', async () => {
+    const {syncer, writes, contexts} = setup();
+    const doc = createNewDocument('冻结.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    await syncer.save({document: doc, bytes});
+    // **写回去的是被冻结的那一份** ✓ ⇒ ⇒ **草稿与文件不会差一个按键** ✓（§6.1 ✓）
+    // ⇒ ⇒ **磁盘上就是那一份** ✓ ⇒ ⇒ **别的东西没有混进去** ✓。
+    expect(writes).toEqual([{handle: 'f1', intent: 'sync', bytes}]);
+    expect(Array.from(writes[0]!.bytes)).toEqual(Array.from(bytes));
   });
 
   it('写回结果只有五种，没有"未尝试"', async () => {
@@ -171,7 +182,7 @@ describe('应用层同步', () => {
     // **问一次** ✓ ⇒ ⇒ 三个选择 ✓（§6.1 ✓）。
     expect(decided).toEqual([{documentId: doc.id, revision: doc.revision, displayName: 'f1.md'}]);
     // **覆盖 = 正向写回** ✓ ⇒ ⇒ 端口说"这次是覆盖" ✓ ⇒ ⇒ 基准由原生侧选 ✓（§6.1 ✓）。
-    expect(writes).toEqual([{handle: 'f1', intent: 'overwrite'}]);
+    expect(writes).toEqual([{handle: 'f1', intent: 'overwrite', bytes}]);
     // **覆盖落在已写回** ✓ ⇒ ⇒ 三个选择各落到一项结果上 ✓。
     expect(outcome.writeBack).toEqual({kind: 'written', revision: doc.revision});
     // **问过 ⇒ ⇒ 带 conflict** ✓ ⇒ ⇒ 反馈知道是用户做的决定 ✓。

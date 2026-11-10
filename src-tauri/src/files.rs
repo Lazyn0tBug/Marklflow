@@ -363,6 +363,49 @@ impl FileAccess {
         grant.digest = Some(digest.to_owned());
         Ok(())
     }
+    /// **写回去** ✓：**命令体的那一半** ✓ ⇒ ⇒ **能被单测盯住** ✓ ⇒ ⇒
+    /// **"写回落到磁盘"这一条因此有自动证据** ✓ ⇒ ⇒ 真机那一次只补剩下的那半 ✓（M5-b4 ✓）。
+    ///
+    /// **要复核的那一份** ✓：普通写回比"应用手上那一版" ✓、覆盖写回比"用户看到的那一版" ✓
+    /// ⇒ ⇒ **原生侧自己取** ✓ ⇒ ⇒ 前端不传期望摘要 ✓（§6.1 ✓）。
+    ///
+    /// **它答一个状态** ✓ ⇒ ⇒ **归类只有一处** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓（§6.1 ✓）。
+    pub(crate) fn write(
+        &self,
+        key: &str,
+        bytes: &[u8],
+        overwrite: bool,
+        allow_missing: bool,
+    ) -> Result<TargetStatus, String> {
+        self.path(key, true).and_then(|path| {
+            let expected = self.expected_digest(key, overwrite)?;
+            match commit_bytes(&path, bytes, Some(&expected), allow_missing) {
+                Ok(()) => {
+                    // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"就绪" ✓。
+                    self.record_digest(key, &crate::hash::sha256_hex(bytes))?;
+                    // **写完了就没有未决的冲突了** ✓ ⇒ ⇒ 丢掉"上次看到的那一版" ✓ ⇒ ⇒ 下次冲突重新记 ✓。
+                    self.forget_seen(key)?;
+                    Ok(TargetStatus::Ready)
+                }
+                Err(code) => {
+                    // **报告冲突的那一刻** ✓ ⇒ ⇒ **把当时看到的那一份记下来** ✓（§6.1 ✓）
+                    // ⇒ ⇒ 覆盖写回拿它当基准 ✓ ⇒ ⇒ **这不是令牌** ✓ ⇒ ⇒ 没有签发、消费、失效 ✓
+                    // ⇒ ⇒ 只是"上次看到的那一版"这一条事实 ✓ ⇒ ⇒ 下次报告冲突就覆盖它 ✓。
+                    if code == "write-target-changed" {
+                        if let Ok(current) = std::fs::read(&path) {
+                            let _ = self.remember_seen(key, &crate::hash::sha256_hex(&current));
+                        }
+                    }
+                    // **归类只有一处** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓。
+                    match status_of(&code) {
+                        Some(status) => Ok(status),
+                        None => Err(code),
+                    }
+                }
+            }
+        })
+    }
+
     /// **这个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）。
     ///
     /// **答案在原生侧给** ✓ ⇒ ⇒ 应用侧既拿不到摘要、也不需要自己比 ✓（§3.4 ✓）。
@@ -772,34 +815,7 @@ pub async fn write_native_sync(
     allow_missing: bool,
 ) -> Result<TargetStatus, NativeFailure> {
     in_command_span(WebCommand::WriteNativeSync, &webview, |started, cmd| {
-        let outcome = access.path(&key, true).and_then(|path| {
-            // **要复核的那一份** ✓：普通写回比"应用手上那一版" ✓、覆盖写回比"用户看到的那一版" ✓
-            // ⇒ ⇒ **原生侧自己取** ✓ ⇒ ⇒ 前端不传期望摘要 ✓（§6.1 ✓）。
-            let expected = access.expected_digest(&key, overwrite)?;
-            match commit_bytes(&path, &bytes, Some(&expected), allow_missing) {
-                Ok(()) => {
-                    // **写出去的那份就是应用手上那一版** ✓ ⇒ ⇒ 记下来 ✓ ⇒ ⇒ 之后答"是" ✓。
-                    access.record_digest(&key, &crate::hash::sha256_hex(&bytes))?;
-                    // **写完了就没有未决的冲突了** ✓ ⇒ ⇒ 丢掉"上次看到的那一版" ✓ ⇒ ⇒ 下次冲突重新记 ✓。
-                    access.forget_seen(&key)?;
-                    Ok(TargetStatus::Ready)
-                }
-                Err(code) => {
-                    // **报告冲突的那一刻** ✓ ⇒ ⇒ **把当时看到的那一份记下来** ✓ ⇒ ⇒
-                    // **覆盖写回拿它当基准** ✓ ⇒ ⇒ **这不是令牌** ✓（§6.1 ✓）。
-                    if code == "write-target-changed" {
-                        if let Ok(current) = std::fs::read(&path) {
-                            let _ = access.remember_seen(&key, &crate::hash::sha256_hex(&current));
-                        }
-                    }
-                    // **归类只有一处** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓。
-                    match status_of(&code) {
-                        Some(status) => Ok(status),
-                        None => Err(code),
-                    }
-                }
-            }
-        });
+        let outcome = access.write(&key, &bytes, overwrite, allow_missing);
         let elapsed = started.elapsed().as_millis();
         match outcome {
             Ok(status) => {
@@ -1523,6 +1539,47 @@ mod tests {
             "write-target-changed"
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"external");
+    }
+
+    /// **写回落到磁盘** ✓：**命令体的那一半** ✓ ⇒ ⇒ **磁盘上就是那批字节** ✓
+    /// ⇒ ⇒ **写出去的那份成为新的基线** ✓ ⇒ ⇒ **下一句检测答"就绪"** ✓（M5-b4 ✓）。
+    #[test]
+    fn a_write_lands_on_the_disk_and_becomes_the_new_baseline() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("落盘.md");
+        std::fs::write(&path, b"old").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+
+        // **写回** ✓ ⇒ ⇒ 答"就绪" ✓ ⇒ ⇒ **落盘了** ✓。
+        let status = access.write(&grant.key, b"new bytes", false, false).unwrap();
+        assert_eq!(status, TargetStatus::Ready);
+        // **磁盘上就是那批字节** ✓ ⇒ ⇒ **一个字节都不差** ✓（§6.1 ✓）。
+        assert_eq!(std::fs::read(&path).unwrap(), b"new bytes");
+        // **写出去的那份成了新的基线** ✓ ⇒ ⇒ 下一句检测答"就绪" ✓ ⇒ ⇒ **不误报冲突** ✓。
+        assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
+    }
+
+    /// **写回的是被冻结的那一份** ✓ ⇒ ⇒ 之后编辑不影响这一次 ✓ ⇒ ⇒
+    /// **磁盘上就是那一份** ✓ ⇒ ⇒ **草稿与文件不会差一个按键** ✓（§6.1 ✓、M5-b4 ✓）。
+    #[test]
+    fn what_lands_on_the_disk_is_the_bytes_that_were_handed_over() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("冻结.md");
+        std::fs::write(&path, b"old").unwrap();
+        let access = FileAccess::default();
+        let grant = access.grant(path.clone(), true).unwrap();
+        let content = read_content(&path).unwrap();
+        access.record_digest(&grant.key, &content.digest).unwrap();
+
+        let frozen = "冻结的那一份\n\n第二段".as_bytes();
+        access.write(&grant.key, frozen, false, false).unwrap();
+        // **磁盘上逐字节就是交出去的那一份** ✓ ⇒ ⇒ 别的什么都没有混进去 ✓。
+        assert_eq!(std::fs::read(&path).unwrap(), frozen);
+        // **没有 BOM、没有多写** ✓ ⇒ ⇒ 内容与源快照一一对应 ✓。
+        assert!(!std::fs::read(&path).unwrap().starts_with(&[0xEF, 0xBB, 0xBF]));
     }
 
     /// **每个状态归到哪一处** ✓ ⇒ ⇒ **归类只有一处** ✓ ⇒ ⇒ 应用侧按状态选处理 ✓。
