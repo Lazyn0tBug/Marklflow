@@ -98,16 +98,20 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Windows 上的应用本身。
+  # Windows 上的两件事：**应用自己** ✓ 与**Windows 专属那一段的交叉检查** ✓。
   #
-  # **这一步编的是应用自己** ✓ ⇒ ⇒ 所以它证明的是**Windows 上应用能编过** ✓ ⇒ ⇒
-  # 交付宿主上能不能过构建，靠它 ✓。
+  # 交叉检查编的是**夹具**（独立 crate ✓ ⇒ ⇒ 它把应用的模块按 `#[path]` 挂进去 ✓
+  # ⇒ ⇒ 编的是仓库里的真文件 ✓ ⇒ ⇒ 与应用不会漂 ✓）⇒ ⇒
+  # 它证明的是**Windows 专属的代码在 Windows 目标上 lint 干净** ✓。
+  # 应用自己能不能编过，靠下面那条 `cargo clippy` ✓ ⇒ ⇒ 两件事各有各的证据 ✓。
   #
-  # **那条交叉检查（`scripts/check-windows-com.ts`）不再在 CI 上跑** ✓：
-  # 它编的是**夹具**（独立 crate ✓ ⇒ ⇒ 模块清单漏一个就编不过 ✓）⇒ ⇒
-  # 而它要装 Windows 目标、现编一整棵依赖树 ✓ ⇒ ⇒ **重** ✓ ⇒ ⇒
-  # **而且它编的不是应用** ✓ ⇒ ⇒ 应用能不能编过，这件事下面那一步已经答了 ✓。
-  # **它仍然在本机可用** ✓：想查 Windows 专属那一段（COM ✓、宿主胶水 ✓、编排 ✓）的人自己跑 ✓。
+  # **夹具的模块清单从 `lib.rs` 推出来** ✓ ⇒ ⇒ 应用加模块不用记得改清单 ✓ ⇒ ⇒
+  # 那种"应用加了、夹具没加"的洞不会再有 ✓ ⇒ ⇒
+  # 而那种洞**本机看不见**（macOS 上没装 Windows 目标 ⇒ ⇒ 整个检查跳过 ✓）⇒ ⇒
+  # 只有这条 job 才编它 ⇒ ⇒ ⇒ 所以它必须在 CI 上 ✓。
+  #
+  # 在 Windows 上跑 ✓：目标就是本机目标 ✓，不需要交叉编译 ✓，
+  # 夹具没有构建脚本 ✓（不需要前端产物 ✓），也不需要 Linux 的 webkit ✓。
   windows-print-chain:
     name: Windows build
     runs-on: windows-latest
@@ -130,8 +134,13 @@ jobs:
         with:
           toolchain: '1.94.0'
           # **clippy 组件必须显式装** ✓：那个 action 默认只装工具链本身 ✓，
-          # 而默认构建的 lint 跑 clippy ✓（缺它 ⇒ `cargo-clippy.exe is not installed` ✓）。
+          # 而交叉检查与默认构建的 lint 都跑 clippy ✓（缺它 ⇒ `cargo-clippy.exe is not installed` ✓）。
           components: clippy
+
+      - name: Cross check the Windows print chain
+        run: bun scripts/check-windows-com.ts
+        env:
+          RUST_TOOLCHAIN: '1.94.0'
 
       # **默认构建也要被 lint** ✓。
       #

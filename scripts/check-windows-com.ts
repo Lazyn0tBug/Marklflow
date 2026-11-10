@@ -8,13 +8,18 @@
  * 这里用一个临时小 crate 直接把它编译成 Windows 目标——**编译的是仓库里的真文件，
  * 不是副本**，故不会与实际代码漂移。
  *
- * **范围**：整条 Windows 打印链路都进这个夹具 ✓——
- * COM 核心（print_com）✓、tauri 胶水（print_host）✓、编排（pdf_print）✓、
- * 输出宿主（output_host）✓、日志基座（logging）✓、来源守卫（source_guard）✓，
- * 外加**产品形态的入口与探针装配**（files、probe）✓。
+ * **范围**：**应用 crate 的全部模块** ✓——清单由 `lib.rs` 的 `mod` 声明推出来 ✓，
+ * 不是手抄的一份 ✓。COM 核心（print_com）✓、tauri 胶水（print_host）✓、
+ * 编排（pdf_print）✓、输出宿主（output_host）✓、日志基座（logging）✓、
+ * 来源守卫（source_guard）✓、产品形态的入口与探针装配（files、probe）✓，
+ * 外加运行期配置（config）✓与字节摘要（hash）✓——**它在清单里不是靠人记得** ✓。
  * 编排那一层有 `#[cfg(target_os = "windows")]` 分支 ✓——本机（macOS）编不到它 ✓，
  * 出了错只有到 Windows 上才暴露 ✓（已经栽过一次 ✓：调用了不存在的
  * `print_com::print_to_pdf` ✓，本机 clippy 全绿 ✓，交付宿主编译才炸 ✓）。
+ *
+ * **清单曾经是人抄的** ✓ ⇒ ⇒ 抄漏一个（`hash` ✓）⇒ ⇒ 夹具编不过 ✓ ⇒ ⇒
+ * 而**那个错本机看不见** ✓（macOS 上没装 Windows 目标 ⇒ ⇒ 整个检查跳过 ✓）⇒ ⇒
+ * 直到 CI 上那条 Windows job 编它才红 ✓ ⇒ ⇒ ⇒ 所以清单改成**从 `lib.rs` 推** ✓。
  *
  * **lint 当错误处理**（`-D warnings` ✓）：只查类型会漏掉 lint ✓，
  * 而本机编不到 Windows 那段代码 ✓，交叉检查是唯一能提前发现它们的地方 ✓。
@@ -26,7 +31,15 @@
  * 目标不在时**跳过并说明**，不当作失败——这是环境缺件，不是代码问题。
  */
 import {execFileSync} from 'node:child_process';
-import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 
@@ -36,25 +49,72 @@ const TARGET = 'x86_64-pc-windows-msvc';
 const TOOLCHAIN = process.env.RUST_TOOLCHAIN ?? 'stable';
 /** 仓库根。 */
 const repo = resolve(import.meta.dirname, '..');
-/** 被检查的模块（都是仓库里的真文件 ✓）。 */
-const modules = {
-  print_com: join(repo, 'src-tauri/src/print_com.rs'),
-  print_host: join(repo, 'src-tauri/src/print_host.rs'),
-  pdf_print: join(repo, 'src-tauri/src/pdf_print.rs'),
-  output_host: join(repo, 'src-tauri/src/output_host.rs'),
-  logging: join(repo, 'src-tauri/src/logging.rs'),
-  source_guard: join(repo, 'src-tauri/src/source_guard.rs'),
-  // 产品形态的入口（files）与探针装配（probe）✓：它们也带着 Windows 分支 ✓，
-  // 也带着只有 Windows 上才编得到的调用 ✓——不进夹具就等于没查 ✓。
-  files: join(repo, 'src-tauri/src/files.rs'),
-  probe: join(repo, 'src-tauri/src/probe.rs'),
-  // 运行期配置：日志基座与探针装配都从它取值 ✓，它自己也要编 ✓。
-  config: join(repo, 'src-tauri/src/config.rs'),
-  // **字节摘要只有这一份实现** ✓：文件摘要与 PDF 留证共用它 ✓。
-  // **它必须在清单里** ✓：files 与 pdf_print 都用 crate::hash ✓ ⇒ ⇒
-  // 少了它，夹具编不过 ✓ ⇒ ⇒ 而**这个错本机看不见** ✓（macOS 上没装 Windows 目标 ✓ ⇒ ⇒ 整个检查跳过 ✓）。
-  hash: join(repo, 'src-tauri/src/hash.rs'),
-};
+
+/**
+ * **被检查的模块 = 应用 crate 根声明的那批** ✓。
+ *
+ * **清单不再手写** ✓ ⇒ ⇒ 应用加一个模块 ⇒ ⇒ 夹具自动带上它 ✓ ⇒ ⇒
+ * 不会再出现"应用加了模块、夹具没加" ⇒ ⇒ 而**那种洞本机看不见** ✓
+ * （macOS 上没装 Windows 目标 ⇒ ⇒ 整个检查跳过 ✓）⇒ ⇒
+ * 只有 CI 上那条 Windows job 才编它 ⇒ ⇒ ⇒ 代价太大 ✓。
+ *
+ * **为什么以 `lib.rs` 为准** ✓：那是应用自己的模块图 ✓ ⇒ ⇒
+ * 夹具与应用的差别只剩**位置**（`#[path]` 指向仓库里的真文件 ✓）⇒ ⇒
+ * **模块集合与 `crate::` 的含义都与应用一致** ✓ ⇒ ⇒ 漂不了 ✓。
+ *
+ * **参数化仓库根** ✓：这样单测能拿一份假 crate 来试 ✓ ⇒ ⇒
+ * "新加一个模块会被自动带上"这句话**在 macOS 上就能验** ✓ ⇒ ⇒
+ * 不再靠"等 CI 红了才知道" ✓。
+ */
+export function appModules(root: string = repo): Record<string, string> {
+  const crateRoot = join(root, 'src-tauri/src');
+  const lib = readFileSync(join(crateRoot, 'lib.rs'), 'utf8');
+  const modules: Record<string, string> = {};
+  // `mod x;` —— **属性行与声明行可以分开写** ✓（`#[cfg(...)]` 在上一行 ✓）⇒ ⇒
+  // 属性与声明之间的空白**允许跨行** ✓ ⇒ ⇒ 两种写法都认得 ✓。
+  const declaration = /^\s*(?:#\[[^\]]*\]\s*)*mod\s+([a-z_][a-z0-9_]*)\s*;/gm;
+  for (const match of lib.matchAll(declaration)) {
+    const name = match[1];
+    if (!name) continue;
+    modules[name] = join(crateRoot, `${name}.rs`);
+  }
+  if (Object.keys(modules).length === 0) {
+    throw new Error('lib.rs 里一个模块也没读到 ⇒ 清单是空的 ⇒ 夹具什么也编不到');
+  }
+  for (const [name, path] of Object.entries(modules)) {
+    if (!existsSync(path)) {
+      throw new Error(`模块 ${name} 的文件不在：${path} ⇒ 清单与应用对不上`);
+    }
+  }
+  return modules;
+}
+
+/** 模块名 → 源码文本 ✓。 */
+export type ModuleSources = Record<string, string>;
+
+/**
+ * **夹具给得出应用里那些跨模块的引用** ✓ ⇒ ⇒ 不然就是清单与应用对不上 ✓。
+ *
+ * 应用里的模块互相引用走 `crate::x` ✓ ⇒ ⇒ 夹具把它们全放在 crate 根上 ✓
+ * ⇒ ⇒ 那些引用自然解析得到 ✓。**只有一种情况解析不到** ✓：
+ * 某个模块引用了 crate 根上的**条目**（不是模块 ✓）⇒ ⇒
+ * 夹具的根上没有它 ⇒ ⇒ **当场说清** ✓ ⇒ ⇒ 不给一句编译器的天书 ✓。
+ */
+export function assertReferencesResolve(sources: ModuleSources): void {
+  const known = new Set(Object.keys(sources));
+  for (const [name, source] of Object.entries(sources)) {
+    // **首字母大小写都认** ✓：crate 根上的条目（`PlatformInfo` ✓ 那类）常是大写开头 ✓
+    // ⇒ ⇒ 只认小写就会让它溜过去 ✓ ⇒ ⇒ 守卫就白设了 ✓。
+    for (const match of source.matchAll(/\bcrate::([A-Za-z_][A-Za-z0-9_]*)/g)) {
+      const target = match[1];
+      if (!target || known.has(target)) continue;
+      throw new Error(
+        `模块 ${name} 引用了 crate::${target} ⇒ 而它不是应用的一个模块 ⇒ ` +
+          `夹具给不出它 ⇒ ⇒ 模块清单与应用对不上`,
+      );
+    }
+  }
+}
 
 /** 跑一条命令；失败时返回其输出，不抛。 */
 function run(
@@ -121,6 +181,12 @@ async function main(): Promise<void> {
 
 /** 在临时夹具里做一次交叉编译检查。 */
 async function crossCheck(work: string, rustcPath: string): Promise<void> {
+  // **清单从应用自己的 `lib.rs` 推** ✓ ⇒ ⇒ 加模块不用记得改这里 ✓。
+  const modules = appModules();
+  const sources: ModuleSources = Object.fromEntries(
+    Object.entries(modules).map(([name, path]) => [name, readFileSync(path, 'utf8')]),
+  );
+  assertReferencesResolve(sources);
   mkdirSync(join(work, 'src'), {recursive: true});
   // **锁文件从应用那份抄过来** ✓：夹具的依赖与应用的是同一批 ✓，
   // 版本就此钉住 ✓ —— 否则每次解析都是"当下最新的" ✓，CI 会随上游漂移 ✓。
@@ -247,4 +313,15 @@ async function crossCheck(work: string, rustcPath: string): Promise<void> {
   console.log(`Windows 侧代码交叉检查通过（${TARGET}）：${Object.keys(modules).join('、')}`);
 }
 
-await main();
+/**
+ * **被单测导入时不跑那件事** ✓ ⇒ ⇒ 导入不该把整棵依赖树编一遍 ✓ ⇒ ⇒
+ * 工具与动作分开 ✓。
+ *
+ * **判据是"有没有人在跑测试"** ✓（vitest 自己设 `VITEST` ✓）⇒ ⇒
+ * **不是入口探测** ✓ ⇒ ⇒ 入口探测在别的运行器上可能变成**静默什么都不做** ✓
+ * ⇒ ⇒ 那比不做更糟 ✓（绿的假象 ✓）⇒ ⇒ 所以这里用环境里的实据 ✓。
+ */
+const underTest = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+if (!underTest) {
+  await main();
+}
