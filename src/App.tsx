@@ -573,7 +573,8 @@ export default function App() {
         pendingSaves.current.delete(doc.id);
         return persist(doc);
       },
-      writeBack: (doc) => writeBackDocument(doc),
+      // **也在飞** ✓ ⇒ ⇒ 另存为切换之前等它 ✓ ⇒ ⇒ **顺序有保证** ✓（M5-11 ✓）。
+      writeBack: (doc) => startWriteBack(doc),
     });
     // **关得掉** ✓ ⇒ ⇒ **标签页不会再被困住** ✓ ⇒ ⇒ 写不进去也关 ✓（§16 ✓）。
     if (id === currentDocId) capturePosition();
@@ -797,7 +798,9 @@ export default function App() {
   applyPulled.current = applyPulledToDraft;
 
   /**
-   * **写回文件** ✓（§6.4 ✓、§6.5 ✓）：**保存 = 写回文件** ✓ ⇒ ⇒ 草稿先落盘 ✓ ⇒ ⇒ 之后才写文件 ✓。
+   * **写回文件** ✓（§6.4 ✓、§6.5 ✓）：**保存 = 写回文件** ✓ ⇒ ⇒ 写的是**冻结的那一份** ✓。
+   *
+   * **草稿不在这一步落** ✓ ⇒ ⇒ 草稿那边**自己自动落** ✓ ⇒ ⇒ **两边差一个按键也没关系** ✓（§6.1 ✓）。
    *
    * **没有同步目标** ⇒ ⇒ **入口已经灰掉** ✓ ⇒ ⇒ 走不到这一步 ✓（§8.2 ✓）。
    */

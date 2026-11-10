@@ -294,6 +294,19 @@ describe('应用层同步', () => {
     expect(outcome.writeBack).toEqual({kind: 'written', revision: 1});
   });
 
+  it('检测那一句答"授权没了"，就走另存那一条分支', async () => {
+    const {syncer, calls, contexts} = setup({
+      detect: async () => 'invalid',
+    });
+    const doc = createNewDocument('授权没了.md');
+    contexts.open(doc.id, binding('f1'), doc.revision);
+    const outcome = await syncer.save({document: doc, bytes});
+    // **句柄失效 ⇒ ⇒ 与写不进去同一支** ✓ ⇒ ⇒ **提示是否另存** ✓ ⇒ ⇒ **不是失败** ✓（§6.1 ✓）。
+    expect(calls).toContain('askGate:unwritable');
+    expect(calls).toContain('saveElsewhere');
+    expect(outcome.writeBack).toEqual({kind: 'written', revision: 1});
+  });
+
   it('写不进去就问要不要另存，说是就换目标', async () => {
     const {syncer, calls, contexts} = setup({
       write: async () => 'unwritable',

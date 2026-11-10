@@ -387,7 +387,8 @@ impl FileAccess {
         overwrite: bool,
         allow_missing: bool,
     ) -> Result<TargetStatus, String> {
-        self.path(key, true).and_then(|path| {
+        self.path(key, true)
+            .and_then(|path| {
             let expected = self.expected_digest(key, overwrite)?;
             match commit_bytes(&path, bytes, Some(&expected), allow_missing) {
                 Ok(()) => {
@@ -414,6 +415,12 @@ impl FileAccess {
                 }
             }
         })
+            // **授权没了 ⇒ ⇒ 那是状态** ✓ ⇒ ⇒ **与写不进去同一支** ✓ ⇒ ⇒
+            // **应用侧因此走得到"提示是否另存"** ✓ ⇒ ⇒ **不是失败** ✓（§6.1 ✓、§8.2 ✓）。
+            .or_else(|code| match status_of(&code) {
+                Some(status) => Ok(status),
+                None => Err(code),
+            })
     }
 
     /// **这个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）。
@@ -425,6 +432,19 @@ impl FileAccess {
     ///
     /// **没有记过版本 ⇒ ⇒ 回答不了** ✓ ⇒ ⇒ 那是内部状态不可用 ✓ ⇒ ⇒ 不是"变了" ✓。
     fn detect(&self, key: &str) -> Result<TargetStatus, String> {
+        // **归类只有一处** ✓ ⇒ ⇒ 授权没了与写不进去了**也是状态** ✓ ⇒ ⇒ **不是报错** ✓ ⇒ ⇒
+        // **应用侧因此走得到那两条分支** ✓（§6.1 ✓、§8.2 ✓）。
+        match self.detect_target(key) {
+            Ok(status) => Ok(status),
+            Err(code) => match status_of(&code) {
+                Some(status) => Ok(status),
+                None => Err(code),
+            },
+        }
+    }
+
+    /// **检测的那一半** ✓：**只回答事实** ✓ ⇒ ⇒ **归类在外面那一层** ✓。
+    fn detect_target(&self, key: &str) -> Result<TargetStatus, String> {
         let (path, digest) = {
             let grants = self.0.lock().map_err(internal_error)?;
             let grant = grants.get(key).ok_or("unknown-file-key")?;
@@ -1396,8 +1416,9 @@ mod tests {
             .record_digest(&grant.key, &crate::hash::sha256_hex(b"third"))
             .unwrap();
         assert_eq!(access.detect(&grant.key).unwrap(), TargetStatus::Ready);
-        // **不认识的 key** ✓ ⇒ ⇒ 稳定码 ✓。
-        assert_eq!(access.detect("not-a-key").unwrap_err(), "unknown-file-key");
+        // **不认识的 key** ✓ ⇒ ⇒ **授权没了 ⇒ ⇒ 那是状态** ✓ ⇒ ⇒ **不是报错** ✓ ⇒ ⇒
+        // **应用侧因此走得到"提示是否另存"** ✓（§6.1 ✓、§8.2 ✓）。
+        assert_eq!(access.detect("not-a-key").unwrap(), TargetStatus::Invalid);
     }
 
     #[test]
