@@ -75,7 +75,8 @@ export function reactSource(componentStack?: string | null): string {
 export function rejectionSource(reason: unknown): string {
   if (reason instanceof Error) {
     const frame = topFrame(reason.stack);
-    return frame ? `${reason.name} at ${frame}` : reason.name;
+    // **不含空格** ✓ ⇒ ⇒ 日志里那一条**始终是一行** ✓ ⇒ ⇒ 不用靠"续写上一个字段"还原 ✓。
+    return frame ? `${reason.name}@${frame}` : reason.name;
   }
   return 'rejection';
 }

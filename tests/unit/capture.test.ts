@@ -105,6 +105,8 @@ it('the rejection source points at the place and keeps the message out', () => {
   // **指出是哪儿** ✓ ⇒ ⇒ **日志因此能定位** ✓ ⇒ ⇒ 不必再开控制台找那一行 ✓。
   expect(source).toContain('TypeError');
   expect(source).toContain('index.js:1204');
+  // **不含空格** ✓ ⇒ ⇒ 日志里那一条始终是一行 ✓。
+  expect(source).not.toContain(' ');
   // **原始 message 不在里面** ✓ ⇒ ⇒ **日志里不落用户数据** ✓（基座 §5.2 ✓）。
   expect(source).not.toContain('Cannot read properties');
   // **同一个抛出点每次都一样** ✓ ⇒ ⇒ 循环收敛成一条 ✓。

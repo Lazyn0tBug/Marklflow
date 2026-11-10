@@ -695,7 +695,14 @@ fn record_web_event_for(
     if let Some(source) = event.source {
         // **定位串进日志** ✓ ⇒ ⇒ **下一次同样的事，看日志就知道是哪儿** ✓ ⇒ ⇒
         // **不必再开控制台找那一行** ✓ ⇒ ⇒ **有界** ✓ ⇒ ⇒ 不会撑爆那一行 ✓。
-        fields.insert("source".to_owned(), source.chars().take(200).collect());
+        // **空格换成下划线** ✓ ⇒ ⇒ **人读形态里那一条始终是一行** ✓ ⇒ ⇒
+        // **两种形态是同一份文本** ✓ ⇒ ⇒ 不靠"续写上一个字段"还原 ✓（基座 §5.2 ✓）。
+        let normalized: String = source
+            .chars()
+            .take(200)
+            .map(|c| if c == ' ' { '_' } else { c })
+            .collect();
+        fields.insert("source".to_owned(), normalized);
     }
     let level = if event.event == WebEventKind::PageError {
         "WARN"
@@ -1846,7 +1853,7 @@ mod tests {
         assert_eq!(
             record_web_event_for(
                 &web_identity("main", "main"),
-                r#"{"event":"page_error","error_category":"rejection","source":"TypeError at http://tauri.localhost/assets/index.js:1234:9"}"#.to_owned(),
+                r#"{"event":"page_error","error_category":"rejection","source":"TypeError@http://tauri.localhost/assets/index.js:1234:9"}"#.to_owned(),
                 &emitter
             ),
             WEB_ACCEPTED
@@ -1854,7 +1861,7 @@ mod tests {
         let record = receiver.try_recv().expect("记录已入队");
         let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
         assert!(
-            text.contains("\"source\":\"TypeError at http://tauri.localhost/assets/index.js:1234:9\""),
+            text.contains("\"source\":\"TypeError@http://tauri.localhost/assets/index.js:1234:9\""),
             "日志里没有定位串：{text}"
         );
         // **原文 message 仍然不进日志** ✓ ⇒ ⇒ 用户数据不落日志 ✓。
