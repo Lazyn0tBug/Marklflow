@@ -183,8 +183,6 @@ web_error_categories! {
     NotAFile => "not-a-file",
     NotARegularTarget => "not-a-regular-target",
     UnknownFileKey => "unknown-file-key",
-    // 写回前复核发现目标又变了：不写它，交给用户决定。
-    WriteTargetChanged => "write-target-changed",
     PrintFailed => "print-failed",
     FileCapabilityMismatch => "file-capability-mismatch",
     NativeInternalFailed => "native-internal-failed",
