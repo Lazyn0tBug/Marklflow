@@ -35,7 +35,7 @@ import {
   readSoftWrapPreference,
   writeSoftWrapPreference,
 } from './core/platform/web/editorPreferences';
-import {markAppReady} from './core/platform/web/capture';
+import {hereSource, markAppReady} from './core/platform/web/capture';
 import {ResizablePanes} from './components/workspace/ResizablePanes';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
@@ -1135,7 +1135,17 @@ export default function App() {
         return;
       }
       stop = unlisten;
-    })();
+    })().catch((error) => {
+      // **自己接住** ✓ ⇒ ⇒ 不留一个没人管的拒绝 ✓ ⇒ ⇒ 那一条拒绝曾让日志只说"出了个拒绝" ✓ ⇒ ⇒
+      // **报出来并说清在哪儿** ✓ ⇒ ⇒ 拖放监听没注册上这件事**日志里看得见** ✓ ⇒ ⇒
+      // 不用再开控制台找那一行 ✓。
+      void reportFailure({
+        category: 'rejection',
+        detail: String(error),
+        cause: error,
+        source: hereSource(),
+      });
+    });
     return () => {
       cancelled = true;
       stop?.();

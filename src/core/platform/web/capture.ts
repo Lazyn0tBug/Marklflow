@@ -94,6 +94,14 @@ function kindOf(reason: unknown): string {
 }
 
 /**
+ * **我们现在在哪儿** ✓：**调用点那一帧** ✓ ⇒ ⇒ 自己接住的那个失败也能定位 ✓ ⇒ ⇒
+ * **不用手写行号** ✓ ⇒ ⇒ 行号会随改动烂掉 ✓ ⇒ ⇒ 这一条不会 ✓。
+ */
+export function hereSource(): string {
+  return topFrame(new Error().stack) ?? 'unknown';
+}
+
+/**
  * **栈顶那一帧的位置** ✓：**文件 + 行** ✓ ⇒ ⇒ **在我们自己的构建产物里** ✓ ⇒ ⇒
  * **不含用户数据** ✓ ⇒ ⇒ **可以进日志** ✓（基座 §5.2 ✓）。
  *
