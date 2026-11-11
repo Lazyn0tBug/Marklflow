@@ -1094,16 +1094,14 @@ fn writer_loop(
             Err(RecvTimeoutError::Disconnected) => break,
         }
         // Independent of both log traffic and the appender's write-triggered rollover.
-        let cleanup_now = SystemTime::now();
-        match cleanup_now.duration_since(last_cleanup) {
-            Ok(elapsed) if elapsed >= Duration::from_secs(86400) => {
-                if let Some(directory) = directory.as_deref() {
-                    purge_old_logs(directory, retention_days, &health);
-                }
-                last_cleanup = cleanup_now;
-            }
-            Err(_) => last_cleanup = cleanup_now,
-            _ => {}
+        if let Some(directory) = directory.as_deref() {
+            cleanup_if_due(
+                directory,
+                retention_days,
+                &health,
+                SystemTime::now(),
+                &mut last_cleanup,
+            );
         }
         if last_summary.elapsed() >= HEALTH_SUMMARY_INTERVAL {
             write_health_summary(&mut file, &format, &health, stdout_enabled);
@@ -1187,8 +1185,29 @@ fn daily_log_date(name: &str) -> Option<&str> {
 }
 
 /// Startup and once per running 24 hours: expiry threshold, not a deletion deadline.
+fn cleanup_if_due(
+    directory: &Path,
+    retention_days: u64,
+    health: &Health,
+    now: SystemTime,
+    last_cleanup: &mut SystemTime,
+) {
+    match now.duration_since(*last_cleanup) {
+        Ok(elapsed) if elapsed >= Duration::from_secs(86400) => {
+            purge_old_logs_at(directory, retention_days, health, now);
+            *last_cleanup = now;
+        }
+        Err(_) => *last_cleanup = now,
+        _ => {}
+    }
+}
+
 fn purge_old_logs(directory: &Path, retention_days: u64, health: &Health) {
-    let now = SystemTime::now();
+    purge_old_logs_at(directory, retention_days, health, SystemTime::now());
+}
+
+// Explicit time keeps boundary and scheduling tests deterministic, without changing the OS clock.
+fn purge_old_logs_at(directory: &Path, retention_days: u64, health: &Health, now: SystemTime) {
     let today = iso_timestamp(now)[..10].to_owned();
     let age = Duration::from_secs(retention_days.saturating_mul(86400));
     let entries = match fs::read_dir(directory) {
@@ -1659,6 +1678,247 @@ static PAGE_CALL_SPANS: OnceLock<Mutex<PageCallSpans>> = OnceLock::new();
 
 #[cfg(test)]
 mod tests {
+    fn daily_fixture(directory: &Path, name: &str, modified: SystemTime) -> PathBuf {
+        let path = directory.join(name);
+        let mut file = fs::File::create(&path).unwrap();
+        file.write_all(b"fixture").unwrap();
+        file.set_modified(modified).unwrap();
+        path
+    }
+
+    #[test]
+    fn daily_filename_matching_is_exact() {
+        assert_eq!(
+            daily_log_date("markflow.42.log.2026-11-11"),
+            Some("2026-11-11")
+        );
+        assert!(daily_log_date("markflow.42.log.2024-02-29").is_some());
+        for name in [
+            "other.42.log.2026-11-11",
+            "markflow.042.log.2026-11-11",
+            "markflow.+42.log.2026-11-11",
+            "markflow.0.log.2026-11-11",
+            "markflow.42.log.2026-02-29",
+            "markflow.42.log.2026-13-01",
+            "markflow.42.log.2026-01-00",
+            "markflow.42.log.2026-11-11.000",
+            "markflow.42.log",
+            "markflow.42.lock",
+            "markflow.42.log.私人路径",
+        ] {
+            assert!(daily_log_date(name).is_none(), "{name}");
+        }
+    }
+
+    #[test]
+    fn daily_purge_uses_mtime_age_and_protects_current_future_and_foreign_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let now = UNIX_EPOCH + Duration::from_secs(40 * 86400);
+        let cutoff = now - Duration::from_secs(14 * 86400);
+        let exact = daily_fixture(dir.path(), "markflow.1.log.1970-01-01", cutoff);
+        let young = daily_fixture(
+            dir.path(),
+            "markflow.2.log.1970-01-01",
+            cutoff + Duration::from_secs(1),
+        );
+        let current = daily_fixture(dir.path(), "markflow.3.log.1970-02-10", UNIX_EPOCH);
+        let future = daily_fixture(dir.path(), "markflow.4.log.1970-02-11", UNIX_EPOCH);
+        let future_mtime = daily_fixture(
+            dir.path(),
+            "markflow.5.log.1970-01-01",
+            now + Duration::from_secs(1),
+        );
+        let legacy = daily_fixture(dir.path(), "markflow.6.log.1970-01-01.000", UNIX_EPOCH);
+        let foreign = daily_fixture(dir.path(), "other.log", UNIX_EPOCH);
+        let directory = dir.path().join("markflow.7.log.1970-01-01");
+        fs::create_dir(&directory).unwrap();
+        let health = Health::new();
+        purge_old_logs_at(dir.path(), 14, &health, now);
+        assert!(!exact.exists());
+        for path in [
+            young,
+            current,
+            future,
+            future_mtime,
+            legacy,
+            foreign,
+            directory,
+        ] {
+            assert!(path.exists());
+        }
+        assert_eq!(health.snapshot().delete_failures, 0);
+    }
+
+    #[test]
+    fn daily_cleanup_has_no_archive_count_limit_and_honors_custom_retention() {
+        let dir = tempfile::tempdir().unwrap();
+        let now = UNIX_EPOCH + Duration::from_secs(40 * 86400);
+        for pid in 1..=12 {
+            daily_fixture(
+                dir.path(),
+                &format!("markflow.{pid}.log.1970-01-01"),
+                now - Duration::from_secs(13 * 86400),
+            );
+        }
+        let health = Health::new();
+        purge_old_logs_at(dir.path(), 14, &health, now);
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 12);
+        purge_old_logs_at(dir.path(), 1, &health, now);
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn scheduled_cleanup_runs_without_log_events_and_handles_clock_rollback() {
+        let dir = tempfile::tempdir().unwrap();
+        let now = UNIX_EPOCH + Duration::from_secs(40 * 86400);
+        let path = daily_fixture(dir.path(), "markflow.1.log.1970-01-01", UNIX_EPOCH);
+        let health = Health::new();
+        let mut last = now;
+        cleanup_if_due(
+            dir.path(),
+            14,
+            &health,
+            now + Duration::from_secs(86400 - 1),
+            &mut last,
+        );
+        assert!(path.exists());
+        cleanup_if_due(
+            dir.path(),
+            14,
+            &health,
+            now + Duration::from_secs(86400),
+            &mut last,
+        );
+        assert!(!path.exists());
+        let path = daily_fixture(dir.path(), "markflow.1.log.1970-01-01", UNIX_EPOCH);
+        cleanup_if_due(
+            dir.path(),
+            14,
+            &health,
+            last + Duration::from_secs(1),
+            &mut last,
+        );
+        assert!(path.exists());
+        let rollback = now - Duration::from_secs(86400);
+        cleanup_if_due(dir.path(), 14, &health, rollback, &mut last);
+        assert_eq!(last, rollback);
+        assert!(path.exists());
+        cleanup_if_due(
+            dir.path(),
+            14,
+            &health,
+            rollback + Duration::from_secs(86400),
+            &mut last,
+        );
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn cleanup_scan_failure_is_observable() {
+        let dir = tempfile::tempdir().unwrap();
+        let health = Health::new();
+        purge_old_logs_at(&dir.path().join("missing"), 14, &health, SystemTime::now());
+        assert_eq!(health.snapshot().delete_failures, 1);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn daily_cleanup_reports_a_real_windows_delete_failure() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = daily_fixture(dir.path(), "markflow.1.log.1970-01-01", UNIX_EPOCH);
+        let blocked = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0x1 | 0x2)
+            .open(&path)
+            .unwrap();
+        let health = Health::new();
+        let now = UNIX_EPOCH + Duration::from_secs(40 * 86400);
+        purge_old_logs_at(dir.path(), 14, &health, now);
+        assert!(path.exists());
+        assert_eq!(health.snapshot().delete_failures, 1);
+        drop(blocked);
+        purge_old_logs_at(dir.path(), 14, &health, now);
+        assert!(!path.exists());
+        assert_eq!(health.snapshot().delete_failures, 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn daily_cleanup_skips_symlinks() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = daily_fixture(dir.path(), "foreign", UNIX_EPOCH);
+        let link = dir.path().join("markflow.1.log.1970-01-01");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let health = Health::new();
+        purge_old_logs_at(
+            dir.path(),
+            14,
+            &health,
+            UNIX_EPOCH + Duration::from_secs(40 * 86400),
+        );
+        assert!(target.exists());
+        assert!(fs::symlink_metadata(link).unwrap().file_type().is_symlink());
+    }
+
+    #[test]
+    fn daily_writer_keeps_normal_records_and_health_summaries_on_the_appender_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = daily_fixture(dir.path(), "markflow.42.log.2000-01-01", UNIX_EPOCH);
+        let legacy = daily_fixture(dir.path(), "markflow.42.log", UNIX_EPOCH);
+        let health = Arc::new(Health::new());
+        health.queue_dropped.store(1, Ordering::Relaxed);
+        let format = RecordFormat {
+            json: true,
+            run_id: "daily-writer".to_owned(),
+        };
+        let bytes = format
+            .format(
+                "INFO",
+                "fixture",
+                &BTreeMap::from([("origin".to_owned(), "rust".to_owned())]),
+                None,
+            )
+            .into_bytes();
+        let (sender, receiver) = sync_channel(2);
+        sender
+            .send(QueuedRecord {
+                bytes,
+                urgent: true,
+            })
+            .unwrap();
+        sender
+            .send(QueuedRecord {
+                bytes: Vec::new(),
+                urgent: false,
+            })
+            .unwrap();
+        writer_loop(
+            receiver,
+            Some(dir.path().to_owned()),
+            format,
+            health.clone(),
+            false,
+            14,
+        );
+        assert!(!old.exists());
+        assert!(legacy.exists());
+        assert!(!health.snapshot().file_unavailable);
+        let mut events = Vec::new();
+        for entry in fs::read_dir(dir.path()).unwrap().flatten() {
+            if daily_log_date(&entry.file_name().to_string_lossy()).is_none() {
+                continue;
+            }
+            for line in fs::read_to_string(entry.path()).unwrap().lines() {
+                let value: serde_json::Value = serde_json::from_str(line).unwrap();
+                assert_eq!(value["origin"], "rust");
+                events.push(value["event"].as_str().unwrap().to_owned());
+            }
+        }
+        events.sort(); // Directory iteration order is unspecified, including across UTC rollover.
+        assert_eq!(events, ["fixture", "log_health"]);
+    }
+
     #[test]
     fn stdout_off_skips_writes_and_errors_disable_only_the_mirror() {
         struct Broken(usize);
