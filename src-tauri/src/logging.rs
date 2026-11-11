@@ -312,6 +312,12 @@ static RUN_SPAN_ID: OnceLock<u64> = OnceLock::new();
 static SENDER: OnceLock<SyncSender<QueuedRecord>> = OnceLock::new();
 /// 全局发送口：web 回传路径没有 layer 可用，走这一个。
 static EMITTER: OnceLock<RecordEmitter> = OnceLock::new();
+/// The root has no parent. Do not use the child-span helper, whose parent
+/// points to RUN_SPAN_ID and would make an initialized root refer to itself.
+fn run_span_context() -> SpanContext {
+    Some(("run".to_owned(), run_span().id().map(|id| id.into_u64()), None))
+}
+
 /// 日志基座自身的 span（契约 span 表里的 `log`）：健康摘要记在其中。
 static LOG_SPAN: OnceLock<tracing::Span> = OnceLock::new();
 
@@ -757,21 +763,27 @@ fn record_web_event_for(
     } else {
         "INFO"
     };
-    let span = event.call_id.as_ref().map(|call_id| {
-        page_call_span(
+    let span = if event.event == WebEventKind::PageReady {
+        run_span_context()
+    } else if let Some(call_id) = event.call_id.as_ref() {
+        Some(span_context(&page_call_span(
             call_id,
             event.command.map(command_name).unwrap_or("unknown"),
             identity.window_label.as_ref(),
             identity.webview_label.as_ref(),
-        )
-    });
+        )))
+    } else {
+        // Missing call IDs do not manufacture a page_call. The checker still
+        // reports call_started/call_finished without an ID as uncorrelated.
+        run_span_context()
+    };
     // 外层事件名固定为 web_event；业务事件在 page_event 字段内，不能变成原生事件名。
     // 外层字段（origin、身份）由发送口生成，页面不能覆盖。
     let queued = emitter.emit_web(
         level,
         "web_event",
         fields,
-        span.as_ref().map(span_context),
+        span,
         identity,
     );
     // 调用结束：它的 span 从表里拿掉 ✓（表里只留还没结束的调用 ✓）。
@@ -2041,6 +2053,38 @@ mod tests {
             web_limiters: Arc::new(Mutex::new(WebLimiters::default())),
         };
         (emitter, receiver, health)
+    }
+
+    #[test]
+    fn unassociated_page_events_serialize_the_run_root_without_a_parent() {
+        let (emitter, receiver, _health) = test_emitter(8);
+        tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+            for payload in [
+                r#"{"event":"page_ready"}"#,
+                r#"{"event":"page_error","error_category":"rejection"}"#,
+                r#"{"event":"call_started","command":"read_native_text"}"#,
+            ] {
+                assert_eq!(record_web_event_for(&web_identity("main", "main"), payload.to_owned(), &emitter), WEB_ACCEPTED);
+                let record: serde_json::Value = serde_json::from_slice(&receiver.recv().unwrap().bytes).unwrap();
+                assert_eq!(record["span"]["name"], "run");
+                assert!(record["span"]["id"].is_number());
+                assert!(record["span"]["parent_id"].is_null());
+                assert_eq!(record["window_label"], "main");
+                assert_eq!(record["webview_label"], "main");
+                assert!(record.get("call_id").is_none());
+            }
+            let key = page_call_key("ls2-associated", "read_native_text", "main", "main");
+            for (event, result) in [("call_started", ""), ("call_finished", "ok")] {
+                let payload = serde_json::json!({"event": event, "command": "read_native_text", "call_id": "ls2-associated"});
+                let mut payload = payload;
+                if !result.is_empty() { payload["result"] = serde_json::json!(result); }
+                assert_eq!(record_web_event_for(&web_identity("main", "main"), payload.to_string(), &emitter), WEB_ACCEPTED);
+                let record: serde_json::Value = serde_json::from_slice(&receiver.recv().unwrap().bytes).unwrap();
+                assert_eq!(record["span"]["name"], "page_call");
+                assert_eq!(record["call_id"], "ls2-associated");
+            }
+            assert!(!PAGE_CALL_SPANS.get().unwrap().lock().unwrap().open.contains_key(&key));
+        });
     }
 
     #[test]

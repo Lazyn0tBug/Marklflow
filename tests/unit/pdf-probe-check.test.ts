@@ -829,3 +829,72 @@ it('rejects repeated native request IDs and conflicting fields within a command 
     diagnosticsOf(evaluate(inconsistent, []), 'native-correlation-fields-mismatch').length,
   ).toBeGreaterThan(0);
 });
+
+const rootPageEvent = (
+  event: string,
+  span = {name: 'run', id: 1, parent_id: null as number | null},
+) =>
+  record({
+    event: 'web_event',
+    origin: 'web',
+    span,
+    fields: {page_event: event, window_label: 'main', webview_label: 'main'},
+  });
+it.each(['page_ready', 'page_error'])(
+  'requires unassociated %s to carry the run root context',
+  (event) => {
+    const records = [...correlatedRun(), rootPageEvent(event)];
+    expect(diagnosticsOf(evaluate(records, []), 'event-in-wrong-span')).toHaveLength(0);
+    expect(diagnosticsOf(evaluate(records, []), 'run-span-has-parent')).toHaveLength(0);
+    for (const span of [null, {name: 'page_call', id: 80, parent_id: 1}]) {
+      const report = evaluate([...correlatedRun(), {...rootPageEvent(event), span}], []);
+      expect(
+        diagnosticsOf(report, span === null ? 'event-outside-span' : 'event-in-wrong-span'),
+      ).toHaveLength(1);
+    }
+  },
+);
+it.each(['page_ready', 'page_error'])('rejects parented or mismatched %s run context', (event) => {
+  expect(
+    diagnosticsOf(
+      evaluate([...correlatedRun(), rootPageEvent(event, {name: 'run', id: 1, parent_id: 1})], []),
+      'run-span-has-parent',
+    ),
+  ).toHaveLength(1);
+  expect(
+    diagnosticsOf(
+      evaluate(
+        [...correlatedRun(), rootPageEvent(event, {name: 'run', id: 90, parent_id: null})],
+        [],
+      ),
+      'run-span-id-mismatch',
+    ),
+  ).toHaveLength(1);
+});
+it('does not mistake distinct unassociated errors in the shared run for duplicate call events', () => {
+  const report = evaluate(
+    [...correlatedRun(), rootPageEvent('page_error'), rootPageEvent('page_error')],
+    [],
+  );
+  expect(diagnosticsOf(report, 'duplicate-event')).toHaveLength(0);
+});
+it.each(['call_started', 'call_finished'])(
+  'keeps %s without an ID uncorrelated even when attached to run',
+  (event) => {
+    const report = evaluate([...correlatedRun(), rootPageEvent(event)], []);
+    expect(diagnosticsOf(report, 'missing-web-call-id')).toHaveLength(1);
+    expect(verdictOf(report, 'call-correlation')).toBe('unconfirmed');
+  },
+);
+it('still requires associated page_error events to use page_call', () => {
+  const event = rootPageEvent('page_error');
+  event.fields.call_id = 'error-call';
+  event.fields.command = 'read_native_text';
+  expect(
+    diagnosticsOf(evaluate([...correlatedRun(), event], []), 'event-in-wrong-span'),
+  ).toHaveLength(1);
+  event.span = {name: 'page_call', id: 90, parent_id: 1};
+  expect(
+    diagnosticsOf(evaluate([...correlatedRun(), event], []), 'event-in-wrong-span'),
+  ).toHaveLength(0);
+});

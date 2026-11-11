@@ -152,12 +152,15 @@ const EXPECTED_SPAN: Record<string, string> = {
   log_health: 'log',
 };
 
-/** web 侧业务事件 → 应当所在 span。page_ready 没有 call_id，故不在此表。 */
-const WEB_SPAN: Record<string, string> = {
-  call_started: 'page_call',
-  call_finished: 'page_call',
-  page_error: 'page_call',
-};
+/** Unassociated page lifecycle/error events belong to the run root, not a synthetic call. */
+function expectedWebSpan(record: LogRecord): string | undefined {
+  const event = record.fields.page_event;
+  if (event === 'page_ready') return 'run';
+  if (event === 'page_error' || event === 'call_started' || event === 'call_finished') {
+    return text(record.fields.call_id) ? 'page_call' : 'run';
+  }
+  return undefined;
+}
 
 /** 同一 span 内区分同名事件的自然键：没有则同名即重复。 */
 const DISCRIMINATOR: Record<string, string> = {
@@ -632,6 +635,7 @@ function duplicateDiagnostics(run: RunView): Diagnostic[] {
   const seen = new Map<string, LogRecord>();
   const diagnostics: Diagnostic[] = [];
   for (const record of run.records) {
+    if (record.origin === 'web' && record.span?.name === 'run') continue;
     const spanId = record.span?.id;
     if (spanId === null || spanId === undefined) continue;
     const key = `${spanId}|${record.event}|${text(record.fields[DISCRIMINATOR[record.event] ?? ''])}`;
@@ -683,12 +687,10 @@ function duplicateWebEventDiagnostics(run: RunView): Diagnostic[] {
 /** 诊断：span 结构是否合契约（调用 span 都是根的直接子；事件落在规定的 span 内）。 */
 function spanDiagnostics(run: RunView): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
-  const runSpanId = run.records.find((record) => record.span?.name === 'run')?.span?.id ?? null;
+  const runSpanId = run.runStart?.span?.name === 'run' ? run.runStart.span.id : null;
   for (const record of run.records) {
     const expected =
-      record.origin === 'web'
-        ? WEB_SPAN[record.fields.page_event ?? '']
-        : EXPECTED_SPAN[record.event];
+      record.origin === 'web' ? expectedWebSpan(record) : EXPECTED_SPAN[record.event];
     if (!expected) continue;
     const span = record.span;
     if (!span) {
@@ -706,6 +708,22 @@ function spanDiagnostics(run: RunView): Diagnostic[] {
         message: `事件落在错误的 span 内：event=${record.event} 应在 ${expected}，实际在 ${span.name}`,
       });
       continue;
+    }
+    if (expected === 'run') {
+      if (span.parent_id !== null) {
+        diagnostics.push({
+          id: 'run-span-has-parent',
+          severity: 'error',
+          message: `run 根 span 的 parent_id 应为空：${span.id} 的 parent_id=${span.parent_id}`,
+        });
+      }
+      if (span.id === null || (runSpanId !== null && span.id !== runSpanId)) {
+        diagnostics.push({
+          id: 'run-span-id-mismatch',
+          severity: 'error',
+          message: `事件未挂到本次 run 根 span：${span.id}，根 span id=${runSpanId}`,
+        });
+      }
     }
     if (expected !== 'run' && runSpanId !== null && span.parent_id !== runSpanId) {
       diagnostics.push({
@@ -846,6 +864,18 @@ function unobservedDiagnostics(run: RunView): Diagnostic[] {
 /** Correlation completeness is separate from native authorization evidence. */
 function callCorrelationDiagnostics(run: RunView): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
+  for (const record of run.web) {
+    if (
+      ['call_started', 'call_finished'].includes(record.fields.page_event ?? '') &&
+      !text(record.fields.call_id)
+    ) {
+      diagnostics.push({
+        id: 'missing-web-call-id',
+        severity: 'warning',
+        message: `页面调用缺 call_id：${record.fields.page_event}，不能确认调用关联`,
+      });
+    }
+  }
   const spans = commandSpans(run);
   const seen = new Set<string>();
   for (const span of spans) {
@@ -1068,6 +1098,7 @@ export function evaluateProbeRun(
   const correlationProblems = diagnostics.filter((item) =>
     [
       'uncorrelated-call',
+      'missing-web-call-id',
       'duplicate-event',
       'native-correlation-fields-mismatch',
       'duplicate-native-call-id',
