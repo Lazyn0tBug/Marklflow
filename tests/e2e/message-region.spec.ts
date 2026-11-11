@@ -64,10 +64,10 @@ test('closing a message moves the focus to a control that remains', async ({page
     }, 10);
   });
   await expect(notice(page)).toHaveCount(2);
-  await page.getByRole('button', {name: '关闭通知'}).first().click();
+  await page.getByRole('button', {name: '知道了'}).first().click();
   await expect(notice(page)).toHaveCount(1);
   // 关掉的那个按钮没了 ⇒ ⇒ 焦点落到还留着的那个上 ✓（§9 ✓）。
-  await expect(page.getByRole('button', {name: '关闭通知'})).toBeFocused();
+  await expect(page.getByRole('button', {name: '知道了'})).toBeFocused();
 });
 
 test('closing a message keeps the focus when the platform does not focus the button', async ({
@@ -83,22 +83,21 @@ test('closing a message keeps the focus when the platform does not focus the but
     }, 10);
   });
   await expect(notice(page)).toHaveCount(2);
-  const close = page.getByRole('button', {name: '关闭通知'}).first();
+  const close = page.getByRole('button', {name: '知道了'}).first();
   // **程序化点击** ✓ ⇒ ⇒ 焦点不动 ✓ ⇒ ⇒ 这就是 macOS 上点按钮的样子 ✓
   // ⇒ ⇒ （Chromium 用鼠标点会聚焦按钮 ✓ ⇒ ⇒ 那样就测不到这一条 ✓）。
   await close.evaluate((button) => (button as HTMLElement).click());
   await expect(notice(page)).toHaveCount(1);
   // 关掉的那个没了 ⇒ ⇒ 焦点落到还留着的那个上 ✓ ⇒ ⇒ 区域不是从焦点反推的 ✓。
-  await expect(page.getByRole('button', {name: '关闭通知'})).toBeFocused();
+  await expect(page.getByRole('button', {name: '知道了'})).toBeFocused();
 });
 
 test('a message that times out does not drop the focus', async ({page}) => {
-  await page.goto('/');
+  await page.goto(devOrigin + '/');
   await page.waitForSelector('[data-render-state="ready"]', {timeout: 30000});
-  await page.evaluate(() => {
-    setTimeout(() => {
-      throw new Error('定时消失');
-    }, 0);
+  await page.evaluate(async () => {
+    const {noticeStore} = await import('/src/application/notices.ts');
+    noticeStore.push({tone: 'info', message: '定时消失'});
   });
   const card = page.getByRole('status', {name: '通知'}).first();
   await expect(card).toBeVisible();
@@ -122,9 +121,9 @@ test('a closing message fades out before it is gone', async ({page}) => {
   });
   const card = page.getByRole('status', {name: '通知'}).first();
   await expect(card).toBeVisible();
-  await page.getByRole('button', {name: '关闭通知'}).first().click();
+  await page.getByRole('button', {name: '知道了'}).first().click();
   // **先退场、后收走** ✓ ⇒ ⇒ 这一刻它还在 ✓ ⇒ ⇒ 动画走完才真的没 ✓。
-  // ⇒ ⇒ **盯属性，不盯那个元素** ✓ ⇒ ⇒ 元素 200ms 后就没了 ✓ ⇒ ⇒ 盯元素会撞上那个窗口 ✓。
+  // ⇒ ⇒ **盯属性，不盯那个元素** ✓ ⇒ ⇒ 元素在过渡完成后就没了 ✓ ⇒ ⇒ 盯元素会撞上那个窗口 ✓。
   await page.waitForFunction(
     () => document.querySelector('.mf-message-card[data-leaving="true"]') !== null,
   );
@@ -140,7 +139,7 @@ test('a leaving message does not take clicks', async ({page}) => {
   });
   const card = page.getByRole('status', {name: '通知'}).first();
   await expect(card).toBeVisible();
-  await page.getByRole('button', {name: '关闭通知'}).first().click();
+  await page.getByRole('button', {name: '知道了'}).first().click();
   // **退场中的那条不吃点击** ✓ ⇒ ⇒ 看不见了就不该占着右下角那一块 ✓
   // ⇒ ⇒ （`pointer-events` 没有过渡 ✓ ⇒ ⇒ 读到的那一刻就是生效的那一刻 ✓）。
   const pointerEvents = await page

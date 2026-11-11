@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import type {ReactNode, RefObject} from 'react';
 import {MessagePanel} from './MessagePanel';
 import type {MessageAction, MessageTone, Optional} from './types';
 
@@ -15,6 +15,8 @@ import type {MessageAction, MessageTone, Optional} from './types';
  */
 
 export interface MessageStatusBarProps {
+  /** Optional element handle for an external lifecycle adapter. */
+  elementRef?: Optional<RefObject<HTMLDivElement | null>>;
   /** 视觉语气 ✓（只改颜色 ✓ ⇒ ⇒ 不管播报紧急度 ✓）。 */
   tone?: Optional<MessageTone>;
   /** 标题 ✓（持续的那条总得说清是什么 ✓）。 */
@@ -61,6 +63,7 @@ export function MessageStatusBar(props: MessageStatusBarProps): ReactNode {
     className,
     ariaLabel,
     leaving,
+    elementRef,
   } = props;
   const list: MessageAction[] = [
     ...actions,
@@ -68,6 +71,8 @@ export function MessageStatusBar(props: MessageStatusBarProps): ReactNode {
   ];
   return (
     <div
+      ref={elementRef}
+      inert={leaving || undefined}
       className={className ? `mf-message-card ${className}` : 'mf-message-card'}
       data-shape="persistent"
       data-tone={tone}

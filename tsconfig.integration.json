@@ -30,6 +30,7 @@
     "tests/fixtures/architecture/tauri-native-io-probe-client.ts",
     "tests/fixtures/architecture/tauri-native-io-probe-report.ts",
     "tests/fixtures/architecture/react-error-probe-client.ts",
-    "tests/fixtures/messages/messages-component-sample-client.tsx"
+    "tests/fixtures/messages/messages-component-sample-client.tsx",
+    "tests/fixtures/messages/message-lifecycle-client.tsx"
   ]
 }

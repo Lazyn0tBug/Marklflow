@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import type {ReactNode, RefObject} from 'react';
 import {MessagePanel} from './MessagePanel';
 import type {MessageAction, MessageTone, Optional} from './types';
 
@@ -15,6 +15,8 @@ import type {MessageAction, MessageTone, Optional} from './types';
  */
 
 export interface MessageCardProps {
+  /** Optional element handle for an external lifecycle adapter. */
+  elementRef?: Optional<RefObject<HTMLDivElement | null>>;
   /** 视觉语气 ✓（四种 ✓ ⇒ ⇒ 只改颜色 ✓）。 */
   tone?: Optional<MessageTone>;
   /** 标题 ✓（可有可无 ✓ ⇒ ⇒ 有才画 ✓）。 */
@@ -61,6 +63,7 @@ export function MessageCard(props: MessageCardProps): ReactNode {
     className,
     ariaLabel,
     leaving,
+    elementRef,
   } = props;
   const list: MessageAction[] = [
     ...actions,
@@ -68,6 +71,8 @@ export function MessageCard(props: MessageCardProps): ReactNode {
   ];
   return (
     <div
+      ref={elementRef}
+      inert={leaving || undefined}
       className={className ? `mf-message-card ${className}` : 'mf-message-card'}
       data-shape="transient"
       data-tone={tone}

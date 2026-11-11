@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import type {ReactNode, RefObject} from 'react';
 import {MessageActions} from './MessagePanel';
 import type {MessageAction, MessageTone, Optional} from './types';
 
@@ -21,6 +21,8 @@ export interface MessageResultItem {
 }
 
 export interface MessageResultProps {
+  /** Optional element handle for an external lifecycle adapter. */
+  elementRef?: Optional<RefObject<HTMLDivElement | null>>;
   /** 这批结果是什么 ✓。 */
   title: string;
   /** 结果 ✓。 */
@@ -58,6 +60,7 @@ export function MessageResult(props: MessageResultProps): ReactNode {
     className,
     ariaLabel,
     leaving,
+    elementRef,
   } = props;
   const list: MessageAction[] = [
     ...actions,
@@ -65,6 +68,8 @@ export function MessageResult(props: MessageResultProps): ReactNode {
   ];
   return (
     <div
+      ref={elementRef}
+      inert={leaving || undefined}
       className={className ? `mf-message-result ${className}` : 'mf-message-result'}
       data-shape="result"
       data-tone={tone}

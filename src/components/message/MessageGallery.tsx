@@ -1,5 +1,6 @@
-import type {ReactNode} from 'react';
+import {useRef, type ReactNode} from 'react';
 import {
+  useMessageLifecycle,
   MessageCard,
   MessageResult,
   MessageStatusBar,
@@ -12,7 +13,7 @@ import {
  * **它不是静态样板** ✓ ⇒ ⇒ 位置、堆叠、限高、滚动、宽度、换行都是真的 ✓
  * ⇒ ⇒ 看的就是工作台里那条消息 ✓ ⇒ ⇒ 核对视觉不必另找页面 ✓。
  *
- * **它不碰通知存储** ✓ ⇒ ⇒ 演示的消息不计时、不进 `noticeStore` ✓
+ * **它不碰通知存储** ✓ ⇒ ⇒ 演示的消息使用独立的停留期限、不进 `noticeStore` ✓
  * ⇒ ⇒ 不会跟真消息混在一起 ✓ ⇒ ⇒ 关掉就是关掉这一条演示 ✓。
  */
 
@@ -43,26 +44,38 @@ export interface DemoMessage {
 export function DemoMessageView({
   demo,
   onDismiss,
+  onExited,
 }: {
   demo: DemoMessage;
   onDismiss: (id: string) => void;
+  onExited: (id: string) => void;
 }): ReactNode {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const dismiss = useMessageLifecycle({
+    elementRef,
+    leaving: demo.leaving,
+    autoHideMs: demo.transient ? 6000 : undefined,
+    onHide: () => onDismiss(demo.id),
+    onExited: () => onExited(demo.id),
+  });
   if (demo.kind === 'result') {
     return (
       <MessageResult
+        elementRef={elementRef}
         title={demo.title ?? '操作结果'}
         tone={demo.tone}
         items={demo.items ?? []}
         role="status"
         closeLabel="关闭"
         leaving={demo.leaving}
-        onClose={() => onDismiss(demo.id)}
+        onClose={dismiss}
       />
     );
   }
   if (demo.kind === 'status') {
     return (
       <MessageStatusBar
+        elementRef={elementRef}
         tone={demo.tone}
         title={demo.title ?? '持续状态'}
         body={demo.body}
@@ -71,12 +84,13 @@ export function DemoMessageView({
         role="status"
         acknowledgeLabel="知道了"
         leaving={demo.leaving}
-        onAcknowledge={() => onDismiss(demo.id)}
+        onAcknowledge={dismiss}
       />
     );
   }
   return (
     <MessageCard
+      elementRef={elementRef}
       tone={demo.tone}
       title={demo.title}
       body={demo.body ?? ''}
@@ -84,7 +98,7 @@ export function DemoMessageView({
       expanded={demo.open ?? false}
       role="status"
       leaving={demo.leaving}
-      actions={[{label: '关闭', onClick: () => onDismiss(demo.id)}]}
+      actions={[{label: '关闭', onClick: dismiss}]}
     />
   );
 }

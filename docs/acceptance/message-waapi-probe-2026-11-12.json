@@ -1,0 +1,560 @@
+{
+  "command": "node 'D:\\codex\\message-waapi-probe\\runner.cjs'",
+  "fixture": [
+    {
+      "file": "probe.tsx",
+      "sha256": "9439f493f5e9bf35942e555d0f50a71e71a912b440fbf543e9e814630c4e9949"
+    },
+    {
+      "file": "index.html",
+      "sha256": "6bd27d24db8dc1886d9926dbb633cae0786cbae900aa7d95af3b5d57a2984bc8"
+    },
+    {
+      "file": "bundle.js",
+      "sha256": "d14b3d545b5cfda8d81381bae6a6229adf9c8afa3c98b25d0b31b39f42a9002e"
+    }
+  ],
+  "versions": {
+    "react": "19.3.1",
+    "reactDom": "19.3.1",
+    "playwright": "1.64.1",
+    "chromium": "156.0.8078.4"
+  },
+  "engine": "Chromium headless",
+  "results": [
+    {
+      "name": "strictmode-and-normal-own-transitions",
+      "finished": [
+        1
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 1,
+          "at": 134.60000002384186
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 1,
+          "at": 179.10000002384186
+        },
+        {
+          "kind": "observed",
+          "id": 1,
+          "at": 179.5,
+          "properties": [
+            "opacity",
+            "transform"
+          ],
+          "allProperties": [
+            "background-color",
+            "opacity",
+            "transform"
+          ]
+        },
+        {
+          "kind": "settled",
+          "id": 1,
+          "at": 391.10000002384186,
+          "statuses": [
+            "fulfilled",
+            "fulfilled"
+          ],
+          "aborted": false
+        },
+        {
+          "kind": "finish",
+          "id": 1,
+          "at": 391.3000000715256,
+          "reason": "finished"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 1,
+          "at": 391.40000009536743
+        },
+        {
+          "kind": "owner-finish",
+          "id": 1,
+          "at": 391.60000002384186
+        }
+      ]
+    },
+    {
+      "name": "zero-duration-and-no-change",
+      "finished": [
+        1,
+        2,
+        3
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 2,
+          "at": 462.40000009536743
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 2,
+          "at": 493.60000002384186
+        },
+        {
+          "kind": "observed",
+          "id": 2,
+          "at": 493.7000000476837,
+          "properties": [],
+          "allProperties": []
+        },
+        {
+          "kind": "finish",
+          "id": 2,
+          "at": 493.7000000476837,
+          "reason": "no-transition"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 2,
+          "at": 494.2000000476837
+        },
+        {
+          "kind": "owner-finish",
+          "id": 2,
+          "at": 494.2000000476837
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 3,
+          "at": 526.9000000953674
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 3,
+          "at": 563.3000000715256
+        },
+        {
+          "kind": "observed",
+          "id": 3,
+          "at": 563.6000000238419,
+          "properties": [],
+          "allProperties": [
+            "background-color"
+          ]
+        },
+        {
+          "kind": "finish",
+          "id": 3,
+          "at": 563.6000000238419,
+          "reason": "no-transition"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 3,
+          "at": 563.6000000238419
+        },
+        {
+          "kind": "owner-finish",
+          "id": 3,
+          "at": 563.6000000238419
+        }
+      ]
+    },
+    {
+      "name": "reduced-motion",
+      "finished": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 4,
+          "at": 610.9000000953674
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 4,
+          "at": 644.9000000953674
+        },
+        {
+          "kind": "observed",
+          "id": 4,
+          "at": 645.1000000238419,
+          "properties": [],
+          "allProperties": []
+        },
+        {
+          "kind": "finish",
+          "id": 4,
+          "at": 645.1000000238419,
+          "reason": "no-transition"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 4,
+          "at": 645.2000000476837
+        },
+        {
+          "kind": "owner-finish",
+          "id": 4,
+          "at": 645.2000000476837
+        }
+      ]
+    },
+    {
+      "name": "cancel-one-transition-allsettled",
+      "finished": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 5,
+          "at": 693.7000000476837
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 5,
+          "at": 727.3000000715256
+        },
+        {
+          "kind": "observed",
+          "id": 5,
+          "at": 727.5,
+          "properties": [
+            "opacity",
+            "transform"
+          ],
+          "allProperties": [
+            "background-color",
+            "opacity",
+            "transform"
+          ]
+        },
+        {
+          "kind": "settled",
+          "id": 5,
+          "at": 1757.4000000953674,
+          "statuses": [
+            "rejected",
+            "fulfilled"
+          ],
+          "aborted": false
+        },
+        {
+          "kind": "finish",
+          "id": 5,
+          "at": 1757.4000000953674,
+          "reason": "cancelled"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 5,
+          "at": 1757.4000000953674
+        },
+        {
+          "kind": "owner-finish",
+          "id": 5,
+          "at": 1757.4000000953674
+        }
+      ]
+    },
+    {
+      "name": "unmount-aborts-timers-and-promise-callback",
+      "finished": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 6,
+          "at": 1810.5
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 6,
+          "at": 1843.2000000476837
+        },
+        {
+          "kind": "observed",
+          "id": 6,
+          "at": 1843.4000000953674,
+          "properties": [
+            "opacity",
+            "transform"
+          ],
+          "allProperties": [
+            "background-color",
+            "opacity",
+            "transform"
+          ]
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 6,
+          "at": 1876.9000000953674
+        },
+        {
+          "kind": "settled",
+          "id": 6,
+          "at": 1877,
+          "statuses": [
+            "rejected",
+            "rejected"
+          ],
+          "aborted": true
+        }
+      ]
+    },
+    {
+      "name": "automatic-expiry",
+      "finished": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 7,
+          "at": 3827.3000000715256
+        },
+        {
+          "kind": "expiry",
+          "id": 7,
+          "at": 3989.9000000953674
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 7,
+          "at": 3990.2000000476837
+        },
+        {
+          "kind": "observed",
+          "id": 7,
+          "at": 3990.4000000953674,
+          "properties": [
+            "opacity",
+            "transform"
+          ],
+          "allProperties": [
+            "background-color",
+            "opacity",
+            "transform"
+          ]
+        },
+        {
+          "kind": "settled",
+          "id": 7,
+          "at": 4206.5,
+          "statuses": [
+            "fulfilled",
+            "fulfilled"
+          ],
+          "aborted": false
+        },
+        {
+          "kind": "finish",
+          "id": 7,
+          "at": 4206.5,
+          "reason": "finished"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 7,
+          "at": 4206.5
+        },
+        {
+          "kind": "owner-finish",
+          "id": 7,
+          "at": 4206.5
+        }
+      ]
+    },
+    {
+      "name": "manual-dismiss-near-auto-expiry-is-idempotent",
+      "finished": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 8,
+          "at": 4276.5
+        },
+        {
+          "kind": "expiry",
+          "id": 8,
+          "at": 4437
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 8,
+          "at": 4437.5
+        },
+        {
+          "kind": "observed",
+          "id": 8,
+          "at": 4437.700000047684,
+          "properties": [
+            "opacity",
+            "transform"
+          ],
+          "allProperties": [
+            "background-color",
+            "opacity",
+            "transform"
+          ]
+        },
+        {
+          "kind": "settled",
+          "id": 8,
+          "at": 4640.100000023842,
+          "statuses": [
+            "fulfilled",
+            "fulfilled"
+          ],
+          "aborted": false
+        },
+        {
+          "kind": "finish",
+          "id": 8,
+          "at": 4640.100000023842,
+          "reason": "finished"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 8,
+          "at": 4640.200000047684
+        },
+        {
+          "kind": "owner-finish",
+          "id": 8,
+          "at": 4640.200000047684
+        }
+      ]
+    },
+    {
+      "name": "unmount-clears-shown-expiry-timer",
+      "finished": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 9,
+          "at": 4709.700000047684
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 9,
+          "at": 4743.100000023842
+        }
+      ]
+    },
+    {
+      "name": "deadline-fallback-when-transitions-remain-pending",
+      "finished": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        10
+      ],
+      "card": false,
+      "events": [
+        {
+          "kind": "resources-cleared",
+          "id": 10,
+          "at": 5043.700000047684
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 10,
+          "at": 5076.5
+        },
+        {
+          "kind": "observed",
+          "id": 10,
+          "at": 5076.600000023842,
+          "properties": [
+            "opacity",
+            "transform"
+          ],
+          "allProperties": [
+            "background-color",
+            "opacity",
+            "transform"
+          ]
+        },
+        {
+          "kind": "finish",
+          "id": 10,
+          "at": 6239.900000095367,
+          "reason": "deadline"
+        },
+        {
+          "kind": "resources-cleared",
+          "id": 10,
+          "at": 6240.100000023842
+        },
+        {
+          "kind": "owner-finish",
+          "id": 10,
+          "at": 6240.100000023842
+        },
+        {
+          "kind": "settled",
+          "id": 10,
+          "at": 6241,
+          "statuses": [
+            "rejected",
+            "rejected"
+          ],
+          "aborted": true
+        }
+      ]
+    }
+  ],
+  "pageErrors": [],
+  "notes": [
+    "Zero duration produced no animations because transition-duration resolves to 0s.",
+    "No-change produced only the unrelated background-color transition; target opacity and transform did not change.",
+    "Same-task React mount-and-dismiss was not exercised: the fixture exposes separate browser button events and no synchronous test entry point."
+  ]
+}

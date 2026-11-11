@@ -256,7 +256,7 @@
   .mf-message-result[data-leaving='true'] {
     opacity: 0;
     transform: translateY(6px);
-    /* **看不见了就不该吃点击** ✓ ⇒ ⇒ 退场那 200ms 里右下角那一块不该是死的 ✓。 */
+    /* **看不见了就不该吃点击** ✓ ⇒ ⇒ 退场期间右下角那一块不该是死的 ✓。 */
     pointer-events: none;
   }
 
@@ -322,5 +322,14 @@
   /* 失败的那一条自己偏红 ✓ ⇒ ⇒ 一批结果里哪条坏了，一眼看见 ✓。 */
   .mf-message-result__list li[data-failed='true'] {
     color: var(--mf-message-danger);
+  }
+}
+
+@layer mf-message {
+  @media (prefers-reduced-motion: reduce) {
+    .mf-message-card[data-leaving='true'],
+    .mf-message-result[data-leaving='true'] {
+      transform: none;
+    }
   }
 }

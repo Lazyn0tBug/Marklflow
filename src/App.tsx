@@ -16,8 +16,9 @@ import {ExportModal} from './components/export/ExportModal';
 import {NoticeList} from './components/notice/NoticeList';
 import {DemoMessageView, MessageGallery} from './components/message/MessageGallery';
 import {useDemoMessages} from './components/message/useDemoMessages';
-import {MessageCard, MessageResult} from './presentation/messages';
-import {NOTICE_AUTO_HIDE_MS, noticeStore, type NoticeTone} from './application/notices';
+import {MessageCard} from './presentation/messages';
+import {ImportResultNotice} from './components/message/ImportResultNotice';
+import {noticeStore, type NoticeTone} from './application/notices';
 import {CONFIRM_TEXTS, messageText} from './application/messages';
 import {reportAsync, reportFailure} from './core/platform/failures';
 import {RoadmapModal} from './components/roadmap/RoadmapModal';
@@ -83,11 +84,7 @@ import {syncFeedback} from './application/workspace/syncFeedback';
 import {isSaveShortcut} from './application/workspace/saveShortcut';
 import {closeTabBeforeClose} from './application/workspace/closeTab';
 import type {DiskPorts} from './application/workspace/diskPorts';
-import {
-  importResultsAutoHide,
-  type ImportItemResult,
-  type OpenResult,
-} from './application/workspace/sourceImport';
+import {type ImportItemResult, type OpenResult} from './application/workspace/sourceImport';
 import {
   WorkbenchPreviewRuntime,
   type PreviewView,
@@ -112,7 +109,14 @@ export default function App() {
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
   const [importBusy, setImportBusy] = useState(false);
-  const [importResults, setImportResults] = useState<ImportItemResult[]>([]);
+  const [importResultBatch, setImportResultBatch] = useState<{
+    id: number;
+    items: ImportItemResult[];
+  }>({id: 0, items: []});
+  const importResults = importResultBatch.items;
+  const setImportResults = useCallback((items: ImportItemResult[]) => {
+    setImportResultBatch((previous) => ({id: previous.id + 1, items}));
+  }, []);
   const importOpen = useRef<(doc: DocumentRecord) => Promise<OpenResult>>(async () => {
     throw new Error('导入尚未就绪');
   });
@@ -1190,28 +1194,19 @@ export default function App() {
   const importMessage = importBusy ? (
     <MessageCard body="正在读取、校验并导入文件…" role="status" />
   ) : importResults.length > 0 ? (
-    <MessageResult
-      title="导入结果"
-      items={importResults.map((item) => ({
-        label: item.name,
-        detail: item.message,
-        failed: item.status === 'failed',
-      }))}
-      role={importResults.some((value) => value.status === 'failed') ? 'alert' : 'status'}
-      closeLabel="关闭导入结果"
-      onClose={() => setImportResults([])}
+    <ImportResultNotice
+      key={importResultBatch.id}
+      items={importResults}
+      onClose={() =>
+        setImportResultBatch((current) =>
+          current.id === importResultBatch.id ? {id: current.id + 1, items: []} : current,
+        )
+      }
     />
   ) : null;
-  // **导入结果会自己走** ✓ ⇒ ⇒ 成功与信息不留着 ✓ ⇒ ⇒ 错误类才留着 ✓ ⇒ ⇒
-  // 与通知面同一套规矩 ✓ ⇒ ⇒ 一处规则 ✓。
-  useEffect(() => {
-    if (!importResults.length || !importResultsAutoHide(importResults)) return;
-    const timer = setTimeout(() => setImportResults([]), NOTICE_AUTO_HIDE_MS);
-    return () => clearTimeout(timer);
-  }, [importResults]);
   // 消息区：**两种界面状态共用一处** ✓ ⇒ ⇒ 通知与导入结果始终在同一个区域里 ✓。
   // `tabIndex={-1}` ⇒ ⇒ 消息都收走后，焦点有个落点 ✓（设计 §9 ✓）。
-  // **区域由这里交下去** ✓ ⇒ ⇒ 通知列表不必从焦点反推它 ✓ ⇒ ⇒ 平台点击后不聚焦按钮时也能拿到 ✓。
+  // 生命周期适配器通过最近的消息区域恢复焦点，不从按钮点击后的焦点反推区域。
   const messageRegion = (
     <div
       ref={messageRegionRef}
@@ -1220,9 +1215,14 @@ export default function App() {
       aria-label="工作台消息"
     >
       {demoMessages.demos.map((demo) => (
-        <DemoMessageView key={demo.id} demo={demo} onDismiss={demoMessages.dismiss} />
+        <DemoMessageView
+          key={demo.id}
+          demo={demo}
+          onDismiss={demoMessages.dismiss}
+          onExited={demoMessages.remove}
+        />
       ))}
-      <NoticeList regionRef={messageRegionRef} />
+      <NoticeList />
       {importMessage}
     </div>
   );
