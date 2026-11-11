@@ -18,7 +18,7 @@ import {DemoMessageView, MessageGallery} from './components/message/MessageGalle
 import {useDemoMessages} from './components/message/useDemoMessages';
 import {MessageCard, MessageResult} from './presentation/messages';
 import {noticeStore, type NoticeTone} from './application/notices';
-import {messageText} from './application/messages';
+import {DELETE_CONFIRM_TEXTS, messageText} from './application/messages';
 import {reportFailure} from './core/platform/failures';
 import {RoadmapModal} from './components/roadmap/RoadmapModal';
 import {WorkbenchToolbar} from './components/toolbar/WorkbenchToolbar';
@@ -65,12 +65,15 @@ import {
 import {SaveSplitButton} from './components/header/SaveSplitButton';
 import {ConflictDialog} from './components/workspace/ConflictDialog';
 import {useConflictPrompt} from './components/workspace/conflictPrompt';
+import {ConfirmDialog} from './components/workspace/ConfirmDialog';
+import {useConfirmPrompt} from './components/workspace/confirmPrompt';
 import {
   DocumentFileContexts,
   releaseDocumentFileContext,
   syncStatus as syncStatusOf,
 } from './application/workspace/documentFileContext';
 import {DocumentOpener} from './application/workspace/documentOpen';
+import {nextDocumentAfterDeletion} from './application/workspace/documentDeletion';
 import {DocumentSyncer} from './application/workspace/documentSyncer';
 import {DocumentSaveAs} from './application/workspace/documentSaveAs';
 import {DocumentSaveTo} from './application/workspace/documentSaveTo';
@@ -150,6 +153,10 @@ export default function App() {
    * **冲突那一次提问** ✓ ⇒ ⇒ 问的那一方持有它 ✓ ⇒ ⇒ 上下文里不留"待用户决定" ✓（§4.1 ✓）。
    */
   const conflict = useConflictPrompt();
+  /*
+   * **删除那一次提问** ✓ ⇒ ⇒ 同样由问的那一方持有它 ✓ ⇒ ⇒ 走应用内的对话框 ✓。
+   */
+  const deleteConfirm = useConfirmPrompt();
   /*
    * **宿主给的那两个** ✓ ⇒ ⇒ 问用户 ✓、反向同步回填 ✓。
    *
@@ -1185,20 +1192,43 @@ export default function App() {
       {importMessage}
     </div>
   );
+  /**
+   * 删掉一份文档 ✓。
+   *
+   * **它不向外抛** ✓ ⇒ ⇒ 界面调用它不会变成一次未处理的拒绝 ✓ ⇒ ⇒
+   * 日志里不会出现笼统的 rejection ✓ ⇒ ⇒ 失败是失败，不是崩溃 ✓。
+   */
   const handleDeleteDoc = (id: string) => {
+    void deleteFlow(id).catch((error) => {
+      setActionError('操作失败，原文档与编辑内容已保留：' + String(error));
+      void reportFailure({category: 'storage-write-failed', detail: String(error), cause: error});
+    });
+  };
+  const deleteFlow = async (id: string) => {
+    const doc = documents.find((value) => value.id === id);
+    if (!doc) return;
+    // **删之前问一句** ✓ ⇒ ⇒ 走应用内的对话框 ✓ ⇒ ⇒ 不靠宿主的 confirm ✓ ⇒ ⇒
+    // 每一处都长一个样 ✓ ⇒ ⇒ 用户知道自己在答应什么 ✓。
+    const confirmed = await deleteConfirm.ask({
+      title: DELETE_CONFIRM_TEXTS.title,
+      description: DELETE_CONFIRM_TEXTS.description,
+      subject: doc.meta.title,
+      confirmLabel: DELETE_CONFIRM_TEXTS.confirm,
+      cancelLabel: DELETE_CONFIRM_TEXTS.cancel,
+    });
+    if (!confirmed) return;
     setActionError('');
     const pending = pendingSaves.current.get(id);
     if (pending) clearTimeout(pending.timer);
     pendingSaves.current.delete(id);
-    deleteDocument(id)
-      .then(() => {
-        removeSession(id);
-        setDocuments((previous) => previous.filter((value) => value.id !== id));
-      })
-      .catch((error) => {
-        setActionError('操作失败，原文档与编辑内容已保留：' + String(error));
-        void reportFailure({category: 'storage-write-failed', detail: String(error), cause: error});
-      });
+    await deleteDocument(id);
+    removeSession(id);
+    setDocuments((previous) => previous.filter((value) => value.id !== id));
+    // **删掉的正是当前打开的那一份 ⇒ ⇒ 工作区不能空着** ✓ ⇒ ⇒ 打开列表里的下一个 ✓。
+    // **还有别的会话开着** ✓ ⇒ ⇒ 落点已经切过去了 ✓ ⇒ ⇒ 这里不用管 ✓。
+    if (sessions.activeDocumentId) return;
+    const next = nextDocumentAfterDeletion(documents, id);
+    if (next) selectDocument(next.id);
   };
 
   const highlightLine = (line: number) => {
@@ -1587,6 +1617,19 @@ export default function App() {
         <ConflictDialog
           displayName={conflict.request.displayName}
           onChoose={(choice) => conflict.answer(choice)}
+        />
+      ) : null}
+
+      {/* **删除那一次提问** ✓ ⇒ ⇒ 走对话框不走通知 ✓ ⇒ ⇒ 决定留在原地 ✓。 */}
+      {deleteConfirm.request ? (
+        <ConfirmDialog
+          title={deleteConfirm.request.title}
+          description={deleteConfirm.request.description}
+          subject={deleteConfirm.request.subject}
+          confirmLabel={deleteConfirm.request.confirmLabel}
+          cancelLabel={deleteConfirm.request.cancelLabel}
+          onConfirm={() => deleteConfirm.answer(true)}
+          onCancel={() => deleteConfirm.answer(false)}
         />
       ) : null}
 

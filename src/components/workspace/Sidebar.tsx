@@ -401,9 +401,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`确认删除文档 "${doc.meta.title}" 吗？此操作不可撤销。`)) {
-                          onDeleteDoc(doc.id);
-                        }
+                        // **确认在应用层的对话框里问** ✓ ⇒ ⇒ 不靠宿主的 confirm ✓。
+                        onDeleteDoc(doc.id);
                       }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-red-400 rounded transition-all"
                       title="删除文档"
