@@ -1,5 +1,6 @@
 import {messageText, type MessageCategory} from '../../application/messages';
 import {noticeStore, notifiesUser, type NoticeTone} from '../../application/notices';
+import {ourFrame} from './callsite';
 import {resolveMessagePort} from './messages';
 
 /**
@@ -48,7 +49,11 @@ export interface FailureInput {
  */
 export async function reportFailure(input: FailureInput): Promise<string> {
   const diagnosticId = noticeStore.nextDiagnosticId();
-  void reportToPort(input, diagnosticId);
+  // **调用点没给定位串 ⇒ ⇒ 这一层替它补上** ✓ ⇒ ⇒ 位置由发射点自己带 ✓ ⇒ ⇒
+  // 不用给每个调用点手写 ✓ ⇒ ⇒ 也就不会"漏填一个就没有定位" ✓ ⇒ ⇒
+  // 日志因此能指出**在我们代码的哪一处** ✓（基座 §5.2 ✓）。
+  const source = input.source ?? ourFrame(new Error().stack, 1);
+  void reportToPort(source === undefined ? input : {...input, source}, diagnosticId);
   if (notifiesUser(input.category)) {
     noticeStore.push({
       tone: input.tone ?? 'error',

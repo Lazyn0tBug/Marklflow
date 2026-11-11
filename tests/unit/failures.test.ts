@@ -1,5 +1,6 @@
 import {it, expect, vi, beforeEach} from 'vitest';
 import {reportFailure} from '../../src/core/platform/failures';
+import {isOurBuildUrl, setOurMatcher} from '../../src/core/platform/callsite';
 import {tauriMessagePort} from '../../src/core/platform/tauri/messages';
 import {noticeStore} from '../../src/application/notices';
 
@@ -111,4 +112,26 @@ it('shows feedback and returns without waiting for the native log channel', asyn
   const id = await reportFailure({category: 'save-failed'});
   expect(noticeStore.list()[0]?.diagnosticId).toBe(id);
   await vi.waitFor(() => expect(tauriMessagePort.health().status).toBe('timeout'));
+});
+
+it('fills in the locator when the caller did not give one', async () => {
+  native.isTauri.mockReturnValue(true);
+  setOurMatcher((file) => file.includes('/src/') || file.includes('/tests/'));
+  try {
+    await reportFailure({category: 'save-failed'});
+    await vi.waitFor(() =>
+      expect(native.invoke.mock.calls.some(([command]) => command === 'log_event')).toBe(true),
+    );
+    const payload = String(
+      native.invoke.mock.calls.find(([command]) => command === 'log_event')?.[1]?.payload,
+    );
+    // **定位串自动补上了** ✓ ⇒ ⇒ 日志能指出是哪儿 ✓ ⇒ ⇒ 不用每个调用点手写 ✓ ⇒ ⇒
+    // 也就不会"漏填一个就没有定位" ✓。
+    expect(payload).toContain('source');
+    // **落在调用它的那一处** ✓ ⇒ ⇒ 不是失败出口自己 ✓。
+    expect(payload).toContain('failures.test.ts');
+    expect(payload).not.toContain('platform/failures.ts');
+  } finally {
+    setOurMatcher(isOurBuildUrl);
+  }
 });

@@ -1,5 +1,6 @@
 import {ErrorCapture} from '../../../application/capture';
 import type {MessageCategory, WebEvent} from '../../../application/messages';
+import {ourFrame} from '../callsite';
 import {reportFailure} from '../failures';
 import {resolveMessagePort} from '../messages';
 
@@ -94,7 +95,7 @@ export function reactSource(componentStack?: string | null): string {
  */
 export function rejectionSource(reason: unknown): string {
   if (reason instanceof Error) {
-    const frame = topFrame(reason.stack);
+    const frame = ourFrame(reason.stack);
     // **不含空格** ✓ ⇒ ⇒ 日志里那一条**始终是一行** ✓ ⇒ ⇒ 不用靠"续写上一个字段"还原 ✓。
     // **没有可指的位置就明说"没有"** ✓ ⇒ ⇒ 不与"不是 Error"混成一句话 ✓ ⇒ ⇒
     // 一次就能分清是"栈不可用"还是"根本没有栈" ✓。
@@ -116,38 +117,12 @@ function kindOf(reason: unknown): string {
 /**
  * **我们现在在哪儿** ✓：**调用点那一帧** ✓ ⇒ ⇒ 自己接住的那个失败也能定位 ✓ ⇒ ⇒
  * **不用手写行号** ✓ ⇒ ⇒ 行号会随改动烂掉 ✓ ⇒ ⇒ 这一条不会 ✓。
+ *
+ * **跳过它自己那一帧** ✓ ⇒ ⇒ 落在**调用它的那一处**身上 ✓ ⇒ ⇒
+ * 定位不会指着这个捕获器自己 ✓ ⇒ ⇒ 哪儿出问题与哪儿捕获是两回事 ✓。
  */
 export function hereSource(): string {
-  return topFrame(new Error().stack) ?? 'unknown';
-}
-
-/**
- * **栈顶那一帧的位置** ✓：**文件 + 行** ✓ ⇒ ⇒ **在我们自己的构建产物里** ✓ ⇒ ⇒
- * **不含用户数据** ✓ ⇒ ⇒ **可以进日志** ✓（基座 §5.2 ✓）。
- *
- * **只认我们自己的构建产物** ✓ ⇒ ⇒ **别的来源的帧一律不取** ✓ ⇒ ⇒
- * 一个 `file://` 的用户路径**不会进日志** ✓ ⇒ ⇒ 那句"不含用户数据"从此是
- * **约束** ✓ ⇒ ⇒ 不是假设 ✓。
- *
- * **为什么用 scheme 来认** ✓：应用总是跑在 http(s) 上 ✓ ⇒ ⇒ 我们的构建产物的帧
- * 就是 http(s) 的 URL ✓ ⇒ ⇒ **别的 scheme 一定不是我们的** ✓ ⇒ ⇒ 跳过它 ✓
- * ⇒ ⇒ 继续往下找我们的那一帧 ✓ ⇒ ⇒ 实在没有就只说异常种类 ✓。
- */
-function topFrame(stack: string | undefined): string | undefined {
-  if (!stack) return undefined;
-  for (const line of stack.split('\n')) {
-    const match = /\(?([^()\s]+):(\d+):(\d+)\)?\s*$/.exec(line.trim());
-    if (!match) continue;
-    const file = match[1];
-    if (!file || !isOurBuildUrl(file)) continue;
-    return `${file}:${match[2]}`;
-  }
-  return undefined;
-}
-
-/** 那个文件是不是我们自己的构建产物 ✓。 */
-function isOurBuildUrl(file: string): boolean {
-  return file.startsWith('http://') || file.startsWith('https://');
+  return ourFrame(new Error().stack, 1) ?? 'unknown';
 }
 
 /**

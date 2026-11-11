@@ -1,6 +1,7 @@
 import {it, expect, vi, afterEach} from 'vitest';
 import {ErrorCapture, describeError} from '../../src/application/capture';
-import {rejectionSource} from '../../src/core/platform/web/capture';
+import {hereSource, rejectionSource} from '../../src/core/platform/web/capture';
+import {isOurBuildUrl, setOurMatcher} from '../../src/core/platform/callsite';
 import type {ProblemReport} from '../../src/application/messages';
 
 /**
@@ -142,4 +143,16 @@ it('the rejection source says what kind of value was rejected', () => {
   expect(rejectionSource({code: 7})).toBe('rejection:object');
   // **内容一个字都不带** ✓ ⇒ ⇒ 不落用户数据 ✓。
   expect(rejectionSource('/Users/someone/notes.md')).not.toContain('notes.md');
+});
+
+it('hereSource points at the caller, not at the capture itself', () => {
+  setOurMatcher((file) => file.includes('/src/') || file.includes('/tests/'));
+  try {
+    const source = hereSource();
+    // **落在调用它的那一处** ✓ ⇒ ⇒ 定位说的是"哪儿出问题" ✓ ⇒ ⇒ 不是"哪儿捕获" ✓。
+    expect(source).toContain('capture.test.ts');
+    expect(source).not.toContain('platform/web/capture.ts');
+  } finally {
+    setOurMatcher(isOurBuildUrl);
+  }
 });
