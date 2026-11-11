@@ -53,6 +53,8 @@ pub struct LogConfig {
     pub format: String,
     /// 开发排障显式开启终端镜像。
     pub stdout: bool,
+    /// 页面等待单次日志接收的上限（毫秒，10..=2000）。
+    pub call_timeout_ms: u64,
 }
 
 impl Default for LogConfig {
@@ -61,6 +63,7 @@ impl Default for LogConfig {
             level: String::new(),
             format: "text".to_owned(),
             stdout: false,
+            call_timeout_ms: 200,
         }
     }
 }
@@ -155,6 +158,9 @@ impl Config {
     /// （给的不是正整数就按默认值 ✓），配置继承它 ✓：改输入的通道换了 ✓，
     /// 输入的**约束**不该跟着换 ✓。
     pub fn normalize(&mut self) {
+        if !(10..=2000).contains(&self.log.call_timeout_ms) {
+            self.log.call_timeout_ms = LogConfig::default().call_timeout_ms;
+        }
         let defaults = ProbeConfig::default();
         if self.probe.page_ready_timeout_seconds == 0 {
             self.probe.page_ready_timeout_seconds = defaults.page_ready_timeout_seconds;
@@ -291,6 +297,30 @@ mod tests {
         // 没写的字段仍走默认值。
         assert_eq!(config.probe.page_ready_timeout_seconds, 60);
         assert_eq!(config.probe.sample, ProbeConfig::default().sample);
+    }
+
+    #[test]
+    fn log_call_timeout_is_bounded_and_defaults_to_200_ms() {
+        assert_eq!(parse("").unwrap().log.call_timeout_ms, 200);
+        for value in [10, 200, 2000] {
+            assert_eq!(
+                parse(&format!("[log]\ncall_timeout_ms = {value}"))
+                    .unwrap()
+                    .log
+                    .call_timeout_ms,
+                value
+            );
+        }
+        for value in [0, 9, 2001] {
+            assert_eq!(
+                parse(&format!("[log]\ncall_timeout_ms = {value}"))
+                    .unwrap()
+                    .log
+                    .call_timeout_ms,
+                200
+            );
+        }
+        assert!(parse("[log]\ncall_timeout_ms = -1").is_err());
     }
 
     #[test]

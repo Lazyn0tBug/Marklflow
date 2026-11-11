@@ -48,7 +48,7 @@ export interface FailureInput {
  */
 export async function reportFailure(input: FailureInput): Promise<string> {
   const diagnosticId = noticeStore.nextDiagnosticId();
-  await reportToPort(input, diagnosticId);
+  void reportToPort(input, diagnosticId);
   if (notifiesUser(input.category)) {
     noticeStore.push({
       tone: input.tone ?? 'error',

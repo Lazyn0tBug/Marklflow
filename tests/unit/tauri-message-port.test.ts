@@ -1,5 +1,5 @@
-import {describe, expect, it, vi, beforeEach} from 'vitest';
-import {tauriMessagePort} from '../../src/core/platform/tauri/messages';
+import {describe, expect, it, vi, beforeEach, afterEach} from 'vitest';
+import {createTauriMessagePort} from '../../src/core/platform/tauri/messages';
 import {pageBuildCommit} from '../../src/core/platform/buildInfo';
 
 /**
@@ -11,13 +11,18 @@ import {pageBuildCommit} from '../../src/core/platform/buildInfo';
  * **原始文本不进载荷** ✓ ⇒ ⇒ 用户数据不落日志 ✓（基座 §5.2 ✓）。
  */
 
+let tauriMessagePort: ReturnType<typeof createTauriMessagePort>;
 const native = vi.hoisted(() => ({isTauri: vi.fn(), invoke: vi.fn()}));
 vi.mock('@tauri-apps/api/core', () => native);
 
 beforeEach(() => {
   vi.resetAllMocks();
   native.isTauri.mockReturnValue(true);
-  native.invoke.mockResolvedValue(undefined);
+  native.invoke.mockResolvedValue('accepted');
+  tauriMessagePort = createTauriMessagePort(
+    async () => native,
+    async () => 20,
+  );
 });
 
 const payloadOf = (): Record<string, unknown> =>
@@ -44,4 +49,74 @@ describe('桌面消息端口', () => {
     expect(payloadOf().error_category).toBe('rejection');
     expect(payloadOf().source).toBe('TypeError@app.js:1');
   });
+});
+
+afterEach(() => vi.useRealTimers());
+it.each(['accepted', 'dropped', 'rejected'] as const)(
+  'consumes the %s receipt',
+  async (receipt) => {
+    native.invoke.mockResolvedValue(receipt);
+    await tauriMessagePort.event({kind: 'page_ready'});
+    expect(tauriMessagePort.health()).toEqual({status: receipt});
+    expect(native.invoke).toHaveBeenCalledTimes(1);
+  },
+);
+it('distinguishes invalid receipts, unavailable bridges and exceptions without retry', async () => {
+  native.invoke.mockResolvedValue('saved');
+  await tauriMessagePort.event({kind: 'page_ready'});
+  expect(tauriMessagePort.health().status).toBe('invalid-receipt');
+  native.isTauri.mockReturnValue(false);
+  await tauriMessagePort.event({kind: 'page_ready'});
+  expect(tauriMessagePort.health().status).toBe('unavailable');
+  native.isTauri.mockReturnValue(true);
+  native.invoke.mockRejectedValue(new Error('bridge unavailable'));
+  await tauriMessagePort.event({kind: 'page_ready'});
+  expect(tauriMessagePort.health().status).toBe('failed');
+  expect(native.invoke).toHaveBeenCalledTimes(2);
+});
+it('bounds hung reception and ignores its late result', async () => {
+  vi.useFakeTimers();
+  let finish: ((value: unknown) => void) | undefined;
+  native.invoke.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const pending = tauriMessagePort.event({kind: 'page_ready'});
+  await vi.advanceTimersByTimeAsync(20);
+  await pending;
+  expect(tauriMessagePort.health().status).toBe('timeout');
+  native.invoke.mockResolvedValue('rejected');
+  await tauriMessagePort.event({kind: 'page_ready'});
+  finish?.('accepted');
+  await Promise.resolve();
+  expect(tauriMessagePort.health().status).toBe('rejected');
+});
+it('bounds configuration loading and uses the default timeout', async () => {
+  vi.useFakeTimers();
+  const port = createTauriMessagePort(
+    async () => native,
+    () => new Promise(() => {}),
+  );
+  const pending = port.event({kind: 'page_ready'});
+  await vi.advanceTimersByTimeAsync(200);
+  await pending;
+  expect(port.health().status).toBe('accepted');
+});
+it('does not let an older concurrent send replace the newest status', async () => {
+  let finish: ((value: unknown) => void) | undefined;
+  native.invoke.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const old = tauriMessagePort.event({kind: 'page_ready'});
+  await vi.waitFor(() => expect(native.invoke).toHaveBeenCalledTimes(1));
+  native.invoke.mockResolvedValue('dropped');
+  await tauriMessagePort.event({kind: 'page_ready'});
+  finish?.('accepted');
+  await old;
+  expect(tauriMessagePort.health().status).toBe('dropped');
 });

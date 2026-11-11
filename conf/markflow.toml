@@ -17,6 +17,8 @@ level = "info"
 format = "json"
 # 终端镜像仅用于显式排障。
 stdout = false
+# 页面日志接收等待上限，范围 10..2000 ms；不限制业务命令。
+call_timeout_ms = 200
 
 [export]
 # 导出的根：web（浏览器打印对话框 ✓）或 native（Windows 的静默路径 ✓）。

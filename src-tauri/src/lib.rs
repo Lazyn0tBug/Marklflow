@@ -58,6 +58,7 @@ pub struct RuntimePrefs {
     export_root: &'static str,
     /// 这个平台有没有静默 PDF 的能力 ✓（Windows 之外没有 ✓）。
     native_pdf_available: bool,
+    log_call_timeout_ms: u64,
 }
 
 /// 取运行期配置里前端要知道的那些 ✓。
@@ -66,6 +67,7 @@ fn get_runtime_prefs() -> RuntimePrefs {
     RuntimePrefs {
         export_root: config::config().export.effective_root(),
         native_pdf_available: cfg!(target_os = "windows"),
+        log_call_timeout_ms: config::config().log.call_timeout_ms,
     }
 }
 

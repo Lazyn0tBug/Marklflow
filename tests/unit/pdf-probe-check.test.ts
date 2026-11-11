@@ -702,3 +702,29 @@ describe('pdf-probe 校验器', () => {
     expect(probeRun?.guarded_commands).not.toContain('get_platform_info');
   });
 });
+
+it('accepts zeroed reason counters without missing legacy counts causing a false loss', () => {
+  const records = healthyProbeRun().map((entry) => {
+    if (entry.event !== 'log_health') return entry;
+    const {dropped: _dropped, rejected: _rejected, ...fields} = entry.fields;
+    return {
+      ...entry,
+      fields: {
+        ...fields,
+        web_rate_limited: '0',
+        web_rejected: '0',
+        queue_dropped: '0',
+        record_too_long: '0',
+      },
+    };
+  });
+  expect(diagnosticsOf(evaluate(records, healthyDefaultRun()), 'records-lost')).toHaveLength(0);
+  const lost = records.map((entry) =>
+    entry.event === 'log_health'
+      ? {...entry, fields: {...entry.fields, queue_dropped: '1'}}
+      : entry,
+  );
+  expect(diagnosticsOf(evaluate(lost, healthyDefaultRun()), 'records-lost').length).toBeGreaterThan(
+    0,
+  );
+});

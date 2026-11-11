@@ -359,8 +359,10 @@ fn assemble(app: &tauri::AppHandle, config: &Config, cwd: &Path) -> Result<(), P
         logging::log_span().in_scope(|| tracing::info!(
             event = "log_health",
             observed_by = "probe",
-            dropped = health.dropped,
-            rejected = health.rejected,
+            web_rejected = health.web_rejected,
+            web_rate_limited = health.web_rate_limited,
+            queue_dropped = health.queue_dropped,
+            record_too_long = health.record_too_long,
             write_failures = health.write_failures,
             rotate_failures = health.rotate_failures,
             delete_failures = health.delete_failures,

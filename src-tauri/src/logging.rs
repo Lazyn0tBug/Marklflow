@@ -14,7 +14,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender, TrySendError};
+use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError, SyncSender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -256,15 +256,14 @@ const WEB_GLOBAL_PER_SECOND: u32 = 100;
 /// 进程内的日志健康状态。计数有界，不跨崩溃保留。
 #[derive(Default)]
 pub struct Health {
-    /// 被丢弃的计数 ✓ —— **两处都记在这里** ✓：
-    /// web 事件因**超限**被丢弃 ✓（限流 ✓），日志记录因**队列满**被丢弃 ✓。
-    /// **两者的分母不同** ✓，所以这个数**不能**当成"丢了多少条日志" ✓。
-    pub dropped: AtomicU64,
-    /// 被拒收的计数 ✓ —— **两处都记在这里** ✓：
-    /// web 事件**不合规**被拒收 ✓（载荷超大 ✓、身份不在允许范围 ✓、
-    /// 载荷解析失败 ✓、`call_id` 超长 ✓），日志记录**超长**被拒收 ✓。
-    /// **两者的分母不同** ✓，所以这个数**不能**当成"拒了多少条日志" ✓。
-    pub rejected: AtomicU64,
+    /// 页面载荷不合规或来源不允许。
+    pub web_rejected: AtomicU64,
+    /// 页面事件触发限流。
+    pub web_rate_limited: AtomicU64,
+    /// 日志发送队列满或已关闭。
+    pub queue_dropped: AtomicU64,
+    /// 编码后的单条日志过长。
+    pub record_too_long: AtomicU64,
     /// 写入失败次数。
     pub write_failures: AtomicU64,
     /// 轮转失败次数。
@@ -279,13 +278,13 @@ pub struct Health {
 
 /// 健康状态的一次快照。
 ///
-/// **字段与 `Health` 一一对应** ✓；`dropped` 与 `rejected` 的口径见那里的说明 ✓。
+/// 四种丢弃/拒收按原因分开，不重复累加。
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HealthSnapshot {
-    /// 同 `Health::dropped` ✓：**web 事件与日志记录两处都记** ✓。
-    pub dropped: u64,
-    /// 同 `Health::rejected` ✓：**web 事件与日志记录两处都记** ✓。
-    pub rejected: u64,
+    pub web_rejected: u64,
+    pub web_rate_limited: u64,
+    pub queue_dropped: u64,
+    pub record_too_long: u64,
     pub write_failures: u64,
     pub rotate_failures: u64,
     pub delete_failures: u64,
@@ -310,8 +309,10 @@ static LOG_SPAN: OnceLock<tracing::Span> = OnceLock::new();
 impl Health {
     pub const fn new() -> Self {
         Self {
-            dropped: AtomicU64::new(0),
-            rejected: AtomicU64::new(0),
+            web_rejected: AtomicU64::new(0),
+            web_rate_limited: AtomicU64::new(0),
+            queue_dropped: AtomicU64::new(0),
+            record_too_long: AtomicU64::new(0),
             write_failures: AtomicU64::new(0),
             rotate_failures: AtomicU64::new(0),
             delete_failures: AtomicU64::new(0),
@@ -322,8 +323,10 @@ impl Health {
 
     fn snapshot(&self) -> HealthSnapshot {
         HealthSnapshot {
-            dropped: self.dropped.load(Ordering::Relaxed),
-            rejected: self.rejected.load(Ordering::Relaxed),
+            web_rejected: self.web_rejected.load(Ordering::Relaxed),
+            web_rate_limited: self.web_rate_limited.load(Ordering::Relaxed),
+            queue_dropped: self.queue_dropped.load(Ordering::Relaxed),
+            record_too_long: self.record_too_long.load(Ordering::Relaxed),
             write_failures: self.write_failures.load(Ordering::Relaxed),
             rotate_failures: self.rotate_failures.load(Ordering::Relaxed),
             delete_failures: self.delete_failures.load(Ordering::Relaxed),
@@ -382,16 +385,20 @@ struct WebLimiters {
     global: RateLimiter,
 }
 
-static WEB_LIMITERS: OnceLock<std::sync::Mutex<WebLimiters>> = OnceLock::new();
-
-/// 限流判定：先看进程总量，再看身份对。**只有通过准入的身份才建桶**，拒绝者不建无限身份桶。
-fn web_rate_allowed(identity: &crate::source_guard::Identity) -> bool {
-    let limiters = WEB_LIMITERS.get_or_init(|| {
-        Mutex::new(WebLimiters {
+impl Default for WebLimiters {
+    fn default() -> Self {
+        Self {
             per_identity: HashMap::new(),
             global: RateLimiter::new(WEB_GLOBAL_PER_SECOND),
-        })
-    });
+        }
+    }
+}
+
+/// 限流判定：先看进程总量，再看身份对。**只有通过准入的身份才建桶**，拒绝者不建无限身份桶。
+fn web_rate_allowed(
+    identity: &crate::source_guard::Identity,
+    limiters: &Mutex<WebLimiters>,
+) -> bool {
     let Ok(mut limiters) = limiters.lock() else {
         return false;
     };
@@ -526,6 +533,7 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
         },
         sender: sender.clone(),
         health: health.clone(),
+        web_limiters: Arc::new(Mutex::new(WebLimiters::default())),
     };
     let _ = EMITTER.set(emitter.clone());
     let layer = RecordLayer { emitter, level };
@@ -566,6 +574,7 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
             log_level = level_name(level),
             log_format = if json { "json" } else { "text" },
             log_stdout = config.stdout,
+            log_call_timeout_ms = config.call_timeout_ms,
         )
     });
 }
@@ -603,8 +612,10 @@ pub fn shutdown(feature: &str) {
         tracing::info!(
             event = "log_health",
             observed_by = "shutdown",
-            dropped = health.dropped,
-            rejected = health.rejected,
+            web_rejected = health.web_rejected,
+            web_rate_limited = health.web_rate_limited,
+            queue_dropped = health.queue_dropped,
+            record_too_long = health.record_too_long,
             write_failures = health.write_failures,
             rotate_failures = health.rotate_failures,
             delete_failures = health.delete_failures,
@@ -667,19 +678,19 @@ fn record_web_event_for(
     // 计数记在发送口自己的健康实例上：丢弃与拒收要显形，不能只存在于限流器里。
     let health = emitter.health.as_ref();
     if payload.len() > MAX_WEB_REQUEST_BYTES {
-        health.rejected.fetch_add(1, Ordering::Relaxed);
+        health.web_rejected.fetch_add(1, Ordering::Relaxed);
         return WEB_REJECTED;
     }
     if !log_writer_allowed(identity) {
-        health.rejected.fetch_add(1, Ordering::Relaxed);
+        health.web_rejected.fetch_add(1, Ordering::Relaxed);
         return WEB_REJECTED;
     }
-    if !web_rate_allowed(identity) {
-        health.dropped.fetch_add(1, Ordering::Relaxed);
+    if !web_rate_allowed(identity, &emitter.web_limiters) {
+        health.web_rate_limited.fetch_add(1, Ordering::Relaxed);
         return WEB_DROPPED;
     }
     let Ok(event) = serde_json::from_str::<WebEventPayload>(&payload) else {
-        health.rejected.fetch_add(1, Ordering::Relaxed);
+        health.web_rejected.fetch_add(1, Ordering::Relaxed);
         return WEB_REJECTED;
     };
     if event
@@ -688,7 +699,7 @@ fn record_web_event_for(
         .map(|call_id| call_id.len() > MAX_CALL_ID_LEN)
         .unwrap_or(false)
     {
-        health.rejected.fetch_add(1, Ordering::Relaxed);
+        health.web_rejected.fetch_add(1, Ordering::Relaxed);
         return WEB_REJECTED;
     }
     // 只放业务字段：origin 与身份由发送口统一加（页面不能覆盖）。
@@ -747,7 +758,7 @@ fn record_web_event_for(
     });
     // 外层事件名固定为 web_event；业务事件在 page_event 字段内，不能变成原生事件名。
     // 外层字段（origin、身份）由发送口生成，页面不能覆盖。
-    emitter.emit_web(
+    let queued = emitter.emit_web(
         level,
         "web_event",
         fields,
@@ -763,7 +774,11 @@ fn record_web_event_for(
             close_page_call_span(call_id);
         }
     }
-    WEB_ACCEPTED
+    if queued {
+        WEB_ACCEPTED
+    } else {
+        WEB_DROPPED
+    }
 }
 
 /// span 上下文：名字、id、父 id。
@@ -806,6 +821,7 @@ struct RecordEmitter {
     format: RecordFormat,
     sender: SyncSender<QueuedRecord>,
     health: Arc<Health>,
+    web_limiters: Arc<Mutex<WebLimiters>>,
 }
 
 impl Clone for RecordEmitter {
@@ -817,6 +833,7 @@ impl Clone for RecordEmitter {
             },
             sender: self.sender.clone(),
             health: self.health.clone(),
+            web_limiters: self.web_limiters.clone(),
         }
     }
 }
@@ -841,7 +858,7 @@ impl RecordEmitter {
         fields: BTreeMap<String, String>,
         span: SpanContext,
         identity: &crate::source_guard::Identity,
-    ) {
+    ) -> bool {
         let window = identity.window_label.to_string();
         let webview = identity.webview_label.to_string();
         self.emit(
@@ -854,7 +871,7 @@ impl RecordEmitter {
                 ("window_label", &window),
                 ("webview_label", &webview),
             ],
-        );
+        )
     }
 
     fn emit(
@@ -864,7 +881,7 @@ impl RecordEmitter {
         mut fields: BTreeMap<String, String>,
         span: SpanContext,
         outer: &[(&str, &str)],
-    ) {
+    ) -> bool {
         for (name, value) in outer {
             fields.insert((*name).to_owned(), (*value).to_owned());
         }
@@ -877,7 +894,7 @@ impl RecordEmitter {
                 bytes: line.into_bytes(),
                 urgent,
             },
-        );
+        )
     }
 }
 
@@ -897,17 +914,17 @@ struct QueuedRecord {
 }
 
 /// 送进队列的共用路径。
-fn push_with(sender: &SyncSender<QueuedRecord>, health: &Health, record: QueuedRecord) {
+fn push_with(sender: &SyncSender<QueuedRecord>, health: &Health, record: QueuedRecord) -> bool {
     if record.bytes.len() > MAX_RECORD_BYTES {
-        health.rejected.fetch_add(1, Ordering::Relaxed);
-        return;
+        health.record_too_long.fetch_add(1, Ordering::Relaxed);
+        return false;
     }
     match sender.try_send(record) {
-        Ok(()) => {}
-        Err(TrySendError::Full(_)) => {
-            health.dropped.fetch_add(1, Ordering::Relaxed);
+        Ok(()) => true,
+        Err(_) => {
+            health.queue_dropped.fetch_add(1, Ordering::Relaxed);
+            false
         }
-        Err(TrySendError::Disconnected(_)) => {}
     }
 }
 
@@ -964,12 +981,14 @@ fn callsite_location(meta: &tracing::Metadata<'_>) -> Option<String> {
 /// **位置串** ✓：**我们自己的源文件与行** ✓ ⇒ ⇒ **空格换成下划线** ✓ ⇒ ⇒
 /// 日志里那一条**始终是一行** ✓ ⇒ ⇒ 与页面侧的定位串同一套规矩 ✓。
 fn location_of(file: &str, line: u32) -> String {
-    format!("{file}:{line}").replace('\\', "/").replace(' ', "_")
+    format!("{file}:{line}")
+        .replace('\\', "/")
+        .replace(' ', "_")
 }
 
 /// 写线程：追加、轮转、同步到 stdout、健康摘要。
 ///
-/// 文件不可用时线程照常运行，只镜像 stdout（目录不可创建不该让日志整体消失）。
+/// 文件不可用时线程继续消费记录；是否镜像 stdout 仍仅由配置决定。
 fn writer_loop(
     receiver: Receiver<QueuedRecord>,
     path: Option<PathBuf>,
@@ -1067,8 +1086,10 @@ fn write_health_summary(
     stdout_enabled: bool,
 ) {
     let snapshot = health.snapshot();
-    if snapshot.dropped == 0
-        && snapshot.rejected == 0
+    if snapshot.web_rejected == 0
+        && snapshot.web_rate_limited == 0
+        && snapshot.queue_dropped == 0
+        && snapshot.record_too_long == 0
         && snapshot.write_failures == 0
         && snapshot.rotate_failures == 0
         && snapshot.delete_failures == 0
@@ -1078,8 +1099,19 @@ fn write_health_summary(
         return;
     }
     let mut fields = BTreeMap::new();
-    fields.insert("dropped".to_owned(), snapshot.dropped.to_string());
-    fields.insert("rejected".to_owned(), snapshot.rejected.to_string());
+    fields.insert("web_rejected".to_owned(), snapshot.web_rejected.to_string());
+    fields.insert(
+        "web_rate_limited".to_owned(),
+        snapshot.web_rate_limited.to_string(),
+    );
+    fields.insert(
+        "queue_dropped".to_owned(),
+        snapshot.queue_dropped.to_string(),
+    );
+    fields.insert(
+        "record_too_long".to_owned(),
+        snapshot.record_too_long.to_string(),
+    );
     fields.insert(
         "write_failures".to_owned(),
         snapshot.write_failures.to_string(),
@@ -1856,21 +1888,27 @@ mod tests {
     #[test]
     fn over_long_records_are_rejected_and_a_full_queue_drops_with_a_count() {
         let (emitter, receiver, health) = test_emitter(1);
-        let rejected_before = health.rejected.load(Ordering::Relaxed);
-        let dropped_before = health.dropped.load(Ordering::Relaxed);
+        let rejected_before = health.record_too_long.load(Ordering::Relaxed);
+        let dropped_before = health.queue_dropped.load(Ordering::Relaxed);
         // 超长记录被拒收：既不入队也不截断（字段值超限即编码后超限）。
         let mut huge = BTreeMap::new();
         huge.insert("event".to_owned(), "source_decision".to_owned());
         huge.insert("body".to_owned(), "x".repeat(MAX_RECORD_BYTES + 1));
         emitter.emit_native("INFO", "source_decision", huge, None);
-        assert_eq!(health.rejected.load(Ordering::Relaxed), rejected_before + 1);
+        assert_eq!(
+            health.record_too_long.load(Ordering::Relaxed),
+            rejected_before + 1
+        );
         assert!(receiver.try_recv().is_err());
         // 队列满时丢弃并计数。
         let mut small = BTreeMap::new();
         small.insert("event".to_owned(), "source_decision".to_owned());
         emitter.emit_native("INFO", "source_decision", small.clone(), None);
         emitter.emit_native("INFO", "source_decision", small, None);
-        assert_eq!(health.dropped.load(Ordering::Relaxed), dropped_before + 1);
+        assert_eq!(
+            health.queue_dropped.load(Ordering::Relaxed),
+            dropped_before + 1
+        );
     }
 
     fn web_identity(window: &str, webview: &str) -> crate::source_guard::Identity {
@@ -1888,8 +1926,41 @@ mod tests {
             },
             sender,
             health: health.clone(),
+            web_limiters: Arc::new(Mutex::new(WebLimiters::default())),
         };
         (emitter, receiver, health)
+    }
+
+    #[test]
+    fn web_receipts_reflect_enqueue_and_counts_have_one_cause() {
+        let (emitter, receiver, health) = test_emitter(1);
+        let identity = web_identity("main", "main");
+        let payload = r#"{"event":"page_ready"}"#.to_owned();
+        assert_eq!(
+            record_web_event_for(&identity, payload.clone(), &emitter),
+            WEB_ACCEPTED
+        );
+        assert_eq!(
+            record_web_event_for(&identity, payload.clone(), &emitter),
+            WEB_DROPPED
+        );
+        let snapshot = health.snapshot();
+        assert_eq!(snapshot.queue_dropped, 1);
+        assert_eq!(snapshot.web_rejected, 0);
+        assert_eq!(snapshot.web_rate_limited, 0);
+        assert_eq!(snapshot.record_too_long, 0);
+        drop(receiver);
+        assert_eq!(
+            record_web_event_for(&identity, payload, &emitter),
+            WEB_DROPPED
+        );
+        assert_eq!(health.snapshot().queue_dropped, 2);
+        assert_eq!(
+            record_web_event_for(&identity, "{}".to_owned(), &emitter),
+            WEB_REJECTED
+        );
+        assert_eq!(health.snapshot().web_rejected, 1);
+        assert_eq!(health.snapshot().queue_dropped, 2);
     }
 
     #[test]
@@ -1964,7 +2035,7 @@ mod tests {
         // 应用自身的失败（`export-failed` ✓）现在在枚举里 ✓ ⇒ ⇒ 整条载荷不再被拒收 ✓。
         // 这条是 N5 的牙齿 ✓：改之前这里会被拒收 ✓ ⇒ ⇒ 事件消失 ✓。
         let (emitter, receiver, health) = test_emitter(8);
-        let before = health.rejected.load(Ordering::Relaxed);
+        let before = health.web_rejected.load(Ordering::Relaxed);
         assert_eq!(
             record_web_event_for(
                 &web_identity("main", "main"),
@@ -1973,7 +2044,7 @@ mod tests {
             ),
             WEB_ACCEPTED
         );
-        assert_eq!(health.rejected.load(Ordering::Relaxed), before);
+        assert_eq!(health.web_rejected.load(Ordering::Relaxed), before);
         // 日志里的类别名就是页面发的那个 ✓。
         let record = receiver.try_recv().expect("记录已入队");
         let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
@@ -2032,7 +2103,7 @@ mod tests {
     fn a_page_error_with_an_unknown_category_is_rejected() {
         // 不在封闭词表里的类别：整条载荷拒收 ✓ ⇒ ⇒ 页面不能自造类别 ✓。
         let (emitter, _receiver, health) = test_emitter(8);
-        let before = health.rejected.load(Ordering::Relaxed);
+        let before = health.web_rejected.load(Ordering::Relaxed);
         assert_eq!(
             record_web_event_for(
                 &web_identity("main", "main"),
@@ -2041,7 +2112,7 @@ mod tests {
             ),
             WEB_REJECTED
         );
-        assert!(health.rejected.load(Ordering::Relaxed) > before);
+        assert!(health.web_rejected.load(Ordering::Relaxed) > before);
     }
 
     #[test]
@@ -2059,7 +2130,7 @@ mod tests {
     #[test]
     fn a_page_event_carrying_the_product_print_is_not_rejected() {
         let (emitter, _receiver, health) = test_emitter(8);
-        let before = health.rejected.load(Ordering::Relaxed);
+        let before = health.web_rejected.load(Ordering::Relaxed);
         assert_eq!(
             record_web_event_for(
                 &web_identity("main", "main"),
@@ -2069,13 +2140,13 @@ mod tests {
             ),
             WEB_ACCEPTED
         );
-        assert_eq!(health.rejected.load(Ordering::Relaxed), before);
+        assert_eq!(health.web_rejected.load(Ordering::Relaxed), before);
     }
 
     #[test]
     fn web_events_are_admitted_only_for_allowed_identities() {
         let (emitter, _receiver, health) = test_emitter(8);
-        let before = health.rejected.load(Ordering::Relaxed);
+        let before = health.web_rejected.load(Ordering::Relaxed);
         // 允许范围内的身份：主窗口。
         assert_eq!(
             record_web_event_for(
@@ -2094,19 +2165,19 @@ mod tests {
             ),
             WEB_REJECTED
         );
-        assert!(health.rejected.load(Ordering::Relaxed) > before);
+        assert!(health.web_rejected.load(Ordering::Relaxed) > before);
     }
 
     #[test]
     fn oversized_web_requests_are_rejected_before_parsing() {
         let (emitter, _receiver, health) = test_emitter(8);
-        let before = health.rejected.load(Ordering::Relaxed);
+        let before = health.web_rejected.load(Ordering::Relaxed);
         let oversized = "x".repeat(MAX_WEB_REQUEST_BYTES + 1);
         assert_eq!(
             record_web_event_for(&web_identity("main", "main"), oversized, &emitter),
             WEB_REJECTED
         );
-        assert!(health.rejected.load(Ordering::Relaxed) > before);
+        assert!(health.web_rejected.load(Ordering::Relaxed) > before);
     }
 
     #[test]
@@ -2115,7 +2186,7 @@ mod tests {
         let (emitter, _receiver, health) = test_emitter(64);
         let identity = web_identity("main", "main");
         let payload = r#"{"event":"page_ready"}"#.to_owned();
-        let before = health.dropped.load(Ordering::Relaxed);
+        let before = health.web_rate_limited.load(Ordering::Relaxed);
         let mut accepted = 0;
         let mut dropped = 0;
         for _ in 0..(WEB_PER_IDENTITY_PER_SECOND + 5) {
@@ -2127,7 +2198,7 @@ mod tests {
         }
         assert!(dropped > 0);
         assert!(accepted <= WEB_PER_IDENTITY_PER_SECOND as usize);
-        assert!(health.dropped.load(Ordering::Relaxed) > before);
+        assert!(health.web_rate_limited.load(Ordering::Relaxed) > before);
     }
 
     #[test]

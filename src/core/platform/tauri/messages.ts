@@ -1,48 +1,99 @@
 import type {MessagePort, ProblemReport, WebEvent} from '../../../application/messages';
 import {pageBuildCommit} from '../buildInfo';
+import {readRuntimePrefs} from './runtime';
 
-/**
- * 桌面构建的出口 ✓：经 `log_event` 进原生日志基座 ✓ ⇒ **发类别与定位串** ✓
- * （基座 §5.2：**不传原文 message** ✓，**传一个有界的定位串** ✓），**原文留在控制台** ✓。
- *
- * **定位串有界** ✓ ⇒ ⇒ 日志里那一条不会变长 ✓ ⇒ ⇒ **我们自己构建产物里的位置** ✓ ⇒ ⇒
- * **不含用户数据** ✓ ⇒ ⇒ **看日志就能定位** ✓ ⇒ ⇒ **不必再开控制台找那一行** ✓。
- *
- * **带页面自己的构建标识** ✓ ⇒ ⇒ 日志能对出**页面与原生侧是不是同一个构建** ✓ ⇒ ⇒
- * 不用问人那个包是不是新的 ✓。
- *
- * 应用层不碰 log_event ✓：走这个端口 ✓。
- */
-export const tauriMessagePort: MessagePort = {
-  /**
-   * **业务事件进原生日志** ✓ ⇒ ⇒ 与页面侧的错误**同一份日志** ✓ ⇒ ⇒
-   * 页面那次调用与原生侧那条命令记录**对得上** ✓ ⇒ ⇒ 出了问题能一路串起来 ✓。
-   *
-   * **只发那几样字段** ✓ ⇒ ⇒ 载荷仍是封闭形状 ✓ ⇒ ⇒ 原生侧未知的一律拒收 ✓。
-   */
-  async event(event: WebEvent): Promise<void> {
-    const native = await import('@tauri-apps/api/core');
-    if (!native.isTauri()) return;
-    await native.invoke('log_event', {
-      payload: JSON.stringify({
+export type LogChannelStatus =
+  | 'idle'
+  | 'accepted'
+  | 'dropped'
+  | 'rejected'
+  | 'unavailable'
+  | 'timeout'
+  | 'failed'
+  | 'invalid-receipt';
+type NativeBridge = Pick<typeof import('@tauri-apps/api/core'), 'isTauri' | 'invoke'>;
+const DEFAULT_TIMEOUT_MS = 200;
+const TIMEOUT = Symbol('log-timeout');
+
+/** Bound only the wait: late IPC completion cannot change the settled result. */
+async function within<T>(work: Promise<T>, timeoutMs: number): Promise<T | typeof TIMEOUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<typeof TIMEOUT>((resolve) => {
+        timer = setTimeout(() => resolve(TIMEOUT), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** One last status, no retry queue and no payload retained. accepted means enqueued, not saved. */
+export function createTauriMessagePort(
+  loadNative: () => Promise<NativeBridge> = () => import('@tauri-apps/api/core'),
+  readTimeout: () => Promise<number | undefined> = async () =>
+    (await readRuntimePrefs())?.logCallTimeoutMs,
+): MessagePort & {health(): Readonly<{status: LogChannelStatus}>} {
+  let status: LogChannelStatus = 'idle';
+  let latest = 0;
+  let timeout: Promise<number> | undefined;
+  function configuredTimeout(): Promise<number> {
+    timeout ??= within(Promise.resolve().then(readTimeout), DEFAULT_TIMEOUT_MS)
+      .then((value) =>
+        typeof value === 'number' && Number.isInteger(value) && value >= 10 && value <= 2000
+          ? value
+          : DEFAULT_TIMEOUT_MS,
+      )
+      .catch(() => DEFAULT_TIMEOUT_MS);
+    return timeout;
+  }
+  async function send(payload: Record<string, unknown>): Promise<void> {
+    const attempt = ++latest;
+    let next: LogChannelStatus;
+    try {
+      const budget = await configuredTimeout();
+      const result = await within(
+        (async () => {
+          const native = await loadNative();
+          if (!native.isTauri()) return 'unavailable';
+          return await native.invoke<unknown>('log_event', {
+            payload: JSON.stringify({...payload, build: pageBuildCommit}),
+          });
+        })(),
+        budget,
+      );
+      next =
+        result === TIMEOUT
+          ? 'timeout'
+          : result === 'accepted' ||
+              result === 'dropped' ||
+              result === 'rejected' ||
+              result === 'unavailable'
+            ? result
+            : 'invalid-receipt';
+    } catch {
+      next = 'failed';
+    }
+    if (attempt === latest) status = next;
+  }
+  return {
+    health: () => ({status}),
+    event: (event: WebEvent) =>
+      send({
         event: event.kind,
         ...(event.callId === undefined ? {} : {call_id: event.callId}),
         ...(event.command === undefined ? {} : {command: event.command}),
         ...(event.result === undefined ? {} : {result: event.result}),
-        build: pageBuildCommit,
       }),
-    });
-  },
-  async report(report: ProblemReport): Promise<void> {
-    const native = await import('@tauri-apps/api/core');
-    if (!native.isTauri()) return;
-    await native.invoke('log_event', {
-      payload: JSON.stringify({
+    report: (report: ProblemReport) =>
+      send({
         event: 'page_error',
         error_category: report.category,
         source: report.source?.slice(0, 200),
-        build: pageBuildCommit,
       }),
-    });
-  },
-};
+  };
+}
+
+export const tauriMessagePort = createTauriMessagePort();

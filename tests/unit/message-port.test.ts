@@ -4,7 +4,13 @@ import {tauriMessagePort} from '../../src/core/platform/tauri/messages';
 import {resolveMessagePort} from '../../src/core/platform/messages';
 
 const native = vi.hoisted(() => ({isTauri: vi.fn(), invoke: vi.fn()}));
-vi.mock('@tauri-apps/api/core', () => native);
+vi.mock('@tauri-apps/api/core', () => ({
+  isTauri: native.isTauri,
+  invoke: (command: string, args?: Record<string, unknown>) =>
+    command === 'get_runtime_prefs'
+      ? Promise.resolve({exportRoot: 'web', nativePdfAvailable: true, logCallTimeoutMs: 20})
+      : native.invoke(command, args),
+}));
 
 beforeEach(() => {
   vi.resetAllMocks();

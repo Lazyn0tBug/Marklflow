@@ -15,6 +15,7 @@ const runtimePrefsSchema = z
   .object({
     exportRoot: z.enum(['web', 'native']),
     nativePdfAvailable: z.boolean(),
+    logCallTimeoutMs: z.number().int().min(10).max(2000).default(200),
   })
   .strict();
 export type RuntimePrefs = z.infer<typeof runtimePrefsSchema>;

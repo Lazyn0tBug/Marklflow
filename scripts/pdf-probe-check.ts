@@ -831,7 +831,7 @@ function healthDiagnostics(run: RunView): Diagnostic[] {
     });
   } else {
     const failures = ['write_failures', 'rotate_failures', 'delete_failures'].filter(
-      (key) => number(health.fields[key]) !== 0,
+      (key) => (number(health.fields[key]) ?? 0) > 0,
     );
     if (failures.length) {
       diagnostics.push({
@@ -854,7 +854,14 @@ function healthDiagnostics(run: RunView): Diagnostic[] {
         message: 'stdout 输出失败（文件 sink 为主证据，不影响判定）',
       });
     }
-    const lost = ['dropped', 'rejected'].filter((key) => number(health.fields[key]) !== 0);
+    const lost = [
+      'dropped',
+      'rejected',
+      'web_rate_limited',
+      'web_rejected',
+      'queue_dropped',
+      'record_too_long',
+    ].filter((key) => (number(health.fields[key]) ?? 0) > 0);
     if (lost.length) {
       diagnostics.push({
         id: 'records-lost',
