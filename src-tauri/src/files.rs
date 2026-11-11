@@ -88,9 +88,20 @@ fn in_command_span<T>(
     call_id: Option<&str>,
     body: impl FnOnce(std::time::Instant, &'static str) -> Result<T, String>,
 ) -> Result<T, NativeFailure> {
-    let name = logging::command_name(command);
     let identity =
         source_guard::Identity::from_labels(webview.window().label(), webview.label());
+    with_command_identity(command, &identity, call_id, body)
+}
+
+// The production entry supplies the owned native identity; this seam also lets tests
+// exercise the same guard and command body without constructing a WebView.
+fn with_command_identity<T>(
+    command: WebCommand,
+    identity: &source_guard::Identity,
+    call_id: Option<&str>,
+    body: impl FnOnce(std::time::Instant, &'static str) -> Result<T, String>,
+) -> Result<T, NativeFailure> {
+    let name = logging::command_name(command);
     let valid_id = call_id.filter(|id| logging::valid_call_id(id));
     let span = logging::command_span(
         name,
@@ -100,7 +111,7 @@ fn in_command_span<T>(
     );
     span.in_scope(|| {
         let started = std::time::Instant::now();
-        if let Err(code) = ensure_allowed(name, &identity) {
+        if let Err(code) = ensure_allowed(name, identity) {
             tracing::warn!(
                 event = "operation_result",
                 result = "denied",
@@ -110,16 +121,8 @@ fn in_command_span<T>(
             );
             return Err(NativeFailure::from_code(code));
         }
-        if call_id.is_some() && valid_id.is_none() {
-            tracing::warn!(
-                event = "operation_result",
-                result = "error",
-                command = name,
-                reason_code = "invalid-payload",
-                elapsed_ms = started.elapsed().as_millis(),
-            );
-            return Err(NativeFailure::from_code("invalid-payload".to_owned()));
-        }
+        // Correlation is diagnostic only. Missing or malformed IDs are omitted
+        // from the span and never change authorization or the business result.
         body(started, name).map_err(|code| failure_with_limit(code, command))
     })
 }
@@ -1280,6 +1283,89 @@ pub fn release_native_file(
 mod tests {
     use super::*;
     use std::io::Write;
+
+    fn diagnostic_ids_do_not_change_file_writes_or_business_failures() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("ls1.md");
+        let oversized_id = "x".repeat(65);
+        for id in [Some("valid-call_1"), None, Some(""), Some("secret invalid id"), Some(oversized_id.as_str())] {
+            std::fs::write(&target, b"before").unwrap();
+            let mut writes = 0;
+            let result = with_command_identity(
+                WebCommand::WriteNativeBytes, &source_guard::MAIN_WINDOW, id,
+                |_, _| {
+                    writes += 1;
+                    commit_bytes(&target, b"after", None, false)?;
+                    Ok(5usize)
+                },
+            );
+            assert_eq!(result.unwrap(), 5);
+            assert_eq!(writes, 1);
+            assert_eq!(std::fs::read(&target).unwrap(), b"after");
+
+            let failure = with_command_identity::<()>(
+                WebCommand::WriteNativeBytes, &source_guard::MAIN_WINDOW, id,
+                |_, _| Err(FILE_TOO_LARGE.to_owned()),
+            ).unwrap_err();
+            assert_eq!(failure.code, FILE_TOO_LARGE);
+            assert_eq!(failure.limit_bytes, Some(WRITE_LIMIT as u64));
+        }
+    }
+
+    fn invalid_or_missing_ids_do_not_bypass_source_denial() {
+        for identity in [source_guard::OUTPUT_HOST, source_guard::Identity::declared("main", "other")] {
+            for id in [Some("valid-call"), None, Some("secret invalid id")] {
+                let mut invoked = false;
+                let result = with_command_identity(WebCommand::ReadNativeText, &identity, id, |_, _| {
+                    invoked = true;
+                    Ok(())
+                });
+                assert_eq!(result.unwrap_err().code, source_guard::SOURCE_DENIED);
+                assert!(!invoked);
+            }
+        }
+    }
+
+    #[test]
+    fn diagnostic_ids_preserve_business_results_source_guards_and_log_redaction() {
+        #[derive(Clone)]
+        struct Captured(std::sync::Arc<Mutex<Vec<u8>>>);
+        impl std::io::Write for Captured {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.0.lock().unwrap().extend_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+        }
+        let captured = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let writer = captured.clone();
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NEW)
+            .with_writer(move || Captured(writer.clone()))
+            .finish();
+        // Exercise all calls sharing the command callsite under one subscriber.
+        // Parallel no-subscriber cases must not become the log fixture's environment.
+        tracing::subscriber::with_default(subscriber, || {
+            diagnostic_ids_do_not_change_file_writes_or_business_failures();
+            invalid_or_missing_ids_do_not_bypass_source_denial();
+            for id in [Some("valid-call_1"), None, Some("secret invalid id")] {
+                with_command_identity(WebCommand::ReadNativeText, &source_guard::MAIN_WINDOW, id, |_, _| {
+                    tracing::info!(event = "operation_result", result = "ok");
+                    Ok(())
+                }).unwrap();
+            }
+        });
+        let output = String::from_utf8(captured.lock().unwrap().clone()).unwrap();
+        assert!(output.contains("valid-call_1"));
+        assert!(!output.contains("secret"));
+        let records: Vec<serde_json::Value> = output.lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+        let results: Vec<_> = records.iter().filter(|record| record["fields"]["event"] == "operation_result" && record["fields"]["result"] == "ok").collect();
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0]["span"]["call_id"], "valid-call_1");
+        assert_eq!(results[1]["span"]["call_id"], "");
+        assert_eq!(results[2]["span"]["call_id"], "");
+    }
 
     #[test]
     fn read_text_accepts_limit_and_rejects_one_byte_over() {
