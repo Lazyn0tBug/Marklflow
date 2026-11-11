@@ -119,6 +119,10 @@ export class SharedDom {
     try {
       if (entry.signal.aborted) entry.reject(new Error('DOM step cancelled'));
       else await entry.execute();
+    } catch (error) {
+      // **这一步自己失败了** ✓ ⇒ ⇒ 交给**等它的那一方** ✓ ⇒ ⇒
+      // 不从这里逃出去 ✓ ⇒ ⇒ 不会变成一次未处理的拒绝 ✓。
+      entry.reject(error instanceof Error ? error : new Error(String(error)));
     } finally {
       this.active = undefined;
       this.schedule();

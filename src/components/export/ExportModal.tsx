@@ -4,7 +4,7 @@ import {resolveExportRoot, type ExportRootChoice} from '../../core/platform/expo
 import type {ExportFormat, ExportService} from '../../application/exports/exportService';
 import {exportFile} from '../../application/exports/exportFile';
 import {groupDocxIssues, type OutputIssue} from '../../core/export/outputCapabilities';
-import {reportFailure} from '../../core/platform/failures';
+import {reportAsync, reportFailure} from '../../core/platform/failures';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
@@ -79,11 +79,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       choice,
       service: choice.root === 'native' ? nativeExportService : webExportService,
     }));
-    void rootPromise.current.then((resolved) => {
-      if (cancelled) return;
-      setRoot(resolved.choice);
-      setService(resolved.service);
-    });
+    reportAsync(
+      'export-failed',
+      rootPromise.current.then((resolved) => {
+        if (cancelled) return;
+        setRoot(resolved.choice);
+        setService(resolved.service);
+      }),
+    );
     return () => {
       cancelled = true;
     };
@@ -165,7 +168,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       return;
     }
     // **先等根解析完** ✓：用解析出来的那一个 ✓ —— 不拿"还没定"的那份去导出 ✓ ✓。
-    const resolved = await rootPromise.current;
+    // **解析失败 ⇒ ⇒ 这一步自己兜住** ✓ ⇒ ⇒ 不会变成一次未处理的拒绝 ✓ ⇒ ⇒
+    // 日志里因此有类别与定位 ✓ ⇒ ⇒ 不会只剩一句"出了个拒绝" ✓。
+    const resolved = await rootPromise.current.catch((error) => {
+      onNotice?.({message: '导出准备失败：无法确定导出方式', tone: 'error'});
+      void reportFailure({category: 'export-failed', detail: String(error), cause: error});
+      return undefined;
+    });
+    if (!resolved) return;
     const chosen = resolved.service;
     if (chosen.busy) {
       onNotice?.({message: '正在导出，请稍候', tone: 'info'});

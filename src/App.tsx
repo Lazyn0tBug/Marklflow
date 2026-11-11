@@ -19,7 +19,7 @@ import {useDemoMessages} from './components/message/useDemoMessages';
 import {MessageCard, MessageResult} from './presentation/messages';
 import {noticeStore, type NoticeTone} from './application/notices';
 import {DELETE_CONFIRM_TEXTS, messageText} from './application/messages';
-import {reportFailure} from './core/platform/failures';
+import {reportAsync, reportFailure} from './core/platform/failures';
 import {RoadmapModal} from './components/roadmap/RoadmapModal';
 import {WorkbenchToolbar} from './components/toolbar/WorkbenchToolbar';
 import {DocumentRecord, deriveDocumentTitle} from './core/model/document';
@@ -416,7 +416,7 @@ export default function App() {
             <button
               className="underline"
               onClick={() => {
-                void downloadRecovery();
+                reportAsync('storage-unreadable', downloadRecovery());
               }}
             >
               下载恢复备份
@@ -994,7 +994,7 @@ export default function App() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!isSaveShortcut(event)) return;
       event.preventDefault();
-      void handleShortcutSave();
+      reportAsync('save-failed', handleShortcutSave());
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -1120,7 +1120,7 @@ export default function App() {
    * **订阅只订一次** ✓ ⇒ ⇒ 回调走 ref ✓ ⇒ ⇒ 拿到的却是当下的那份 ✓。
    */
   useEffect(() => {
-    void isDesktopRuntime().then(setDesktop);
+    reportAsync('app-internal-failed', isDesktopRuntime().then(setDesktop));
   }, []);
   useEffect(() => {
     if (!desktop) return;
@@ -1135,7 +1135,7 @@ export default function App() {
     let cancelled = false;
     void (async () => {
       const unlisten = await listenNativeDrop((files) => {
-        void nativeFlow.current(files);
+        reportAsync('import-rejected', nativeFlow.current(files));
       });
       if (cancelled) {
         unlisten();
@@ -1382,12 +1382,12 @@ export default function App() {
               onCreateDoc={handleCreateDoc}
               onDeleteDoc={handleDeleteDoc}
               onImportFiles={(files) => {
-                void handleImportFiles(files);
+                reportAsync('import-rejected', handleImportFiles(files));
               }}
               {...(desktop
                 ? {
                     onOpenNative: () => {
-                      void handleOpenNative();
+                      reportAsync('document-open-failed', handleOpenNative());
                     },
                   }
                 : {})}
@@ -1425,7 +1425,7 @@ export default function App() {
       activeId={currentDocId}
       onActivate={selectDocument}
       onClose={(id) => {
-        void closeTab(id);
+        reportAsync('app-internal-failed', closeTab(id));
       }}
     />
   );
@@ -1464,8 +1464,8 @@ export default function App() {
         onThemeToggle={() => setIsDark((prev) => !prev)}
         isDirty={isDirty}
         saveView={saveView}
-        onWriteBack={() => void handleWriteBack()}
-        onSaveAs={() => void handleSaveAs()}
+        onWriteBack={() => reportAsync('save-failed', handleWriteBack())}
+        onSaveAs={() => reportAsync('save-failed', handleSaveAs())}
         onOpenExport={() => setExportModalOpen(true)}
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
         onOpenMessages={import.meta.env.DEV ? () => setMessageGalleryOpen(true) : undefined}
@@ -1495,12 +1495,12 @@ export default function App() {
             onCreateDoc={handleCreateDoc}
             onDeleteDoc={handleDeleteDoc}
             onImportFiles={(files) => {
-              void handleImportFiles(files);
+              reportAsync('import-rejected', handleImportFiles(files));
             }}
             {...(desktop
               ? {
                   onOpenNative: () => {
-                    void handleOpenNative();
+                    reportAsync('document-open-failed', handleOpenNative());
                   },
                 }
               : {})}
@@ -1609,7 +1609,7 @@ export default function App() {
         revision={currentDoc.revision}
         isDirty={isDirty}
         syncStatus={syncStatus}
-        onRetrySync={() => void handleWriteBack()}
+        onRetrySync={() => reportAsync('save-failed', handleWriteBack())}
       />
 
       {/* **冲突那一次提问** ✓ ⇒ ⇒ **走对话框不走通知** ✓ ⇒ ⇒ 决定留在原地 ✓（§8.6 ✓）。 */}

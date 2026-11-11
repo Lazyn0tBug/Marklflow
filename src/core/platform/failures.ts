@@ -66,6 +66,27 @@ export async function reportFailure(input: FailureInput): Promise<string> {
 }
 
 /**
+ * **报一次异步失败** ✓ ⇒ ⇒ 界面那些"发出去就不管"的调用 ✓ ⇒ ⇒
+ * 失败也有去处 ✓ ⇒ ⇒ **不会变成一次未处理的拒绝** ✓ ⇒ ⇒
+ * 日志里因此有**类别**与**定位** ✓ ⇒ ⇒ 不会只剩一句"出了个拒绝" ✓。
+ *
+ * **类别由调用点说清** ✓ ⇒ ⇒ 这一处失败是什么事 ✓ ⇒ ⇒ 日志直接答 ✓。
+ */
+export function reportAsync(category: MessageCategory, work: Promise<unknown>): void {
+  // **这一处的调用点** ✓ ⇒ ⇒ 定位落在那儿 ✓ ⇒ ⇒ 不是失败出口自己 ✓ ⇒ ⇒
+  // **显式往下传** ✓ ⇒ ⇒ 中间隔了几层也不会指错 ✓。
+  const source = ourFrame(new Error().stack, 1);
+  void work.catch((error) => {
+    void reportFailure({
+      category,
+      detail: String(error),
+      cause: error,
+      ...(source === undefined ? {} : {source}),
+    });
+  });
+}
+
+/**
  * 进日志与控制台 ✓。
  *
  * **整个输入一起传** ✓ ⇒ ⇒ 输入里新加的字段**自动跟着走** ✓ ⇒ ⇒
