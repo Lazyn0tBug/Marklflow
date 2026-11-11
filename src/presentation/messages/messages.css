@@ -255,7 +255,8 @@
   .mf-message-card[data-leaving='true'],
   .mf-message-result[data-leaving='true'] {
     opacity: 0;
-    transform: translateY(6px);
+    transform: none;
+    transition: opacity 120ms ease-in;
     /* **看不见了就不该吃点击** ✓ ⇒ ⇒ 退场期间右下角那一块不该是死的 ✓。 */
     pointer-events: none;
   }
@@ -266,6 +267,18 @@
       transition:
         opacity 180ms ease,
         transform 180ms ease;
+    }
+    .mf-message-card[data-leaving='true'],
+    .mf-message-result[data-leaving='true'] {
+      /* Escape the scroll region's clipping; finish with the card below the viewport. */
+      position: var(--mf-message-exit-position, static);
+      top: var(--mf-message-exit-top, auto);
+      left: var(--mf-message-exit-left, auto);
+      width: var(--mf-message-exit-width, 100%);
+      transform: translateY(max(0px, calc(100dvh - var(--mf-message-exit-top, 0px))));
+      transition:
+        opacity 280ms ease-in,
+        transform 280ms ease-out;
     }
     /* 老内核整块丢弃这一条 ✓ ⇒ ⇒ 卡片照常出现 ✓。 */
     @starting-style {

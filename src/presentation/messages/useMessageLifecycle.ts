@@ -26,6 +26,14 @@ export function useMessageLifecycle(options: MessageLifecycleOptions): () => voi
     if (requested.current || callbacks.current.leaving) return;
     requested.current = true;
     const element = callbacks.current.elementRef.current;
+    if (element) {
+      // Geometry only: CSS owns the viewport destination, easing and duration.
+      const bounds = element.getBoundingClientRect();
+      element.style.setProperty('--mf-message-exit-top', `${bounds.top}px`);
+      element.style.setProperty('--mf-message-exit-left', `${bounds.left}px`);
+      element.style.setProperty('--mf-message-exit-width', `${bounds.width}px`);
+      element.style.setProperty('--mf-message-exit-position', 'fixed');
+    }
     const active = element?.ownerDocument.activeElement;
     restoreFocus.current = Boolean(
       element &&
