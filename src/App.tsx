@@ -17,8 +17,8 @@ import {NoticeList} from './components/notice/NoticeList';
 import {DemoMessageView, MessageGallery} from './components/message/MessageGallery';
 import {useDemoMessages} from './components/message/useDemoMessages';
 import {MessageCard, MessageResult} from './presentation/messages';
-import {noticeStore, type NoticeTone} from './application/notices';
-import {DELETE_CONFIRM_TEXTS, messageText} from './application/messages';
+import {NOTICE_AUTO_HIDE_MS, noticeStore, type NoticeTone} from './application/notices';
+import {CONFIRM_TEXTS, messageText} from './application/messages';
 import {reportAsync, reportFailure} from './core/platform/failures';
 import {RoadmapModal} from './components/roadmap/RoadmapModal';
 import {WorkbenchToolbar} from './components/toolbar/WorkbenchToolbar';
@@ -83,7 +83,11 @@ import {syncFeedback} from './application/workspace/syncFeedback';
 import {isSaveShortcut} from './application/workspace/saveShortcut';
 import {closeTabBeforeClose} from './application/workspace/closeTab';
 import type {DiskPorts} from './application/workspace/diskPorts';
-import type {ImportItemResult, OpenResult} from './application/workspace/sourceImport';
+import {
+  importResultsAutoHide,
+  type ImportItemResult,
+  type OpenResult,
+} from './application/workspace/sourceImport';
 import {
   WorkbenchPreviewRuntime,
   type PreviewView,
@@ -156,7 +160,7 @@ export default function App() {
   /*
    * **删除那一次提问** ✓ ⇒ ⇒ 同样由问的那一方持有它 ✓ ⇒ ⇒ 走应用内的对话框 ✓。
    */
-  const deleteConfirm = useConfirmPrompt();
+  const confirmPrompt = useConfirmPrompt();
   /*
    * **宿主给的那两个** ✓ ⇒ ⇒ 问用户 ✓、反向同步回填 ✓。
    *
@@ -184,7 +188,14 @@ export default function App() {
        *
        * **只答"是/否"** ✓ ⇒ ⇒ **下一步由应用层选** ✓ ⇒ ⇒ **宿主只管把那句话说出来** ✓。
        */
-      askGate: async (reason) => confirm(GATE_TEXTS[reason]),
+      askGate: async (reason) =>
+        confirmPrompt.ask({
+          title: CONFIRM_TEXTS.gate.title,
+          description: GATE_TEXTS[reason],
+          subject: undefined,
+          confirmLabel: CONFIRM_TEXTS.gate.confirm,
+          cancelLabel: CONFIRM_TEXTS.cancel,
+        }),
       /**
        * **换目标** ✓ ⇒ ⇒ **宿主把这一份写到新目标** ✓ ⇒ ⇒ **那边再过一次门** ✓ ⇒ ⇒
        * **绑定在那边读成功之后才成立** ✓（§4.1 ✓）。
@@ -218,7 +229,16 @@ export default function App() {
     if (source === undefined) return target;
     // **同目录由原生侧答** ✓ ⇒ ⇒ 路径不出原生侧 ✓（§3.4 ✓）。
     if (await diskPorts.current.sameDirectory(source, target.handle)) return target;
-    if (confirm(SAVE_AS_TEXTS.crossDirectory)) return target;
+    if (
+      await confirmPrompt.ask({
+        title: CONFIRM_TEXTS.saveAs.title,
+        description: SAVE_AS_TEXTS.crossDirectory,
+        subject: undefined,
+        confirmLabel: CONFIRM_TEXTS.saveAs.confirm,
+        cancelLabel: CONFIRM_TEXTS.cancel,
+      })
+    )
+      return target;
     // **不要了** ⇒ ⇒ 放掉这次的授权 ✓ ⇒ ⇒ 原生侧不留无主的凭据 ✓（§5.1 ✓）。
     await diskPorts.current.saveAs.releaseHandle(target.handle).catch(() => {});
     return undefined;
@@ -572,7 +592,14 @@ export default function App() {
     // **关之前那几步在应用层** ✓ ⇒ ⇒ 这里只管把端口接上 ✓ ⇒ ⇒ 规则只有一处 ✓。
     await closeTabBeforeClose(value.document, syncStatusOf(context, value.document.revision), {
       // **问一句** ✓ ⇒ ⇒ **说清关掉会怎样** ✓ ⇒ ⇒ 用户知道自己在答应什么 ✓。
-      confirm: async (reason) => confirm(CLOSE_TAB_TEXTS[reason]),
+      confirm: async (reason) =>
+        confirmPrompt.ask({
+          title: CONFIRM_TEXTS.closeTab.title,
+          description: CLOSE_TAB_TEXTS[reason],
+          subject: undefined,
+          confirmLabel: CONFIRM_TEXTS.closeTab.confirm,
+          cancelLabel: CONFIRM_TEXTS.cancel,
+        }),
       persist: async (doc) => {
         // **去抖里那一次不等了** ✓ ⇒ ⇒ 落盘落的是当下这一份 ✓。
         const pending = pendingSaves.current.get(doc.id);
@@ -1175,6 +1202,13 @@ export default function App() {
       onClose={() => setImportResults([])}
     />
   ) : null;
+  // **导入结果会自己走** ✓ ⇒ ⇒ 成功与信息不留着 ✓ ⇒ ⇒ 错误类才留着 ✓ ⇒ ⇒
+  // 与通知面同一套规矩 ✓ ⇒ ⇒ 一处规则 ✓。
+  useEffect(() => {
+    if (!importResults.length || !importResultsAutoHide(importResults)) return;
+    const timer = setTimeout(() => setImportResults([]), NOTICE_AUTO_HIDE_MS);
+    return () => clearTimeout(timer);
+  }, [importResults]);
   // 消息区：**两种界面状态共用一处** ✓ ⇒ ⇒ 通知与导入结果始终在同一个区域里 ✓。
   // `tabIndex={-1}` ⇒ ⇒ 消息都收走后，焦点有个落点 ✓（设计 §9 ✓）。
   // **区域由这里交下去** ✓ ⇒ ⇒ 通知列表不必从焦点反推它 ✓ ⇒ ⇒ 平台点击后不聚焦按钮时也能拿到 ✓。
@@ -1209,12 +1243,12 @@ export default function App() {
     if (!doc) return;
     // **删之前问一句** ✓ ⇒ ⇒ 走应用内的对话框 ✓ ⇒ ⇒ 不靠宿主的 confirm ✓ ⇒ ⇒
     // 每一处都长一个样 ✓ ⇒ ⇒ 用户知道自己在答应什么 ✓。
-    const confirmed = await deleteConfirm.ask({
-      title: DELETE_CONFIRM_TEXTS.title,
-      description: DELETE_CONFIRM_TEXTS.description,
+    const confirmed = await confirmPrompt.ask({
+      title: CONFIRM_TEXTS.delete.title,
+      description: CONFIRM_TEXTS.delete.description,
       subject: doc.meta.title,
-      confirmLabel: DELETE_CONFIRM_TEXTS.confirm,
-      cancelLabel: DELETE_CONFIRM_TEXTS.cancel,
+      confirmLabel: CONFIRM_TEXTS.delete.confirm,
+      cancelLabel: CONFIRM_TEXTS.cancel,
     });
     if (!confirmed) return;
     setActionError('');
@@ -1621,15 +1655,15 @@ export default function App() {
       ) : null}
 
       {/* **删除那一次提问** ✓ ⇒ ⇒ 走对话框不走通知 ✓ ⇒ ⇒ 决定留在原地 ✓。 */}
-      {deleteConfirm.request ? (
+      {confirmPrompt.request ? (
         <ConfirmDialog
-          title={deleteConfirm.request.title}
-          description={deleteConfirm.request.description}
-          subject={deleteConfirm.request.subject}
-          confirmLabel={deleteConfirm.request.confirmLabel}
-          cancelLabel={deleteConfirm.request.cancelLabel}
-          onConfirm={() => deleteConfirm.answer(true)}
-          onCancel={() => deleteConfirm.answer(false)}
+          title={confirmPrompt.request.title}
+          description={confirmPrompt.request.description}
+          subject={confirmPrompt.request.subject}
+          confirmLabel={confirmPrompt.request.confirmLabel}
+          cancelLabel={confirmPrompt.request.cancelLabel}
+          onConfirm={() => confirmPrompt.answer(true)}
+          onCancel={() => confirmPrompt.answer(false)}
         />
       ) : null}
 

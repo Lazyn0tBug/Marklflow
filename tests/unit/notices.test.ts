@@ -63,8 +63,8 @@ it('holds the save failure until the user acknowledges it', () => {
   // 内容还在工作区 ⇒ ⇒ 不点破就一直不知道 ⇒ ⇒ 它不能自己走 ✓（设计 §8 ✓）。
   expect(needsAcknowledgement('save-failed')).toBe(true);
   // 一次告知就是一次告知 ⇒ ⇒ 其余的照旧定时走 ✓。
-  expect(needsAcknowledgement('export-failed')).toBe(false);
-  expect(needsAcknowledgement('unhandled')).toBe(false);
+  expect(needsAcknowledgement('export-failed')).toBe(true);
+  expect(needsAcknowledgement('unhandled')).toBe(true);
   // 没有类别的通知不是失败 ⇒ ⇒ 不等确认 ✓。
   expect(needsAcknowledgement(undefined)).toBe(false);
 });

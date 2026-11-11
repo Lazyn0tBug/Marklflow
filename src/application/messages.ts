@@ -214,14 +214,19 @@ export const CONFLICT_TEXTS = {
 };
 
 /**
- * 删除那一次确认 ⇒ 文案 ✓。
+ * 那几处确认 ⇒ 文案 ✓。
  *
  * **说清删掉的是什么、删掉之后会怎样** ✓ ⇒ ⇒ 用户知道自己在答应什么 ✓。
  */
-export const DELETE_CONFIRM_TEXTS = {
-  title: '删除文档',
-  description: '此操作不可撤销，文档内容不会保留。',
-  confirm: '删除',
+export const CONFIRM_TEXTS = {
+  delete: {
+    title: '删除文档',
+    description: '此操作不可撤销，文档内容不会保留。',
+    confirm: '删除',
+  },
+  gate: {title: '写回文件', confirm: '继续'},
+  saveAs: {title: '另存到新文件', confirm: '另存'},
+  closeTab: {title: '关闭标签页', confirm: '继续'},
   cancel: '取消',
 };
 

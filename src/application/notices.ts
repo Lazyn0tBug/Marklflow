@@ -62,20 +62,24 @@ export function notifiesUser(category: MessageCategory): boolean {
 }
 
 /**
- * 哪些失败**要人确认才算完** ✓。
- *
- * **保存失败是其中一条** ✓：内容还在工作区 ✓ ⇒ ⇒ 用户不点破就会一直不知道 ⇒ ⇒
- * ⇒ ⇒ 它不能定时自己走 ✓ ⇒ ⇒ 它等一个确认 ✓（设计 §8 ✓）。
- *
- * **其余的照旧** ✓：定时消失 ✓ ⇒ ⇒ 一次告知就是一次告知 ✓。
+ * **一次告知多久自己走** ✓ ⇒ ⇒ 通知面与导入结果面**共用这一个数** ✓ ⇒ ⇒
+ * 两处不会一个快一个慢 ✓ ⇒ ⇒ 一处改了两处一起改 ✓。
  */
-const NEEDS_ACKNOWLEDGEMENT: ReadonlySet<MessageCategory> = new Set<MessageCategory>([
-  'save-failed',
-]);
+export const NOTICE_AUTO_HIDE_MS = 10000;
 
-/** 这个类别要不要等用户确认 ✓（类别没有就不等 ✓）。 */
+/**
+ * **哪些消息要人确认才算完** ✓。
+ *
+ * **错误类一律留着** ✓ ⇒ ⇒ 用户不点破就会一直不知道 ✓ ⇒ ⇒ 它不能定时自己走 ✓ ⇒ ⇒
+ * 它等一个确认 ✓（设计 §8 ✓）。
+ *
+ * **其余的照旧** ✓：定时消失 ✓ ⇒ ⇒ 一次告知就是一次告知 ✓ ⇒ ⇒
+ * **成功与信息不留着** ✓ ⇒ ⇒ 不打断正在做的事 ✓。
+ *
+ * **一处规则** ✓ ⇒ ⇒ 通知面与导入结果面问的是同一句 ✓ ⇒ ⇒ 不会一边留一边走 ✓。
+ */
 export function needsAcknowledgement(category: MessageCategory | undefined): boolean {
-  return category !== undefined && NEEDS_ACKNOWLEDGEMENT.has(category);
+  return category !== undefined;
 }
 
 /**

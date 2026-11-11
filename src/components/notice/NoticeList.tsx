@@ -6,7 +6,12 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import {needsAcknowledgement, noticeStore, type Notice} from '../../application/notices';
+import {
+  needsAcknowledgement,
+  NOTICE_AUTO_HIDE_MS,
+  noticeStore,
+  type Notice,
+} from '../../application/notices';
 import {MessageCard, MessageStatusBar, MESSAGE_LEAVE_MS} from '../../presentation/messages';
 
 /**
@@ -53,7 +58,7 @@ function NoticeItem({
     // 等确认的那条不自己走 ✓ ⇒ ⇒ 只有一次告知才定时 ✓。
     if (manual) return;
     // **定时走的那条也走同一条路** ✓ ⇒ ⇒ 焦点由外面接住 ✓ ⇒ ⇒ 这里不自己动存储 ✓。
-    const timer = setTimeout(() => onDismiss(notice), 10000);
+    const timer = setTimeout(() => onDismiss(notice), NOTICE_AUTO_HIDE_MS);
     return () => clearTimeout(timer);
   }, [notice.id, manual, onDismiss]);
   useEffect(() => {

@@ -1,8 +1,10 @@
 import {it, expect, vi} from 'vitest';
 import {
   SourceImport,
+  importResultsAutoHide,
   type SourceImportPorts,
   type ImportFile,
+  type ImportItemResult,
 } from '../../src/application/workspace/sourceImport';
 import {saveSource} from '../../src/application/workspace/sourceSave';
 import {DocumentSessions} from '../../src/application/sessions/documentSessions';
@@ -251,4 +253,21 @@ it('rejects an invalid source revision before calling storage', async () => {
     saveSource(sessions, {...doc, revision: Number.MAX_SAFE_INTEGER + 1}, save),
   ).rejects.toThrow('revision');
   expect(save).not.toHaveBeenCalled();
+});
+
+/**
+ * 导入结果**要不要自己走** ✓ ⇒ ⇒ 与通知面同一套规矩 ✓。
+ *
+ * **有失败就留着** ✓ ⇒ ⇒ 用户得看见哪一份没进来 ✓ ⇒ ⇒ 其余定时消失 ✓。
+ */
+it('导入结果：没有失败就自己走，有失败就留着', () => {
+  const item = (status: ImportItemResult['status']): ImportItemResult => ({
+    name: '报告.md',
+    status,
+    message: '',
+  });
+  expect(importResultsAutoHide([item('opened')])).toBe(true);
+  expect(importResultsAutoHide([item('focused'), item('changed')])).toBe(true);
+  expect(importResultsAutoHide([item('opened'), item('failed')])).toBe(false);
+  expect(importResultsAutoHide([])).toBe(true);
 });

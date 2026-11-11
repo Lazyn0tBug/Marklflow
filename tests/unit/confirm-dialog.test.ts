@@ -2,7 +2,7 @@ import {it, expect, vi, beforeEach, afterEach} from 'vitest';
 import {act, createElement} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
 import {ConfirmDialog} from '../../src/components/workspace/ConfirmDialog';
-import {DELETE_CONFIRM_TEXTS} from '../../src/application/messages';
+import {CONFIRM_TEXTS} from '../../src/application/messages';
 
 /**
  * 删除那一次确认 ✓。
@@ -32,11 +32,11 @@ const render = () => {
   act(() => {
     root.render(
       createElement(ConfirmDialog, {
-        title: DELETE_CONFIRM_TEXTS.title,
-        description: DELETE_CONFIRM_TEXTS.description,
+        title: CONFIRM_TEXTS.delete.title,
+        description: CONFIRM_TEXTS.delete.description,
         subject: '报告.md',
-        confirmLabel: DELETE_CONFIRM_TEXTS.confirm,
-        cancelLabel: DELETE_CONFIRM_TEXTS.cancel,
+        confirmLabel: CONFIRM_TEXTS.delete.confirm,
+        cancelLabel: CONFIRM_TEXTS.cancel,
         onConfirm,
         onCancel,
       }),
@@ -59,14 +59,14 @@ it('是对话框，不是通知', () => {
 
 it('两个答案各落到自己那一个上', () => {
   const {onConfirm, onCancel} = render();
-  act(() => button(DELETE_CONFIRM_TEXTS.confirm).click());
+  act(() => button(CONFIRM_TEXTS.delete.confirm).click());
   expect(onConfirm).toHaveBeenCalledTimes(1);
   expect(onCancel).not.toHaveBeenCalled();
-  act(() => button(DELETE_CONFIRM_TEXTS.cancel).click());
+  act(() => button(CONFIRM_TEXTS.cancel).click());
   expect(onCancel).toHaveBeenCalledTimes(1);
 });
 
 it('打开就落在取消上，回车不会顺手删掉东西', () => {
   render();
-  expect(document.activeElement).toBe(button(DELETE_CONFIRM_TEXTS.cancel));
+  expect(document.activeElement).toBe(button(CONFIRM_TEXTS.cancel));
 });

@@ -76,6 +76,14 @@ export interface ImportItemResult {
   message: string;
 }
 export type ImportResult = {status: 'busy'} | {status: 'completed'; items: ImportItemResult[]};
+
+/**
+ * 这一批导入结果**要不要自己走** ✓ ⇒ ⇒ **有失败就留着** ✓ ⇒ ⇒
+ * 其余定时消失 ✓ ⇒ ⇒ 与通知面**同一套规矩** ✓ ⇒ ⇒ 一处规则 ✓。
+ */
+export function importResultsAutoHide(items: readonly ImportItemResult[]): boolean {
+  return !items.some((item) => item.status === 'failed');
+}
 /** A single user-selected batch, processed in selection order. No preview tasks or retry queue. */
 export class SourceImport<F extends ImportFile> {
   private active = false;
