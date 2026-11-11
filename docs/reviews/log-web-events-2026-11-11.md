@@ -1,52 +1,30 @@
-# 页面业务事件回传：问题与当前解决情况
+# 页面业务事件回传的问题与收口计划
 
-日期：2026-11-11。分支：`architecture-refactor`。相关：`docs/design/log-base-plan-2026-11-03.md` §4 / §5.2。
+日期为 2026-11-11，核对分支 architecture-refactor，HEAD 为 65fa09b。关联 [日志基座设计](../design/log-base-plan-2026-11-03.md) §4.2、§6.1。本文记录代码核对和已有定向测试证据。
 
-## 1. 背景
+## 当前确认的状态
 
-契约 §4 定义了页面→原生的业务事件回传通道，枚举四种：`page_ready` / `call_started` / `call_finished` / `page_error`。审查发现**产品路径只发其中一种**（错误），另外三种在原生枚举与机器校验器里存在，却没有任何地方发送。
+| 项目 | 状态及依据 |
+| --- | --- |
+| P1 消息事件端口 | 7808b6c 已提供 MessagePort.event，桌面经 log_event 上报 |
+| P2 页面就绪 | markAppReady 已上报 page_ready |
+| P3 调用事件 | 当前 files.ts 的 invoke 入口没有 call_started、call_finished 或 call_id 接线。tests/unit/tauri-files.test.ts 当前没有此前描述的两条 P3 测试 |
+| 跨端关联 | 页面 page_call 以 call_id 管理，原生命令 command span 尚未接收该 ID。页面事件配对不足以唯一关联交错的同名原生命令 |
+| 通道结果 | 原生返回 accepted、dropped、rejected，桌面消息端口目前丢弃返回值，上报异常也被吞掉 |
+| P4 契约与验收 | 四步收口已规划，详见日志设计 §6.1。实现与真实 Windows 证据待补 |
 
-处理方向：**发**（不是从契约里删）。理由：契约 §4 与机器校验器的配对规则都建在这条通道上；删掉等于放弃"页面那次调用与原生侧那条记录对得上"这一能力，而这正是"日志说不清是哪儿"的另一半。
+当前 reportEvent 位于 src/core/platform/web/capture.ts，后续共用平台出口的位置需与实际接线同步。
 
-## 2. 分片与当前状态
+## 历史现场与待查原因
 
-| 片 | 内容 | 状态 |
-| --- | --- | --- |
-| P1 | `MessagePort` 增加 `event(...)`；网页端口进控制台，桌面端口进原生日志；载荷仍是封闭形状 | **已完成并提交**（`7808b6c`） |
-| P2 | 页面起来时发 `page_ready`（`markAppReady()`） | **已完成并提交**（`7808b6c`） |
-| P3 | 受保护命令两侧发 `call_started` / `call_finished`（共用一个 `call_id`），供原生侧按 `call_id` 开 `page_call` span | **代码已写，未验证**（见 §3） |
-| P4 | 测试与契约同步 | 未开始 |
+早期记录声称新增的两条 P3 测试仅收到 call_started，并观察到 isTauri 第一次为 true、第二次为 false。当前工作树缺少该实现和测试，且无对应差异快照，因此保留为历史观察，根因待查。
 
-P3 的落点：`src/core/platform/tauri/files.ts` 的 `invoke()` 助手（该助手只服务受保护命令 ⇒ 平台信息、运行期配置、写日志这三条不受守卫的命令不发 ⇒ 日志量不涨）。`reportEvent()` 放在 `src/core/platform/messages.ts`（平台层），网页捕获与桌面文件层都从那里取，不跨层。
+此前“mockReturnValue(true) 只保证第一次调用”的解释有误。该方法设置持续默认返回值，只有 mockReturnValueOnce 才是单次值。当前测试在 resetAllMocks 后恢复 true，单凭这段代码不能推导第二次变假。后续应恢复当时快照并检查中途重置、重新赋值和未结束异步任务。既不能据此归因测试夹具，也不能据此认定产品路径正确。 [Vitest 官方 API](https://vitest.dev/api/mock#mockreturnvalue)
 
-## 3. 问题：P3 的测试只剩一条事件
+## 验证证据与限制
 
-### 症状
+上一轮 Luna 对 65fa09b 运行 npx vitest run tests/unit/tauri-files.test.ts，17 项通过。首次启动因 Vite 临时配置写入权限失败，获得相应工作区权限后运行通过。此次文档更新复用该证据。17 项不包含历史 P3 事件测试，不证明调用事件接线完成。真实 Windows 桌面操作、成对事件落盘及跨端关联仍待验。
 
-`tests/unit/tauri-files.test.ts` 新增的两条测试失败：期望 `call_started` 与 `call_finished` 各一条，实际只收到 `call_started`。
+## 处理方向
 
-### 定位过程
-
-1. 直接调用 `reportEvent()` 两次 ⇒ ⇒ 两条都到达 ⇒ ⇒ 通道本身没问题。
-2. 产品路径 ⇒ ⇒ `reportEvent` 进入两次 ⇒ ⇒ 但 `port.event()` 只被调用一次 ⇒ ⇒ 第二次卡在 `await resolveMessagePort()` 上。
-3. 在 `isDesktopRuntime()` 里打印 ⇒ ⇒ **第一次 `isTauri()` 返回 true，第二次返回 false** ⇒ ⇒ 于是 `resolveMessagePort()` 第二次选了**网页端口** ⇒ ⇒ `call_finished` 走了控制台 ⇒ ⇒ 没进原生日志 ⇒ ⇒ 只剩 `call_started`。
-
-### 根因
-
-**在测试夹具里，不在产品代码里。** 假原生侧的 `isTauri` 是 `vi.fn()` ⇒ ⇒ `vi.resetAllMocks()` 把它清成返回 `undefined` ⇒ ⇒ 用例里重新 `mockReturnValue(true)` 只保证**第一次**读取为真 ⇒ ⇒ 第二次读取又是假 ⇒ ⇒ 端口选择随之摇摆。
-
-真实环境里 `isTauri()` 读 `window.__TAURI_INTERNALS__` ⇒ ⇒ 恒定 ⇒ ⇒ 产品代码这条路径**没有问题**。
-
-### 修法（待做）
-
-让假原生侧的 `isTauri` 在一个用例内**稳定为真**（在 mock 工厂里给默认实现，而不是靠每个用例重新设），⇒ ⇒ 于是端口选择不再摇摆 ⇒ ⇒ P3 的两条测试才断得住。
-
-## 4. 未完成与未验证
-
-- **P3 的测试目前是红的**（两条）⇒ ⇒ 因此 P3 的代码**没有提交** ⇒ ⇒ 工作树里是未验证的改动。
-- P3 的产品路径**没有真机证据** ⇒ ⇒ 真实桌面构建里两条事件都进原生日志这件事**未验证** ⇒ ⇒ 需要一次 Windows 构建与运行。
-- P4（契约 §4/§5.2 补上"产品路径发哪些事件"与"只给受保护命令发"这两条）未开始。
-
-## 5. 顺带记下的一条
-
-假原生侧改造之后，`native.invoke` 的 `log_event` 调用被单独接走（不进命令那条排队）⇒ ⇒ 否则业务事件会占用 `mockResolvedValueOnce` 的排队 ⇒ ⇒ 把别的用例的断言打乱 ⇒ ⇒ 这一条是**夹具的约定**，不是产品的。
+先完成日志设计的四步收口。假原生按命令名区分业务请求和 log_event，分别安排响应和收集事件，避免日志调用消耗业务测试的一次性响应队列。失败注入覆盖日志拒收、丢弃、异常和不返回。业务调用与日志通道分别观测结果，数据来源、关联、接收和落盘各按实际证据记录。
