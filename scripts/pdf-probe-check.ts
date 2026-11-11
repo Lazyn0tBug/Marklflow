@@ -161,6 +161,7 @@ const WEB_SPAN: Record<string, string> = {
 
 /** 同一 span 内区分同名事件的自然键：没有则同名即重复。 */
 const DISCRIMINATOR: Record<string, string> = {
+  web_event: 'page_event',
   // Probe and shutdown report distinct health snapshots in the shared log span.
   log_health: 'observed_by',
   page_report_observed: 'host',
@@ -410,6 +411,7 @@ export function groupRuns(files: ParsedFile[]): RunView[] {
 
 /** native 的一个 command span：守卫判定与操作结果。 */
 interface CommandSpan {
+  callId: string;
   spanId: number;
   command: string;
   window: string;
@@ -446,9 +448,10 @@ export function commandSpans(run: RunView): CommandSpan[] {
     if (!span) {
       span = {
         spanId,
+        callId: text(record.fields.call_id),
         command: text(record.fields.command),
-        window: text(record.fields.window),
-        webview: text(record.fields.webview),
+        window: text(record.fields.window_label ?? record.fields.window),
+        webview: text(record.fields.webview_label ?? record.fields.webview),
         events: [],
       };
       spans.set(spanId, span);
@@ -502,8 +505,8 @@ const isOutputHost = (window: string): boolean =>
   window === 'pdf-output' || window.startsWith('pdf-output-');
 
 /** 关联键：身份对 + 命令。native 与 web 的身份字段名不同，先归一。 */
-const pairKey = (window: string, webview: string, command: string): string =>
-  `${window}|${webview}|${command}`;
+const pairKey = (window: string, webview: string, command: string, callId = ''): string =>
+  JSON.stringify([window, webview, command, callId]);
 const identityKey = (window: string, webview: string): string => `${window}|${webview}`;
 
 /**
@@ -530,26 +533,27 @@ interface Pairing {
   native: CommandSpan[];
   web: WebCall[];
   mismatch?: string;
+  correlated: boolean;
 }
 
 /**
- * 跨侧配对：按「身份对 + 命令 + 出现次序」配对，不按时间近似配对。
- * 数量不等即关联不匹配——不宣称调用已对应。
+ * 跨侧配对只按完整身份、命令与 call_id；不按时间或出现次序补配。
+ * 旧记录没有 call_id 时只保留数量诊断，不能证明同请求贯通。
  */
 export function pairSides(run: RunView): Pairing[] {
   const guarded = guardedCommands(run);
   const nativeGroups = new Map<string, CommandSpan[]>();
   for (const span of commandSpans(run)) {
     if (!guarded.has(span.command)) continue;
-    const key = pairKey(span.window, span.webview, span.command);
+    const key = pairKey(span.window, span.webview, span.command, span.callId);
     const list = nativeGroups.get(key) ?? [];
     list.push(span);
     nativeGroups.set(key, list);
   }
   const webGroups = new Map<string, WebCall[]>();
   for (const call of webCalls(run).calls) {
-    if (!guarded.has(call.command)) continue;
-    const key = pairKey(call.window, call.webview, call.command);
+    if (call.command === 'get_platform_info') continue;
+    const key = pairKey(call.window, call.webview, call.command, call.callId);
     const list = webGroups.get(key) ?? [];
     list.push(call);
     webGroups.set(key, list);
@@ -559,11 +563,20 @@ export function pairSides(run: RunView): Pairing[] {
   return [...keys].map((key) => {
     const native = nativeGroups.get(key) ?? [];
     const web = webGroups.get(key) ?? [];
-    const pairing: Pairing = {key, native, web};
+    const pairing: Pairing = {
+      key,
+      native,
+      web,
+      correlated: native.length === 1 && web.length === 1 && !!native[0]?.callId,
+    };
     // **只对页面驱动的身份判不匹配** ✓：生产轮的调用来自界面 ✓，页面侧没有对应记录 ✓，
     // 那不是失配 ✓ —— 是那条路径不走页面 ✓ ✓。
-    const [window, webview] = key.split('|');
-    if (native.length !== web.length && pageDriven.has(identityKey(window ?? '', webview ?? ''))) {
+    const subject = native[0] ?? web[0];
+    if (
+      native.length !== web.length &&
+      subject &&
+      pageDriven.has(identityKey(subject.window, subject.webview))
+    ) {
       pairing.mismatch = `native ${native.length} 条 vs web ${web.length} 条`;
     }
     return pairing;
@@ -654,7 +667,7 @@ function duplicateWebEventDiagnostics(run: RunView): Diagnostic[] {
     const callId = text(record.fields.call_id);
     const pageEvent = text(record.fields.page_event);
     if (!callId || !pageEvent) continue;
-    const key = `${callId}|${pageEvent}`;
+    const key = `${pairKey(text(record.fields.window_label), text(record.fields.webview_label), text(record.fields.command), callId)}|${pageEvent}`;
     const previous = seen.get(key);
     if (previous) {
       diagnostics.push({
@@ -708,9 +721,15 @@ function spanDiagnostics(run: RunView): Diagnostic[] {
 /** 诊断：web 侧只记了开始、没有记完成（调用中断）。 */
 function unfinishedCallDiagnostics(run: RunView): Diagnostic[] {
   const {calls, unfinished} = webCalls(run);
-  const finished = new Set(calls.map((call) => call.callId));
+  const finished = new Set(
+    calls.map((call) => pairKey(call.window, call.webview, call.command, call.callId)),
+  );
   return unfinished
-    .filter((call) => call.callId !== '' && !finished.has(call.callId))
+    .filter(
+      (call) =>
+        call.callId !== '' &&
+        !finished.has(pairKey(call.window, call.webview, call.command, call.callId)),
+    )
     .map((call) => ({
       id: 'call-without-finish',
       severity: 'warning' as const,
@@ -774,6 +793,7 @@ function crossSideDiagnostics(run: RunView): Diagnostic[] {
       });
       continue;
     }
+    if (!pairing.correlated) continue;
     pairing.native.forEach((span, index) => {
       const call = pairing.web[index];
       if (!call) return;
@@ -802,17 +822,86 @@ function crossSideDiagnostics(run: RunView): Diagnostic[] {
 function unobservedDiagnostics(run: RunView): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const spans = commandSpans(run);
-  const guarded = guardedCommands(run);
   for (const call of webCalls(run).calls) {
-    if (!guarded.has(call.command)) continue;
+    if (call.command === 'get_platform_info') continue;
     const observed = spans.some(
-      (span) => span.command === call.command && span.window === call.window,
+      (span) =>
+        !!call.callId &&
+        span.callId === call.callId &&
+        span.command === call.command &&
+        span.window === call.window &&
+        span.webview === call.webview,
     );
     if (!observed) {
       diagnostics.push({
         id: 'web-claim-without-native-observation',
         severity: 'error',
         message: `web 侧声明了 ${call.command}（${call.window}/${call.webview}），但没有对应的 native 观察`,
+      });
+    }
+  }
+  return diagnostics;
+}
+
+/** Correlation completeness is separate from native authorization evidence. */
+function callCorrelationDiagnostics(run: RunView): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const spans = commandSpans(run);
+  const seen = new Set<string>();
+  for (const span of spans) {
+    if (!span.callId) {
+      diagnostics.push({
+        id: 'uncorrelated-call',
+        severity: 'warning',
+        message: `原生命令未关联：${span.command}#${span.spanId} 缺 call_id，不能确认同请求贯通`,
+      });
+      continue;
+    }
+    const related = run.native.filter(
+      (record) =>
+        record.span?.id === span.spanId &&
+        ['source_decision', 'operation_result'].includes(record.event),
+    );
+    if (
+      related.some(
+        (record) =>
+          record.fields.call_id !== span.callId ||
+          record.fields.command !== span.command ||
+          record.fields.window_label !== span.window ||
+          record.fields.webview_label !== span.webview,
+      )
+    ) {
+      diagnostics.push({
+        id: 'native-correlation-fields-mismatch',
+        severity: 'error',
+        message: `同一原生命令的关联字段缺失或冲突：${span.command}#${span.spanId}`,
+      });
+    }
+    const key = pairKey(span.window, span.webview, '', span.callId);
+    if (seen.has(key))
+      diagnostics.push({
+        id: 'duplicate-native-call-id',
+        severity: 'error',
+        message: `原生调用标识重复：${key}`,
+      });
+    seen.add(key);
+    const records = run.web.filter(
+      (record) =>
+        record.fields.call_id === span.callId &&
+        record.fields.window_label === span.window &&
+        record.fields.webview_label === span.webview &&
+        ['call_started', 'call_finished'].includes(record.fields.page_event ?? ''),
+    );
+    if (
+      records.length !== 2 ||
+      records[0]?.fields.page_event !== 'call_started' ||
+      records[1]?.fields.page_event !== 'call_finished' ||
+      records.some((record) => record.fields.command !== span.command)
+    ) {
+      diagnostics.push({
+        id: 'call-sequence-incomplete',
+        severity: 'error',
+        message: `调用开始/完成缺失、重复、乱序或命令不符：${key}，${span.command}`,
       });
     }
   }
@@ -957,6 +1046,7 @@ export function evaluateProbeRun(
     ...vocabularyDiagnostics(run),
     ...unfinishedCallDiagnostics(run),
     ...crossSideDiagnostics(run),
+    ...callCorrelationDiagnostics(run),
     ...unobservedDiagnostics(run),
     ...healthDiagnostics(run),
     ...redactionDiagnostics(run),
@@ -967,13 +1057,40 @@ export function evaluateProbeRun(
 
   // 全局前提：缺 run_start 时一律未能确认。
   if (!run.runStart) {
-    for (const id of ['D1b-1', 'D1b-2', 'D1b-3', 'D1b-4', 'D1b-5', 'D1b-6']) {
+    for (const id of ['D1b-1', 'D1b-2', 'D1b-3', 'D1b-4', 'D1b-5', 'D1b-6', 'call-correlation']) {
       assertions.push(
         assertion(id, '', 'unconfirmed', [], ['本次运行缺 run_start：无法圈定运行边界']),
       );
     }
     return {assertions, diagnostics};
   }
+
+  const correlationProblems = diagnostics.filter((item) =>
+    [
+      'uncorrelated-call',
+      'duplicate-event',
+      'native-correlation-fields-mismatch',
+      'duplicate-native-call-id',
+      'call-sequence-incomplete',
+      'correlation-mismatch',
+      'duplicate-web-event',
+      'web-claim-without-native-observation',
+      'call-without-finish',
+    ].includes(item.id),
+  );
+  assertions.push(
+    assertion(
+      'call-correlation',
+      '受保护命令同请求关联',
+      spans.length > 0 && correlationProblems.length === 0 ? 'pass' : 'unconfirmed',
+      [],
+      correlationProblems.length
+        ? correlationProblems.map((item) => item.message)
+        : spans.length
+          ? []
+          : ['未见受保护命令，无法验证调用关联'],
+    ),
+  );
 
   // D1b-1 通道阳性：主窗口 get_platform_info 成功。
   {
@@ -1039,7 +1156,8 @@ export function evaluateProbeRun(
         basis.push(
           `native 观察：source_decision=allow，operation_result=ok，bytes=${ok.bytes ?? '未记'}`,
         );
-        if (webRead) basis.push('web 观察：同一次读回传 result=ok');
+        if (webRead)
+          basis.push('web 观察：同身份/命令的页面报告 result=ok（调用对应另见关联诊断）');
         if (mainReport) {
           basis.push(
             `页面自述：read_ok=${mainReport.readOk}，read_matches_fixture=${mainReport.readMatchesFixture}`,
@@ -1107,7 +1225,7 @@ export function evaluateProbeRun(
           verdict = 'fail';
           issues.push('web 侧报告读取成功：与 native 的拒绝不一致，且构成内容泄露');
         } else if (webRead) {
-          basis.push(`web 观察：同一次读回传 result=${webRead.result ?? '未记'}`);
+          basis.push(`web 观察：同身份/命令的页面报告 result=${webRead.result ?? '未记'}`);
         } else {
           issues.push('未见输出宿主该次读的 web 回传：无法对照');
         }

@@ -35,7 +35,10 @@ export function nativeCategories(source: string): string[] {
   if (open < 0 || close < 0) throw new Error('类别清单没有正常结束');
   const names: string[] = [];
   for (const raw of source.slice(open + 1, close).split('\n')) {
-    const line = raw.replace(/\/\/.*$/, '').trim();
+    const line = raw
+      .trim()
+      .replace(/\/\/.*$/, '')
+      .trim();
     if (line.length === 0) continue;
     const match = /^[A-Za-z][A-Za-z0-9]*\s*=>\s*"([^"]+)"\s*,?$/.exec(line);
     if (!match) throw new Error(`解析不到类别清单：出现了不像类别名的东西「${line}」——写法变了 ✓`);

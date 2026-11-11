@@ -57,3 +57,13 @@ it('has the two sides on the same list right now', () => {
   });
   expect(native.length).toBe(MESSAGE_CATEGORIES.length);
 });
+
+it.each(['\n', '\r\n'])('reads comments and categories with %j line endings', (newline) => {
+  const source = [
+    'web_error_categories! {',
+    '    // category comment',
+    '    One => "one", // inline comment',
+    '}',
+  ].join(newline);
+  expect(nativeCategories(source)).toEqual(['one']);
+});

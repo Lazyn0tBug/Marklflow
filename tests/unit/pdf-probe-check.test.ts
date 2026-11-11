@@ -728,3 +728,104 @@ it('accepts zeroed reason counters without missing legacy counts causing a false
     0,
   );
 });
+
+/** Complete request identities; deliberately interleaved completion order. */
+const correlatedRun = (): LogRecord[] => {
+  const native = (id: string, spanId: number) =>
+    ['source_decision', 'operation_result'].map((event) =>
+      record({
+        event,
+        span: {name: 'command', id: spanId, parent_id: 1},
+        fields: {
+          call_id: id,
+          command: 'read_native_text',
+          window_label: 'main',
+          webview_label: 'main',
+          decision: 'allow',
+          result: 'ok',
+          elapsed_ms: '1',
+        },
+      }),
+    );
+  const web = (id: string, event: string, spanId: number) =>
+    record({
+      event: 'web_event',
+      origin: 'web',
+      span: {name: 'page_call', id: spanId, parent_id: 1},
+      fields: {
+        call_id: id,
+        command: 'read_native_text',
+        window_label: 'main',
+        webview_label: 'main',
+        page_event: event,
+        result: 'ok',
+      },
+    });
+  return [
+    record({event: 'run_start', fields: {feature: 'pdf-probe'}}),
+    ...native('first', 10),
+    ...native('second', 11),
+    web('first', 'call_started', 20),
+    web('second', 'call_started', 21),
+    web('second', 'call_finished', 21),
+    web('first', 'call_finished', 20),
+  ];
+};
+it('matches interleaved same-name calls by complete identity and ID instead of occurrence order', () => {
+  const report = evaluate(correlatedRun(), []);
+  expect(verdictOf(report, 'call-correlation')).toBe('pass');
+  expect(diagnosticsOf(report, 'correlation-mismatch')).toHaveLength(0);
+  expect(diagnosticsOf(report, 'cross-side-mismatch')).toHaveLength(0);
+});
+it.each(['call_id', 'command', 'window_label', 'webview_label'] as const)(
+  'does not pair a conflicting %s by time or command name',
+  (field) => {
+    const records = correlatedRun().map((entry) =>
+      entry.origin === 'web' && entry.fields.call_id === 'first'
+        ? {...entry, fields: {...entry.fields, [field]: 'different'}}
+        : entry,
+    );
+    expect(verdictOf(evaluate(records, []), 'call-correlation')).toBe('unconfirmed');
+  },
+);
+it('detects missing, duplicate and reversed page lifecycle events', () => {
+  const records = correlatedRun();
+  for (const broken of [
+    records.slice(0, -1),
+    [...records, records.at(-1)!],
+    records.map((entry) =>
+      entry.origin === 'web'
+        ? {
+            ...entry,
+            fields: {
+              ...entry.fields,
+              page_event:
+                entry.fields.page_event === 'call_started' ? 'call_finished' : 'call_started',
+            },
+          }
+        : entry,
+    ),
+  ]) {
+    expect(verdictOf(evaluate(broken, []), 'call-correlation')).toBe('unconfirmed');
+  }
+});
+it('does not treat legacy logs without native IDs as correlated', () => {
+  expect(verdictOf(evaluate(healthyProbeRun(), []), 'call-correlation')).toBe('unconfirmed');
+});
+it('rejects repeated native request IDs and conflicting fields within a command span', () => {
+  const records = correlatedRun();
+  const duplicate = records.map((entry) =>
+    entry.fields.call_id === 'second'
+      ? {...entry, fields: {...entry.fields, call_id: 'first'}}
+      : entry,
+  );
+  expect(diagnosticsOf(evaluate(duplicate, []), 'duplicate-native-call-id')).toHaveLength(1);
+  const inconsistent = records.map((entry) =>
+    entry.event === 'operation_result' && entry.fields.call_id === 'first'
+      ? {...entry, fields: {...entry.fields, call_id: 'other'}}
+      : entry,
+  );
+  expect(
+    diagnosticsOf(evaluate(inconsistent, []), 'native-correlation-fields-mismatch').length,
+  ).toBeGreaterThan(0);
+});

@@ -1,6 +1,6 @@
 # 运行期配置契约
 
-日期：2026-11-05。基线：architecture-refactor / `9a63c63`。状态：原有配置已实施，2026-11-11 新增日志配置与验收待实施。
+日期：2026-11-05。基线：architecture-refactor / `9a63c63`。状态：原有配置及 2026-11-11 新增 stdout、call_timeout_ms 已实施并自动验证；其余新增日志配置和真实 Windows 验收待补。
 
 本文定义 MarkFlow 运行期的**唯一输入面**：配置文件 ✓。与[日志基座设计](log-base-plan-2026-11-03.md)同源 ✓ —— 那份管记录怎么写 ✓，这份管运行怎么被配置 ✓。
 
@@ -62,7 +62,7 @@ report_timeout_seconds = 600
 
 **探针那一节是开发期夹具的形状** ✓，不进产品路径 ✓。
 
-新增日志配置字段均待实现。
+下表仅 log.call_timeout_ms 已实现：通过 get_runtime_prefs.logCallTimeoutMs 交给应用消息端口，仅约束日志接收等待；配置读数本身等待最多 200 ms。其余字段待实现。
 
 | 字段                | 类型   | 默认与约束                                                                                 |
 | ------------------- | ------ | ------------------------------------------------------------------------------------------ |
@@ -84,7 +84,7 @@ report_timeout_seconds = 600
 | 超时给了 0             | 按默认值走 ✓ —— 这条规矩原来属于环境变量 ✓（给的不是正整数就按默认值 ✓），**改输入的通道换了，输入的约束不该跟着换** ✓ |
 | 路径字段给了空串       | 按默认值走 ✓                                                                                                           |
 
-**来源、有效级别、有效形态都写进 `run_start`** ✓（`config_source`、`log_level`、`log_format`、`log_stdout`）—— 记的是**有效值** ✓，不是文件里的原文 ✓。
+**来源、有效级别、有效形态都写进 `run_start`** ✓（`config_source`、`log_level`、`log_format`、`log_stdout`、`log_call_timeout_ms`）—— 记的是**有效值** ✓，不是文件里的原文 ✓。
 
 ## 6. 相对路径
 
@@ -125,9 +125,9 @@ report_timeout_seconds = 600
 | Windows 分支 | `bun scripts/check-windows-com.ts`                                                                      | 配置模块也进夹具 ✓ —— 它在 Windows 上一样要编 ✓                                                   |
 | 前端         | `bun run lint` ✓ `bun run typecheck` ✓ `bun run test:unit`（542 条 ✓） `bun run test:e2e`（143 通过 ✓） | 全绿 ✓                                                                                            |
 
-### 9.1 日志配置新增验收（待实施）
+### 9.1 日志配置新增验收（stdout 与等待配置已自动验证，其余待补）
 
-验证配置文件缺失、字段缺省、显式 false 与 true。字符串 "true" 属类型错误，按 §5 整体回退默认并记录 config_source=invalid、log_stdout=false。run_start 记录有效布尔值。分别验证普通记录、健康摘要、文件不可用三条路径，关闭时均不发送 stdout，关闭与输出失败分别表示。开启后 stdout 返回错误只停用镜像，阻塞风险按日志设计 §3.1 记录。Windows 桌面运行验证关闭和显式开启的配置、日志文件与实际终端输出。增加默认 INFO、directory 默认与覆盖、数值上下界与非法值、总量和保留期、日志获取入口及日志独立发送等待验收。原有测试结果仅覆盖旧配置，新增字段不计入已验范围。
+验证配置文件缺失、字段缺省、显式 false 与 true。字符串 "true" 属类型错误，按 §5 整体回退默认并记录 config_source=invalid、log_stdout=false。run_start 记录有效布尔值。分别验证普通记录、健康摘要、文件不可用三条路径，关闭时均不发送 stdout，关闭与输出失败分别表示。开启后 stdout 返回错误只停用镜像，阻塞风险按日志设计 §3.1 记录。Windows 桌面运行验证关闭和显式开启的配置、日志文件与实际终端输出。增加默认 INFO、directory 默认与覆盖、数值上下界与非法值、总量和保留期、日志获取入口及日志独立发送等待验收。新增 stdout 与 call_timeout_ms 的配置边界、镜像开关和通道等待已有自动证据，见[日志收口记录](../reviews/log-closeout-2026-11-11.md)；真实 Windows 输出、目录、保留及获取入口不计入本轮已验范围。
 
 ## 10. 关联文档
 
