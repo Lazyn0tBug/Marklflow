@@ -1,4 +1,4 @@
-import {beforeEach, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {createNativeSourceImport} from '../../src/core/platform/tauri/sourceImport';
 import type {NativeSelection} from '../../src/core/platform/tauri/files';
 import {createNewDocument} from '../../src/core/storage/storage';
@@ -9,8 +9,46 @@ import {createNewDocument} from '../../src/core/storage/storage';
  * **"是不是已经绑在某个文档上"由应用侧答** ✓ ⇒ ⇒ 这里只转发 ✓ ⇒ ⇒ 绑定只有一处 ✓。
  */
 
-const native = vi.hoisted(() => ({isTauri: vi.fn(), invoke: vi.fn()}));
-vi.mock('@tauri-apps/api/core', () => native);
+const native = vi.hoisted(() => ({
+  isTauri: vi.fn(),
+  invoke: vi.fn(),
+  logs: vi.fn(),
+  calls: [] as {command: string; args: Record<string, unknown> | undefined}[],
+}));
+vi.mock('../../src/core/platform/tauri/messages', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/platform/tauri/messages')>();
+  return {
+    ...actual,
+    tauriMessagePort: actual.createTauriMessagePort(
+      async () => ({
+        isTauri: native.isTauri,
+        invoke: async <T>(
+          _command: string,
+          args?: import('@tauri-apps/api/core').InvokeArgs,
+        ): Promise<T> => native.logs(args),
+      }),
+      async () => 20,
+    ),
+  };
+});
+/** Exercise the real SDK bridge; concurrent dynamic imports must not depend on module-mock interception. */
+function routeNativeCommand(command: string, args?: Record<string, unknown>) {
+  if (command === 'get_runtime_prefs')
+    return Promise.resolve({exportRoot: 'web', nativePdfAvailable: true, logCallTimeoutMs: 20});
+  if (command === 'log_event') return native.logs(args);
+  native.calls.push({command, args});
+  const {callId: _callId, ...businessArgs} = args ?? {};
+  return native.invoke(command, Object.keys(businessArgs).length ? businessArgs : undefined);
+}
+afterEach(async () => {
+  await vi.waitFor(() =>
+    expect(
+      native.logs.mock.calls.filter(
+        ([args]) => JSON.parse(String(args?.payload)).event === 'call_finished',
+      ),
+    ).toHaveLength(native.calls.length),
+  );
+});
 
 const selection: NativeSelection = {
   key: '123e4567-e89b-42d3-a456-426614174000',
@@ -21,7 +59,11 @@ const selection: NativeSelection = {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  native.calls.length = 0;
+  native.logs.mockResolvedValue('accepted');
   native.isTauri.mockReturnValue(true);
+  vi.stubGlobal('isTauri', true);
+  vi.stubGlobal('__TAURI_INTERNALS__', {invoke: routeNativeCommand});
 });
 
 it('reads through the grant and releases the grant it did not adopt', async () => {
@@ -143,3 +185,5 @@ it('gives the same native file one document', async () => {
   expect(opened).toHaveLength(2);
   expect(opened[0]).toBe(opened[1]);
 });
+
+afterEach(() => vi.unstubAllGlobals());

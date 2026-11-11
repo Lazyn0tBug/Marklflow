@@ -246,6 +246,15 @@ pub const WEB_REJECTED: &str = "rejected";
 
 /// 关联 ID 的长度上限（不是能力，不授予任何权限）。
 const MAX_CALL_ID_LEN: usize = 64;
+
+/// Diagnostic ID only, never an authorization input or free text field.
+pub fn valid_call_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_CALL_ID_LEN
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+}
 /// 单个 web 请求的字节上限。
 pub const MAX_WEB_REQUEST_BYTES: usize = 4 * 1024;
 /// 每个允许身份对每秒的 web 调用上限。
@@ -696,7 +705,7 @@ fn record_web_event_for(
     if event
         .call_id
         .as_ref()
-        .map(|call_id| call_id.len() > MAX_CALL_ID_LEN)
+        .map(|call_id| !valid_call_id(call_id))
         .unwrap_or(false)
     {
         health.web_rejected.fetch_add(1, Ordering::Relaxed);
@@ -771,7 +780,12 @@ fn record_web_event_for(
         WebEventKind::CallFinished | WebEventKind::PageError
     ) {
         if let Some(call_id) = event.call_id.as_ref() {
-            close_page_call_span(call_id);
+            close_page_call_span(
+                call_id,
+                event.command.map(command_name).unwrap_or("unknown"),
+                identity.window_label.as_ref(),
+                identity.webview_label.as_ref(),
+            );
         }
     }
     if queued {
@@ -902,6 +916,8 @@ impl RecordEmitter {
 ///
 /// 记录由本层自己生成（必填字段、span 上下文、事件字段），不借 formatter 的默认形态，
 /// 这样契约里的字段与顺序不受 formatter 版本影响。
+struct CorrelationFields(BTreeMap<String, String>);
+
 struct RecordLayer {
     emitter: RecordEmitter,
     level: tracing::level_filters::LevelFilter,
@@ -936,6 +952,30 @@ where
         Some(self.level)
     }
 
+    fn on_new_span(
+        &self,
+        attrs: &tracing::span::Attributes<'_>,
+        id: &tracing::span::Id,
+        ctx: Context<'_, S>,
+    ) {
+        if attrs.metadata().name() != "command" {
+            return;
+        }
+        let mut fields = BTreeMap::new();
+        attrs.record(&mut FieldCollector {
+            fields: &mut fields,
+        });
+        fields.retain(|name, _| {
+            matches!(
+                name.as_str(),
+                "call_id" | "command" | "window_label" | "webview_label"
+            )
+        });
+        if let Some(span) = ctx.span(id) {
+            span.extensions_mut().insert(CorrelationFields(fields));
+        }
+    }
+
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
         let mut fields = BTreeMap::new();
         event.record(&mut FieldCollector {
@@ -945,6 +985,10 @@ where
             .event_scope(event)
             .and_then(|mut scope| scope.next())
             .map(|reference| {
+                if let Some(correlation) = reference.extensions().get::<CorrelationFields>() {
+                    // Native span identity is authoritative even if an event carries conflicting fields.
+                    fields.extend(correlation.0.clone());
+                }
                 (
                     reference.name().to_owned(),
                     Some(reference.id().into_u64()),
@@ -1555,10 +1599,12 @@ pub fn command_span(
     command: &'static str,
     window_label: &str,
     webview_label: &str,
+    call_id: Option<&str>,
 ) -> tracing::Span {
     run_span().in_scope(|| {
         tracing::info_span!(
             "command",
+            call_id = call_id.unwrap_or(""),
             command = command,
             window_label = window_label,
             webview_label = webview_label,
@@ -1572,15 +1618,8 @@ pub fn probe_span() -> tracing::Span {
     run_span().in_scope(|| tracing::info_span!("probe"))
 }
 
-/// 页面侧调用的 span：**每次调用一个** ✓（契约 §5.1 ✓）。
-///
-/// **按 `call_id` 复用** ✓ —— 契约写的是「页面侧每次调用一个 span ✓，
-/// `call_id` 即其 span id ✓」✓；此前是**每个事件各开一个** ✓，
-/// 于是同一次调用的 started 与 finished 落在两个 span 里 ✓，
-/// 「同一事件被重复输出」这条也就抓不到 ✓ —— 交付宿主上就漏过一次 ✓。
-///
-/// 表里只留**还没结束**的调用 ✓（结束即移除 ✓）✓，
-/// 未结束的调用有上限 ✓（满了丢最早的一个 ✓）—— 长跑的应用不会把表撑大 ✓。
+/// 每次页面调用复用一个 span，键为原生身份、命令与诊断 call_id。
+/// call_id 与 tracing 内部 span id 不同。完成即删除；未完成项最多保留 256 个。
 fn page_call_span(
     call_id: &str,
     command: &'static str,
@@ -1589,7 +1628,8 @@ fn page_call_span(
 ) -> tracing::Span {
     let table = PAGE_CALL_SPANS.get_or_init(|| Mutex::new(PageCallSpans::default()));
     let mut guard = table.lock().unwrap_or_else(|error| error.into_inner());
-    if let Some(span) = guard.open.get(call_id) {
+    let key = page_call_key(call_id, command, window_label, webview_label);
+    if let Some(span) = guard.open.get(&key) {
         return span.clone();
     }
     let span = run_span().in_scope(|| {
@@ -1606,29 +1646,39 @@ fn page_call_span(
             guard.open.remove(&oldest);
         }
     }
-    guard.order.push_back(call_id.to_owned());
-    guard.open.insert(call_id.to_owned(), span.clone());
+    guard.order.push_back(key.clone());
+    guard.open.insert(key, span.clone());
     span
 }
 
 /// 调用结束：把它的 span 从表里拿掉 ✓。
-fn close_page_call_span(call_id: &str) {
+type PageCallKey = (String, String, String, String);
+fn page_call_key(call_id: &str, command: &str, window: &str, webview: &str) -> PageCallKey {
+    (
+        window.to_owned(),
+        webview.to_owned(),
+        command.to_owned(),
+        call_id.to_owned(),
+    )
+}
+fn close_page_call_span(call_id: &str, command: &str, window: &str, webview: &str) {
     let Some(table) = PAGE_CALL_SPANS.get() else {
         return;
     };
     let mut guard = table.lock().unwrap_or_else(|error| error.into_inner());
-    guard.open.remove(call_id);
-    guard.order.retain(|key| key != call_id);
+    let key = page_call_key(call_id, command, window, webview);
+    guard.open.remove(&key);
+    guard.order.retain(|entry| entry != &key);
 }
 
 /// 同时进行的页面调用数上限 ✓。
 const MAX_OPEN_PAGE_CALLS: usize = 256;
 
-/// 页面调用的 span 表：按 `call_id` 存 ✓，并记着插入顺序 ✓（满了丢最早的 ✓）。
+/// 页面调用的 span 表：按原生身份、命令与 `call_id` 存 ✓，并记着插入顺序 ✓（满了丢最早的 ✓）。
 #[derive(Default)]
 struct PageCallSpans {
-    open: HashMap<String, tracing::Span>,
-    order: std::collections::VecDeque<String>,
+    open: HashMap<PageCallKey, tracing::Span>,
+    order: std::collections::VecDeque<PageCallKey>,
 }
 
 /// 页面调用的 span 表：跨线程共享 ✓（页面在别的线程上回传 ✓）。
@@ -1700,13 +1750,75 @@ mod tests {
         {
             let guard = table.lock().unwrap();
             assert!(
-                guard.open.contains_key(key),
+                guard
+                    .open
+                    .contains_key(&page_call_key(key, "read_native_text", "main", "main")),
                 "两次取同一个调用，表里只应有一条"
             );
         }
-        close_page_call_span(key);
+        close_page_call_span(key, "read_native_text", "main", "main");
         let guard = table.lock().unwrap();
-        assert!(!guard.open.contains_key(key), "调用结束即从表里拿掉");
+        assert!(
+            !guard
+                .open
+                .contains_key(&page_call_key(key, "read_native_text", "main", "main")),
+            "调用结束即从表里拿掉"
+        );
+    }
+
+    #[test]
+    fn call_ids_are_bounded_diagnostic_tokens() {
+        for id in ["c-1", "c_2", "123e4567-e89b-42d3-a456-426614174000"] {
+            assert!(valid_call_id(id));
+        }
+        for id in ["", "space here", "私人路径", "a\nb", "a/b"] {
+            assert!(!valid_call_id(id));
+        }
+        assert!(!valid_call_id(&"a".repeat(MAX_CALL_ID_LEN + 1)));
+    }
+
+    #[test]
+    fn page_spans_do_not_cross_identity_or_command_boundaries() {
+        tracing::subscriber::with_default(tracing_subscriber::registry(), || {
+            let a = page_call_span("scope-check", "read_native_text", "main", "main");
+            let b = page_call_span("scope-check", "read_native_text", "main", "other");
+            let c = page_call_span("scope-check", "write_native_bytes", "main", "main");
+            assert_ne!(a.id(), b.id());
+            assert_ne!(a.id(), c.id());
+            close_page_call_span("scope-check", "read_native_text", "main", "main");
+            assert_eq!(
+                b.id(),
+                page_call_span("scope-check", "read_native_text", "main", "other").id()
+            );
+        });
+    }
+
+    #[test]
+    fn native_correlation_fields_reach_final_json_from_the_owned_span() {
+        let (emitter, receiver, _health) = test_emitter(8);
+        let subscriber = tracing_subscriber::registry().with(RecordLayer {
+            emitter,
+            level: tracing::level_filters::LevelFilter::INFO,
+        });
+        tracing::subscriber::with_default(subscriber, || {
+            let span = command_span("read_native_text", "main", "main", Some("real-call"));
+            span.in_scope(|| {
+                tracing::info!(
+                    event = "operation_result",
+                    result = "ok",
+                    command = "wrong",
+                    window_label = "fake",
+                    call_id = "spoof"
+                )
+            });
+        });
+        let line = String::from_utf8(receiver.recv().unwrap().bytes).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&line).unwrap();
+        // Fields are serialized flat in the record, not only held in tracing metadata.
+        assert_eq!(value["call_id"], "real-call");
+        assert_eq!(value["command"], "read_native_text");
+        assert_eq!(value["window_label"], "main");
+        assert_eq!(value["webview_label"], "main");
     }
 
     #[test]

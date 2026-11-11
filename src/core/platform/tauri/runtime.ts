@@ -21,7 +21,7 @@ const runtimePrefsSchema = z
 export type RuntimePrefs = z.infer<typeof runtimePrefsSchema>;
 
 /**
- * 运行期配置里前端要知道的那些 ✓（当前只有导出的根 ✓）。
+ * 运行期配置里应用侧需要的导出能力与日志接收等待值。
  *
  * 非桌面应用（纯网页 ✓）没有这个能力 ✓ ⇒ 返回 undefined ✓ ✓。
  */

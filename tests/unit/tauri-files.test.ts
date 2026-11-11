@@ -12,8 +12,46 @@ import {
   writeNativeBytes,
 } from '../../src/core/platform/tauri/files';
 
-const native = vi.hoisted(() => ({isTauri: vi.fn(), invoke: vi.fn()}));
-vi.mock('@tauri-apps/api/core', () => native);
+const native = vi.hoisted(() => ({
+  isTauri: vi.fn(),
+  invoke: vi.fn(),
+  logs: vi.fn(),
+  calls: [] as {command: string; args: Record<string, unknown> | undefined}[],
+}));
+vi.mock('../../src/core/platform/tauri/messages', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/core/platform/tauri/messages')>();
+  return {
+    ...actual,
+    tauriMessagePort: actual.createTauriMessagePort(
+      async () => ({
+        isTauri: native.isTauri,
+        invoke: async <T>(
+          _command: string,
+          args?: import('@tauri-apps/api/core').InvokeArgs,
+        ): Promise<T> => native.logs(args),
+      }),
+      async () => 20,
+    ),
+  };
+});
+/** Exercise the real SDK bridge; concurrent dynamic imports must not depend on module-mock interception. */
+function routeNativeCommand(command: string, args?: Record<string, unknown>) {
+  if (command === 'get_runtime_prefs')
+    return Promise.resolve({exportRoot: 'web', nativePdfAvailable: true, logCallTimeoutMs: 20});
+  if (command === 'log_event') return native.logs(args);
+  native.calls.push({command, args});
+  const {callId: _callId, ...businessArgs} = args ?? {};
+  return native.invoke(command, Object.keys(businessArgs).length ? businessArgs : undefined);
+}
+afterEach(async () => {
+  await vi.waitFor(() =>
+    expect(
+      native.logs.mock.calls.filter(
+        ([args]) => JSON.parse(String(args?.payload)).event === 'call_finished',
+      ),
+    ).toHaveLength(native.calls.length),
+  );
+});
 const events = vi.hoisted(() => ({listen: vi.fn()}));
 vi.mock('@tauri-apps/api/event', () => events);
 const selected = {
@@ -24,7 +62,11 @@ const selected = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  native.calls.length = 0;
+  native.logs.mockResolvedValue('accepted');
   native.isTauri.mockReturnValue(true);
+  vi.stubGlobal('isTauri', true);
+  vi.stubGlobal('__TAURI_INTERNALS__', {invoke: routeNativeCommand});
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,6 +81,7 @@ it('maps only dialog null to no selection and preserves observable invocation fa
 });
 it('rejects native file operations outside Tauri', async () => {
   native.isTauri.mockReturnValue(false);
+  vi.stubGlobal('isTauri', false);
   await expect(selectNativeOpen()).rejects.toThrow('原生文件能力');
   await expect(selectNativeSave('report.md')).rejects.toThrow('原生文件能力');
   expect(native.invoke).not.toHaveBeenCalled();
@@ -213,4 +256,52 @@ it('hands the dropped files over and ignores a payload it does not trust', async
   deliver?.({payload: {files: [{key: 'not-a-uuid'}]}});
   expect(seen).toHaveLength(1);
   unlisten();
+});
+
+it('carries one unique ID through each command and its ordered page events', async () => {
+  native.invoke.mockResolvedValue('hello');
+  await Promise.all([readNativeText(selected), readNativeText(selected)]);
+  await vi.waitFor(() => expect(native.logs.mock.calls).toHaveLength(4));
+  const events = native.logs.mock.calls.map(
+    ([args]) =>
+      JSON.parse(String(args?.payload)) as {
+        event: string;
+        call_id?: string;
+        command?: string;
+        result?: string;
+      },
+  );
+  const ids = native.calls.map((call) => call.args?.callId);
+  expect(new Set(ids).size).toBe(2);
+  for (const id of ids) {
+    expect(id).toEqual(expect.any(String));
+    expect(events.filter((event) => event.call_id === id).map((event) => event.event)).toEqual([
+      'call_started',
+      'call_finished',
+    ]);
+    expect(
+      events.find((event) => event.call_id === id && event.event === 'call_finished')?.result,
+    ).toBe('ok');
+  }
+});
+it('keeps a native success separate from a page decoding failure', async () => {
+  native.invoke.mockResolvedValue(42);
+  await expect(readNativeText(selected)).rejects.toThrow();
+  await vi.waitFor(() => expect(native.logs.mock.calls).toHaveLength(2));
+  expect(JSON.parse(String(native.logs.mock.calls[1]?.[0]?.payload)).result).toBe('error');
+});
+it('reports denied completion without changing the business failure', async () => {
+  native.invoke.mockRejectedValue({code: 'native-source-denied'});
+  await expect(readNativeText(selected)).rejects.toMatchObject({code: 'native-source-denied'});
+  await vi.waitFor(() => expect(native.logs.mock.calls).toHaveLength(2));
+  expect(JSON.parse(String(native.logs.mock.calls[1]?.[0]?.payload)).result).toBe('denied');
+});
+it('does not wait for a hung logging bridge before returning the file result', async () => {
+  vi.useFakeTimers();
+  native.logs.mockImplementation(() => new Promise(() => {}));
+  native.invoke.mockResolvedValue('ready');
+  expect(await readNativeText(selected)).toBe('ready');
+  await vi.advanceTimersByTimeAsync(50);
+  expect(native.logs).toHaveBeenCalledTimes(2);
+  vi.useRealTimers();
 });

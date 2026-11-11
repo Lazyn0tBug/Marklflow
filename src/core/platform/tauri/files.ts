@@ -1,4 +1,6 @@
 import {z} from 'zod';
+import {createRenderNonce} from '../crypto';
+import {tauriMessagePort} from './messages';
 import type {ByteSaveTarget} from '../../../application/exports/exportService';
 import {FileFailure} from '../fileFailure';
 import type {TargetStatus} from '../../../application/workspace/targetStatus';
@@ -39,31 +41,69 @@ const nativeFailureSchema = z
 const targetStatusSchema = z.enum(['ready', 'changed', 'missing', 'unwritable', 'invalid']);
 
 export type NativeSelection = z.infer<typeof selectedSchema>;
-async function invoke(command: string, args?: Record<string, unknown>): Promise<unknown> {
+function invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
+function invoke<T>(
+  command: string,
+  args: Record<string, unknown> | undefined,
+  decode: (value: unknown) => T,
+): Promise<T>;
+async function invoke(
+  command: string,
+  args?: Record<string, unknown>,
+  decode: (value: unknown) => unknown = (value) => value,
+): Promise<unknown> {
   const native = await import('@tauri-apps/api/core');
   if (!native.isTauri()) throw new Error('原生文件能力仅在桌面应用中可用');
+  // Correlation is diagnostic only: unavailable randomness must not stop a file operation.
+  let callId: string | undefined;
   try {
-    return await native.invoke(command, args);
+    callId = createRenderNonce();
+  } catch {
+    /* Missing correlation remains visible to the checker. */
+  }
+  const port = tauriMessagePort;
+  const started = port
+    .event({kind: 'call_started', command, ...(callId === undefined ? {} : {callId})})
+    .catch(() => {});
+  let result = 'error';
+  try {
+    const value = decode(
+      await native.invoke(command, {...args, ...(callId === undefined ? {} : {callId})}),
+    );
+    result = 'ok';
+    return value;
   } catch (error) {
-    // 原生侧给的是结构化的机器码 ✓：拒绝不再靠子串匹配 ✓（§9）。
-    // 探针要机器码取证 ✓：错误对象上留着码 ✓。
     const failure = nativeFailureSchema.safeParse(error);
-    // **与浏览器侧同一个失败类型** ✓ ⇒ ⇒ 同一批机器码 ✓ ⇒ ⇒ 应用不问来源 ✓。
-    if (failure.success)
+    if (failure.success) {
+      if (failure.data.code === 'native-source-denied') result = 'denied';
       throw new FileFailure(failure.data.code, {limitBytes: failure.data.limitBytes});
+    }
     throw error;
+  } finally {
+    // One port per business call; ordered attempts, never a business dependency or global queue.
+    void started
+      .then(() =>
+        port.event({
+          kind: 'call_finished',
+          command,
+          result,
+          ...(callId === undefined ? {} : {callId}),
+        }),
+      )
+      .catch(() => {});
   }
 }
-/** Independent M3 adapter. No production composition or document bindings yet. */
+/** Desktop file adapter; paths and grants remain owned by the native side. */
 export async function selectNativeOpen(): Promise<NativeSelection[] | undefined> {
-  const value = await invoke('select_native_open');
-  return value === null ? undefined : z.array(selectedSchema).parse(value);
+  return invoke('select_native_open', undefined, (value) =>
+    value === null ? undefined : z.array(selectedSchema).parse(value),
+  );
 }
 export async function releaseNativeFile(key: string): Promise<void> {
   await invoke('release_native_file', {key});
 }
 export async function readNativeText(file: NativeSelection): Promise<string> {
-  return z.string().parse(await invoke('read_native_text', {key: file.key}));
+  return invoke('read_native_text', {key: file.key}, (value) => z.string().parse(value));
 }
 /**
  * 问一句：**这个目标现在是什么状态** ✓（§3.1 ✓、§6.1 ✓）。
@@ -74,7 +114,7 @@ export async function readNativeText(file: NativeSelection): Promise<string> {
  * **摘要值不出原生侧** ✓ ⇒ ⇒ 应用侧没有第二份事实会漂 ✓（§3.4 ✓）。
  */
 export async function detectNativeTarget(key: string): Promise<TargetStatus> {
-  return targetStatusSchema.parse(await invoke('detect_native_target', {key}));
+  return invoke('detect_native_target', {key}, (value) => targetStatusSchema.parse(value));
 }
 
 /**
@@ -95,9 +135,9 @@ export async function isNativeSynced(key: string): Promise<boolean> {
  * ⇒ ⇒ 应用层据此提示用户 ✓ ⇒ ⇒ 而"在不在同一个目录"只有拿着路径的那一侧答得了 ✓（§1.3 ✓）。
  */
 export async function isNativeSameDirectory(first: string, second: string): Promise<boolean> {
-  return z
-    .boolean()
-    .parse(await invoke('is_native_same_directory', {firstKey: first, secondKey: second}));
+  return invoke('is_native_same_directory', {firstKey: first, secondKey: second}, (value) =>
+    z.boolean().parse(value),
+  );
 }
 /**
  * 问一句：**那个目标还在吗** ✓（§3.1 ✓、§8.2 ✓）。
@@ -109,7 +149,7 @@ export async function isNativeSameDirectory(first: string, second: string): Prom
  * 这一句只看它在不在 ✓ ⇒ ⇒ 便宜 ✓ ⇒ ⇒ **写完那一次验证读走它** ✓（§6.1 ✓）。
  */
 export async function isNativeTargetPresent(key: string): Promise<boolean> {
-  return z.boolean().parse(await invoke('is_native_target_present', {key}));
+  return invoke('is_native_target_present', {key}, (value) => z.boolean().parse(value));
 }
 /**
  * **写回原文件** ✓：走受保护的同步入口 ✓ ⇒ ⇒ **复核在命令内部** ✓（§3.1 ✓、§6.1 ✓）。
@@ -127,19 +167,21 @@ export async function writeNativeSync(
   intent: 'sync' | 'overwrite' | 'continue',
 ): Promise<TargetStatus> {
   // **它也答一个状态** ✓ ⇒ ⇒ **写不成就是抛** ✓ ⇒ ⇒ **机器码不出这一层** ✓（§9 ✓）。
-  const status = targetStatusSchema.parse(
-    await invoke('write_native_sync', {
+  const status = await invoke(
+    'write_native_sync',
+    {
       key,
       bytes: Array.from(bytes),
       overwrite: intent === 'overwrite',
       allowMissing: intent === 'continue',
-    }),
+    },
+    (value) => targetStatusSchema.parse(value),
   );
   return status;
 }
 /** 按句柄读文本 ✓：**反向同步要它** ✓（§6.5 ✓）。 */
 export async function readNativeTextByKey(key: string): Promise<string> {
-  return z.string().parse(await invoke('read_native_text', {key}));
+  return invoke('read_native_text', {key}, (value) => z.string().parse(value));
 }
 export interface NativeSaveTarget extends ByteSaveTarget {
   /** 授权的 key ✓ —— 路径只在原生侧可见 ✓，前端只拿得到它 ✓。 */
@@ -166,9 +208,10 @@ export async function writeNativeBytes(handle: string, bytes: Uint8Array): Promi
   await invoke('write_native_bytes', {key: handle, bytes: Array.from(bytes)});
 }
 export async function selectNativeSave(name: string): Promise<NativeSaveTarget | undefined> {
-  const value = await invoke('select_native_save', {name});
-  if (value === null) return undefined;
-  const file = selectedSchema.parse(value);
+  const file = await invoke('select_native_save', {name}, (value) =>
+    value === null ? undefined : selectedSchema.parse(value),
+  );
+  if (!file) return undefined;
   return {
     key: file.key,
     reference: file.reference,

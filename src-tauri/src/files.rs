@@ -85,15 +85,18 @@ fn ensure_allowed(command: &str, identity: &source_guard::Identity) -> Result<()
 fn in_command_span<T>(
     command: WebCommand,
     webview: &tauri::Webview,
+    call_id: Option<&str>,
     body: impl FnOnce(std::time::Instant, &'static str) -> Result<T, String>,
 ) -> Result<T, NativeFailure> {
     let name = logging::command_name(command);
     let identity =
         source_guard::Identity::from_labels(webview.window().label(), webview.label());
+    let valid_id = call_id.filter(|id| logging::valid_call_id(id));
     let span = logging::command_span(
         name,
         identity.window_label.as_ref(),
         identity.webview_label.as_ref(),
+        valid_id,
     );
     span.in_scope(|| {
         let started = std::time::Instant::now();
@@ -106,6 +109,16 @@ fn in_command_span<T>(
                 elapsed_ms = started.elapsed().as_millis(),
             );
             return Err(NativeFailure::from_code(code));
+        }
+        if call_id.is_some() && valid_id.is_none() {
+            tracing::warn!(
+                event = "operation_result",
+                result = "error",
+                command = name,
+                reason_code = "invalid-payload",
+                elapsed_ms = started.elapsed().as_millis(),
+            );
+            return Err(NativeFailure::from_code("invalid-payload".to_owned()));
         }
         body(started, name).map_err(|code| failure_with_limit(code, command))
     })
@@ -628,9 +641,10 @@ pub fn commit_bytes(
 pub async fn select_native_open(
     app: tauri::AppHandle,
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
 ) -> Result<Option<Vec<SelectedFile>>, NativeFailure> {
-    in_command_span(WebCommand::SelectNativeOpen, &webview, |started, cmd| {
+    in_command_span(WebCommand::SelectNativeOpen, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = paths_of(app, access);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -730,10 +744,11 @@ fn paths_of(
 pub async fn select_native_save(
     app: tauri::AppHandle,
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     name: String,
 ) -> Result<Option<SelectedFile>, NativeFailure> {
-    in_command_span(WebCommand::SelectNativeSave, &webview, |started, cmd| {
+    in_command_span(WebCommand::SelectNativeSave, &webview, call_id.as_deref(), |started, cmd| {
         if name.is_empty() || name.contains(['/', '\\', '\0']) || name == "." || name == ".." {
             tracing::warn!(
                 event = "operation_result",
@@ -779,10 +794,11 @@ pub async fn select_native_save(
 #[tauri::command]
 pub async fn read_native_text(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<String, NativeFailure> {
-    in_command_span(WebCommand::ReadNativeText, &webview, |started, cmd| {
+    in_command_span(WebCommand::ReadNativeText, &webview, call_id.as_deref(), |started, cmd| {
         // 授权解析失败也是命令结果：早退路径同样记 operation_result，不留空白。
         let outcome = access.path(&key, false).and_then(|path| {
             // **摘要算的就是应用拿到的这份字节** ✓ ⇒ ⇒ 记下的就是"应用手上那一版" ✓。
@@ -832,13 +848,14 @@ pub async fn read_native_text(
 #[tauri::command]
 pub async fn write_native_sync(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     key: String,
     bytes: Vec<u8>,
     overwrite: bool,
     allow_missing: bool,
 ) -> Result<TargetStatus, NativeFailure> {
-    in_command_span(WebCommand::WriteNativeSync, &webview, |started, cmd| {
+    in_command_span(WebCommand::WriteNativeSync, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = access.write(&key, &bytes, overwrite, allow_missing);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -883,11 +900,12 @@ pub async fn write_native_sync(
 #[tauri::command]
 pub async fn write_native_bytes(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     key: String,
     bytes: Vec<u8>,
 ) -> Result<(), NativeFailure> {
-    in_command_span(WebCommand::WriteNativeBytes, &webview, |started, cmd| {
+    in_command_span(WebCommand::WriteNativeBytes, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = access.path(&key, true).and_then(|path| {
             // **通用入口不复核** ✓ ⇒ ⇒ 它写的是选择器刚给的目标 ✓ ⇒ ⇒ 那里没有基线 ✓。
             // **原文件写回走 `write_native_sync`** ✓ ⇒ ⇒ 那条才复核 ✓（§3.2 ✓）。
@@ -931,10 +949,11 @@ pub async fn write_native_bytes(
 #[tauri::command]
 pub async fn detect_native_target(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<TargetStatus, NativeFailure> {
-    in_command_span(WebCommand::DetectNativeTarget, &webview, |started, cmd| {
+    in_command_span(WebCommand::DetectNativeTarget, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = access.detect(&key);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -971,10 +990,11 @@ pub async fn detect_native_target(
 #[tauri::command]
 pub async fn is_native_target_present(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<bool, NativeFailure> {
-    in_command_span(WebCommand::IsNativeTargetPresent, &webview, |started, cmd| {
+    in_command_span(WebCommand::IsNativeTargetPresent, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = access.target_present(&key);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -1009,11 +1029,12 @@ pub async fn is_native_target_present(
 #[tauri::command]
 pub async fn is_native_same_directory(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     first_key: String,
     second_key: String,
 ) -> Result<bool, NativeFailure> {
-    in_command_span(WebCommand::IsNativeSameDirectory, &webview, |started, cmd| {
+    in_command_span(WebCommand::IsNativeSameDirectory, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = access.same_directory(&first_key, &second_key);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -1095,13 +1116,14 @@ impl From<String> for PrintFailureReading {
 #[tauri::command]
 pub async fn print_native_pdf(
     webview: tauri::Webview,
+    call_id: Option<String>,
     app: tauri::AppHandle,
     access: tauri::State<'_, FileAccess>,
     html: String,
     key: String,
 ) -> Result<String, NativeFailure> {
     // **走来源守卫** ✓：这个命令写文件 ✓，守卫是本项目唯一的隔离层 ✓。
-    in_command_span(WebCommand::PrintNativePdf, &webview, |started, cmd| {
+    in_command_span(WebCommand::PrintNativePdf, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = print_native_pdf_impl(&app, &access, &html, &key);
         let elapsed = started.elapsed().as_millis();
         match outcome {
@@ -1217,10 +1239,11 @@ fn print_native_pdf_impl(
 #[tauri::command]
 pub fn release_native_file(
     webview: tauri::Webview,
+    call_id: Option<String>,
     access: tauri::State<'_, FileAccess>,
     key: String,
 ) -> Result<(), NativeFailure> {
-    in_command_span(WebCommand::ReleaseNativeFile, &webview, |started, cmd| {
+    in_command_span(WebCommand::ReleaseNativeFile, &webview, call_id.as_deref(), |started, cmd| {
         let outcome = access
             .0
             .lock()
