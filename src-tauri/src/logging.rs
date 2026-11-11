@@ -337,7 +337,8 @@ impl Health {
 ///
 /// 由原生创建宿主时登记；页面不能自报身份获得允许，也不因此扩展文件权限。
 #[cfg(feature = "pdf-probe")]
-static PROBE_INSTANCES: OnceLock<std::sync::Mutex<Vec<crate::source_guard::Identity>>> = OnceLock::new();
+static PROBE_INSTANCES: OnceLock<std::sync::Mutex<Vec<crate::source_guard::Identity>>> =
+    OnceLock::new();
 
 /// 登记一个原生实际创建的探针输出实例。
 ///
@@ -441,7 +442,10 @@ fn with_global_health(action: impl FnOnce(&Health)) {
 
 /// 当前运行的健康状态。受控验收入口可直接读它，并把状态与观察来源抄进验证记录。
 pub fn health() -> HealthSnapshot {
-    HEALTH.get().map(|health| health.snapshot()).unwrap_or_default()
+    HEALTH
+        .get()
+        .map(|health| health.snapshot())
+        .unwrap_or_default()
 }
 
 /// 本次运行的标识（同时是记录的根归属）。
@@ -482,7 +486,7 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
     // 现在它与配置同一个根 ✓：当前目录下 `conf\` 是配置 ✓、`log\` 是日志 ✓。
     //
     // **目录不可用时应用照常运行** ✓：只把文件 sink 标为不可用 ✓，
-    // stdout 仍尽力输出 ✓ —— 日志落不下去不该让应用起不来 ✓。
+    // stdout 按配置显式开启 ✓ —— 日志落不下去不该让应用起不来 ✓。
     let path = match log_directory() {
         Some(directory) => {
             if fs::create_dir_all(&directory).is_err() {
@@ -506,9 +510,10 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
         run_id: run_id.clone(),
     };
     let writer_health = health.clone();
+    let stdout_enabled = config.stdout;
     if thread::Builder::new()
         .name("markflow-log".into())
-        .spawn(move || writer_loop(receiver, path, writer_format, writer_health))
+        .spawn(move || writer_loop(receiver, path, writer_format, writer_health, stdout_enabled))
         .is_err()
     {
         health.file_unavailable.store(true, Ordering::Relaxed);
@@ -523,10 +528,7 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
         health: health.clone(),
     };
     let _ = EMITTER.set(emitter.clone());
-    let layer = RecordLayer {
-        emitter,
-        level,
-    };
+    let layer = RecordLayer { emitter, level };
     let builder = tracing_subscriber::registry().with(layer);
     if builder.try_init().is_err() {
         // 已被别处初始化过：不重复设置，也不因此让应用失败。
@@ -563,6 +565,7 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
             config_source = source.as_str(),
             log_level = level_name(level),
             log_format = if json { "json" } else { "text" },
+            log_stdout = config.stdout,
         )
     });
 }
@@ -628,7 +631,7 @@ pub fn shutdown(feature: &str) {
 /// 写线程存活标记。
 static WRITER_ALIVE: AtomicBool = AtomicBool::new(false);
 
-/// 级别来自配置；默认 debug 构建 INFO、发布构建 WARN。
+/// 级别来自配置；默认 debug 与发布构建均为 INFO。
 fn level_from_config(value: &str) -> tracing::level_filters::LevelFilter {
     use tracing::level_filters::LevelFilter;
     match value.trim() {
@@ -638,13 +641,7 @@ fn level_from_config(value: &str) -> tracing::level_filters::LevelFilter {
         "debug" => LevelFilter::DEBUG,
         "trace" => LevelFilter::TRACE,
         "off" => LevelFilter::OFF,
-        _ => {
-            if cfg!(debug_assertions) {
-                LevelFilter::INFO
-            } else {
-                LevelFilter::WARN
-            }
-        }
+        _ => LevelFilter::INFO,
     }
 }
 
@@ -653,10 +650,8 @@ fn level_from_config(value: &str) -> tracing::level_filters::LevelFilter {
 /// 顺序按契约：先做廉价的大小检查，再做身份准入，最后才解析载荷。
 /// 外层字段（origin、身份、接收时间、run_id）一律由本侧生成，页面不能覆盖。
 pub fn record_web_event(webview: &tauri::Webview, payload: String) -> &'static str {
-    let identity = crate::source_guard::Identity::from_labels(
-        webview.window().label(),
-        webview.label(),
-    );
+    let identity =
+        crate::source_guard::Identity::from_labels(webview.window().label(), webview.label());
     let Some(emitter) = EMITTER.get() else {
         return WEB_REJECTED;
     };
@@ -698,7 +693,10 @@ fn record_web_event_for(
     }
     // 只放业务字段：origin 与身份由发送口统一加（页面不能覆盖）。
     let mut fields: BTreeMap<String, String> = BTreeMap::new();
-    fields.insert("page_event".to_owned(), event_kind_name(event.event).to_owned());
+    fields.insert(
+        "page_event".to_owned(),
+        event_kind_name(event.event).to_owned(),
+    );
     // **页面自己的构建标识** ✓ ⇒ ⇒ 与运行标记里的 `build_commit` 对一下 ⇒ ⇒
     // 页面与原生侧是不是同一个构建 ⇒ ⇒ 日志直接答 ✓ ⇒ ⇒ 不用问人 ✓。
     if let Some(build) = event.build.as_deref() {
@@ -749,9 +747,18 @@ fn record_web_event_for(
     });
     // 外层事件名固定为 web_event；业务事件在 page_event 字段内，不能变成原生事件名。
     // 外层字段（origin、身份）由发送口生成，页面不能覆盖。
-    emitter.emit_web(level, "web_event", fields, span.as_ref().map(span_context), identity);
+    emitter.emit_web(
+        level,
+        "web_event",
+        fields,
+        span.as_ref().map(span_context),
+        identity,
+    );
     // 调用结束：它的 span 从表里拿掉 ✓（表里只留还没结束的调用 ✓）。
-    if matches!(event.event, WebEventKind::CallFinished | WebEventKind::PageError) {
+    if matches!(
+        event.event,
+        WebEventKind::CallFinished | WebEventKind::PageError
+    ) {
         if let Some(call_id) = event.call_id.as_ref() {
             close_page_call_span(call_id);
         }
@@ -938,7 +945,8 @@ where
             fields.insert("at".to_owned(), at);
         }
         let level = event.metadata().level();
-        self.emitter.emit_native(level.as_str(), &name, fields, span);
+        self.emitter
+            .emit_native(level.as_str(), &name, fields, span);
     }
 }
 
@@ -956,7 +964,7 @@ fn callsite_location(meta: &tracing::Metadata<'_>) -> Option<String> {
 /// **位置串** ✓：**我们自己的源文件与行** ✓ ⇒ ⇒ **空格换成下划线** ✓ ⇒ ⇒
 /// 日志里那一条**始终是一行** ✓ ⇒ ⇒ 与页面侧的定位串同一套规矩 ✓。
 fn location_of(file: &str, line: u32) -> String {
-    format!("{file}:{line}").replace(' ', "_")
+    format!("{file}:{line}").replace('\\', "/").replace(' ', "_")
 }
 
 /// 写线程：追加、轮转、同步到 stdout、健康摘要。
@@ -967,6 +975,7 @@ fn writer_loop(
     path: Option<PathBuf>,
     format: RecordFormat,
     health: Arc<Health>,
+    stdout_enabled: bool,
 ) {
     WRITER_ALIVE.store(true, Ordering::Relaxed);
     let mut file = match path.as_deref().map(open_log) {
@@ -1021,7 +1030,7 @@ fn writer_loop(
                         size += record.bytes.len() as u64;
                     }
                 }
-                write_stdout(&record.bytes);
+                write_stdout(&record.bytes, stdout_enabled);
                 if record.urgent {
                     // WARN/ERROR 写后立即刷新，不等下一秒的例行刷新。
                     if let Some(file) = file.as_mut() {
@@ -1036,13 +1045,13 @@ fn writer_loop(
                 }
                 if last_summary.elapsed() >= HEALTH_SUMMARY_INTERVAL {
                     last_summary = Instant::now();
-                    write_health_summary(&mut file, &format, &health);
+                    write_health_summary(&mut file, &format, &health, stdout_enabled);
                 }
             }
             Err(RecvTimeoutError::Disconnected) => break,
         }
     }
-    write_health_summary(&mut file, &format, &health);
+    write_health_summary(&mut file, &format, &health, stdout_enabled);
     if let Some(file) = file.as_mut() {
         let _ = file.flush();
     }
@@ -1051,7 +1060,12 @@ fn writer_loop(
 
 /// 健康摘要：把计数按限频写进日志（直接写文件，不经 tracing，避免递归）。
 /// 有丢弃、拒收或写入错误时，校验器据此不宣称日志完整。
-fn write_health_summary(file: &mut Option<File>, format: &RecordFormat, health: &Health) {
+fn write_health_summary(
+    file: &mut Option<File>,
+    format: &RecordFormat,
+    health: &Health,
+    stdout_enabled: bool,
+) {
     let snapshot = health.snapshot();
     if snapshot.dropped == 0
         && snapshot.rejected == 0
@@ -1066,18 +1080,33 @@ fn write_health_summary(file: &mut Option<File>, format: &RecordFormat, health: 
     let mut fields = BTreeMap::new();
     fields.insert("dropped".to_owned(), snapshot.dropped.to_string());
     fields.insert("rejected".to_owned(), snapshot.rejected.to_string());
-    fields.insert("write_failures".to_owned(), snapshot.write_failures.to_string());
-    fields.insert("rotate_failures".to_owned(), snapshot.rotate_failures.to_string());
-    fields.insert("delete_failures".to_owned(), snapshot.delete_failures.to_string());
-    fields.insert("file_unavailable".to_owned(), snapshot.file_unavailable.to_string());
-    fields.insert("stdout_failed".to_owned(), snapshot.stdout_failed.to_string());
+    fields.insert(
+        "write_failures".to_owned(),
+        snapshot.write_failures.to_string(),
+    );
+    fields.insert(
+        "rotate_failures".to_owned(),
+        snapshot.rotate_failures.to_string(),
+    );
+    fields.insert(
+        "delete_failures".to_owned(),
+        snapshot.delete_failures.to_string(),
+    );
+    fields.insert(
+        "file_unavailable".to_owned(),
+        snapshot.file_unavailable.to_string(),
+    );
+    fields.insert(
+        "stdout_failed".to_owned(),
+        snapshot.stdout_failed.to_string(),
+    );
     // 健康摘要直写文件，不经队列（否则会递归产生日志）。
     let line = format.format("WARN", "log_health", &fields, log_span_context());
     if let Some(file) = file.as_mut() {
         let _ = file.write_all(line.as_bytes());
         let _ = file.flush();
     }
-    write_stdout(line.as_bytes());
+    write_stdout(line.as_bytes(), stdout_enabled);
 }
 
 /// 轮转判定：跨日，或下一条完整记录会让当前文件超过上限；空文件不轮转（否则每天多出一个空归档）。
@@ -1089,14 +1118,15 @@ fn should_rotate(current_size: u64, next_record: usize, current_day: u64, today:
 }
 
 /// stdout 是尽力镜像：失败只停用 stdout，不拖累文件 sink。
-fn write_stdout(record: &[u8]) {
-    let mut stdout_failed = false;
-    with_global_health(|health| stdout_failed = health.stdout_failed.load(Ordering::Relaxed));
-    if stdout_failed {
-        return;
-    }
-    if io::stdout().write_all(record).is_err() {
-        with_global_health(|health| health.stdout_failed.store(true, Ordering::Relaxed));
+fn write_stdout(record: &[u8], enabled: bool) {
+    with_global_health(|health| {
+        mirror_stdout(record, enabled, &health.stdout_failed, &mut io::stdout());
+    });
+}
+
+fn mirror_stdout(record: &[u8], enabled: bool, failed: &AtomicBool, writer: &mut impl Write) {
+    if enabled && !failed.load(Ordering::Relaxed) && writer.write_all(record).is_err() {
+        failed.store(true, Ordering::Relaxed);
     }
 }
 
@@ -1105,13 +1135,7 @@ fn open_log(path: &Path) -> io::Result<File> {
 }
 
 /// 轮转：把当前文件归档，重开新的当前文件，并裁掉过旧的归档。
-fn rotate(
-    path: &Path,
-    file: &mut Option<File>,
-    size: &mut u64,
-    archive_day: u64,
-    health: &Health,
-) {
+fn rotate(path: &Path, file: &mut Option<File>, size: &mut u64, archive_day: u64, health: &Health) {
     let Some(mut current) = file.as_ref() else {
         return;
     };
@@ -1172,7 +1196,10 @@ fn prune_archives(path: &Path, health: &Health) {
     let mut archives: Vec<(String, PathBuf)> = Vec::new();
     for entry in entries.flatten() {
         let candidate = entry.path();
-        let Some(file_name) = candidate.file_name().map(|value| value.to_string_lossy().into_owned()) else {
+        let Some(file_name) = candidate
+            .file_name()
+            .map(|value| value.to_string_lossy().into_owned())
+        else {
             continue;
         };
         if !file_name.starts_with(prefix) || !is_archive_name(&file_name) {
@@ -1228,7 +1255,10 @@ fn archive_sort_key(file_name: &str) -> Option<String> {
     if !is_archive_name(file_name) {
         return None;
     }
-    Some(format!("{date}:{:012}", sequence.parse::<u64>().unwrap_or_default()))
+    Some(format!(
+        "{date}:{:012}",
+        sequence.parse::<u64>().unwrap_or_default()
+    ))
 }
 
 fn unix_seconds() -> u64 {
@@ -1262,7 +1292,11 @@ fn civil_from_days(days: u64) -> (i64, u32, u32) {
     let mp = (5 * day_of_year + 2) / 153;
     let day = day_of_year - (153 * mp + 2) / 5 + 1;
     let month = if mp < 10 { mp + 3 } else { mp - 9 };
-    (if month <= 2 { year + 1 } else { year }, month as u32, day as u32)
+    (
+        if month <= 2 { year + 1 } else { year },
+        month as u32,
+        day as u32,
+    )
 }
 
 fn day_of_year(day_of_era: i64, year_of_era: i64) -> i64 {
@@ -1282,23 +1316,28 @@ impl Visit for FieldCollector<'_> {
     }
 
     fn record_str(&mut self, field: &Field, value: &str) {
-        self.fields.insert(field.name().to_owned(), value.to_owned());
+        self.fields
+            .insert(field.name().to_owned(), value.to_owned());
     }
 
     fn record_i64(&mut self, field: &Field, value: i64) {
-        self.fields.insert(field.name().to_owned(), value.to_string());
+        self.fields
+            .insert(field.name().to_owned(), value.to_string());
     }
 
     fn record_u64(&mut self, field: &Field, value: u64) {
-        self.fields.insert(field.name().to_owned(), value.to_string());
+        self.fields
+            .insert(field.name().to_owned(), value.to_string());
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
-        self.fields.insert(field.name().to_owned(), value.to_string());
+        self.fields
+            .insert(field.name().to_owned(), value.to_string());
     }
 
     fn record_f64(&mut self, field: &Field, value: f64) {
-        self.fields.insert(field.name().to_owned(), value.to_string());
+        self.fields
+            .insert(field.name().to_owned(), value.to_string());
     }
 }
 
@@ -1321,7 +1360,10 @@ fn json_record(
     line.push_str(&json_string(level));
     line.push_str(",\"event\":");
     line.push_str(&json_string(
-        fields.get("event").map(String::as_str).unwrap_or(fallback_event),
+        fields
+            .get("event")
+            .map(String::as_str)
+            .unwrap_or(fallback_event),
     ));
     line.push_str(",\"span\":");
     match &span {
@@ -1454,9 +1496,7 @@ fn json_string(value: &str) -> String {
 
 /// UTC 时间戳（毫秒精度，ISO 8601）。
 fn iso_timestamp(time: SystemTime) -> String {
-    let duration = time
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
+    let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
     let seconds = duration.as_secs() as i64;
     let millis = duration.subsec_millis();
     let days = seconds.div_euclid(86400);
@@ -1564,6 +1604,29 @@ static PAGE_CALL_SPANS: OnceLock<Mutex<PageCallSpans>> = OnceLock::new();
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn stdout_off_skips_writes_and_errors_disable_only_the_mirror() {
+        struct Broken(usize);
+        impl std::io::Write for Broken {
+            fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+                self.0 += 1;
+                Err(std::io::Error::other("broken"))
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let failed = std::sync::atomic::AtomicBool::new(false);
+        let mut writer = Broken(0);
+        super::mirror_stdout(b"log", false, &failed, &mut writer);
+        assert_eq!(writer.0, 0);
+        assert!(!failed.load(std::sync::atomic::Ordering::Relaxed));
+        super::mirror_stdout(b"log", true, &failed, &mut writer);
+        super::mirror_stdout(b"log", true, &failed, &mut writer);
+        assert_eq!(writer.0, 1);
+        assert!(failed.load(std::sync::atomic::Ordering::Relaxed));
+    }
+
     use super::*;
 
     #[test]
@@ -1604,7 +1667,10 @@ mod tests {
         let table = PAGE_CALL_SPANS.get().expect("表已建");
         {
             let guard = table.lock().unwrap();
-            assert!(guard.open.contains_key(key), "两次取同一个调用，表里只应有一条");
+            assert!(
+                guard.open.contains_key(key),
+                "两次取同一个调用，表里只应有一条"
+            );
         }
         close_page_call_span(key);
         let guard = table.lock().unwrap();
@@ -1674,7 +1740,14 @@ mod tests {
 
     #[test]
     fn json_record_keeps_the_span_key_when_there_is_no_span() {
-        let line = json_record("run-1", UNIX_EPOCH, "INFO", "run_start", &sample_fields(), None);
+        let line = json_record(
+            "run-1",
+            UNIX_EPOCH,
+            "INFO",
+            "run_start",
+            &sample_fields(),
+            None,
+        );
         let value: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
         assert!(value.get("span").is_some());
         assert!(value["span"].is_null());
@@ -1719,7 +1792,10 @@ mod tests {
         assert_eq!(first.file_name().unwrap(), "markflow.42.log.2026-11-03.000");
         std::fs::write(&first, b"x").unwrap();
         let second = archive_path(&path, day).unwrap();
-        assert_eq!(second.file_name().unwrap(), "markflow.42.log.2026-11-03.001");
+        assert_eq!(
+            second.file_name().unwrap(),
+            "markflow.42.log.2026-11-03.001"
+        );
         // 不覆盖已有归档：第二个名字尚未被创建。
         assert!(first.exists());
         assert!(!second.exists());
@@ -1733,7 +1809,8 @@ mod tests {
         for day in ["2026-11-01", "2026-11-02"] {
             for sequence in 0..6 {
                 std::fs::write(
-                    dir.path().join(format!("markflow.42.log.{day}.{sequence:03}")),
+                    dir.path()
+                        .join(format!("markflow.42.log.{day}.{sequence:03}")),
                     b"x",
                 )
                 .unwrap();
@@ -1835,24 +1912,30 @@ mod tests {
         // 页面回传的命令名（serde 的 snake_case ✓）与日志里的命令名（`command_name` ✓）
         // 必须是**同一个字符串** ✓：不然跨侧配对就配不上 ✓，
         // 而配对不上时两侧各说各话 ✓，没人看得出来 ✓。
-        let cases:[(WebCommand,&str);11]=[
-            (WebCommand::GetPlatformInfo,"get_platform_info"),
-            (WebCommand::SelectNativeOpen,"select_native_open"),
-            (WebCommand::SelectNativeSave,"select_native_save"),
-            (WebCommand::ReadNativeText,"read_native_text"),
-            (WebCommand::WriteNativeBytes,"write_native_bytes"),
-            (WebCommand::WriteNativeSync,"write_native_sync"),
-            (WebCommand::DetectNativeTarget,"detect_native_target"),
-            (WebCommand::IsNativeSameDirectory,"is_native_same_directory"),
-            (WebCommand::IsNativeTargetPresent,"is_native_target_present"),
-            (WebCommand::ReleaseNativeFile,"release_native_file"),
-            (WebCommand::PrintNativePdf,"print_native_pdf"),
+        let cases: [(WebCommand, &str); 11] = [
+            (WebCommand::GetPlatformInfo, "get_platform_info"),
+            (WebCommand::SelectNativeOpen, "select_native_open"),
+            (WebCommand::SelectNativeSave, "select_native_save"),
+            (WebCommand::ReadNativeText, "read_native_text"),
+            (WebCommand::WriteNativeBytes, "write_native_bytes"),
+            (WebCommand::WriteNativeSync, "write_native_sync"),
+            (WebCommand::DetectNativeTarget, "detect_native_target"),
+            (
+                WebCommand::IsNativeSameDirectory,
+                "is_native_same_directory",
+            ),
+            (
+                WebCommand::IsNativeTargetPresent,
+                "is_native_target_present",
+            ),
+            (WebCommand::ReleaseNativeFile, "release_native_file"),
+            (WebCommand::PrintNativePdf, "print_native_pdf"),
         ];
-        for (command,name) in cases{
-            assert_eq!(command_name(command),name,"日志名与页面发的名字不一致");
+        for (command, name) in cases {
+            assert_eq!(command_name(command), name, "日志名与页面发的名字不一致");
             // 页面发的那个名字必须能解析回同一个变体 ✓。
-            let parsed:WebCommand=serde_json::from_str(&format!("\"{name}\"")).unwrap();
-            assert_eq!(parsed,command,"页面发的名字解析回了别的命令");
+            let parsed: WebCommand = serde_json::from_str(&format!("\"{name}\"")).unwrap();
+            assert_eq!(parsed, command, "页面发的名字解析回了别的命令");
         }
     }
 
@@ -1861,18 +1944,18 @@ mod tests {
         // 页面回传的类别名与日志里的类别名（`name` ✓）必须是**同一个字符串** ✓：
         // 不在枚举里的类别名让**整条载荷**反序列化失败 ✓ ⇒ ⇒ 那条页面事件
         // 连同类别一起消失 ✓（只留一个 `rejected` 计数 ✓ ⇒ 没人看得见 ✓）。
-        let cases:[(WebErrorCategory,&str);5]=[
-            (WebErrorCategory::ExportFailed,"export-failed"),
-            (WebErrorCategory::NativeIoFailed,"native-io-failed"),
-            (WebErrorCategory::InvokeRejected,"invoke-rejected"),
-            (WebErrorCategory::Render,"render"),
-            (WebErrorCategory::Unknown,"unknown"),
+        let cases: [(WebErrorCategory, &str); 5] = [
+            (WebErrorCategory::ExportFailed, "export-failed"),
+            (WebErrorCategory::NativeIoFailed, "native-io-failed"),
+            (WebErrorCategory::InvokeRejected, "invoke-rejected"),
+            (WebErrorCategory::Render, "render"),
+            (WebErrorCategory::Unknown, "unknown"),
         ];
-        for (category,name) in cases{
-            assert_eq!(category.name(),name,"日志名与页面发的名字不一致");
+        for (category, name) in cases {
+            assert_eq!(category.name(), name, "日志名与页面发的名字不一致");
             // 页面发的那个名字必须能解析回同一个变体 ✓。
-            let parsed:WebErrorCategory=serde_json::from_str(&format!("\"{name}\"")).unwrap();
-            assert_eq!(parsed,category,"页面发的名字解析回了别的类别");
+            let parsed: WebErrorCategory = serde_json::from_str(&format!("\"{name}\"")).unwrap();
+            assert_eq!(parsed, category, "页面发的名字解析回了别的类别");
         }
     }
 
@@ -1894,7 +1977,10 @@ mod tests {
         // 日志里的类别名就是页面发的那个 ✓。
         let record = receiver.try_recv().expect("记录已入队");
         let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
-        assert!(text.contains("\"error_category\":\"export-failed\""),"日志里的类别名不对：{text}");
+        assert!(
+            text.contains("\"error_category\":\"export-failed\""),
+            "日志里的类别名不对：{text}"
+        );
     }
 
     #[test]
@@ -1917,7 +2003,7 @@ mod tests {
             "日志里没有定位串：{text}"
         );
         // **原文 message 仍然不进日志** ✓ ⇒ ⇒ 用户数据不落日志 ✓。
-        assert!(!text.contains("message"),"日志里落了原始异常文本：{text}");
+        assert!(!text.contains("message"), "日志里落了原始异常文本：{text}");
     }
 
     #[test]
@@ -1928,7 +2014,8 @@ mod tests {
         assert_eq!(
             record_web_event_for(
                 &web_identity("main", "main"),
-                r#"{"event":"page_error","error_category":"rejection","build":"2a1038a"}"#.to_owned(),
+                r#"{"event":"page_error","error_category":"rejection","build":"2a1038a"}"#
+                    .to_owned(),
                 &emitter
             ),
             WEB_ACCEPTED
@@ -1962,7 +2049,8 @@ mod tests {
         // 产品形态的打印（D7）✓：页面回传的命令名必须在允许清单里 ✓。
         // 不在清单里的命令值让**整条载荷**反序列化失败 ✓——
         // 页面侧的事件会连同命令名一起消失 ✓（那条 `rejected` 就是这么来的 ✓）。
-        let payload = serde_json::json!({"event":"call_started","call_id":"c1","command":"print_native_pdf"});
+        let payload =
+            serde_json::json!({"event":"call_started","call_id":"c1","command":"print_native_pdf"});
         let parsed: WebEventPayload = serde_json::from_str(&payload.to_string()).unwrap();
         assert_eq!(parsed.command, Some(WebCommand::PrintNativePdf));
         assert_eq!(command_name(WebCommand::PrintNativePdf), "print_native_pdf");
@@ -2062,7 +2150,10 @@ mod tests {
         let record = receiver.try_recv().expect("记录已入队");
         let text = String::from_utf8(record.bytes).expect("记录是 UTF-8");
         // **每条原生记录都带它在我们代码的哪一处** ✓ ⇒ ⇒ 日志能指出地方 ✓。
-        assert!(text.contains("\"at\":\"src/logging.rs:"), "记录里没有位置：{text}");
+        assert!(
+            text.contains("\"at\":\"src/logging.rs:"),
+            "记录里没有位置：{text}"
+        );
         // **位置来自调用点** ✓ ⇒ ⇒ 不是发射口自己 ✓ ⇒ ⇒ 是那条事件真正发出的地方 ✓。
         let line = text
             .split("\"at\":\"src/logging.rs:")

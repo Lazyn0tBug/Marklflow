@@ -41,7 +41,8 @@ pub const CONFIG_FILE_NAME: &str = "markflow.toml";
 
 /// 日志配置。
 ///
-/// **字段全是字符串** ✓：级别与形态的**有效值**由日志基座映射 ✓，
+/// 级别与形态使用字符串，stdout 使用布尔开关。
+/// **原有字符串字段** ✓：级别与形态的**有效值**由日志基座映射 ✓，
 /// 配置这一层不做解释 ✓ —— 解释是一处职责 ✓，散在两处就会分叉 ✓。
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -50,6 +51,8 @@ pub struct LogConfig {
     pub level: String,
     /// 形态：json／text；别的值按 text 走。
     pub format: String,
+    /// 开发排障显式开启终端镜像。
+    pub stdout: bool,
 }
 
 impl Default for LogConfig {
@@ -57,6 +60,7 @@ impl Default for LogConfig {
         Self {
             level: String::new(),
             format: "text".to_owned(),
+            stdout: false,
         }
     }
 }
@@ -260,6 +264,7 @@ mod tests {
         let config = parse("").expect("空文件应解析成功");
         assert_eq!(config.log.level, "");
         assert_eq!(config.log.format, "text");
+        assert!(!config.log.stdout);
         assert!(!config.probe.product_print);
         assert_eq!(config.probe.page_ready_timeout_seconds, 60);
         assert_eq!(config.probe.report_timeout_seconds, 600);
@@ -289,8 +294,19 @@ mod tests {
     }
 
     #[test]
+    fn stdout_requires_an_explicit_boolean() {
+        assert!(!parse("").unwrap().log.stdout);
+        assert!(!parse("[log]\nstdout = false").unwrap().log.stdout);
+        assert!(parse("[log]\nstdout = true").unwrap().log.stdout);
+        assert!(parse("[log]\nstdout = \"true\"").is_err());
+    }
+
+    #[test]
     fn the_export_root_is_web_unless_the_file_says_native() {
-        assert_eq!(parse("").expect("应解析成功").export.effective_root(), EXPORT_ROOT_WEB);
+        assert_eq!(
+            parse("").expect("应解析成功").export.effective_root(),
+            EXPORT_ROOT_WEB
+        );
         let native = parse("[export]\nroot = \"native\"").expect("应解析成功");
         assert_eq!(native.export.effective_root(), EXPORT_ROOT_NATIVE);
         // 写错的值按默认走 ✓ —— 那是"配置写错了" ✓，不是"平台没有原生根" ✓。
@@ -320,17 +336,14 @@ mod tests {
         assert_eq!(source, Source::Invalid);
         // 损坏也走默认值：配置坏掉不该让应用起不来。
         assert_eq!(config.log.format, "text");
+        assert!(!config.log.stdout);
     }
 
     #[test]
     fn a_good_file_is_read_from_the_conf_directory_of_the_current_directory() {
         let dir = tempfile::tempdir().expect("临时目录");
         std::fs::create_dir_all(dir.path().join(CONFIG_DIR_NAME)).expect("建目录");
-        std::fs::write(
-            config_path(dir.path()),
-            "[probe]\nproduct_print = true\n",
-        )
-        .expect("写文件");
+        std::fs::write(config_path(dir.path()), "[probe]\nproduct_print = true\n").expect("写文件");
         let (config, source) = load(dir.path());
         assert_eq!(source, Source::File);
         assert!(config.probe.product_print);
@@ -364,7 +377,14 @@ mod tests {
 
     #[test]
     fn an_absolute_path_is_used_as_it_is() {
-        let absolute = if cfg!(windows) { "C:\\tmp\\a.md" } else { "/tmp/a.md" };
-        assert_eq!(resolve(Path::new("/run/here"), absolute), Path::new(absolute));
+        let absolute = if cfg!(windows) {
+            "C:\\tmp\\a.md"
+        } else {
+            "/tmp/a.md"
+        };
+        assert_eq!(
+            resolve(Path::new("/run/here"), absolute),
+            Path::new(absolute)
+        );
     }
 }

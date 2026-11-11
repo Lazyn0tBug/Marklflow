@@ -11,10 +11,12 @@
 
 [log]
 # 全局级别：error / warn / info / debug / trace / off。
-# 空或别的值按构建形态取默认（debug 构建 info，发布构建 warn）。
+# 空或未知值使用 info。
 level = "info"
 # 记录形态：json / text。机器验收以 json 为准。
 format = "json"
+# 终端镜像仅用于显式排障。
+stdout = false
 
 [export]
 # 导出的根：web（浏览器打印对话框 ✓）或 native（Windows 的静默路径 ✓）。
