@@ -1,6 +1,6 @@
 # 运行期配置契约
 
-日期：2026-11-05。基线：architecture-refactor / `9a63c63`。状态：原有配置及 2026-11-11 新增 stdout、call_timeout_ms 已实施并自动验证；其余新增日志配置和真实 Windows 验收待补。
+日期：2026-11-05。基线：architecture-refactor / `9a63c63`。状态：原有配置及 2026-11-11 新增 stdout、call_timeout_ms 有历史自动证据，retention_days 已接入但当前日轮转版本未验证；其余新增日志配置和真实 Windows 验收待补。
 
 本文定义 MarkFlow 运行期的**唯一输入面**：配置文件 ✓。与[日志基座设计](log-base-plan-2026-11-03.md)同源 ✓ —— 那份管记录怎么写 ✓，这份管运行怎么被配置 ✓。
 
@@ -61,7 +61,7 @@ report_timeout_seconds = 600
 
 **探针那一节是开发期夹具的形状** ✓，不进产品路径 ✓。
 
-下表仅 log.call_timeout_ms 已实现：通过 get_runtime_prefs.logCallTimeoutMs 交给应用消息端口，仅约束日志接收等待；配置读数本身等待最多 200 ms。其余字段待实现。
+下表 log.call_timeout_ms 与 log.retention_days 已实现；log.directory 待实现。call_timeout_ms 通过 get_runtime_prefs.logCallTimeoutMs 交给应用消息端口，仅约束日志接收等待，配置读数等待最多200ms；retention_days 仅由原生写线程使用，不新增前端IPC字段。
 
 | 字段                | 类型   | 默认与约束                                                                                 |
 | ------------------- | ------ | ------------------------------------------------------------------------------------------ |
@@ -69,9 +69,9 @@ report_timeout_seconds = 600
 | log.retention_days  | 整数   | 14，允许 1 至 365 天                                                                       |
 | log.call_timeout_ms | 整数   | 200，允许 10 至 2000 ms，约束独立日志发送的接收等待                                        |
 
-单文件 8 MiB 阈值及 UTC 跨日条件沿用现有实现，本轮不新增大小配置项。`log.retention_days` 的默认 14 天及 1–365 范围尚待 LS3 实施；取消归档数量和总量上限，不提供 max_total_bytes/归档数量配置；旧方案的 80 MiB 预算作废。历史文件不因新策略首次启用而绕过活跃实例保护。
+采用 tracing-appender UTC按日轮转，大小轮转延期，不提供8 MiB文件阈值配置。`log.retention_days` 的默认 14 天及 1–365 范围已接入LS3，当前版本未验证；取消归档数量和总量上限，不提供 max_total_bytes/归档数量配置；旧方案的 80 MiB 预算作废。历史文件不因新策略首次启用而绕过活跃实例保护。
 
-上述数值为本轮设计默认值，实施时用实际会话日志量和交互测量复核。整数越界回退该项默认值，类型错误按整份配置 invalid 处理。stdout=false 同样适用于文件不可用。目录实际路径只在本机诊断入口展示，run_start 记录目录来源、有效单文件轮转阈值、保留期和等待值。
+上述数值为本轮设计默认值，实施时用实际会话日志量和交互测量复核。整数越界回退该项默认值，类型错误按整份配置 invalid 处理。stdout=false 同样适用于文件不可用。目录实际路径只在本机诊断入口展示，run_start 记录目录来源、有效轮转策略daily_utc、保留期和等待值。
 
 ## 5. 取值纪律
 
@@ -84,7 +84,7 @@ report_timeout_seconds = 600
 | 超时给了 0             | 按默认值走 ✓ —— 这条规矩原来属于环境变量 ✓（给的不是正整数就按默认值 ✓），**改输入的通道换了，输入的约束不该跟着换** ✓ |
 | 路径字段给了空串       | 按默认值走 ✓                                                                                                           |
 
-**来源、有效级别、有效形态都写进 `run_start`** ✓（`config_source`、`log_level`、`log_format`、`log_stdout`、`log_call_timeout_ms`）—— 记的是**有效值** ✓，不是文件里的原文 ✓。
+**来源、有效级别、有效形态都写进 `run_start`** ✓（`config_source`、`log_level`、`log_format`、`log_stdout`、`log_call_timeout_ms`、`log_retention_days`、`log_rotation`）—— 记的是**有效值** ✓，不是文件里的原文 ✓。
 
 ## 6. 相对路径
 
@@ -127,7 +127,7 @@ report_timeout_seconds = 600
 
 ### 9.1 日志配置新增验收（stdout 与等待配置已自动验证，其余待补）
 
-验证配置文件缺失、字段缺省、显式 false 与 true。字符串 "true" 属类型错误，按 §5 整体回退默认并记录 config_source=invalid、log_stdout=false。run_start 记录有效布尔值。分别验证普通记录、健康摘要、文件不可用三条路径，关闭时均不发送 stdout，关闭与输出失败分别表示。开启后 stdout 返回错误只停用镜像，阻塞风险按日志设计 §3.1 记录。Windows 桌面运行验证关闭和显式开启的配置、日志文件与实际终端输出。增加默认 INFO、directory 默认与覆盖、数值上下界与非法值、8 MiB/UTC 跨日轮转与 14 天保留期、日志获取入口及日志独立发送等待验收。新增 stdout 与 call_timeout_ms 的配置边界、镜像开关和通道等待已有自动证据，见[日志收口记录](../reviews/log-closeout-2026-11-11.md)；真实 Windows 输出、目录、保留及获取入口不计入本轮已验范围。
+验证配置文件缺失、字段缺省、显式 false 与 true。字符串 "true" 属类型错误，按 §5 整体回退默认并记录 config_source=invalid、log_stdout=false。run_start 记录有效布尔值。分别验证普通记录、健康摘要、文件不可用三条路径，关闭时均不发送 stdout，关闭与输出失败分别表示。开启后 stdout 返回错误只停用镜像，阻塞风险按日志设计 §3.1 记录。Windows 桌面运行验证关闭和显式开启的配置、日志文件与实际终端输出。增加默认 INFO、directory 默认与覆盖、数值上下界与非法值、UTC按日轮转与14天年龄清理、日志获取入口及日志独立发送等待验收。新增 stdout 与 call_timeout_ms 的配置边界、镜像开关和通道等待已有自动证据，见[日志收口记录](../reviews/log-closeout-2026-11-11.md)；新策略未运行验证，实施状态见[LS3记录](../reviews/log-ls3-2026-11-11.md)；真实 Windows 应用输出、平台目录与获取入口不计入本轮已验范围。
 
 ## 10. 关联文档
 
@@ -135,8 +135,8 @@ report_timeout_seconds = 600
 - [Windows 构建与验收清单](../reviews/windows-build-check-2026-11-03.md)：宿主上怎么改配置、怎么取日志 ✓。
 - [探针阶段记录](../reviews/pdf-probe-stage-record-2026-11-02.md)：探针的取证过程 ✓；2026-11-05 记了输入面从环境变量换成配置这一笔 ✓。
 
-## 10. 语义修正实施依赖（LS1/LS2 已自动验证，LS3 待实施）
+## 10. 语义修正实施依赖（LS1/LS2有历史证据，LS3新策略未验证）
 
-日志设计 §6.2 的 LS1/LS2/LS3 先于 Rust 模块整理。LS1 取消非法诊断 ID 否决业务，保留日志载荷校验；LS2 令无关联页面事件挂 run，根父级为空；LS3 才接入 retention_days 并替换现有10份裁剪。默认 stdout=false、INFO 和 call_timeout_ms 不变。无数量/总字节预算不代表永不清理：按最后修改时间满保留天数、在启动/轮转/正常退出时清理已结束运行文件，活跃及无法确认者跳过，失败如实记录。关联字段不新增授权能力，也不改变命令参数名或结果结构。
+日志设计 §6.2 的 LS1/LS2/LS3 先于 Rust 模块整理。LS1 取消非法诊断 ID 否决业务，保留日志载荷校验；LS2 令无关联页面事件挂 run，根父级为空；LS3 才接入 retention_days 并替换现有10份裁剪。默认 stdout=false、INFO 和 call_timeout_ms 不变。无数量/总字节预算不代表永不清理：按最后修改时间满保留天数、在启动时及运行期间每24小时清理精确匹配的旧日常规日志，当前日及未来日文件跳过，旧格式与锁标记不自动处理，失败如实记录。关联字段不新增授权能力，也不改变命令参数名或结果结构。
 
-上述决策制定时仅更新契约；当前 LS1/LS2 已实现并自动验证，见[LS1记录](../reviews/log-ls1-2026-11-11.md)及[LS2记录](../reviews/log-ls2-2026-11-11.md)。conf/markflow.toml 未变，LS3 仍待实施；前两步的验证不能作为保留策略的实现证据。目录配置与日志获取入口仍待独立实施，真实 Windows 验收继续待补。
+上述决策制定时仅更新契约；当前LS1/LS2保留历史证据；LS3已切换tracing-appender日轮转，按用户要求未运行审查、测试或构建，见[LS1记录](../reviews/log-ls1-2026-11-11.md)、[LS2记录](../reviews/log-ls2-2026-11-11.md)、[LS3记录](../reviews/log-ls3-2026-11-11.md)。conf/markflow.toml 已增加 retention_days=14；不再创建文件锁标记；清理不依赖日轮转触发，不新增前端IPC字段。原有自动验证不追认未测系统场景通过。目录配置与日志获取入口仍待独立实施，真实 Windows 验收继续待补。

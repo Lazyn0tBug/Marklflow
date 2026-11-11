@@ -3,14 +3,14 @@
 //! 契约见 `docs/design/log-base-plan-2026-11-03.md`（§3 L1 与 §3.2 轮转、§5.1 span 模型、§5.2 记录契约）。
 //!
 //! 要点：
-//! - **按运行分文件**（`markflow.<pid>.log`）：同一文件天然只有一个写者，不需要跨进程协调；
+//! - **按实例/UTC日期分文件**（`markflow.<pid>.log.YYYY-MM-DD`）：同一文件天然只有一个写者，不需要跨进程协调；
 //! - **专用写线程 + 有界队列**：生产者不等队列也不等文件 I/O，队列满则丢弃并计数，超长记录拒收不截断；
 //! - **记录自己成形**：必填字段与 span 上下文由本模块生成，不依赖 formatter 的默认形态；
 //! - **如实记录**：不记录完整授权 key、文档正文与完整本地路径；字段纪律由 §5.2 的白名单约束。
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
-use std::fs::{self, File, OpenOptions};
+use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -27,13 +27,10 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::config::{LogConfig, Source as ConfigSource};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 
-/// 单文件字节上限。
-pub const MAX_FILE_BYTES: u64 = 8 * 1024 * 1024;
 /// 日志目录名（相对当前目录）。
 pub const LOG_DIR_NAME: &str = "log";
-/// 归档保留份数。
-pub const KEEP_ARCHIVES: usize = 10;
 /// 有界队列容量。满则丢弃新记录并计数。
 const QUEUE_CAPACITY: usize = 1024;
 /// 单条记录编码后的字节上限。超长拒收，不截断（截断会产出无效 JSON）。
@@ -277,7 +274,7 @@ pub struct Health {
     pub write_failures: AtomicU64,
     /// 轮转失败次数。
     pub rotate_failures: AtomicU64,
-    /// 归档删除失败次数。
+    /// 保留清理的删除或I/O失败；保护性跳过不计入。
     pub delete_failures: AtomicU64,
     /// 文件 sink 不可用（目录不可创建或不可打开）。
     pub file_unavailable: AtomicBool,
@@ -315,7 +312,11 @@ static EMITTER: OnceLock<RecordEmitter> = OnceLock::new();
 /// The root has no parent. Do not use the child-span helper, whose parent
 /// points to RUN_SPAN_ID and would make an initialized root refer to itself.
 fn run_span_context() -> SpanContext {
-    Some(("run".to_owned(), run_span().id().map(|id| id.into_u64()), None))
+    Some((
+        "run".to_owned(),
+        run_span().id().map(|id| id.into_u64()),
+        None,
+    ))
 }
 
 /// 日志基座自身的 span（契约 span 表里的 `log`）：健康摘要记在其中。
@@ -515,7 +516,7 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
                 health.file_unavailable.store(true, Ordering::Relaxed);
                 None
             } else {
-                Some(directory.join(format!("markflow.{}.log", std::process::id())))
+                Some(directory)
             }
         }
         None => {
@@ -533,9 +534,19 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
     };
     let writer_health = health.clone();
     let stdout_enabled = config.stdout;
+    let retention_days = u64::try_from(config.retention_days).unwrap_or(14);
     if thread::Builder::new()
         .name("markflow-log".into())
-        .spawn(move || writer_loop(receiver, path, writer_format, writer_health, stdout_enabled))
+        .spawn(move || {
+            writer_loop(
+                receiver,
+                path,
+                writer_format,
+                writer_health,
+                stdout_enabled,
+                retention_days,
+            )
+        })
         .is_err()
     {
         health.file_unavailable.store(true, Ordering::Relaxed);
@@ -590,6 +601,8 @@ pub fn init(config: &LogConfig, source: ConfigSource, feature: &str) {
             log_format = if json { "json" } else { "text" },
             log_stdout = config.stdout,
             log_call_timeout_ms = config.call_timeout_ms,
+            log_retention_days = retention_days,
+            log_rotation = "daily_utc",
         )
     });
 }
@@ -779,13 +792,7 @@ fn record_web_event_for(
     };
     // 外层事件名固定为 web_event；业务事件在 page_event 字段内，不能变成原生事件名。
     // 外层字段（origin、身份）由发送口生成，页面不能覆盖。
-    let queued = emitter.emit_web(
-        level,
-        "web_event",
-        fields,
-        span,
-        identity,
-    );
+    let queued = emitter.emit_web(level, "web_event", fields, span, identity);
     // 调用结束：它的 span 从表里拿掉 ✓（表里只留还没结束的调用 ✓）。
     if matches!(
         event.event,
@@ -1047,96 +1054,198 @@ fn location_of(file: &str, line: u32) -> String {
 /// 文件不可用时线程继续消费记录；是否镜像 stdout 仍仅由配置决定。
 fn writer_loop(
     receiver: Receiver<QueuedRecord>,
-    path: Option<PathBuf>,
+    directory: Option<PathBuf>,
     format: RecordFormat,
     health: Arc<Health>,
     stdout_enabled: bool,
+    retention_days: u64,
 ) {
     WRITER_ALIVE.store(true, Ordering::Relaxed);
-    let mut file = match path.as_deref().map(open_log) {
-        Some(Ok(file)) => Some(file),
-        Some(Err(_)) => {
-            with_global_health(|health| health.file_unavailable.store(true, Ordering::Relaxed));
-            None
-        }
-        None => {
-            with_global_health(|health| health.file_unavailable.store(true, Ordering::Relaxed));
-            None
-        }
-    };
-    let mut size = file
-        .as_ref()
-        .and_then(|file| file.metadata().ok())
-        .map(|meta| meta.len())
-        .unwrap_or_default();
-    let mut day = utc_day();
-    // 启动时检查已有活动文件（进程号复用时可能残留）：按其最后修改时间的 UTC 日期与实际大小决定是否先轮转，
-    // 归档日期取旧活动文件所属日期。
-    if let Some(current) = file.as_ref() {
-        if let Ok(modified) = current.metadata().and_then(|meta| meta.modified()) {
-            let file_day = utc_day_of(modified);
-            if file_day != day || size >= MAX_FILE_BYTES {
-                if let Some(path) = path.as_deref() {
-                    rotate(path, &mut file, &mut size, file_day, &health);
-                }
-                day = utc_day();
+    let mut file = directory.as_deref().and_then(|directory| {
+        match RollingFileAppender::builder()
+            .rotation(Rotation::DAILY)
+            .filename_prefix(format!("markflow.{}.log", std::process::id()))
+            .build(directory)
+        {
+            Ok(writer) => Some(writer),
+            Err(_) => {
+                health.file_unavailable.store(true, Ordering::Relaxed);
+                None
             }
         }
+    });
+    if file.is_none() {
+        health.file_unavailable.store(true, Ordering::Relaxed);
     }
+    if let Some(directory) = directory.as_deref() {
+        purge_old_logs(directory, retention_days, &health);
+    }
+    let mut last_cleanup = SystemTime::now();
     let mut last_summary = Instant::now();
     loop {
         match receiver.recv_timeout(WRITER_TICK) {
-            Ok(record) => {
-                if record.bytes.is_empty() {
-                    // 退出信号。
-                    break;
-                }
-                if should_rotate(size, record.bytes.len(), day, utc_day()) {
-                    // 空文件不轮转（否则每天会多出一个空归档）。
-                    if let Some(path) = path.as_deref() {
-                        rotate(path, &mut file, &mut size, day, &health);
-                    }
-                    day = utc_day();
-                }
-                if let Some(file) = file.as_mut() {
-                    if file.write_all(&record.bytes).is_err() {
-                        health.write_failures.fetch_add(1, Ordering::Relaxed);
-                    } else {
-                        size += record.bytes.len() as u64;
-                    }
-                }
-                write_stdout(&record.bytes, stdout_enabled);
-                if record.urgent {
-                    // WARN/ERROR 写后立即刷新，不等下一秒的例行刷新。
-                    if let Some(file) = file.as_mut() {
-                        let _ = file.flush();
-                    }
-                }
-            }
+            Ok(record) if record.bytes.is_empty() => break,
+            Ok(record) => append_record(&mut file, &record, &health, stdout_enabled),
             Err(RecvTimeoutError::Timeout) => {
-                // 至少每秒刷新一次。
                 if let Some(file) = file.as_mut() {
                     let _ = file.flush();
                 }
-                if last_summary.elapsed() >= HEALTH_SUMMARY_INTERVAL {
-                    last_summary = Instant::now();
-                    write_health_summary(&mut file, &format, &health, stdout_enabled);
-                }
             }
             Err(RecvTimeoutError::Disconnected) => break,
+        }
+        // Independent of both log traffic and the appender's write-triggered rollover.
+        let cleanup_now = SystemTime::now();
+        match cleanup_now.duration_since(last_cleanup) {
+            Ok(elapsed) if elapsed >= Duration::from_secs(86400) => {
+                if let Some(directory) = directory.as_deref() {
+                    purge_old_logs(directory, retention_days, &health);
+                }
+                last_cleanup = cleanup_now;
+            }
+            Err(_) => last_cleanup = cleanup_now,
+            _ => {}
+        }
+        if last_summary.elapsed() >= HEALTH_SUMMARY_INTERVAL {
+            write_health_summary(&mut file, &format, &health, stdout_enabled);
+            last_summary = Instant::now();
         }
     }
     write_health_summary(&mut file, &format, &health, stdout_enabled);
     if let Some(file) = file.as_mut() {
         let _ = file.flush();
     }
+    drop(file);
     WRITER_ALIVE.store(false, Ordering::Relaxed);
+}
+
+fn append_record(
+    file: &mut Option<RollingFileAppender>,
+    record: &QueuedRecord,
+    health: &Health,
+    stdout_enabled: bool,
+) {
+    if record.bytes.len() > MAX_RECORD_BYTES {
+        health.record_too_long.fetch_add(1, Ordering::Relaxed);
+        return;
+    }
+    if let Some(writer) = file.as_mut() {
+        let result = writer.write_all(&record.bytes).and_then(|()| {
+            if record.urgent {
+                writer.flush()
+            } else {
+                Ok(())
+            }
+        });
+        if result.is_err() {
+            health.write_failures.fetch_add(1, Ordering::Relaxed);
+            health.file_unavailable.store(true, Ordering::Relaxed);
+            *file = None;
+        }
+    }
+    write_stdout(&record.bytes, stdout_enabled);
+}
+
+/// Exact daily names only; legacy archives and lock markers are not auto-migrated.
+fn daily_log_date(name: &str) -> Option<&str> {
+    let (pid, date) = name.strip_prefix("markflow.")?.split_once(".log.")?;
+    if pid.starts_with('0')
+        || !pid.bytes().all(|byte| byte.is_ascii_digit())
+        || pid.parse::<u32>().is_err()
+    {
+        return None;
+    }
+    if date.len() != 10
+        || !date.chars().enumerate().all(|(i, c)| match i {
+            4 | 7 => c == '-',
+            _ => c.is_ascii_digit(),
+        })
+    {
+        return None;
+    }
+    let year = date[..4].parse::<u32>().ok()?;
+    let month = date[5..7].parse::<usize>().ok()?;
+    let day = date[8..].parse::<u32>().ok()?;
+    let leap = year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
+    let days = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    if year < 1970 || !(1..=12).contains(&month) || !(1..=days[month - 1]).contains(&day) {
+        return None;
+    }
+    Some(date)
+}
+
+/// Startup and once per running 24 hours: expiry threshold, not a deletion deadline.
+fn purge_old_logs(directory: &Path, retention_days: u64, health: &Health) {
+    let now = SystemTime::now();
+    let today = iso_timestamp(now)[..10].to_owned();
+    let age = Duration::from_secs(retention_days.saturating_mul(86400));
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(_) => {
+            health.delete_failures.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
+    };
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => {
+                health.delete_failures.fetch_add(1, Ordering::Relaxed);
+                continue;
+            }
+        };
+        let name = entry.file_name();
+        let Some(date) = name.to_str().and_then(daily_log_date) else {
+            continue;
+        };
+        // Protect today's files for every instance and future dates after clock rollback.
+        if date >= today.as_str() {
+            continue;
+        }
+        let metadata = match entry.metadata() {
+            Ok(metadata) if metadata.file_type().is_file() => metadata,
+            Ok(_) => continue,
+            Err(_) => {
+                health.delete_failures.fetch_add(1, Ordering::Relaxed);
+                continue;
+            }
+        };
+        match metadata.modified() {
+            Ok(modified)
+                if now
+                    .duration_since(modified)
+                    .is_ok_and(|elapsed| elapsed >= age) =>
+            {
+                if let Err(error) = fs::remove_file(entry.path()) {
+                    if error.kind() != io::ErrorKind::NotFound {
+                        health.delete_failures.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+            Ok(_) => {}
+            Err(_) => {
+                health.delete_failures.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
 }
 
 /// 健康摘要：把计数按限频写进日志（直接写文件，不经 tracing，避免递归）。
 /// 有丢弃、拒收或写入错误时，校验器据此不宣称日志完整。
 fn write_health_summary(
-    file: &mut Option<File>,
+    file: &mut Option<RollingFileAppender>,
     format: &RecordFormat,
     health: &Health,
     stdout_enabled: bool,
@@ -1155,6 +1264,9 @@ fn write_health_summary(
         return;
     }
     let mut fields = BTreeMap::new();
+    // This summary bypasses RecordLayer, so supply its required native fields.
+    fields.insert("origin".to_owned(), "rust".to_owned());
+    fields.insert("at".to_owned(), location_of(file!(), line!()));
     fields.insert("web_rejected".to_owned(), snapshot.web_rejected.to_string());
     fields.insert(
         "web_rate_limited".to_owned(),
@@ -1190,19 +1302,11 @@ fn write_health_summary(
     );
     // 健康摘要直写文件，不经队列（否则会递归产生日志）。
     let line = format.format("WARN", "log_health", &fields, log_span_context());
-    if let Some(file) = file.as_mut() {
-        let _ = file.write_all(line.as_bytes());
-        let _ = file.flush();
-    }
-    write_stdout(line.as_bytes(), stdout_enabled);
-}
-
-/// 轮转判定：跨日，或下一条完整记录会让当前文件超过上限；空文件不轮转（否则每天多出一个空归档）。
-fn should_rotate(current_size: u64, next_record: usize, current_day: u64, today: u64) -> bool {
-    if current_size == 0 {
-        return false;
-    }
-    current_day != today || current_size + next_record as u64 > MAX_FILE_BYTES
+    let record = QueuedRecord {
+        bytes: line.into_bytes(),
+        urgent: true,
+    };
+    append_record(file, &record, health, stdout_enabled);
 }
 
 /// stdout 是尽力镜像：失败只停用 stdout，不拖累文件 sink。
@@ -1218,153 +1322,10 @@ fn mirror_stdout(record: &[u8], enabled: bool, failed: &AtomicBool, writer: &mut
     }
 }
 
-fn open_log(path: &Path) -> io::Result<File> {
-    OpenOptions::new().create(true).append(true).open(path)
-}
-
-/// 轮转：把当前文件归档，重开新的当前文件，并裁掉过旧的归档。
-fn rotate(path: &Path, file: &mut Option<File>, size: &mut u64, archive_day: u64, health: &Health) {
-    let Some(mut current) = file.as_ref() else {
-        return;
-    };
-    let _ = current.flush();
-    let archive = match archive_path(path, archive_day) {
-        Ok(archive) => archive,
-        Err(_) => {
-            health.rotate_failures.fetch_add(1, Ordering::Relaxed);
-            return;
-        }
-    };
-    if fs::rename(path, &archive).is_err() {
-        health.rotate_failures.fetch_add(1, Ordering::Relaxed);
-        return;
-    }
-    prune_archives(path, health);
-    match open_log(path) {
-        Ok(new_file) => {
-            *file = Some(new_file);
-            *size = 0;
-        }
-        Err(_) => {
-            with_global_health(|health| health.file_unavailable.store(true, Ordering::Relaxed));
-            *file = None;
-        }
-    }
-}
-
-/// 当天该序号的归档路径：序号为该归档日期现存最大序号加一，至少三位，不覆盖已有归档。
-fn archive_path(path: &Path, day: u64) -> io::Result<PathBuf> {
-    let (year, month, date) = civil_from_days(day);
-    let prefix = format!("{:04}-{:02}-{:02}", year, month, date);
-    let directory = path.parent().unwrap_or_else(|| Path::new("."));
-    let name = path
-        .file_name()
-        .map(|value| value.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "markflow.log".to_owned());
-    let mut sequence = 0u32;
-    loop {
-        let candidate = directory.join(format!("{name}.{prefix}.{sequence:03}"));
-        if !candidate.exists() {
-            return Ok(candidate);
-        }
-        sequence += 1;
-    }
-}
-
-/// 只清理本模块精确命名的归档文件，保留最新 `KEEP_ARCHIVES` 份。
-fn prune_archives(path: &Path, health: &Health) {
-    let Some(directory) = path.parent() else {
-        return;
-    };
-    // 本模块的归档名形如 markflow.<pid>.log.YYYY-MM-DD.NNN；清理跨实例一并计算。
-    let prefix = "markflow.";
-    let Ok(entries) = fs::read_dir(directory) else {
-        return;
-    };
-    let mut archives: Vec<(String, PathBuf)> = Vec::new();
-    for entry in entries.flatten() {
-        let candidate = entry.path();
-        let Some(file_name) = candidate
-            .file_name()
-            .map(|value| value.to_string_lossy().into_owned())
-        else {
-            continue;
-        };
-        if !file_name.starts_with(prefix) || !is_archive_name(&file_name) {
-            continue;
-        }
-        let Some(sort_key) = archive_sort_key(&file_name) else {
-            continue;
-        };
-        archives.push((sort_key, candidate));
-    }
-    archives.sort();
-    while archives.len() > KEEP_ARCHIVES {
-        let Some((_, oldest)) = archives.first() else {
-            break;
-        };
-        if fs::remove_file(oldest).is_err() {
-            health.delete_failures.fetch_add(1, Ordering::Relaxed);
-        }
-        archives.remove(0);
-    }
-}
-
-/// 归档名是否形如 `<前缀>.<日期>.<序号>`。
-fn is_archive_name(file_name: &str) -> bool {
-    let mut parts = file_name.rsplitn(3, '.');
-    let Some(sequence) = parts.next() else {
-        return false;
-    };
-    let Some(date) = parts.next() else {
-        return false;
-    };
-    if parts.next().is_none() {
-        return false;
-    }
-    if sequence.is_empty() || !sequence.chars().all(|c| c.is_ascii_digit()) {
-        return false;
-    }
-    if date.len() != 10 {
-        return false;
-    }
-    date.chars().enumerate().all(|(index, c)| match index {
-        4 | 7 => c == '-',
-        _ => c.is_ascii_digit(),
-    })
-}
-
-/// 归档的排序键：日期 + 序号（数值比较，避免字符串排序把 10 排到 2 前面）。
-fn archive_sort_key(file_name: &str) -> Option<String> {
-    let mut parts = file_name.rsplitn(3, '.');
-    let sequence = parts.next()?;
-    let date = parts.next()?;
-    let _prefix = parts.next()?;
-    if !is_archive_name(file_name) {
-        return None;
-    }
-    Some(format!(
-        "{date}:{:012}",
-        sequence.parse::<u64>().unwrap_or_default()
-    ))
-}
-
 fn unix_seconds() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|value| value.as_secs())
-        .unwrap_or_default()
-}
-
-/// 距 1970-01-01 的天数（UTC）。
-fn utc_day() -> u64 {
-    unix_seconds() / 86400
-}
-
-/// 某个时刻所属的 UTC 日。
-fn utc_day_of(time: SystemTime) -> u64 {
-    time.duration_since(UNIX_EPOCH)
-        .map(|value| value.as_secs() / 86400)
         .unwrap_or_default()
 }
 
@@ -1841,24 +1802,6 @@ mod tests {
     }
 
     #[test]
-    fn recognises_only_its_own_archive_names() {
-        assert!(is_archive_name("markflow.123.log.2026-11-03.001"));
-        assert!(!is_archive_name("markflow.123.log.txt"));
-        // 归档名的形状检查只看日期与序号；"是不是本模块的"由清理时的前缀过滤负责。
-        assert!(is_archive_name("other.log.2026-11-03.001"));
-        assert!(!is_archive_name("markflow.123.log.2026-11-03.abc"));
-    }
-
-    #[test]
-    fn sorts_archives_by_date_then_numeric_sequence() {
-        assert_eq!(
-            archive_sort_key("markflow.1.log.2026-11-03.002").unwrap(),
-            "2026-11-03:000000000002"
-        );
-        assert!(archive_sort_key("markflow.1.log.txt").is_none());
-    }
-
-    #[test]
     fn escapes_json_strings() {
         assert_eq!(json_string("a\"b\\c"), "\"a\\\"b\\\\c\"");
         assert_eq!(json_string("line\nbreak"), "\"line\\nbreak\"");
@@ -1928,88 +1871,6 @@ mod tests {
     }
 
     #[test]
-    fn rotation_triggers_on_size_day_and_never_on_an_empty_file() {
-        // 空文件不轮转。
-        assert!(!should_rotate(0, 1024, 100, 101));
-        assert!(!should_rotate(0, 1024, 100, 100));
-        // 跨日轮转。
-        assert!(should_rotate(10, 1, 100, 101));
-        // 下一条完整记录会超上限则轮转；刚好不超则不轮转。
-        assert!(!should_rotate(MAX_FILE_BYTES - 10, 10, 100, 100));
-        assert!(should_rotate(MAX_FILE_BYTES - 9, 10, 100, 100));
-    }
-
-    #[test]
-    fn archive_sequence_continues_after_restart_without_overwriting() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("markflow.42.log");
-        let day = 20_760u64;
-        let first = archive_path(&path, day).unwrap();
-        assert_eq!(first.file_name().unwrap(), "markflow.42.log.2026-11-03.000");
-        std::fs::write(&first, b"x").unwrap();
-        let second = archive_path(&path, day).unwrap();
-        assert_eq!(
-            second.file_name().unwrap(),
-            "markflow.42.log.2026-11-03.001"
-        );
-        // 不覆盖已有归档：第二个名字尚未被创建。
-        assert!(first.exists());
-        assert!(!second.exists());
-    }
-
-    #[test]
-    fn keeps_the_newest_archives_and_leaves_other_files_alone() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("markflow.42.log");
-        // 造 12 份归档（跨两天）与两个不该被删的文件。
-        for day in ["2026-11-01", "2026-11-02"] {
-            for sequence in 0..6 {
-                std::fs::write(
-                    dir.path()
-                        .join(format!("markflow.42.log.{day}.{sequence:03}")),
-                    b"x",
-                )
-                .unwrap();
-            }
-        }
-        std::fs::write(dir.path().join("other.log"), b"x").unwrap();
-        std::fs::write(dir.path().join("markflow.42.log"), b"active").unwrap();
-        prune_archives(&path, &Health::new());
-        let remaining: Vec<String> = std::fs::read_dir(dir.path())
-            .unwrap()
-            .flatten()
-            .map(|entry| entry.file_name().to_string_lossy().into_owned())
-            .collect();
-        let archives = remaining
-            .iter()
-            .filter(|name| name.starts_with("markflow.42.log."))
-            .count();
-        assert_eq!(archives, KEEP_ARCHIVES);
-        assert!(remaining.iter().any(|name| name == "other.log"));
-        assert!(remaining.iter().any(|name| name == "markflow.42.log"));
-        // 保留的是最新的：最后一份 2026-11-02.005 必须在。
-        assert!(remaining
-            .iter()
-            .any(|name| name == "markflow.42.log.2026-11-02.005"));
-        assert!(!remaining
-            .iter()
-            .any(|name| name == "markflow.42.log.2026-11-01.000"));
-    }
-
-    #[test]
-    fn archives_sort_by_date_then_numeric_sequence() {
-        // 数值序号不能按字符串排（否则 10 排在 2 前面）。
-        assert!(
-            archive_sort_key("markflow.1.log.2026-11-03.010").unwrap()
-                > archive_sort_key("markflow.1.log.2026-11-03.002").unwrap()
-        );
-        assert!(
-            archive_sort_key("markflow.1.log.2026-11-04.001").unwrap()
-                > archive_sort_key("markflow.1.log.2026-11-03.999").unwrap()
-        );
-    }
-
-    #[test]
     fn over_long_records_are_rejected_and_a_full_queue_drops_with_a_count() {
         let (emitter, receiver, health) = test_emitter(1);
         let rejected_before = health.record_too_long.load(Ordering::Relaxed);
@@ -2064,8 +1925,16 @@ mod tests {
                 r#"{"event":"page_error","error_category":"rejection"}"#,
                 r#"{"event":"call_started","command":"read_native_text"}"#,
             ] {
-                assert_eq!(record_web_event_for(&web_identity("main", "main"), payload.to_owned(), &emitter), WEB_ACCEPTED);
-                let record: serde_json::Value = serde_json::from_slice(&receiver.recv().unwrap().bytes).unwrap();
+                assert_eq!(
+                    record_web_event_for(
+                        &web_identity("main", "main"),
+                        payload.to_owned(),
+                        &emitter
+                    ),
+                    WEB_ACCEPTED
+                );
+                let record: serde_json::Value =
+                    serde_json::from_slice(&receiver.recv().unwrap().bytes).unwrap();
                 assert_eq!(record["span"]["name"], "run");
                 assert!(record["span"]["id"].is_number());
                 assert!(record["span"]["parent_id"].is_null());
@@ -2077,13 +1946,29 @@ mod tests {
             for (event, result) in [("call_started", ""), ("call_finished", "ok")] {
                 let payload = serde_json::json!({"event": event, "command": "read_native_text", "call_id": "ls2-associated"});
                 let mut payload = payload;
-                if !result.is_empty() { payload["result"] = serde_json::json!(result); }
-                assert_eq!(record_web_event_for(&web_identity("main", "main"), payload.to_string(), &emitter), WEB_ACCEPTED);
-                let record: serde_json::Value = serde_json::from_slice(&receiver.recv().unwrap().bytes).unwrap();
+                if !result.is_empty() {
+                    payload["result"] = serde_json::json!(result);
+                }
+                assert_eq!(
+                    record_web_event_for(
+                        &web_identity("main", "main"),
+                        payload.to_string(),
+                        &emitter
+                    ),
+                    WEB_ACCEPTED
+                );
+                let record: serde_json::Value =
+                    serde_json::from_slice(&receiver.recv().unwrap().bytes).unwrap();
                 assert_eq!(record["span"]["name"], "page_call");
                 assert_eq!(record["call_id"], "ls2-associated");
             }
-            assert!(!PAGE_CALL_SPANS.get().unwrap().lock().unwrap().open.contains_key(&key));
+            assert!(!PAGE_CALL_SPANS
+                .get()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .open
+                .contains_key(&key));
         });
     }
 

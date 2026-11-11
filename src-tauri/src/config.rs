@@ -55,6 +55,8 @@ pub struct LogConfig {
     pub stdout: bool,
     /// 页面等待单次日志接收的上限（毫秒，10..=2000）。
     pub call_timeout_ms: u64,
+    /// 已结束运行日志的保留天数，1..=365；默认14。
+    pub retention_days: i64,
 }
 
 impl Default for LogConfig {
@@ -64,6 +66,7 @@ impl Default for LogConfig {
             format: "text".to_owned(),
             stdout: false,
             call_timeout_ms: 200,
+            retention_days: 14,
         }
     }
 }
@@ -160,6 +163,9 @@ impl Config {
     pub fn normalize(&mut self) {
         if !(10..=2000).contains(&self.log.call_timeout_ms) {
             self.log.call_timeout_ms = LogConfig::default().call_timeout_ms;
+        }
+        if !(1..=365).contains(&self.log.retention_days) {
+            self.log.retention_days = LogConfig::default().retention_days;
         }
         let defaults = ProbeConfig::default();
         if self.probe.page_ready_timeout_seconds == 0 {
@@ -297,6 +303,28 @@ mod tests {
         // 没写的字段仍走默认值。
         assert_eq!(config.probe.page_ready_timeout_seconds, 60);
         assert_eq!(config.probe.sample, ProbeConfig::default().sample);
+    }
+
+    #[test]
+    fn retention_days_default_and_bounds_preserve_other_valid_settings() {
+        assert_eq!(parse("").unwrap().log.retention_days, 14);
+        for days in [1, 14, 365] {
+            assert_eq!(
+                parse(&format!("[log]\nretention_days = {days}"))
+                    .unwrap()
+                    .log
+                    .retention_days,
+                days
+            );
+        }
+        for days in [-1, 0, 366] {
+            let config = parse(&format!("[log]\nretention_days = {days}\nstdout = true")).unwrap();
+            assert_eq!(config.log.retention_days, 14);
+            assert!(config.log.stdout);
+        }
+        for value in ["1.5", "\"14\"", "true"] {
+            assert!(parse(&format!("[log]\nretention_days = {value}")).is_err());
+        }
     }
 
     #[test]

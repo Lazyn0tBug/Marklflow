@@ -19,6 +19,8 @@ format = "json"
 stdout = false
 # 页面日志接收等待上限，范围 10..2000 ms；不限制业务命令。
 call_timeout_ms = 200
+# 已结束运行的日志保留天数，1..365；不设归档数量或目录总量上限。
+retention_days = 14
 
 [export]
 # 导出的根：web（浏览器打印对话框 ✓）或 native（Windows 的静默路径 ✓）。
