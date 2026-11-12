@@ -38,7 +38,7 @@ export function ReadingPreview({view, theme, containerRef, onScroll, maxWidth = 
         style={{maxWidth: maxWidth === 'full' ? '100%' : maxWidth}}
       >
         <article
-          className="mf-doc"
+          className="mf-doc mf-reading-document"
           data-render-state={
             view.state === 'ready' ? 'ready' : view.state === 'error' ? 'error' : 'pending'
           }

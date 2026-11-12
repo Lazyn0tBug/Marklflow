@@ -1,5 +1,29 @@
 import {test, expect} from './fixtures';
 test.use({viewport: {width: 1280, height: 900}});
+
+test('flow HTML keeps an A4 minimum for short content and grows for long content', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const editor = page.locator('textarea');
+  await editor.fill('# 短文验收\n\n只有一小段内容。');
+  const paper = page.locator('.mf-reading-document[data-render-state="ready"]');
+  await expect(paper).toContainText('短文验收');
+  const short = await paper.evaluate((element) => ({
+    height: element.getBoundingClientRect().height,
+    minimum: parseFloat(getComputedStyle(element).minBlockSize),
+  }));
+  expect(short.minimum).toBeCloseTo((297 * 96) / 25.4, 1);
+  expect(short.height).toBeGreaterThanOrEqual(short.minimum - 1);
+  await expect(page.locator('.mf-document-shell')).toHaveCSS('max-width', '1024px');
+  await editor.fill(
+    '# 长文验收\n\n' + Array.from({length: 100}, (_, i) => `第 ${i} 段内容。`).join('\n\n'),
+  );
+  await expect(paper).toContainText('第 99 段内容');
+  expect(await paper.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThan(
+    short.height,
+  );
+});
 test('keeps all seven pane combinations under user control and prevents hiding the last', async ({
   page,
 }) => {

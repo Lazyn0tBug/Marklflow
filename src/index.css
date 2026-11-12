@@ -103,6 +103,11 @@
   padding: var(--mf-view-padding);
 }
 
+/* Preview-only paper minimum; exported document styles keep their own geometry. */
+.mf-reading-document {
+  min-block-size: 297mm;
+}
+
 .mf-source-inset {
   padding: 1ch;
 }
