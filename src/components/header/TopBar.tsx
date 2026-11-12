@@ -63,6 +63,7 @@ export interface TopBarProps {
   /** 菜单里另存为 ✓（§6.2 ✓）。 */
   onSaveAs: () => void;
   onOpenExport: () => void;
+  exportButtonRef?: React.RefObject<HTMLButtonElement | null>;
   onOpenRoadmap: () => void;
   /**
    * 打开消息视觉页 ✓（核对消息的样子用 ✓）。
@@ -111,6 +112,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onWriteBack,
   onSaveAs,
   onOpenExport,
+  exportButtonRef,
   onOpenRoadmap,
   onOpenMessages,
   documentTitle,
@@ -372,6 +374,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <button
           onClick={onOpenExport}
+          ref={exportButtonRef}
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium shadow-md shadow-teal-950/40 transition-colors whitespace-nowrap cursor-pointer"
           title="导出单文件 HTML、DOCX 或打印 PDF"
         >

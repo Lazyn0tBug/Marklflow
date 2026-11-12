@@ -190,28 +190,133 @@ test('the visual page dismisses a transient message on its own', async ({page}) 
   await expect(transient).toHaveCount(0);
 });
 
-test('a message does not cover the dialog that is open', async ({page}) => {
+for (const width of [1600, 800]) {
+  test(`body portal notifications stay above the open export dialog at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({width, height: 840});
+    await page.goto('/');
+    await page.waitForSelector('[data-render-state="ready"]', {timeout: 30000});
+    await page.evaluate(() =>
+      setTimeout(() => {
+        throw new Error('Portal 消息可读性检查');
+      }, 0),
+    );
+    const card = notice(page).first();
+    await expect(card).toBeVisible();
+    await page.getByRole('button', {name: '导出', exact: true}).click();
+    const dialog = page.getByRole('dialog', {name: '导出与发布文档'});
+    const region = page.getByRole('region', {name: '工作台消息'});
+    await expect(dialog).toBeVisible();
+    const layers = await region.evaluate((element) => ({
+      body: element.parentElement === document.body,
+      z: Number(getComputedStyle(element).zIndex),
+      overlay: Number(getComputedStyle(document.querySelector('[data-export-overlay]')!).zIndex),
+    }));
+    expect(layers.body).toBe(true);
+    expect(layers.z).toBeGreaterThan(layers.overlay);
+    const close = card.getByRole('button', {name: '知道了'});
+    expect(
+      await close.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return top === element || element.contains(top);
+      }),
+    ).toBe(true);
+    const filename = dialog.getByLabel('导出文件主名称');
+    await filename.fill('保留导出设置');
+    const submit = dialog.getByRole('button', {name: '立即导出并保存', exact: true});
+    await submit.evaluate((button) => {
+      button.dataset.testClicks = '0';
+      button.addEventListener('click', () => {
+        button.dataset.testClicks = String(Number(button.dataset.testClicks) + 1);
+      });
+    });
+    await close.click();
+    await expect(card).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    await expect(filename).toHaveValue('保留导出设置');
+    await expect(filename).toBeFocused();
+    await expect(submit).toBeEnabled();
+    await expect(submit).toHaveAttribute('data-test-clicks', '0');
+    await expect(page.getByRole('button', {name: '正在生成...'})).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('button', {name: '导出', exact: true})).toBeFocused();
+  });
+}
+
+test('export focus stays in the dialog and message island without dismissing either accidentally', async ({
+  page,
+}) => {
   await page.goto('/');
   await page.waitForSelector('[data-render-state="ready"]', {timeout: 30000});
   await page.evaluate(() => {
     setTimeout(() => {
-      throw new Error('盖住检查');
+      throw new Error('焦点隔离一');
     }, 0);
+    setTimeout(() => {
+      throw new Error('焦点隔离二');
+    }, 10);
   });
-  await expect(notice(page).first()).toBeVisible();
+  await expect(notice(page)).toHaveCount(2);
   await page.getByRole('button', {name: '导出', exact: true}).click();
-  const confirm = page.getByRole('button', {name: '立即导出并保存', exact: true});
-  await expect(confirm).toBeVisible();
-  // **那个点上真正接住点击的是它自己** ✓ ⇒ ⇒ 消息区没有盖在对话框上面 ✓
-  // ⇒ ⇒ （区域在对话框之下 ✓ ⇒ ⇒ 对话框是模态的，它占着屏幕 ✓）。
-  const covered = await confirm.evaluate((element) => {
-    const box = element.getBoundingClientRect();
-    const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-    return top !== element && !element.contains(top);
-  });
-  expect(covered).toBe(false);
+  const dialog = page.getByRole('dialog', {name: '导出与发布文档'});
+  const filename = dialog.getByLabel('导出文件主名称');
+  await expect(filename).toBeFocused();
+  await page.locator('textarea').evaluate((element) => element.focus());
+  await expect(filename).toBeFocused();
+  await dialog.getByRole('checkbox', {name: /允许联网/}).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(notice(page).last().getByRole('button', {name: '知道了'})).toBeFocused();
+  const count = await page.evaluate(
+    () =>
+      document.querySelectorAll('[role="dialog"] button, [role="dialog"] input, .mf-message button')
+        .length,
+  );
+  for (let i = 0; i < count + 2; i++) {
+    await page.keyboard.press('Tab');
+    expect(
+      await page.evaluate(() =>
+        Boolean(document.activeElement?.closest('[role="dialog"], .mf-message')),
+      ),
+    ).toBe(true);
+  }
+  const message = notice(page).first();
+  await message.getByRole('button', {name: '知道了'}).focus();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
+  await expect(notice(page)).toHaveCount(2);
+  expect(
+    await filename.evaluate((element) =>
+      element.closest('[role="dialog"]')?.contains(document.activeElement),
+    ),
+  ).toBe(true);
+  await message.getByRole('button', {name: '知道了'}).click();
+  await expect(notice(page)).toHaveCount(1);
+  await expect(notice(page).getByRole('button', {name: '知道了'})).toBeFocused();
+  await notice(page).getByRole('button', {name: '知道了'}).click();
+  await expect(notice(page)).toHaveCount(0);
+  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
 });
 
+test('auto-expiring portal notification returns focus to the still-open export dialog', async ({
+  page,
+}) => {
+  await page.goto(devOrigin + '/');
+  await page.waitForSelector('[data-render-state="ready"]', {timeout: 30000});
+  await page.evaluate(async () => {
+    const {noticeStore} = await import('/src/application/notices.ts');
+    noticeStore.push({tone: 'info', message: '导出期间自动消息'});
+  });
+  await page.getByRole('button', {name: '导出', exact: true}).click();
+  const dialog = page.getByRole('dialog', {name: '导出与发布文档'});
+  const filename = dialog.getByLabel('导出文件主名称');
+  await notice(page).getByRole('button', {name: '关闭通知'}).focus();
+  await expect(notice(page)).toHaveCount(0, {timeout: 15000});
+  await expect(dialog).toBeVisible();
+  await expect(filename).toBeFocused();
+});
 test('the production build carries no message visual page', async ({page}) => {
   // 它是核对用的工具 ✓ ⇒ ⇒ 生产构建里没有那个入口 ✓。
   await page.goto('/');

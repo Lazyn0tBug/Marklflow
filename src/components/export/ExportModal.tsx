@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import {webExportService} from '../../core/platform/web/exportService';
 import {nativeExportService} from '../../core/platform/tauri/exportService';
 import {resolveExportRoot, type ExportRootChoice} from '../../core/platform/exportRoot';
@@ -21,6 +22,8 @@ interface ExportModalProps {
   document: DocumentRecord;
   mathMode: 'mathml' | 'svg';
   onNotice?: (notice: ExportNotice) => void;
+  messageRegionId?: string;
+  returnFocusRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 /** The outcome of one export, reported outside the dialog so a system window cannot hide it. */
@@ -37,6 +40,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   document: doc,
   mathMode,
   onNotice,
+  messageRegionId,
+  returnFocusRef,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null),
     closeRef = useRef(onClose);
@@ -126,40 +131,64 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   }, [reviewing]);
   useEffect(() => {
     if (!isOpen) return;
-    const panel = dialogRef.current,
-      previous = window.document.activeElement;
+    const panel = dialogRef.current;
+    const previous = window.document.activeElement;
     if (!panel) return;
-    panel.querySelector<HTMLInputElement>('#export-file-name')?.focus();
+    const region = messageRegionId ? window.document.getElementById(messageRegionId) : null;
+    const selector = 'button:not(:disabled),input:not(:disabled),a[href],summary,[tabindex="0"]';
+    const controls = (root: Element) =>
+      Array.from(root.querySelectorAll<HTMLElement>(selector)).filter(
+        (item) =>
+          item.tabIndex >= 0 && item.getClientRects().length > 0 && !item.closest('[inert]'),
+      );
+    let lastPanelFocus = panel.querySelector<HTMLElement>('#export-file-name');
+    const returnToPanel = () => {
+      const target =
+        lastPanelFocus?.isConnected && !lastPanelFocus.matches(':disabled')
+          ? lastPanelFocus
+          : controls(panel)[0];
+      target?.focus();
+    };
+    returnToPanel();
+    const focusin = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (panel.contains(target)) lastPanelFocus = target;
+      else if (!region?.contains(target) || (target === region && controls(region).length === 0))
+        returnToPanel();
+    };
     const keydown = (event: KeyboardEvent) => {
+      const active = window.document.activeElement;
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        closeRef.current();
+        // Leaving the message island must not cancel the export dialog or acknowledge an error.
+        if (region?.contains(active)) returnToPanel();
+        else closeRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
-      const items = [
-        ...panel.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),input:not(:disabled),summary,[tabindex="0"]',
-        ),
-      ].filter((item) => item.getClientRects().length);
-      const first = items[0],
-        last = items.at(-1),
-        active = window.document.activeElement;
-      if (event.shiftKey && (active === first || !panel.contains(active))) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
-        event.preventDefault();
-        first?.focus();
-      }
+      const items = [...controls(panel), ...(region ? controls(region) : [])];
+      if (!items.length) return;
+      event.preventDefault();
+      const index = items.findIndex((item) => item === active);
+      const next =
+        index < 0
+          ? event.shiftKey
+            ? items.length - 1
+            : 0
+          : (index + (event.shiftKey ? -1 : 1) + items.length) % items.length;
+      items[next]?.focus();
     };
     window.document.addEventListener('keydown', keydown, true);
+    window.document.addEventListener('focusin', focusin, true);
     return () => {
       window.document.removeEventListener('keydown', keydown, true);
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+      window.document.removeEventListener('focusin', focusin, true);
+      const target = returnFocusRef?.current ?? previous;
+      if (target instanceof HTMLElement && target.isConnected) target.focus();
     };
-  }, [isOpen]);
+  }, [isOpen, messageRegionId, returnFocusRef]);
   if (!isOpen) return null;
 
   const handleExport = async () => {
@@ -240,12 +269,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200">
+  return createPortal(
+    <div
+      data-export-overlay
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 no-print animate-in fade-in duration-200"
+    >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        aria-owns={messageRegionId}
         aria-labelledby="export-dialog-title"
         className="w-full max-w-2xl max-h-[90dvh] rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col"
       >
@@ -544,6 +577,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    window.document.body,
   );
 };

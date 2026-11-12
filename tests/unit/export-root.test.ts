@@ -48,7 +48,9 @@ it('waits for the root to resolve and then uses the one the configuration chose'
     }),
   );
   const button = (text: string) =>
-    [...host.querySelectorAll('button')].find((node) => node.textContent?.includes(text))!;
+    [...document.body.querySelectorAll<HTMLButtonElement>('[data-export-overlay] button')].find(
+      (node) => node.textContent?.includes(text),
+    )!;
   try {
     await act(async () => {
       root.render(
@@ -60,6 +62,8 @@ it('waits for the root to resolve and then uses the one the configuration chose'
         }),
       );
     });
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector('[data-export-overlay]')?.parentElement).toBe(document.body);
     await act(async () => {
       button('立即导出并保存').click();
     });

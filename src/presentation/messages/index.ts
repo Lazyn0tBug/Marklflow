@@ -17,3 +17,4 @@ export {MessageResult} from './MessageResult';
 export type {MessageResultItem, MessageResultProps} from './MessageResult';
 export type {MessageAction, MessageTone} from './types';
 export {useMessageLifecycle} from './useMessageLifecycle';
+export {MessageViewport} from './MessageViewport';

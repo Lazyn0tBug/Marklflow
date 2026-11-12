@@ -4,7 +4,7 @@
  * 整合：三栏工作台、多文档与大纲、双模公式与图表、流式/A4物理预览、导出中心与 1.0 审查看板
  */
 
-import {useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect} from 'react';
+import {useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect, useId} from 'react';
 import {ChevronRight} from 'lucide-react';
 import {TopBar} from './components/header/TopBar';
 import {Sidebar} from './components/workspace/Sidebar';
@@ -16,7 +16,7 @@ import {ExportModal} from './components/export/ExportModal';
 import {NoticeList} from './components/notice/NoticeList';
 import {DemoMessageView, MessageGallery} from './components/message/MessageGallery';
 import {useDemoMessages} from './components/message/useDemoMessages';
-import {MessageCard} from './presentation/messages';
+import {MessageCard, MessageViewport} from './presentation/messages';
 import {ImportResultNotice} from './components/message/ImportResultNotice';
 import {noticeStore, type NoticeTone} from './application/notices';
 import {CONFIRM_TEXTS, messageText} from './application/messages';
@@ -316,6 +316,8 @@ export default function App() {
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
   /** 消息区域 ✓：通知列表要知道焦点该落回哪儿 ✓ ⇒ ⇒ 区域由这里给它 ✓。 */
   const messageRegionRef = useRef<HTMLDivElement | null>(null);
+  const messageRegionId = useId();
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
   const pendingPreviewLine = useRef<{documentId: string; line: number} | undefined>(undefined);
   const previewLine = useRef(1);
   const lastEditorGeometry = useRef<EditorGeometry>({lineHeight: 24, paddingTop: 12});
@@ -1025,11 +1027,12 @@ export default function App() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!isSaveShortcut(event)) return;
       event.preventDefault();
+      if (exportModalOpen) return;
       reportAsync('save-failed', handleShortcutSave());
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleShortcutSave]);
+  }, [handleShortcutSave, exportModalOpen]);
 
   openSaved.current = (doc: DocumentRecord) => {
     capturePosition();
@@ -1208,11 +1211,10 @@ export default function App() {
   // `tabIndex={-1}` ⇒ ⇒ 消息都收走后，焦点有个落点 ✓（设计 §9 ✓）。
   // 生命周期适配器通过最近的消息区域恢复焦点，不从按钮点击后的焦点反推区域。
   const messageRegion = (
-    <div
-      ref={messageRegionRef}
-      className="mf-message no-print"
-      tabIndex={-1}
-      aria-label="工作台消息"
+    <MessageViewport
+      id={messageRegionId}
+      elementRef={messageRegionRef}
+      colorScheme={isDark ? 'dark' : 'light'}
     >
       {demoMessages.demos.map((demo) => (
         <DemoMessageView
@@ -1224,7 +1226,7 @@ export default function App() {
       ))}
       <NoticeList />
       {importMessage}
-    </div>
+    </MessageViewport>
   );
   /**
    * 删掉一份文档 ✓。
@@ -1467,7 +1469,8 @@ export default function App() {
   // `color-scheme` 让原生控件与消息模块的明暗跟着应用的开关走 ✓（设计 §5 ✓）。
   return (
     <div
-      className={`h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}
+      className={`isolate h-screen w-screen flex flex-col overflow-hidden ${isDark ? 'dark bg-neutral-950' : 'bg-neutral-100'}`}
+      inert={exportModalOpen || undefined}
       style={{colorScheme: isDark ? 'dark' : 'light'}}
     >
       {recoveryNotice}
@@ -1501,6 +1504,7 @@ export default function App() {
         onWriteBack={() => reportAsync('save-failed', handleWriteBack())}
         onSaveAs={() => reportAsync('save-failed', handleSaveAs())}
         onOpenExport={() => setExportModalOpen(true)}
+        exportButtonRef={exportButtonRef}
         onOpenRoadmap={() => setRoadmapModalOpen(true)}
         onOpenMessages={import.meta.env.DEV ? () => setMessageGalleryOpen(true) : undefined}
         documentTitle={currentDoc.meta.title}
@@ -1674,6 +1678,8 @@ export default function App() {
         document={currentDoc}
         mathMode={mathMode}
         onNotice={pushNotice}
+        messageRegionId={messageRegionId}
+        returnFocusRef={exportButtonRef}
       />
 
       {/* 消息区：通知与导入结果都在这里 ✓（设计 §3 ✓ ⇒ ⇒ 一个区域 ✓）。 */}

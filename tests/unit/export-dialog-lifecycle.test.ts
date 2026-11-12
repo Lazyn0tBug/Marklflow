@@ -28,6 +28,7 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
   document.body.append(host);
   const root = createRoot(host),
     doc = createNewDocument('Closing');
+  let mounted = true;
   let resolve = (value: ReturnType<typeof htmlArtifact>) => {
     void value;
   };
@@ -37,7 +38,9 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
     }),
   );
   const button = (text: string) =>
-    [...host.querySelectorAll('button')].find((node) => node.textContent?.includes(text))!;
+    [...document.body.querySelectorAll<HTMLButtonElement>('[data-export-overlay] button')].find(
+      (node) => node.textContent?.includes(text),
+    )!;
   try {
     await act(async () => {
       root.render(
@@ -58,6 +61,7 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
     expect(webExportService.busy).toBe(true);
     await act(async () => {
       root.unmount();
+      mounted = false;
     });
     await act(async () => {
       resolve(
@@ -70,6 +74,7 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
     });
     expect(webExportService.busy).toBe(false);
   } finally {
+    if (mounted) await act(async () => root.unmount());
     host.remove();
     vi.unstubAllGlobals();
   }
@@ -94,7 +99,9 @@ it('does not revive a dismissed confirmation when the dialog is reopened during 
       createElement(ExportModal, {isOpen, onClose: () => {}, document: doc, mathMode: 'svg'}),
     );
   const button = (text: string) =>
-    [...host.querySelectorAll('button')].find((node) => node.textContent?.includes(text))!;
+    [...document.body.querySelectorAll<HTMLButtonElement>('[data-export-overlay] button')].find(
+      (node) => node.textContent?.includes(text),
+    )!;
   try {
     await act(async () => {
       render(true);
@@ -121,7 +128,7 @@ it('does not revive a dismissed confirmation when the dialog is reopened during 
       await settle(() => !webExportService.busy);
     });
     expect(webExportService.busy).toBe(false);
-    expect(host.querySelector('#export-docx-consent')).toBeNull();
+    expect(document.body.querySelector('[data-export-overlay] #export-docx-consent')).toBeNull();
   } finally {
     await act(async () => {
       root.unmount();
