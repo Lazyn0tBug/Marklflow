@@ -266,6 +266,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="w-full h-full flex flex-col bg-neutral-900 border-r border-neutral-800 text-neutral-200 select-none no-print relative shrink-0">
+      {/* 操作行：**在页签上方** ✓ ⇒ ⇒ 切换文档 / 大纲时位置稳定 ✓（设计 §3 ✓）。 */}
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-neutral-800 bg-neutral-950/60">
+        <button
+          disabled={importBusy}
+          onClick={onCreateDoc}
+          className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-teal-600/90 hover:bg-teal-600 text-white text-xs font-medium transition-colors"
+          title="创建新空白 Markdown 文档"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          新建文档
+        </button>
+        {/* 平台没有这个能力时不凭布局新增入口 ✓ ⇒ ⇒ Web 不渲染这一项 ✓（设计 §3 ✓）。 */}
+        {onOpenNative && (
+          <button
+            disabled={importBusy}
+            aria-busy={importBusy}
+            onClick={onOpenNative}
+            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            title="打开本地文件（系统选择器）"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            打开
+          </button>
+        )}
+      </div>
+
       {/* Sidebar Tabs & Collapse Trigger */}
       <div className="flex items-center border-b border-neutral-800 bg-neutral-950/60 p-1.5 gap-1">
         <button
@@ -316,29 +342,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div ref={listRef} className="flex-1 overflow-y-auto p-2">
         {activeTab === 'docs' ? (
           <div className="space-y-1">
-            {/* Action Bar */}
+            {/* 导入入口：**留在文档页签里** ✓ ⇒ ⇒ 不重排导入流程 ✓（设计 §3 ✓）。 */}
             <div className="flex items-center gap-1.5 mb-2 px-1">
-              <button
-                disabled={importBusy}
-                onClick={onCreateDoc}
-                className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-teal-600/90 hover:bg-teal-600 text-white text-xs font-medium transition-colors"
-                title="创建新空白 Markdown 文档"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                新建文档
-              </button>
-              {onOpenNative && (
-                <button
-                  disabled={importBusy}
-                  aria-busy={importBusy}
-                  onClick={onOpenNative}
-                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
-                  title="打开本地文件（系统选择器）"
-                >
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  打开
-                </button>
-              )}
               <button
                 disabled={importBusy}
                 aria-busy={importBusy}
