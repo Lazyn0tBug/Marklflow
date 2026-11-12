@@ -26,7 +26,7 @@ import {
   Table as TableIcon,
   GitFork,
   FileCode,
-  Scissors,
+  Rows2,
   Link,
   RotateCcw,
   RotateCw,
@@ -38,6 +38,8 @@ interface TooltipInfo {
   title: string;
   shortcut?: string;
   syntax?: string;
+  /** 动作说明 ✓：名字说是什么，这行说做什么 ✓（设计 §4 ✓）。 */
+  description?: string;
 }
 
 const TooltipContext = createContext<{
@@ -51,7 +53,11 @@ interface ToolbarButtonProps {
   title: string;
   shortcut?: string;
   syntax?: string;
+  /** 动作说明 ✓：跟在名字后面的一句 ✓（设计 §4 ✓）。 */
+  description?: string;
   active?: boolean;
+  /** 展开态 ✓：不只靠颜色区分 ✓（设计 §4 ✓）。 */
+  expanded?: boolean;
   accent?: 'default' | 'teal' | 'sky' | 'indigo' | 'amber';
   className?: string;
   children: React.ReactNode;
@@ -63,7 +69,9 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
   title,
   shortcut,
   syntax,
+  description,
   active = false,
+  expanded,
   accent = 'default',
   className,
   children,
@@ -98,6 +106,7 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
       title,
       ...(shortcut === undefined ? {} : {shortcut}),
       ...(syntax === undefined ? {} : {syntax}),
+      ...(description === undefined ? {} : {description}),
     });
   };
 
@@ -115,7 +124,11 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      /** 键盘聚焦也能拿到同一份提示 ✓ ⇒ ⇒ 提示不是悬停才有的东西 ✓（设计 §4 ✓）。 */
+      onFocus={handleMouseEnter}
+      onBlur={handleMouseLeave}
       disabled={disabled}
+      aria-expanded={expanded}
       className={`${className ?? 'w-7'} h-7 flex items-center justify-center rounded border border-transparent transition-colors ${getAccentStyles()}`}
       aria-label={title}
     >
@@ -259,9 +272,11 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
           <div className="relative inline-flex items-center" ref={moreHeadingsBtnRef}>
             <ToolbarButton
               onClick={handleToggleMoreHeadings}
-              title="更多标题层级 (H4 ~ H6)"
+              title="更多标题层级"
+              description="H4 到 H6"
               syntax="#### ~ ######"
               active={isMoreHeadingsOpen}
+              expanded={isMoreHeadingsOpen}
               className="w-4.5 px-0.5"
             >
               <ChevronDown
@@ -398,10 +413,12 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
           <div className="relative inline-flex items-center" ref={tableButtonRef}>
             <ToolbarButton
               onClick={handleToggleTablePicker}
-              title="可视化矩阵插入表格"
+              title="插入表格"
+              description="选行列数，插入一个表格"
               syntax="| 列1 | 列2 |"
               shortcut="Alt+T"
               active={isTablePickerOpen}
+              expanded={isTablePickerOpen}
             >
               <TableIcon className="w-3.5 h-3.5" />
             </ToolbarButton>
@@ -417,14 +434,15 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
 
           <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
 
-          {/* Hard Pagebreak */}
+          {/* 分页符：图标是"一页被横线分开" ✓ ⇒ ⇒ 不再读成裁剪 ✓（设计 §4 ✓）。 */}
           <ToolbarButton
             onClick={() => onInsertText('\n---pagebreak---\n', '', '')}
-            title="A4 纸张硬分页符"
+            title="分页符"
+            description="在此处插入分页符（A4 硬分页）"
             syntax="---pagebreak---"
             accent="amber"
           >
-            <Scissors className="w-3.5 h-3.5 text-amber-400" />
+            <Rows2 className="w-3.5 h-3.5 text-amber-400" />
           </ToolbarButton>
         </div>
 
@@ -598,17 +616,24 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             <div className="w-2 h-2 -mb-1 bg-neutral-900 border-t border-l border-neutral-700/80 rotate-45 z-10" />
 
             {/* Tooltip Content Badge */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-900/98 backdrop-blur-md text-neutral-100 text-xs rounded-md shadow-2xl border border-neutral-700/90 whitespace-nowrap">
-              <span className="font-medium text-neutral-200">{tooltip.title}</span>
-              {tooltip.syntax && (
-                <span className="font-mono text-teal-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800 text-[10px]">
-                  {tooltip.syntax}
+            <div className="flex flex-col items-center gap-1 px-2.5 py-1.5 bg-neutral-900/98 backdrop-blur-md text-neutral-100 text-xs rounded-md shadow-2xl border border-neutral-700/90 max-w-[min(320px,90vw)]">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="font-medium text-neutral-200">{tooltip.title}</span>
+                {tooltip.syntax && (
+                  <span className="font-mono text-teal-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800 text-[10px]">
+                    {tooltip.syntax}
+                  </span>
+                )}
+                {tooltip.shortcut && (
+                  <kbd className="px-1.5 py-0.5 bg-neutral-800 text-neutral-300 rounded text-[10px] font-mono border border-neutral-700">
+                    {tooltip.shortcut}
+                  </kbd>
+                )}
+              </div>
+              {tooltip.description && (
+                <span className="text-[11px] leading-snug text-neutral-400 text-center">
+                  {tooltip.description}
                 </span>
-              )}
-              {tooltip.shortcut && (
-                <kbd className="px-1.5 py-0.5 bg-neutral-800 text-neutral-300 rounded text-[10px] font-mono border border-neutral-700">
-                  {tooltip.shortcut}
-                </kbd>
               )}
             </div>
           </div>,
