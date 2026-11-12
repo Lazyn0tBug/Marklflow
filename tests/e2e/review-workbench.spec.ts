@@ -106,7 +106,8 @@ test('synchronizes outline, editor and HTML using stable source headings', async
   await page.getByRole('button', {name: /^大纲 \(/}).click();
   await page.locator('button[title^="章节5 (第"]').click();
   await expect.poll(() => editor.evaluate((n) => n.scrollTop)).toBeGreaterThan(4000);
-  const preview = page.locator('[data-view=html] > div');
+  // 阅读面是 .mf-view：面板顶部有一条控件条，"面板的第一个 div"不再唯一 ✓（设计 §2 ✓）。
+  const preview = page.locator('[data-view=html] > .mf-view');
   await expect.poll(() => preview.evaluate((n) => n.scrollTop)).toBeGreaterThan(500);
   await editor.press('Control+Home');
   await expect.poll(() => preview.evaluate((n) => n.scrollTop)).toBe(0);

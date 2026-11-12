@@ -27,8 +27,6 @@ interface EditorProps {
   canRedo?: boolean;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
   onScroll?: (ratio: number, scrollTop: number) => void;
-  syncScroll?: boolean;
-  onToggleSyncScroll?: () => void;
   maxWidth?: number | 'full';
 }
 

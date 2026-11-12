@@ -30,7 +30,6 @@ import {
   Link,
   RotateCcw,
   RotateCw,
-  ArrowUpDown,
 } from 'lucide-react';
 import {generateMarkdownTable} from '../../core/parse/markdown';
 
@@ -131,9 +130,6 @@ export interface WorkbenchToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  syncScroll?: boolean;
-  onToggleSyncScroll?: () => void;
-  viewMode: 'split' | 'edit' | 'reading' | 'a4';
 }
 
 export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
@@ -142,9 +138,6 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
   onRedo,
   canUndo,
   canRedo,
-  syncScroll = true,
-  onToggleSyncScroll,
-  viewMode,
 }) => {
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [isMoreHeadingsOpen, setIsMoreHeadingsOpen] = useState(false);
@@ -435,36 +428,8 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
           </ToolbarButton>
         </div>
 
-        {/* Right Controls: Undo / Redo & Dual View Sync */}
+        {/* Right Controls: Undo / Redo（同步联动归 HTML 视图那一侧的控件条 ✓）。 */}
         <div className="flex items-center gap-1.5 shrink-0 pl-2">
-          {/* Sync Scroll Toggle */}
-          {onToggleSyncScroll && (
-            <ToolbarButton
-              onClick={onToggleSyncScroll}
-              title={syncScroll ? '双向同步滚动：已开启' : '双向同步滚动：已暂停'}
-              shortcut={syncScroll ? '点击暂停联动' : '点击开启联动'}
-              active={syncScroll}
-            >
-              <ArrowUpDown
-                className={`w-3.5 h-3.5 ${syncScroll ? 'text-teal-300' : 'text-neutral-500'}`}
-              />
-            </ToolbarButton>
-          )}
-
-          {/* Split status badge */}
-          {viewMode === 'split' && (
-            <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-950/80 border border-neutral-800 text-[11px] text-neutral-400">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  syncScroll ? 'bg-teal-400 animate-pulse' : 'bg-neutral-600'
-                }`}
-              />
-              <span className="font-mono text-[10px]">
-                {syncScroll ? '编辑器 ⇋ 预览 同步' : '视图独立滚动'}
-              </span>
-            </div>
-          )}
-
           <div className="w-[1px] h-3.5 bg-neutral-800 mx-0.5 shrink-0" />
 
           {/* Undo / Redo */}

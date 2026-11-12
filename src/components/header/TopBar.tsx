@@ -10,7 +10,6 @@ import React, {useState, useRef, useEffect} from 'react';
 import {
   FileDown,
   BookOpen,
-  FileCheck,
   Edit3,
   Moon,
   Sun,
@@ -40,8 +39,6 @@ export interface TopBarProps {
   showPreview: boolean;
   onToggleEditor: () => void;
   onTogglePreview: () => void;
-  previewMode: 'flow' | 'a4';
-  onPreviewModeChange: (mode: 'flow' | 'a4') => void;
 
   // 最大宽度配置 (默认 1024)
   softWrap: boolean;
@@ -97,8 +94,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   showPreview,
   onToggleEditor,
   onTogglePreview,
-  previewMode,
-  onPreviewModeChange,
   softWrap,
   onSoftWrapChange,
   maxWidth,
@@ -232,35 +227,6 @@ export const TopBar: React.FC<TopBarProps> = ({
             />
           </button>
         </div>
-
-        {/* HTML 预览子形态：流式 vs A4 分页 (当 HTML 开启时显示) */}
-        {showPreview && (
-          <div className="flex items-center p-0.5 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs">
-            <button
-              onClick={() => onPreviewModeChange('flow')}
-              className={`px-2 py-0.5 rounded text-[11px] transition-colors ${
-                previewMode === 'flow'
-                  ? 'bg-neutral-800 text-neutral-100 font-medium'
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
-              title="流式排版舒适阅读"
-            >
-              流式
-            </button>
-            <button
-              onClick={() => onPreviewModeChange('a4')}
-              className={`px-2 py-0.5 rounded text-[11px] transition-colors flex items-center gap-1 ${
-                previewMode === 'a4'
-                  ? 'bg-neutral-800 text-teal-300 font-medium'
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
-              title="A4 纸张物理规格分页仿真"
-            >
-              <FileCheck className="w-3 h-3" />
-              A4 分页
-            </button>
-          </div>
-        )}
 
         <button
           ref={settingsButtonRef}

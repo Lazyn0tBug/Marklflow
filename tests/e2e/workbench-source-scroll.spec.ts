@@ -65,7 +65,7 @@ async function previewAt(page: Page, line: number) {
           .count(),
     )
     .toBeGreaterThan(0);
-  const view = page.locator('[data-view=html] > div');
+  const view = page.locator('[data-view=html] > .mf-view');
   await view.dispatchEvent('pointerdown');
   await view.evaluate((el: HTMLElement, line) => {
     const target = el.querySelector<HTMLElement>('[data-line="' + line + '"]');
@@ -94,14 +94,14 @@ test('synchronizes mapped paragraphs and long code, and highlights the editor ce
   await boot(page);
   const line = lineOf('Paragraph 4_5');
   await editorAt(page, line);
+  // 参照点是**阅读面**（.mf-view），不是面板的第一个子元素：面板顶部现在有一条控件条 ✓（设计 §2 ✓）。
   await expect
     .poll(() =>
       page
         .locator('[data-view=html] p[data-line="' + line + '"]')
         .evaluate((el) =>
           Math.abs(
-            el.getBoundingClientRect().top -
-              el.closest('[data-view]')!.firstElementChild!.getBoundingClientRect().top,
+            el.getBoundingClientRect().top - el.closest('.mf-view')!.getBoundingClientRect().top,
           ),
         ),
     )
@@ -115,8 +115,7 @@ test('synchronizes mapped paragraphs and long code, and highlights the editor ce
         .locator('.mf-code')
         .evaluate(
           (el) =>
-            el.getBoundingClientRect().top -
-            el.closest('[data-view]')!.firstElementChild!.getBoundingClientRect().top,
+            el.getBoundingClientRect().top - el.closest('.mf-view')!.getBoundingClientRect().top,
         ),
     )
     .toBeLessThan(-100);
@@ -417,8 +416,7 @@ test('restores semantic locations through A4 mode and cached Tab switches', asyn
         .first()
         .evaluate((el) =>
           Math.abs(
-            el.getBoundingClientRect().top -
-              el.closest('[data-view]')!.firstElementChild!.getBoundingClientRect().top,
+            el.getBoundingClientRect().top - el.closest('.mf-view')!.getBoundingClientRect().top,
           ),
         ),
     )
@@ -430,7 +428,7 @@ test('restores semantic locations through A4 mode and cached Tab switches', asyn
   const reference = await page
     .locator('[data-preview-reference]')
     .getAttribute('data-preview-reference');
-  const top = await page.locator('[data-view=html] > div').evaluate((el) => el.scrollTop);
+  const top = await page.locator('[data-view=html] > .mf-view').evaluate((el) => el.scrollTop);
   await page.getByRole('button', {name: '文档 (', exact: false}).click();
   await page.getByRole('button', {name: '新建文档', exact: true}).click();
   await ready(page);
@@ -445,7 +443,7 @@ test('restores semantic locations through A4 mode and cached Tab switches', asyn
   await expect
     .poll(() =>
       page
-        .locator('[data-view=html] > div')
+        .locator('[data-view=html] > .mf-view')
         .evaluate((el, top) => Math.abs(el.scrollTop - top), top),
     )
     .toBeLessThan(3);
@@ -465,8 +463,7 @@ test('keeps sync when restoring hidden panes, width dialogs and all seven A4 pan
         .locator('[data-view=html] p[data-line="' + lineOf('Paragraph 4_5') + '"]')
         .evaluate((el) =>
           Math.abs(
-            el.getBoundingClientRect().top -
-              el.closest('[data-view]')!.firstElementChild!.getBoundingClientRect().top,
+            el.getBoundingClientRect().top - el.closest('.mf-view')!.getBoundingClientRect().top,
           ),
         ),
     )
@@ -571,8 +568,7 @@ test('applies an outline jump selected while the replacement artifact is pending
         .first()
         .evaluate((el) =>
           Math.abs(
-            el.getBoundingClientRect().top -
-              el.closest('[data-view]')!.firstElementChild!.getBoundingClientRect().top,
+            el.getBoundingClientRect().top - el.closest('.mf-view')!.getBoundingClientRect().top,
           ),
         ),
     )
@@ -584,6 +580,6 @@ test('applies an outline jump selected while the replacement artifact is pending
   await expect(page.locator('[aria-current=location]')).toHaveCount(0);
   await editorAt(page, 70);
   await expect
-    .poll(() => page.locator('[data-view=html] > div').evaluate((el) => el.scrollTop))
+    .poll(() => page.locator('[data-view=html] > .mf-view').evaluate((el) => el.scrollTop))
     .toBeGreaterThan(500);
 });

@@ -11,6 +11,7 @@ import {Sidebar} from './components/workspace/Sidebar';
 import {Editor} from './components/editor/Editor';
 import {ReadingPreview} from './components/preview/ReadingPreview';
 import {A4PagePreview} from './components/preview/A4PagePreview';
+import {HtmlViewControls} from './components/preview/HtmlViewControls';
 import {StatusBar} from './components/footer/StatusBar';
 import {ExportModal} from './components/export/ExportModal';
 import {NoticeList} from './components/notice/NoticeList';
@@ -1482,8 +1483,6 @@ export default function App() {
         showPreview={showPreview}
         onToggleEditor={handleToggleEditor}
         onTogglePreview={handleTogglePreview}
-        previewMode={previewMode}
-        onPreviewModeChange={changePreviewMode}
         softWrap={softWrap}
         onSoftWrapChange={(value) => {
           capturePosition();
@@ -1582,9 +1581,6 @@ export default function App() {
               onRedo={handleRedo}
               canUndo={currentSession?.canUndo ?? false}
               canRedo={currentSession?.canRedo ?? false}
-              syncScroll={syncScroll}
-              onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
-              viewMode={showPreview ? 'split' : 'edit'}
             />
           )}
 
@@ -1606,8 +1602,6 @@ export default function App() {
                     canRedo={currentSession?.canRedo ?? false}
                     textareaRef={editorTextareaRef}
                     onScroll={handleEditorScroll}
-                    syncScroll={syncScroll}
-                    onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
                     maxWidth={contentMaxWidth}
                   />
                   {tabBar}
@@ -1616,21 +1610,31 @@ export default function App() {
             }
             preview={
               showPreview ? (
-                previewMode === 'flow' ? (
-                  <ReadingPreview
-                    view={previewView}
-                    theme={currentDoc.theme}
-                    maxWidth={contentMaxWidth}
-                    containerRef={previewContainerRef}
-                    onScroll={handlePreviewScroll}
+                <>
+                  {/* 控件条：模式与同步都归 HTML 视图这一侧 ✓（设计 §2 ✓）。 */}
+                  <HtmlViewControls
+                    previewMode={previewMode}
+                    onPreviewModeChange={changePreviewMode}
+                    syncScroll={syncScroll}
+                    onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
+                    showSync={showEditor}
                   />
-                ) : (
-                  <A4PagePreview
-                    view={previewView}
-                    containerRef={previewContainerRef}
-                    onScroll={handlePreviewScroll}
-                  />
-                )
+                  {previewMode === 'flow' ? (
+                    <ReadingPreview
+                      view={previewView}
+                      theme={currentDoc.theme}
+                      maxWidth={contentMaxWidth}
+                      containerRef={previewContainerRef}
+                      onScroll={handlePreviewScroll}
+                    />
+                  ) : (
+                    <A4PagePreview
+                      view={previewView}
+                      containerRef={previewContainerRef}
+                      onScroll={handlePreviewScroll}
+                    />
+                  )}
+                </>
               ) : null
             }
           />
