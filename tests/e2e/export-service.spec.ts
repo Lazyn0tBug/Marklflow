@@ -38,7 +38,7 @@ test('cleans a failed download and permits a manual retry with accurate Web feed
   consoleErrors,
 }) => {
   await open(page, '# MARKDOWN_DOWNLOAD');
-  await page.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
+  await page.getByRole('button', {name: /^原始 Markdown \(\.md\)/}).click();
   await page.evaluate(() => {
     const click = HTMLAnchorElement.prototype.click,
       revoke = URL.revokeObjectURL;
@@ -141,7 +141,7 @@ test('rejects a falsely declared asset without delivery and releases busy for so
     .getByRole('button', {name: /知道了|关闭通知/})
     .first()
     .click();
-  await page.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
+  await page.getByRole('button', {name: /^原始 Markdown \(\.md\)/}).click();
   const downloaded = page.waitForEvent('download');
   await action.click();
   expect((await downloaded).suggestedFilename()).toMatch(/\.md$/);

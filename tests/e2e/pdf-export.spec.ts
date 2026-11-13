@@ -57,7 +57,7 @@ for (const mode of ['flow', 'a4', 'hidden'] as const)
     if (mode === 'hidden') await page.getByRole('button', {name: '预览', exact: true}).click();
     await page.getByRole('button', {name: '导出', exact: true}).click();
     await page.getByRole('button', {name: /PDF 文档/}).click();
-    await page.getByLabel('导出文件主名称').fill('自定义 PDF 文件名');
+    await page.getByLabel('导出文件名称').fill('自定义 PDF 文件名');
     await expect(page.getByText('打印预览', {exact: true})).toHaveCount(0);
     await page.getByRole('button', {name: '立即导出并保存', exact: true}).click();
     const frame = page.locator('iframe[title="PDF导出文档"]');

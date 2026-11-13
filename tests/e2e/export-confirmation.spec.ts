@@ -48,7 +48,7 @@ test('closing a pending confirmation releases export busy and never delivers an 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', {name: '导出', exact: true}).click();
-  await page.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
+  await page.getByRole('button', {name: /^原始 Markdown \(\.md\)/}).click();
   const action = page.getByRole('button', {name: '立即导出并保存', exact: true});
   await expect(action).toBeEnabled();
   const download = page.waitForEvent('download');
@@ -68,7 +68,7 @@ test('source bundles remain available when formula and diagram rendering cannot 
   await page.locator('textarea').fill(source);
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'error');
   await page.getByRole('button', {name: '导出', exact: true}).click();
-  await page.getByRole('button', {name: /Markdown 资源包/}).click();
+  await page.getByRole('button', {name: /^Markdown 资源包/}).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', {name: '立即导出并保存', exact: true}).click();
   const path = info.outputPath('source.zip');

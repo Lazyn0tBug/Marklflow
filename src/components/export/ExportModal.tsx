@@ -13,7 +13,7 @@ import {reportAsync, reportFailure} from '../../core/platform/failures';
  */
 
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {X, Download, FileCode, FileText, AlertTriangle, Layers} from 'lucide-react';
+import {X, Download, FileCode, FileText, Layers, Package} from 'lucide-react';
 import {DocumentRecord} from '../../core/model/document';
 import {diagnostic, diagnosticTrace} from '../../core/platform/web/diagnostics';
 
@@ -309,15 +309,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         aria-labelledby="export-dialog-title"
         className="w-full max-w-2xl max-h-[90dvh] rounded-xl bg-neutral-900 border border-neutral-700/80 shadow-2xl text-neutral-100 overflow-hidden flex flex-col"
       >
-        <label className="m-4 flex gap-2 text-xs">
-          <input
-            type="checkbox"
-            disabled={isExporting}
-            checked={allowRemoteAssets}
-            onChange={(e) => setAllowRemoteAssets(e.target.checked)}
-          />
-          允许联网收集文档外部图片（受 CORS 限制）
-        </label>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950/40">
           <div className="flex items-center justify-end gap-2.5">
@@ -331,7 +322,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <p className="text-xs text-neutral-400 mt-0.5">
                 {isExporting && service.sourceLabel
                   ? (reviewing ? '等待确认：' : '正在导出：') + service.sourceLabel
-                  : '基于冻结修订快照 (Rev ' + doc.revision + ') 输出自包含成品'}
+                  : '基于冻结修订快照 (Rev ' + doc.revision + ')'}
               </p>
             </div>
           </div>
@@ -396,7 +387,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               htmlFor="export-file-name"
               className="block text-xs font-medium text-neutral-300 mb-1.5"
             >
-              导出文件主名称
+              导出文件名称
             </label>
             <input
               id="export-file-name"
@@ -521,68 +512,66 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </p>
                 </div>
               </button>
-            </div>
-          </div>
 
-          <button
-            type="button"
-            disabled={isExporting}
-            onClick={() => setSelectedFormat('markdown-bundle')}
-            aria-pressed={selectedFormat === 'markdown-bundle'}
-            className={`w-full rounded-lg border p-3 text-left text-xs hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-teal-400 ${selectedFormat === 'markdown-bundle' ? 'border-teal-500 bg-teal-950/40' : 'border-neutral-700'}`}
-          >
-            <span className="font-medium">Markdown 资源包 (.zip)</span>
-            <span className="mt-1 block text-neutral-400">
-              包含源文、已收集图片及资源清单，受支持的图片引用改为包内相对路径。
-            </span>
-          </button>
+              {/* 资源包与原始 Markdown **并列** ✓（设计 §4 ✓）。 */}
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={() => setSelectedFormat('markdown-bundle')}
+                aria-pressed={selectedFormat === 'markdown-bundle'}
+                className={`p-3 rounded-lg border text-left transition-all flex items-start gap-3 ${
+                  selectedFormat === 'markdown-bundle'
+                    ? 'bg-neutral-800 border-teal-500 ring-1 ring-teal-500/30'
+                    : 'bg-neutral-950/50 border-neutral-800 hover:border-neutral-700'
+                }`}
+              >
+                <div className="p-2 rounded bg-teal-500/10 text-teal-400 shrink-0 mt-0.5">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-medium text-xs text-neutral-100">Markdown 资源包 (.zip)</div>
+                  <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
+                    包含源文、已收集图片及资源清单，受支持的图片引用改为包内相对路径。
+                  </p>
+                </div>
+              </button>
 
-          {/* Capabilities Diagnostics Box */}
-          <div className="p-3 rounded-lg bg-neutral-950/60 border border-neutral-800 text-xs">
-            <div className="flex items-center gap-2 font-medium text-neutral-300 mb-1">
-              <AlertTriangle className="w-3.5 h-3.5 text-teal-400" />
-              <span>当前格式排版特性与能力矩阵诊断</span>
-            </div>
-            <div className="text-[0.6875rem] text-neutral-400 space-y-0.5">
-              {selectedFormat === 'markdown' && (
-                <div>• 仅导出源文；图片等资源可选择 Markdown 资源包。</div>
-              )}
-              {selectedFormat === 'markdown-bundle' && (
-                <div>• 收集的图片随包保存；未识别的外部引用需自行检查。</div>
-              )}
-              {selectedFormat === 'editable-html' && (
-                <div>
-                  • 公式采用 <strong>{mathMode.toUpperCase()}</strong> 渲染；源载荷支持再次导入
-                  MarkFlow 无损重构。
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={() => setSelectedFormat('markdown')}
+                aria-pressed={selectedFormat === 'markdown'}
+                className={`p-3 rounded-lg border text-left transition-all flex items-start gap-3 ${
+                  selectedFormat === 'markdown'
+                    ? 'bg-neutral-800 border-teal-500 ring-1 ring-teal-500/30'
+                    : 'bg-neutral-950/50 border-neutral-800 hover:border-neutral-700'
+                }`}
+              >
+                <div className="p-2 rounded bg-teal-500/10 text-teal-400 shrink-0 mt-0.5">
+                  <FileText className="w-4 h-4" />
                 </div>
-              )}
-              {selectedFormat === 'print-pdf' && (
-                <div>• 按文档页面配置导出，工作台预览可保持关闭。</div>
-              )}
-              {selectedFormat === 'docx' && (
                 <div>
-                  • 段落与表格映射为 Word
-                  原生对象；公式在结构有原生等价形式时输出为可编辑公式，否则转为图片并附源式；图表以图片输出，原始HTML按语义重排；导出前统一检查并确认。
+                  <div className="font-medium text-xs text-neutral-100">原始 Markdown (.md)</div>
+                  <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
+                    仅导出源文；图片等资源可选择 Markdown 资源包。
+                  </p>
                 </div>
-              )}
-              {selectedFormat === 'reading-html' && (
-                <div>• 页面内嵌自包含 CSS 与公式渲染，接收方无需安装任何插件或字体库即可阅读。</div>
-              )}
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions —— 勾选框按习惯在下面 ✓ */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-t border-neutral-800 bg-neutral-950/40">
-          <button
-            type="button"
-            disabled={isExporting}
-            onClick={() => setSelectedFormat('markdown')}
-            aria-pressed={selectedFormat === 'markdown'}
-            className="text-xs text-neutral-400 hover:text-neutral-200 underline transition-colors"
-          >
-            原始 Markdown (.md)
-          </button>
+          <label className="flex items-center gap-2 text-xs text-neutral-400">
+            <input
+              type="checkbox"
+              disabled={isExporting}
+              checked={allowRemoteAssets}
+              onChange={(e) => setAllowRemoteAssets(e.target.checked)}
+            />
+            允许联网收集文档外部图片（受 CORS 限制）
+          </label>
           <div className="flex items-center justify-end gap-2.5">
             <button
               type="button"

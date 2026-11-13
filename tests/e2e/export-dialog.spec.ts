@@ -15,18 +15,21 @@ for (const width of [1280, 390])
       await trigger.click();
       const dialog = page.getByRole('dialog', {name: '导出与发布文档'});
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByLabel('导出文件主名称')).toBeFocused();
-      const first = dialog.getByRole('checkbox', {name: /允许联网/}),
+      await expect(dialog.getByLabel('导出文件名称')).toBeFocused();
+      // 焦点在弹窗内循环 ✓ ⇒ ⇒ 从**第一个**可聚焦元素 Shift+Tab 回到最后一个 ✓
+      // （勾选框已按习惯挪到页脚 ✓ ⇒ ⇒ 首个是标题栏的关闭按钮 ✓）。
+      const first = dialog.getByRole('button', {name: '关闭导出窗口'}),
         last = dialog.getByRole('button', {name: '立即导出并保存', exact: true});
       await first.focus();
       await page.keyboard.press('Shift+Tab');
       await expect(last).toBeFocused();
       await page.keyboard.press('Tab');
       await expect(first).toBeFocused();
-      await dialog.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
-      await expect(
-        dialog.getByRole('button', {name: '原始 Markdown (.md)', exact: true}),
-      ).toHaveAttribute('aria-pressed', 'true');
+      await dialog.getByRole('button', {name: /^原始 Markdown \(\.md\)/}).click();
+      await expect(dialog.getByRole('button', {name: /^原始 Markdown \(\.md\)/})).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
       await expect(dialog.getByRole('button', {name: /可编辑单文件/})).toHaveAttribute(
         'aria-pressed',
         'false',

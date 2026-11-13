@@ -11,7 +11,7 @@ test('exports a resource ZIP through the common modal with portable source and v
   await page.locator('textarea').fill('# BUNDLE_SOURCE\n\n![image](' + data + ')');
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
   await page.getByRole('button', {name: '导出', exact: true}).click();
-  await page.getByRole('button', {name: /Markdown 资源包/}).click();
+  await page.getByRole('button', {name: /^Markdown 资源包/}).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', {name: '立即导出并保存', exact: true}).click();
   const file = info.outputPath('source.zip');
@@ -43,7 +43,7 @@ test('keeps raw HTML wrapper boundaries and source formatting in the resource ZI
     .setInputFiles({name: 'wrapper.md', mimeType: 'text/markdown', buffer: Buffer.from(source)});
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
   await page.getByRole('button', {name: '导出', exact: true}).click();
-  await page.getByRole('button', {name: /Markdown 资源包/}).click();
+  await page.getByRole('button', {name: /^Markdown 资源包/}).click();
   const wait = page.waitForEvent('download');
   await page.getByRole('button', {name: '立即导出并保存', exact: true}).click();
   const path = info.outputPath('wrapper.zip');

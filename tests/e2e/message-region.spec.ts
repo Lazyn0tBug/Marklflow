@@ -224,7 +224,7 @@ for (const width of [1600, 800]) {
         return top === element || element.contains(top);
       }),
     ).toBe(true);
-    const filename = dialog.getByLabel('导出文件主名称');
+    const filename = dialog.getByLabel('导出文件名称');
     await filename.fill('保留导出设置');
     const submit = dialog.getByRole('button', {name: '立即导出并保存', exact: true});
     await submit.evaluate((button) => {
@@ -263,11 +263,14 @@ test('export focus stays in the dialog and message island without dismissing eit
   await expect(notice(page)).toHaveCount(2);
   await page.getByRole('button', {name: '导出', exact: true}).click();
   const dialog = page.getByRole('dialog', {name: '导出与发布文档'});
-  const filename = dialog.getByLabel('导出文件主名称');
+  const filename = dialog.getByLabel('导出文件名称');
   await expect(filename).toBeFocused();
   await page.locator('textarea').evaluate((element) => element.focus());
   await expect(filename).toBeFocused();
-  await dialog.getByRole('checkbox', {name: /允许联网/}).focus();
+  // 弹窗与消息岛共成一个焦点环 ✓ ⇒ ⇒ 消息岛在前、弹窗在后 ✓ ⇒ ⇒ 从弹窗的
+  // **第一个**可聚焦元素 Shift+Tab 就绕回消息岛的最后一个 ✓
+  // （勾选框已按习惯挪到页脚 ✓ ⇒ ⇒ 首个是标题栏的关闭按钮 ✓）。
+  await dialog.getByRole('button', {name: '关闭导出窗口'}).focus();
   await page.keyboard.press('Shift+Tab');
   await expect(notice(page).last().getByRole('button', {name: '知道了'})).toBeFocused();
   const count = await page.evaluate(
@@ -312,7 +315,7 @@ test('auto-expiring portal notification returns focus to the still-open export d
   });
   await page.getByRole('button', {name: '导出', exact: true}).click();
   const dialog = page.getByRole('dialog', {name: '导出与发布文档'});
-  const filename = dialog.getByLabel('导出文件主名称');
+  const filename = dialog.getByLabel('导出文件名称');
   await notice(page).getByRole('button', {name: '关闭通知'}).focus();
   await expect(notice(page)).toHaveCount(0, {timeout: 15000});
   await expect(dialog).toBeVisible();

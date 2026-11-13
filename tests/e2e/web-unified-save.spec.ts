@@ -116,7 +116,7 @@ for (const [format, extension] of [
   test('saves ' + extension + ' through the common workbench entry', async ({page}) => {
     await install(page);
     await open(page, format);
-    await page.getByLabel('导出文件主名称').fill('中文方案' + extension + extension);
+    await page.getByLabel('导出文件名称').fill('中文方案' + extension + extension);
     await expect(page.locator('#export-suggested-name')).toHaveText(
       '建议文件名：中文方案' + extension,
     );
@@ -268,7 +268,7 @@ test('PDF keeps native HTML delivery and the normalized title without a byte pic
     ),
   );
   await open(page, 'PDF 文档（A4）');
-  await page.getByLabel('导出文件主名称').fill('中文.pdf.pdf');
+  await page.getByLabel('导出文件名称').fill('中文.pdf.pdf');
   await action(page).click();
   const frame = page.locator('iframe[title="PDF导出文档"]');
   await expect(frame).toHaveAttribute('data-delivered', 'true');
@@ -297,7 +297,7 @@ test('ordinary HTTP ignores even a present picker and downloads with the common 
   });
   await open(page, '原始 Markdown (.md)', '# HTTP_SAVE_SOURCE', 'http://markflow-save.test/');
   expect(await page.evaluate(() => isSecureContext)).toBe(false);
-  await page.getByLabel('导出文件主名称').fill('');
+  await page.getByLabel('导出文件名称').fill('');
   const downloading = page.waitForEvent('download');
   await action(page).click();
   expect((await downloading).suggestedFilename()).toBe('MarkFlow-Document.md');
@@ -313,7 +313,7 @@ test('bounds long Unicode suggestions in the actual save picker and common filen
   await open(page, '原始 Markdown (.md)');
   let expected = 0;
   for (const sourceName of ['中文'.repeat(120), '😀'.repeat(120)]) {
-    await page.getByLabel('导出文件主名称').fill(sourceName);
+    await page.getByLabel('导出文件名称').fill(sourceName);
     await action(page).click();
     expected++;
     await expect.poll(() => page.evaluate(() => window.saveProbe.closes)).toBe(expected);
@@ -356,7 +356,7 @@ test('generation failure never asks for a location and permits an explicit sourc
     .getByRole('button', {name: /知道了|关闭通知/})
     .first()
     .click();
-  await page.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
+  await page.getByRole('button', {name: /^原始 Markdown \(\.md\)/}).click();
   await action(page).click();
   await expect(page.getByText(/已保存文件/)).toBeVisible();
   expect(await page.evaluate(() => window.saveProbe)).toMatchObject({
@@ -393,7 +393,7 @@ for (const [format, extension] of [
       await open(page, format, f2Source);
       const expected = f2Name(extension);
       await page
-        .getByLabel('导出文件主名称')
+        .getByLabel('导出文件名称')
         .fill('a' + f2Cluster.repeat(20) + extension.toUpperCase() + extension);
       await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：' + expected);
       await action(page).click();
@@ -441,7 +441,7 @@ test('F2 uses the same grapheme-budgeted PDF title while keeping native handoff 
   );
   await open(page, 'PDF 文档（A4）', f2Source);
   const expected = f2Name('.pdf');
-  await page.getByLabel('导出文件主名称').fill('a' + f2Cluster.repeat(20) + '.PDF.pdf');
+  await page.getByLabel('导出文件名称').fill('a' + f2Cluster.repeat(20) + '.PDF.pdf');
   await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：' + expected);
   await action(page).click();
   const frame = page.locator('iframe[title="PDF导出文档"]');
@@ -472,7 +472,7 @@ test('F2 downloads the full UTF-8-budgeted ASCII name on ordinary HTTP without c
   });
   await open(page, '原始 Markdown (.md)', f2Source, 'http://markflow-f2.test/');
   expect(await page.evaluate(() => isSecureContext)).toBe(false);
-  await page.getByLabel('导出文件主名称').fill('a'.repeat(300) + '.MD.md');
+  await page.getByLabel('导出文件名称').fill('a'.repeat(300) + '.MD.md');
   const expected = 'a'.repeat(252) + '.md';
   await expect(page.locator('#export-suggested-name')).toHaveText('建议文件名：' + expected);
   const event = page.waitForEvent('download');
