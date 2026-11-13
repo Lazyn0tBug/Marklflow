@@ -111,16 +111,16 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize, geo
       role="tabpanel"
       aria-labelledby={labelledBy}
       className="flex-1 flex overflow-hidden min-h-0"
-      style={{minWidth: enabled ? geometry.minimumPaneWidth * 2 + geometry.splitHandleWidth : 0}}
+      data-split={enabled ? 'true' : undefined}
     >
       {editor && (
         <div
           id="workbench-editor-pane"
           data-view="editor"
+          data-split={enabled ? 'true' : undefined}
           className="mf-pane h-full min-w-0 flex flex-col"
           style={{
             flex: enabled ? effective + ' 0 0' : '1 1 0',
-            minWidth: enabled ? geometry.minimumPaneWidth : 0,
           }}
         >
           {editor}
@@ -210,10 +210,10 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize, geo
         <div
           id="workbench-html-pane"
           data-view="html"
+          data-split={enabled ? 'true' : undefined}
           className="mf-pane h-full min-w-0 flex flex-col"
           style={{
             flex: enabled ? 1 - effective + ' 0 0' : '1 1 0',
-            minWidth: enabled ? geometry.minimumPaneWidth : 0,
           }}
         >
           {preview}

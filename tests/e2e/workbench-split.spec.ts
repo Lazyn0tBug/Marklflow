@@ -1,6 +1,27 @@
 import {test, expect, type Page} from './fixtures';
 
 test.use({viewport: {width: 1440, height: 960}});
+
+/**
+ * 面板几何 ✓：**从 CSS 的 token 按当前根字号算出来** ✓（设计 §6 ✓）。
+ *
+ * 断言不写死数值 ✓ ⇒ ⇒ 契约的取值改了，测试按同一规则跟着算 ✓。
+ */
+const paneGeometry = (page: Page) =>
+  page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    const root = parseFloat(style.fontSize);
+    const rem = (token: string) => {
+      const raw = style.getPropertyValue(token).trim();
+      const value = parseFloat(raw);
+      return raw.endsWith('rem') ? value * root : value;
+    };
+    return {
+      root,
+      minimum: rem('--mf-pane-min'),
+      handle: rem('--mf-split-handle'),
+    };
+  });
 async function ready(page: Page) {
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready', {
     timeout: 30000,
@@ -211,6 +232,41 @@ test('resizes with pointer and keyboard, cancels safely, and preserves editing s
   await page.screenshot({path: info.outputPath('split-desktop.png')});
 });
 
+test('scales the pane limits and the narrow threshold with the root font size', async ({page}) => {
+  await page.goto('/');
+  await expect(page.locator('textarea')).toBeVisible();
+  const before = await paneGeometry(page);
+  await expect(page.locator('#workbench-document')).toHaveCSS(
+    'min-width',
+    `${before.minimum * 2 + before.handle}px`,
+  );
+
+  // 根字号放大 ⇒ ⇒ 面板下限**由 token 直接驱动** ⇒ ⇒ 跟着放大 ✓（设计 §6 ✓）。
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '24px';
+  });
+  await page.waitForTimeout(200);
+  const scaled = await paneGeometry(page);
+  expect(scaled.root).toBe(before.root * 1.5);
+  expect(scaled.minimum).toBeCloseTo(before.minimum * 1.5);
+  await expect(page.locator('#workbench-document')).toHaveCSS(
+    'min-width',
+    `${scaled.minimum * 2 + scaled.handle}px`,
+  );
+
+  // 窄屏阈值**一起放大** ⇒ ⇒ 同一个窗口宽度现在放不下两个面板 ⇒ ⇒ 进入单视图 ✓。
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '32px';
+  });
+  await page.setViewportSize({width: 1000, height: 900});
+  await page.waitForTimeout(300);
+  const widest = await paneGeometry(page);
+  expect(widest.minimum * 2 + widest.handle).toBeGreaterThan(1000);
+  await expect(page.locator('[data-view=outline]')).toBeHidden();
+  await expect(page.locator('[data-view=editor]')).toBeVisible();
+  await expect(page.locator('[data-view=html]')).toBeHidden();
+});
+
 test('shows one content view on a narrow screen and restores both when the window widens', async ({
   page,
 }) => {
@@ -264,7 +320,11 @@ test('keeps all seven visibility combinations and scrolls the workbench on narro
   await page.setViewportSize({width: 800, height: 900});
   const workbench = page.locator('[data-workbench]');
   expect(await workbench.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-  await expect(page.locator('#workbench-document')).toHaveCSS('min-width', '728px');
+  const geometry = await paneGeometry(page);
+  await expect(page.locator('#workbench-document')).toHaveCSS(
+    'min-width',
+    `${geometry.minimum * 2 + geometry.handle}px`,
+  );
   const panes = await page.evaluate(() => ({
     editor: document.querySelector('[data-view=editor]')!.getBoundingClientRect().width,
     html: document.querySelector('[data-view=html]')!.getBoundingClientRect().width,

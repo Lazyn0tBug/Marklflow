@@ -47,6 +47,17 @@
     --mf-icon-optical-offset: -0.02em;
   }
 
+  /*
+   * 面板下限**由 token 直接驱动** ✓ ⇒ ⇒ 根字号一变它自己就跟着变 ✓
+   * ⇒ ⇒ 不依赖 JS 重读几何 ✓（原则 1.6 ✓：派生优于存储 ✓）。
+   */
+  #workbench-document[data-split='true'] {
+    min-width: calc(var(--mf-pane-min) * 2 + var(--mf-split-handle));
+  }
+  .mf-pane[data-split='true'] {
+    min-width: var(--mf-pane-min);
+  }
+
   body {
     font-family:
       'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
