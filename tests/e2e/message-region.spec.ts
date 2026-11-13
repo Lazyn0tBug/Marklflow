@@ -18,7 +18,8 @@ const devOrigin = 'http://127.0.0.1:4175';
 test('the region stays inside a narrow window and does not push the workbench', async ({page}) => {
   await page.setViewportSize({width: 360, height: 740});
   await page.goto('/');
-  await page.waitForSelector('[data-render-state="ready"]', {timeout: 30000});
+  // 窄屏下预览不显示（一次只显示一个视图 ✓）⇒ ⇒ 这里等编辑器就绪 ✓（设计 §6 ✓）。
+  await page.locator('textarea').waitFor({timeout: 30000});
   const editor = page.locator('textarea');
   const before = await editor.boundingBox();
   await page.evaluate(() => {

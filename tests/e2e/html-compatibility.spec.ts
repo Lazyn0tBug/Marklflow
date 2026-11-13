@@ -62,7 +62,9 @@ test('queries its own container in wide and narrow layouts', async ({page}) => {
   await expect
     .poll(() => grid.evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(' ').length))
     .toBe(2);
-  await page.setViewportSize({width: 684, height: 900});
+  // 宽度 800：**仍在并排契约之内** ✓ ⇒ ⇒ 窄屏（< 728px）一次只显示一个视图的契约另由
+  // workbench-split.spec.ts 的窄屏用例覆盖 ✓（设计 §6 ✓）。
+  await page.setViewportSize({width: 800, height: 900});
   await expect
     .poll(() => grid.evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(' ').length))
     .toBe(1);

@@ -412,7 +412,8 @@ test('wrap changes preserve a deep logical line without regenerating or replacin
   await expect(editor).toHaveAttribute('wrap', 'soft');
   await expect.poll(async () => Math.abs((await logicalLine()) - target)).toBeLessThan(1.1);
   await page.keyboard.press('Escape');
-  await page.setViewportSize({width: 700, height: 900});
+  // 宽度 900：**仍在并排契约之内** ✓ ⇒ ⇒ 预览保持可见 ✓（窄屏另由 workbench-split 覆盖 ✓）。
+  await page.setViewportSize({width: 900, height: 900});
   await expect.poll(async () => Math.abs((await logicalLine()) - target)).toBeLessThan(1.1);
   expect(await editor.inputValue()).toBe(value);
   expect(

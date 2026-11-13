@@ -39,6 +39,12 @@ export interface TopBarProps {
   showPreview: boolean;
   onToggleEditor: () => void;
   onTogglePreview: () => void;
+  /**
+   * **窄屏** ✓ ⇒ ⇒ 两个视图开关在窄屏下是**切换**而不是叠加 ✓（设计 §6 ✓）。
+   */
+  narrow?: boolean;
+  /** 窄屏下当前显示的是哪一个 ✓ ⇒ ⇒ 选中态跟着显示走 ✓。 */
+  displayedView?: 'editor' | 'preview';
 
   // 最大宽度配置 (默认 1024)
   softWrap: boolean;
@@ -94,6 +100,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   showPreview,
   onToggleEditor,
   onTogglePreview,
+  narrow = false,
+  displayedView,
   softWrap,
   onSoftWrapChange,
   maxWidth,
@@ -119,6 +127,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   const settingsRef = useRef<HTMLDialogElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const visibleCount = Number(sidebarOpen) + Number(showEditor) + Number(showPreview);
+  /**
+   * 选中态 ✓：宽屏是“开没开” ✓，窄屏是“显示的是不是它” ✓（设计 §6 ✓）。
+   */
+  const editorOn = narrow ? displayedView === 'editor' : showEditor;
+  const previewOn = narrow ? displayedView === 'preview' : showPreview;
   useEffect(() => {
     const dialog = settingsRef.current;
     if (widthMenuOpen && !dialog?.open) dialog?.showModal();
@@ -189,7 +202,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* 编辑器开关 */}
           <button
             disabled={showEditor && visibleCount === 1}
-            aria-pressed={showEditor}
+            aria-pressed={editorOn}
             onClick={onToggleEditor}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               showEditor
@@ -210,7 +223,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* HTML 预览开关 */}
           <button
             disabled={showPreview && visibleCount === 1}
-            aria-pressed={showPreview}
+            aria-pressed={previewOn}
             onClick={onTogglePreview}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               showPreview

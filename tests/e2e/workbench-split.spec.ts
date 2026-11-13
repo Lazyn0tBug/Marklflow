@@ -211,6 +211,33 @@ test('resizes with pointer and keyboard, cancels safely, and preserves editing s
   await page.screenshot({path: info.outputPath('split-desktop.png')});
 });
 
+test('shows one content view on a narrow screen and restores both when the window widens', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.locator('textarea')).toBeVisible();
+  // **窄屏** ✓ ⇒ ⇒ 连两个面板的最小宽度都放不下时，左栏收起、主区一次只显示一个视图 ✓（设计 §6 ✓）。
+  await page.setViewportSize({width: 684, height: 900});
+  await expect(page.locator('[data-view=outline]')).toBeHidden();
+  await expect(page.locator('[data-view=editor]')).toBeVisible();
+  await expect(page.locator('[data-view=html]')).toBeHidden();
+  // 顶栏的视图开关在窄屏下是**切换**而不是叠加 ✓ ⇒ ⇒ 点哪一个就显示哪一个 ✓。
+  await page.getByRole('button', {name: 'HTML 预览', exact: true}).click();
+  await expect(page.locator('[data-view=html]')).toBeVisible();
+  await expect(page.locator('[data-view=editor]')).toBeHidden();
+  await page.getByRole('button', {name: '编辑器', exact: true}).click();
+  await expect(page.locator('[data-view=editor]')).toBeVisible();
+  await expect(page.locator('[data-view=html]')).toBeHidden();
+  // 左栏仍然可达 ✓ ⇒ ⇒ 顶栏的侧栏开关能把它叫回来 ✓。
+  await page.getByRole('button', {name: /侧边文档与大纲/}).click();
+  await expect(page.locator('[data-view=outline]')).toBeVisible();
+  // 窗口变宽 ⇒ ⇒ 两个视图回到并排 ✓ ⇒ ⇒ 显隐意图没有被改写 ✓。
+  await page.setViewportSize({width: 1600, height: 900});
+  await expect(page.locator('[data-view=editor]')).toBeVisible();
+  await expect(page.locator('[data-view=html]')).toBeVisible();
+  await expect(page.locator('[data-view=outline]')).toBeVisible();
+});
+
 test('keeps all seven visibility combinations and scrolls the workbench on narrow screens', async ({
   page,
 }, info) => {
@@ -232,7 +259,9 @@ test('keeps all seven visibility combinations and scrolls the workbench on narro
     if ((mask & 6) === 6) await expect(separator(page)).toBeVisible();
     else await expect(separator(page)).toHaveCount(0);
   }
-  await page.setViewportSize({width: 684, height: 900});
+  // 宽度 800：**仍在并排契约之内** ✓ ⇒ ⇒ 窄屏（< 728px）一次只显示一个视图的契约另由
+  // workbench-split.spec.ts 的窄屏用例覆盖 ✓（设计 §6 ✓）。
+  await page.setViewportSize({width: 800, height: 900});
   const workbench = page.locator('[data-workbench]');
   expect(await workbench.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
   await expect(page.locator('#workbench-document')).toHaveCSS('min-width', '728px');

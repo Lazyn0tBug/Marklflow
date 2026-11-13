@@ -519,7 +519,9 @@ test('keeps sync when restoring hidden panes, width dialogs and all seven A4 pan
     'data-preview-reference',
     a4!,
   );
-  await page.setViewportSize({width: 684, height: 900});
+  // 宽度 800：**仍在并排契约之内** ✓ ⇒ ⇒ 窄屏（< 728px）一次只显示一个视图的契约另由
+  // workbench-split.spec.ts 的窄屏用例覆盖 ✓（设计 §6 ✓）。
+  await page.setViewportSize({width: 800, height: 900});
   for (const name of ['outline', 'editor', 'html'])
     await expect(page.locator('[data-view=' + name + ']')).toBeVisible();
   expect(

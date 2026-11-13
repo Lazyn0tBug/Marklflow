@@ -39,6 +39,7 @@ import {
 } from './core/platform/web/editorPreferences';
 import {hereSource, markAppReady} from './core/platform/web/capture';
 import {ResizablePanes} from './components/workspace/ResizablePanes';
+import {minimumPaneWidth, splitHandleWidth} from './core/model/paneSplit';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {saveSource} from './application/workspace/sourceSave';
@@ -279,6 +280,16 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [showEditor, setShowEditor] = useState<boolean>(true);
   const [showPreview, setShowPreview] = useState<boolean>(true);
+  /**
+   * **窄屏** ✓ ⇒ ⇒ 两个面板的最小宽度都放不下时，一次只显示一个视图 ✓（设计 §6 ✓）。
+   *
+   * **由宽度算出来** ✓ ⇒ ⇒ 不写回任何偏好 ✓ ⇒ ⇒ 窗口变宽回到并排 ✓。
+   */
+  const [narrow, setNarrow] = useState<boolean>(false);
+  /** 窄屏下用户手动展开左栏 ✓ ⇒ ⇒ 与宽屏的左栏偏好分开 ✓。 */
+  const [narrowSidebarOpen, setNarrowSidebarOpen] = useState<boolean>(false);
+  /** **焦点在哪一侧** ✓ ⇒ ⇒ 窄屏时显示那一侧 ✓（设计 §6 ✓）。 */
+  const [focusedView, setFocusedView] = useState<'editor' | 'preview'>('editor');
   const [previewMode, setPreviewMode] = useState<'flow' | 'a4'>('flow');
   const [softWrap, setSoftWrap] = useState(readSoftWrapPreference);
   const [contentMaxWidth, setContentMaxWidth] = useState<number | 'full'>(1024);
@@ -315,6 +326,38 @@ export default function App() {
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
+  const workbenchObserver = useRef<ResizeObserver | null>(null);
+  /**
+   * **窄屏由宽度算出** ✓ ⇒ ⇒ 连两个面板的最小宽度都放不下时，一次只显示一个视图 ✓（设计 §6 ✓）。
+   *
+   * 判据取自既有的面板下限（两个面板各 360px 加分隔条）✓ ⇒ ⇒ 不另拍一个断点 ✓。
+   */
+  const attachWorkbench = useCallback((element: HTMLDivElement | null) => {
+    workbenchObserver.current?.disconnect();
+    workbenchObserver.current = null;
+    if (!element) return;
+    const measure = () =>
+      setNarrow(element.getBoundingClientRect().width < minimumPaneWidth * 2 + splitHandleWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    workbenchObserver.current = observer;
+    /**
+     * **焦点在哪一侧** ✓ ⇒ ⇒ 窄屏时显示那一侧 ✓（设计 §6 ✓）。
+     *
+     * 编辑器靠 DOM 焦点 ✓（程序性滚动不算 ✓），预览靠指针 ✓（滚动同步不算 ✓）。
+     */
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-view=editor]')) setFocusedView('editor');
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-view=html]')) setFocusedView('preview');
+    };
+    element.addEventListener('focusin', onFocusIn);
+    element.addEventListener('pointerdown', onPointerDown);
+  }, []);
   /** 消息区域 ✓：通知列表要知道焦点该落回哪儿 ✓ ⇒ ⇒ 区域由这里给它 ✓。 */
   const messageRegionRef = useRef<HTMLDivElement | null>(null);
   const messageRegionId = useId();
@@ -1380,13 +1423,38 @@ export default function App() {
   };
 
   // All three panes are independent; the final visible pane cannot be hidden.
-  const visibleCount = Number(sidebarOpen) + Number(showEditor) + Number(showPreview);
+  /**
+   * **窄屏一次只显示一个视图** ✓ ⇒ ⇒ 视图没有被取消，只是���并排 ✓（设计 §6 ✓）。
+   *
+   * 用户显式关掉的那一个仍然关着 ✓ ⇒ ⇒ 布局不改写用户的显隐选择 ✓。
+   */
+  const narrowSingle = narrow && showEditor && showPreview;
+  const displayedView: 'editor' | 'preview' =
+    showEditor && showPreview ? focusedView : showEditor ? 'editor' : 'preview';
+  const effectiveShowEditor = narrowSingle ? displayedView === 'editor' : showEditor;
+  const effectiveShowPreview = narrowSingle ? displayedView === 'preview' : showPreview;
+  /** 窄屏下左栏默认收起 ✓ ⇒ ⇒ 顶栏的侧栏开关仍然可达 ✓（设计 §6 ✓）。 */
+  const sidebarVisible = narrow ? narrowSidebarOpen : sidebarOpen;
+  /** 窄屏下左栏占满整宽 ✓ ⇒ ⇒ 内容区此时不并排显示 ✓。 */
+  const sidebarTakesAll = sidebarVisible && (narrow || (!showEditor && !showPreview));
+
+  const visibleCount = Number(sidebarVisible) + Number(showEditor) + Number(showPreview);
   const handleToggleSidebar = () => {
     capturePosition();
+    if (narrow) {
+      setNarrowSidebarOpen((v) => !v);
+      return;
+    }
     if (!sidebarOpen || visibleCount > 1) setSidebarOpen((v) => !v);
   };
   const handleToggleEditor = () => {
     capturePosition();
+    if (narrow) {
+      // 窄屏下这两个按钮是**切换**而不是叠加 ✓ ⇒ ⇒ 点哪一个就显示哪一个 ✓（设计 §6 ✓）。
+      setFocusedView('editor');
+      if (!showEditor) setShowEditor(true);
+      return;
+    }
     if (!showEditor || visibleCount > 1) setShowEditor((v) => !v);
   };
   const handleTogglePreview = () => {
@@ -1401,6 +1469,11 @@ export default function App() {
         ),
       };
       restorePreview.current = undefined;
+    }
+    if (narrow) {
+      setFocusedView('preview');
+      if (!showPreview) setShowPreview(true);
+      return;
     }
     if (!showPreview || visibleCount > 1) setShowPreview((v) => !v);
   };
@@ -1477,10 +1550,12 @@ export default function App() {
       {recoveryNotice}
       {/* 3-Zone Top Bar */}
       <TopBar
-        sidebarOpen={sidebarOpen}
+        sidebarOpen={sidebarVisible}
         onToggleSidebar={handleToggleSidebar}
         showEditor={showEditor}
         showPreview={showPreview}
+        narrow={narrow}
+        displayedView={displayedView}
         onToggleEditor={handleToggleEditor}
         onTogglePreview={handleTogglePreview}
         softWrap={softWrap}
@@ -1514,15 +1589,16 @@ export default function App() {
 
       {/* Main Workbench Layout */}
       <div
+        ref={attachWorkbench}
         className="flex-1 flex overflow-x-auto overflow-y-hidden min-h-0 relative"
         data-workbench="true"
       >
         {/* Collapsible Left Sidebar (大纲与多文档工作区) */}
         <div
           data-view="outline"
-          inert={!sidebarOpen}
+          inert={!sidebarVisible}
           className={`transition-[width] duration-200 ease-in-out flex shrink-0 ${
-            sidebarOpen ? (!showEditor && !showPreview ? 'w-full' : 'w-64') : 'w-0'
+            sidebarVisible ? (sidebarTakesAll ? 'w-full' : 'w-64') : 'w-0'
           } overflow-hidden relative`}
         >
           <Sidebar
@@ -1567,14 +1643,17 @@ export default function App() {
         <div
           className="flex-1 flex flex-col overflow-hidden min-h-0"
           style={{
-            display: showEditor || showPreview ? undefined : 'none',
+            display:
+              sidebarTakesAll || (!effectiveShowEditor && !effectiveShowPreview)
+                ? 'none'
+                : undefined,
             minWidth:
-              (Number(showEditor) + Number(showPreview)) * 360 +
-              (showEditor && showPreview ? 8 : 0),
+              (Number(effectiveShowEditor) + Number(effectiveShowPreview)) * minimumPaneWidth +
+              (effectiveShowEditor && effectiveShowPreview ? splitHandleWidth : 0),
           }}
         >
           {/* Unified Workbench Toolbar across Editor & Preview */}
-          {showEditor && (
+          {effectiveShowEditor && (
             <WorkbenchToolbar
               onInsertText={handleInsertText}
               onUndo={handleUndo}
@@ -1589,7 +1668,7 @@ export default function App() {
             labelledBy={'tab-' + encodeURIComponent(currentDocId)}
             onBeforeResize={capturePosition}
             editor={
-              showEditor ? (
+              effectiveShowEditor ? (
                 <>
                   <Editor
                     sessionId={currentDoc.id}
@@ -1609,7 +1688,7 @@ export default function App() {
               ) : null
             }
             preview={
-              showPreview ? (
+              effectiveShowPreview ? (
                 <>
                   {/* 控件条：模式与同步都归 HTML 视图这一侧 ✓（设计 §2 ✓）。 */}
                   <HtmlViewControls
@@ -1617,7 +1696,7 @@ export default function App() {
                     onPreviewModeChange={changePreviewMode}
                     syncScroll={syncScroll}
                     onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
-                    showSync={showEditor}
+                    showSync={effectiveShowEditor}
                   />
                   {previewMode === 'flow' ? (
                     <ReadingPreview
@@ -1638,7 +1717,7 @@ export default function App() {
               ) : null
             }
           />
-          {!showEditor && tabBar}
+          {!effectiveShowEditor && tabBar}
         </div>
       </div>
 

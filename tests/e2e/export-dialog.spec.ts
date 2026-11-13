@@ -5,10 +5,11 @@ for (const width of [1280, 390])
     async ({page}, info) => {
       await page.setViewportSize({width, height: 900});
       await page.goto('/');
-      await expect(page.locator('[data-render-state]')).toHaveAttribute(
-        'data-render-state',
-        'ready',
-      );
+      await expect(page.locator('textarea')).toBeVisible();
+      // 窄屏下预览不显示（一次只显示一个视图 ✓），预览在场时才算它 ✓（设计 §6 ✓）。
+      const previewState = page.locator('[data-render-state]');
+      if (await previewState.count())
+        await expect(previewState).toHaveAttribute('data-render-state', 'ready');
       const trigger = page.getByRole('button', {name: '导出', exact: true});
       await trigger.focus();
       await trigger.click();
