@@ -66,6 +66,12 @@ test('cleans a failed download and permits a manual retry with accurate Web feed
   await expect(page.locator('a[download]')).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-revoked', '1');
   await expect(page.getByRole('button', {name: '立即导出并保存', exact: true})).toBeEnabled();
+  // 通知在模态之上 ✓ ⇒ ⇒ 它盖住导出按钮 ✓ ⇒ ⇒ 点击通知不触发下层按钮 ✓
+  // （11-12 的明文契约 ✓）⇒ ⇒ 重试前先关掉那条通知 ✓。
+  await page
+    .getByRole('button', {name: /知道了|关闭通知/})
+    .first()
+    .click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', {name: '立即导出并保存', exact: true}).click();
   expect((await download).suggestedFilename()).toMatch(/\.md$/);
@@ -130,6 +136,11 @@ test('rejects a falsely declared asset without delivery and releases busy for so
   await expect(page.locator('textarea')).toHaveValue(source);
   await expect(action).toBeEnabled();
   await expect(page.locator('a[download]')).toHaveCount(0);
+  // 通知在模态之上 ⇒ ⇒ 盖住导出按钮 ⇒ ⇒ 重试前先关掉它 ✓（同上一条 ✓）。
+  await page
+    .getByRole('button', {name: /知道了|关闭通知/})
+    .first()
+    .click();
   await page.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
   const downloaded = page.waitForEvent('download');
   await action.click();

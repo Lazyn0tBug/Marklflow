@@ -47,6 +47,6 @@ test('keeps one notice per problem and lets each one be closed', async ({page}) 
     }, 10);
   });
   await expect(page.getByRole('status', {name: '通知'})).toHaveCount(2);
-  await page.getByRole('button', {name: '关闭通知'}).first().click();
+  await page.getByRole('button', {name: '知道了'}).first().click();
   await expect(page.getByRole('status', {name: '通知'})).toHaveCount(1);
 });

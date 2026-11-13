@@ -350,6 +350,12 @@ test('generation failure never asks for a location and permits an explicit sourc
     aborts: 0,
   });
   expect(downloads).toBe(0);
+  // 通知在模态之上 ✓ ⇒ ⇒ 盖住动作按钮 ✓ ⇒ ⇒ 点击通知不触发下层按钮 ✓
+  // （11-12 的明文契约 ✓）⇒ ⇒ 重试前先关掉那条通知 ✓。
+  await page
+    .getByRole('button', {name: /知道了|关闭通知/})
+    .first()
+    .click();
   await page.getByRole('button', {name: '原始 Markdown (.md)', exact: true}).click();
   await action(page).click();
   await expect(page.getByText(/已保存文件/)).toBeVisible();
