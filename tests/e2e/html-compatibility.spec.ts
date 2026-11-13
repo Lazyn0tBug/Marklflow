@@ -74,13 +74,8 @@ test('opens HTML offline and restores editable source and assets', async ({
   page,
   context,
 }, info) => {
-  const sourceFixture = fixture.replace(
-    pixel,
-    'data:image/png;base64,' +
-      (
-        await readFile(new URL('../../public/assets/aistudio/image_49bc8de2.png', import.meta.url))
-      ).toString('base64'),
-  );
+  // 图片**内联** ✓ ⇒ ⇒ 仓库里不留测试夹具的二进制 ✓（导出仍要把图片带进产物 ✓）。
+  const sourceFixture = fixture;
   await source(page, sourceFixture);
   const downloaded = await download(page);
   const file = info.outputPath('editable.html');

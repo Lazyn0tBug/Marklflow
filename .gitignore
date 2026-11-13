@@ -34,5 +34,6 @@ desktop-artifacts/
 .ctxindex/
 .claude/ctxguard/
 
-# 截图是测试产物 ✓ ⇒ ⇒ 不入库 ✓；要留证据，就把**结论**写进文档 ✓。
+# 截图与图片夹具是测试产物 ✓ ⇒ ⇒ 不入库 ✓；要留证据，就把**结论**写进文档 ✓。
 docs/acceptance/**/*.png
+public/assets/aistudio/*.png
