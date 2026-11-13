@@ -231,12 +231,11 @@ export async function exportDocumentToDocx(
         root.style.setProperty(name, value);
       const m = input.presentation.page.margins,
         twips = (mm: number) => Math.round((mm * 1440) / 25.4);
+      const paper = PAPER_SIZES[input.presentation.page.size];
       const context: InlineContext = {
         bookmarks: new Map(),
-        width: ((210 - m.left - m.right) * 96) / 25.4,
-        height:
-          ((PAPER_SIZES[input.presentation.page.size].heightMm - m.top - m.bottom) * 96) / 25.4 -
-          20,
+        width: ((paper.widthMm - m.left - m.right) * 96) / 25.4,
+        height: ((paper.heightMm - m.top - m.bottom) * 96) / 25.4 - 20,
       };
       // The section margins are the only margin here: the document padding belongs to the screen and HTML export.
       root.style.cssText +=

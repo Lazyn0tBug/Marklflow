@@ -150,7 +150,7 @@ export interface ScrollPlacement {
   line: number | null;
 }
 
-/** Read current geometry instead of caching stale positions across widths, fonts or A4 mounts. */
+/** Read current geometry instead of caching stale positions across widths, fonts or pagination mounts. */
 export function previewSourcePoints(preview: HTMLElement, totalLines: number): SourcePoint[] {
   const selector =
     'h1[data-line],h2[data-line],h3[data-line],h4[data-line],h5[data-line],h6[data-line],p[data-line],pre[data-line],figure[data-line],.mf-math[data-line],tr[data-line],li[data-line],hr[data-line]';

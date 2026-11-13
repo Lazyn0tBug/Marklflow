@@ -2,7 +2,7 @@ import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {paginatePreparedContent} from '../render/htmlPaginator';
 import {escapeHtml} from '../render/htmlPolicy';
 import {PAPER_SIZES} from '../model/paperSizes';
-/** A4 export is generated from frozen source, independent of workbench visibility or preview readiness. */
+/** The PDF export is generated from frozen source, independent of workbench visibility or preview readiness. */
 export async function generatePdfHtml(
   input: ExportHtmlArtifact,
   options: {title?: string} = {},

@@ -439,7 +439,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             <ToolbarButton
               onClick={() => onInsertText('\n---pagebreak---\n', '', '')}
               title="分页符"
-              description="在此处插入分页符（A4 硬分页）"
+              description="在此处插入分页符（硬分页）"
               syntax="---pagebreak---"
               accent="amber"
             >

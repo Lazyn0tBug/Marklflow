@@ -9,7 +9,7 @@ import {reportAsync, reportFailure} from '../../core/platform/failures';
 /**
  * MarkFlow (墨流) 导出控制中心
  * 依据设计方案第 8 章与 4.5.4 节实现
- * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、浏览器打印 A4 PDF、原生 DOCX
+ * 覆盖：静态阅读 HTML、可编辑单文件 HTML (含源载荷)、浏览器打印 PDF、原生 DOCX
  */
 
 import React, {useEffect, useMemo, useRef, useState} from 'react';
@@ -421,7 +421,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
               </button>
 
-              {/* 打印 A4 PDF */}
+              {/* 打印 PDF */}
               <button
                 type="button"
                 disabled={isExporting}
