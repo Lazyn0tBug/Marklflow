@@ -6,13 +6,13 @@
  * 与编辑器工具栏同一行高 ✓ ⇒ ⇒ 两个视图的内容起点一致 ✓。
  */
 import React from 'react';
-import {ArrowUpDown, FileCheck, Sigma} from 'lucide-react';
+import {ArrowUpDown} from 'lucide-react';
 
 interface HtmlToolbarProps {
   previewMode: 'flow' | 'a4';
   onPreviewModeChange: (mode: 'flow' | 'a4') => void;
   mathMode: 'mathml' | 'svg';
-  onMathModeToggle: () => void;
+  onMathModeToggle: (mode: 'mathml' | 'svg') => void;
   /** 同步有对象才成立 ✓ ⇒ ⇒ 编辑器不在场时这一项不出现 ✓（设计 §2 ✓）。 */
   showSync: boolean;
   syncScroll: boolean;
@@ -32,6 +32,7 @@ export const HtmlToolbar: React.FC<HtmlToolbarProps> = ({
     <div className="w-full min-h-[2.375rem] px-3 bg-neutral-900/95 border-b border-neutral-800 flex items-center justify-between gap-2 text-neutral-200 select-none shrink-0 no-print">
       {/* 工具 ✓：分页形态与公式引擎 ✓。 */}
       <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto scrollbar-none py-1">
+        {/* 模式分段：**两个都是二字，平行** ✓ ⇒ ⇒ 纯文字，不给一个选项配图标 ✓。 */}
         <div className="flex items-center p-0.5 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs shrink-0">
           <button
             type="button"
@@ -39,10 +40,10 @@ export const HtmlToolbar: React.FC<HtmlToolbarProps> = ({
             aria-pressed={previewMode === 'flow'}
             className={`px-2 py-0.5 rounded text-[0.6875rem] transition-colors ${
               previewMode === 'flow'
-                ? 'bg-neutral-800 text-neutral-100 font-medium'
+                ? 'bg-neutral-800 text-teal-300 font-medium'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
-            title="流式排版舒适阅读"
+            title="流式：连续排布，不分页"
           >
             流式
           </button>
@@ -50,27 +51,48 @@ export const HtmlToolbar: React.FC<HtmlToolbarProps> = ({
             type="button"
             onClick={() => onPreviewModeChange('a4')}
             aria-pressed={previewMode === 'a4'}
-            className={`px-2 py-0.5 rounded text-[0.6875rem] transition-colors flex items-center gap-1 ${
+            className={`px-2 py-0.5 rounded text-[0.6875rem] transition-colors ${
               previewMode === 'a4'
                 ? 'bg-neutral-800 text-teal-300 font-medium'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
-            title="A4 纸张物理规格分页仿真"
+            title="分页：按 A4 纸张的物理规格分页仿真"
           >
-            <FileCheck className="w-3 h-3" />
-            A4 分页
+            分页
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onMathModeToggle}
-          className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-800 text-xs font-mono text-neutral-300 transition-colors"
-          title={`当前公式输出模式: ${mathMode.toUpperCase()}。点击快速在原生 MathML 与 SVG 间切换。`}
-        >
-          <Sigma className="w-3.5 h-3.5 text-teal-400" />
-          {mathMode === 'mathml' ? 'MathML' : 'SVG'}
-        </button>
+        <div className="w-px h-3.5 bg-neutral-800 shrink-0" />
+
+        {/* 公式引擎分段：**与模式分段同一套形态** ✓ ⇒ ⇒ 两个选项都看得见 ✓。 */}
+        <div className="flex items-center p-0.5 rounded-lg bg-neutral-950/80 border border-neutral-800 text-xs shrink-0">
+          <button
+            type="button"
+            onClick={() => onMathModeToggle('mathml')}
+            aria-pressed={mathMode === 'mathml'}
+            className={`px-2 py-0.5 rounded text-[0.6875rem] font-mono transition-colors ${
+              mathMode === 'mathml'
+                ? 'bg-neutral-800 text-teal-300 font-medium'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+            title="原生 MathML：公式直接写入文档，可被阅读器读取"
+          >
+            MathML
+          </button>
+          <button
+            type="button"
+            onClick={() => onMathModeToggle('svg')}
+            aria-pressed={mathMode === 'svg'}
+            className={`px-2 py-0.5 rounded text-[0.6875rem] font-mono transition-colors ${
+              mathMode === 'svg'
+                ? 'bg-neutral-800 text-teal-300 font-medium'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+            title="SVG 矢量：公式按矢量渲染"
+          >
+            SVG
+          </button>
+        </div>
       </div>
 
       {/* 状态 ✓：同步联动 ✓ ⇒ ⇒ 它是关系，不是操作 ✓。 */}

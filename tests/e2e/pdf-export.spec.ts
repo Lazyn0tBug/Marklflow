@@ -47,14 +47,14 @@ for (const mode of ['flow', 'a4', 'hidden'] as const)
     await page.locator('textarea').fill(source);
     await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
     if (mode === 'a4') {
-      await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+      await page.getByRole('button', {name: '分页', exact: true}).click();
       await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
         'data-pagination-state',
         'ready',
         {timeout: 60000},
       );
     }
-    if (mode === 'hidden') await page.getByRole('button', {name: 'HTML 预览', exact: true}).click();
+    if (mode === 'hidden') await page.getByRole('button', {name: '预览', exact: true}).click();
     await page.getByRole('button', {name: '导出', exact: true}).click();
     await page.getByRole('button', {name: /PDF 文档/}).click();
     await page.getByLabel('导出文件主名称').fill('自定义 PDF 文件名');

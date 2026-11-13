@@ -1420,8 +1420,10 @@ export default function App() {
     setPreviewMode(mode);
   };
 
-  const handleMathModeToggle = () => {
-    const nextMode = mathMode === 'mathml' ? 'svg' : 'mathml';
+  /** 分段控件给的是**目标模式** ✓ ⇒ ⇒ 不再自己取反 ✓。 */
+  const handleMathModeToggle = (mode: 'mathml' | 'svg') => {
+    if (mode === mathMode) return;
+    const nextMode = mode;
     setMathMode(nextMode);
     if (currentDoc) {
       const updatedDoc: DocumentRecord = {

@@ -41,7 +41,7 @@ test('production parsing, math, diagrams, pagination and HTML export use only pa
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
   await expect(page.locator('.mf-doc math')).toHaveCount(1);
   await expect(page.locator('.mf-doc svg')).toHaveCount(2);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',

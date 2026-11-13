@@ -57,7 +57,7 @@ test('isolates document palette and rejects executable content', async ({page}) 
 test('queries its own container in wide and narrow layouts', async ({page}) => {
   await source(page, fixture);
   await page.getByRole('button', {name: '编辑器', exact: true}).click();
-  await page.getByRole('button', {name: '收起侧边文档与大纲 (侧边点击)', exact: true}).click();
+  await page.getByRole('button', {name: '大纲', exact: true}).click();
   const grid = page.locator('.mf-doc .mf-columns');
   await expect
     .poll(() => grid.evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(' ').length))
@@ -129,7 +129,7 @@ test('paginates long content without losing final text or source mappings', asyn
     '\n## 最后章节\n\n最终标记_END_100',
   ].join('\n');
   await source(page, long);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-page-count]')).toBeVisible({timeout: 60000});
   expect(
     Number(await page.locator('[data-page-count]').getAttribute('data-page-count')),

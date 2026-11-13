@@ -210,11 +210,11 @@ test('resizes with pointer and keyboard, cancels safely, and preserves editing s
   );
   expect(hiddenPointer).toBeDefined();
   await page
-    .getByRole('button', {name: 'HTML 预览', exact: true})
+    .getByRole('button', {name: '预览', exact: true})
     .evaluate((el: HTMLButtonElement) => el.click());
   await expect(handle).toHaveCount(0);
   await page
-    .getByRole('button', {name: 'HTML 预览', exact: true})
+    .getByRole('button', {name: '预览', exact: true})
     .evaluate((el: HTMLButtonElement) => el.click());
   await expect(handle).toHaveAttribute('aria-valuenow', '50');
   await twoFrames(page);
@@ -278,14 +278,14 @@ test('shows one content view on a narrow screen and restores both when the windo
   await expect(page.locator('[data-view=editor]')).toBeVisible();
   await expect(page.locator('[data-view=html]')).toBeHidden();
   // 顶栏的视图开关在窄屏下是**切换**而不是叠加 ✓ ⇒ ⇒ 点哪一个就显示哪一个 ✓。
-  await page.getByRole('button', {name: 'HTML 预览', exact: true}).click();
+  await page.getByRole('button', {name: '预览', exact: true}).click();
   await expect(page.locator('[data-view=html]')).toBeVisible();
   await expect(page.locator('[data-view=editor]')).toBeHidden();
   await page.getByRole('button', {name: '编辑器', exact: true}).click();
   await expect(page.locator('[data-view=editor]')).toBeVisible();
   await expect(page.locator('[data-view=html]')).toBeHidden();
   // 左栏仍然可达 ✓ ⇒ ⇒ 顶栏的侧栏开关能把它叫回来 ✓。
-  await page.getByRole('button', {name: /侧边文档与大纲/}).click();
+  await page.getByRole('button', {name: '大纲', exact: true}).click();
   await expect(page.locator('[data-view=outline]')).toBeVisible();
   // 窗口变宽 ⇒ ⇒ 两个视图回到并排 ✓ ⇒ ⇒ 显隐意图没有被改写 ✓。
   await page.setViewportSize({width: 1600, height: 900});
@@ -299,9 +299,9 @@ test('keeps all seven visibility combinations and scrolls the workbench on narro
 }, info) => {
   await boot(page);
   const controls = [
-    page.getByRole('button', {name: /侧边文档与大纲 \(侧边点击\)/}),
+    page.getByRole('button', {name: '大纲', exact: true}),
     page.getByRole('button', {name: '编辑器', exact: true}),
-    page.getByRole('button', {name: 'HTML 预览', exact: true}),
+    page.getByRole('button', {name: '预览', exact: true}),
   ];
   for (let mask = 1; mask < 8; mask++) {
     for (const control of controls)
@@ -338,7 +338,7 @@ test('does not alter source, revision-bound preview identity or A4 artifact when
   page,
 }, info) => {
   await boot(page);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',

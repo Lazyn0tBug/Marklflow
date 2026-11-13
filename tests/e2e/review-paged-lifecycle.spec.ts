@@ -15,11 +15,11 @@ test('recovers from an interrupted A4 preview without retaining an abandoned hos
     '\n\n## 文末\n\nFINAL_LIFECYCLE_END';
   await editor.fill(markdown);
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await page.getByRole('button', {name: '流式', exact: true}).click();
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
   await expect(page.locator('body > .mf-pagination')).toHaveCount(0, {timeout: 30000});
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',

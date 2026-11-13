@@ -400,7 +400,7 @@ test('restores semantic locations through A4 mode and cached Tab switches', asyn
   await page.locator('button[title^="Section 3 (第"]').click();
   const line = lineOf('## Section 3');
   await expect.poll(async () => Math.abs((await editorLine(page)) - line)).toBeLessThan(1.1);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',
@@ -454,9 +454,9 @@ test('keeps sync when restoring hidden panes, width dialogs and all seven A4 pan
   page,
 }, info) => {
   await boot(page);
-  await page.getByRole('button', {name: 'HTML 预览', exact: true}).click();
+  await page.getByRole('button', {name: '预览', exact: true}).click();
   await editorAt(page, lineOf('Paragraph 4_5'));
-  await page.getByRole('button', {name: 'HTML 预览', exact: true}).click();
+  await page.getByRole('button', {name: '预览', exact: true}).click();
   await expect
     .poll(() =>
       page
@@ -494,7 +494,7 @@ test('keeps sync when restoring hidden panes, width dialogs and all seven A4 pan
   expect(
     await page.locator('[data-preview-reference]').getAttribute('data-preview-reference'),
   ).toBe(reference);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',
@@ -502,9 +502,9 @@ test('keeps sync when restoring hidden panes, width dialogs and all seven A4 pan
   );
   const a4 = await page.locator('[data-preview-reference]').getAttribute('data-preview-reference');
   const controls = [
-    page.getByRole('button', {name: /侧边文档与大纲 \(侧边点击\)/}),
+    page.getByRole('button', {name: '大纲', exact: true}),
     page.getByRole('button', {name: '编辑器', exact: true}),
-    page.getByRole('button', {name: 'HTML 预览', exact: true}),
+    page.getByRole('button', {name: '预览', exact: true}),
   ];
   for (let mask = 1; mask < 8; mask++) {
     for (const control of controls)

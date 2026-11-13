@@ -45,7 +45,8 @@ test('keeps diagnostic-like literal formula text in MathML and SVG modes', async
   await expect(page.locator('textarea').first()).toBeVisible();
   await ready(page, '# 公式文本\n\n$\\text{data-mjx-error and mjx-merror}$');
   await expect(page.locator('.mf-doc math')).toContainText('data-mjx-error');
-  await page.getByTitle(/当前公式输出模式/).click();
+  // 公式引擎现在是**分段** ✓ ⇒ ⇒ 点目标那一项，不再是"点一下切换" ✓。
+  await page.getByRole('button', {name: 'SVG', exact: true}).click();
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
   await expect(page.locator('.mf-doc svg')).toHaveCount(1);
 });

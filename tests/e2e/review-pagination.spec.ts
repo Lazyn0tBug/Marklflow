@@ -27,7 +27,7 @@ test('keeps long table/code text and container layout in A4 pages', async ({
   ].join('\n');
   await page.locator('textarea').fill(md);
   await expect(page.locator('[data-render-state]')).toHaveAttribute('data-render-state', 'ready');
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',
@@ -42,7 +42,7 @@ test('keeps long table/code text and container layout in A4 pages', async ({
   expect(await page.locator('[data-page-count]').getAttribute('data-page-count')).not.toBe('1');
   await page.setViewportSize({width: 1280, height: 1500});
   await page.getByRole('button', {name: '编辑器', exact: true}).click();
-  await page.getByRole('button', {name: '收起侧边文档与大纲 (侧边点击)', exact: true}).click();
+  await page.getByRole('button', {name: '大纲', exact: true}).click();
   await page
     .locator('.pagedjs_page')
     .first()

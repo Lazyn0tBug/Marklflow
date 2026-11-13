@@ -17,7 +17,6 @@ import {
   ChevronsUpDown,
   FileCode,
   Search,
-  PanelLeftClose,
 } from 'lucide-react';
 import {DocumentRecord} from '../../core/model/document';
 import {extractOutline} from '../../core/parse/markdown';
@@ -331,15 +330,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <ListTree className="w-3.5 h-3.5" />
           大纲 ({outline.length})
         </button>
-        {onToggleCollapse && (
-          <button
-            onClick={onToggleCollapse}
-            className="p-1 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
-            title="侧边点击收起 (隐藏大纲与工作区)"
-          >
-            <PanelLeftClose className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
       {/* Right border edge collapse handle */}
@@ -453,12 +443,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             setSlot={setOutlineSlot}
           />
         )}
-      </div>
-
-      {/* Footer System Info */}
-      <div className="p-2.5 border-t border-neutral-800 bg-neutral-950/40 text-[0.6875rem] text-neutral-500 flex items-center justify-between">
-        <span className="font-mono">MarkFlow Storage</span>
-        <span className="text-teal-400">IndexedDB 本地</span>
       </div>
     </aside>
   );

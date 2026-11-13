@@ -52,9 +52,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       {/* Left: 两个维度（草稿 / 同步）✓：各说各的 ✓（设计 §2.2 ✓、§8.4 ✓）✓ */}
       <div className="flex flex-col gap-0.5 leading-tight min-w-0 shrink">
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" title="草稿与文档缓存在这台设备上，不上传">
             <Database className="w-3 h-3 text-teal-400" />
-            <span>IndexedDB</span>
+            <span>本地缓存</span>
           </div>
           <div className="flex items-center gap-1">
             {isDirty ? (

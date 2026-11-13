@@ -226,7 +226,7 @@ test.fixme('keeps flow/A4 cache entries independent and invalidates a changed ma
   const flow = await page
     .locator('[data-preview-reference]')
     .getAttribute('data-preview-reference');
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',
@@ -239,7 +239,7 @@ test.fixme('keeps flow/A4 cache entries independent and invalidates a changed ma
   expect(
     await page.locator('[data-preview-reference]').getAttribute('data-preview-reference'),
   ).toBe(flow);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',

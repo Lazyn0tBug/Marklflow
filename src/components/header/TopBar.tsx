@@ -14,12 +14,11 @@ import {
   Moon,
   Sun,
   ShieldCheck,
-  PanelLeftClose,
-  PanelLeftOpen,
   SlidersHorizontal,
   ChevronDown,
   Check,
   MessageSquare,
+  ListTree,
 } from 'lucide-react';
 import {SYNC_STATUS_TEXTS} from '../../application/messages';
 import type {SyncStatus} from '../../application/workspace/documentFileContext';
@@ -137,24 +136,6 @@ export const TopBar: React.FC<TopBarProps> = ({
     <header className="min-h-13 h-auto bg-neutral-900 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 md:px-4 text-neutral-100 select-none shrink-0 no-print z-40">
       {/* 左：侧栏侧边触发 + 品牌 & 当前文档 ✓ ⇒ ⇒ 按钮右置时这里放得下文档名 ✓。 */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <button
-          disabled={sidebarOpen && visibleCount === 1}
-          aria-pressed={sidebarOpen}
-          onClick={onToggleSidebar}
-          className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center ${
-            sidebarOpen
-              ? 'border-neutral-700 bg-neutral-800 text-teal-300'
-              : 'border-neutral-800 bg-neutral-950/70 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
-          }`}
-          title={sidebarOpen ? '收起侧边文档与大纲 (侧边点击)' : '展开侧边文档与大纲 (侧边点击)'}
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose className="w-4 h-4" />
-          ) : (
-            <PanelLeftOpen className="w-4 h-4" />
-          )}
-        </button>
-
         <a href="/" className="flex items-center gap-2 group">
           <div className="w-7 h-7 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-md shadow-teal-900/40">
             墨
@@ -194,6 +175,27 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center gap-2 overflow-x-auto py-1 shrink-0 max-w-full">
         {/* 内容视图开关组：**不缩断** ✓ ⇒ ⇒ 窄窗时整组横向滚动，不压掉名字 ✓（设计 §6 ✓）。 */}
         <div className="flex items-center shrink-0 p-0.5 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-medium">
+          {/* 大纲开关 ✓：与编辑器、预览**同为独立开关** ✓ ⇒ ⇒ 同一组、同一形状 ✓。 */}
+          <button
+            disabled={sidebarOpen && visibleCount === 1}
+            aria-pressed={sidebarOpen}
+            onClick={onToggleSidebar}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
+              sidebarOpen
+                ? 'bg-neutral-800 text-teal-300 shadow-xs'
+                : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900/50'
+            }`}
+            title={sidebarOpen ? '点击隐藏大纲' : '点击开启大纲'}
+          >
+            <ListTree className="w-3.5 h-3.5" />
+            <span>大纲</span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                sidebarOpen ? 'bg-teal-400 shadow-xs shadow-teal-400/50' : 'bg-neutral-700'
+              }`}
+            />
+          </button>
+
           {/* 编辑器开关 */}
           <button
             disabled={showEditor && visibleCount === 1}
@@ -228,7 +230,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             title={showPreview ? '点击隐藏 HTML 预览' : '点击开启 HTML 预览'}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>HTML 预览</span>
+            <span>预览</span>
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 showPreview ? 'bg-teal-400 shadow-xs shadow-teal-400/50' : 'bg-neutral-700'

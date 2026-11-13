@@ -161,7 +161,7 @@ test('the reading margin follows the sheet width', async ({page}) => {
 
 test('paged pages carry the page margin instead of the reading margin', async ({page}) => {
   await ready(page);
-  await page.getByRole('button', {name: 'A4 分页', exact: true}).click();
+  await page.getByRole('button', {name: '分页', exact: true}).click();
   await expect(page.locator('[data-pagination-state]')).toHaveAttribute(
     'data-pagination-state',
     'ready',

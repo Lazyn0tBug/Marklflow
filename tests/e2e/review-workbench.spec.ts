@@ -30,9 +30,9 @@ test('keeps all seven pane combinations under user control and prevents hiding t
   await page.goto('/');
   await expect(page.locator('textarea')).toBeVisible();
   const controls = [
-    page.getByRole('button', {name: /侧边文档与大纲 \(侧边点击\)/}),
+    page.getByRole('button', {name: '大纲', exact: true}),
     page.getByRole('button', {name: '编辑器', exact: true}),
-    page.getByRole('button', {name: 'HTML 预览', exact: true}),
+    page.getByRole('button', {name: '预览', exact: true}),
   ];
   for (let mask = 1; mask < 8; mask++) {
     for (const control of controls)
