@@ -15,6 +15,7 @@ import {reportAsync, reportFailure} from '../../core/platform/failures';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {X, Download, FileCode, FileText, AlertTriangle, Layers} from 'lucide-react';
 import {DocumentRecord} from '../../core/model/document';
+import {diagnostic, diagnosticTrace} from '../../core/platform/web/diagnostics';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -55,6 +56,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const resolve = reviewResolver.current;
     reviewResolver.current = null;
     setReviewing(false);
+    // 确认的答复只有这一条路 ✓ ⇒ ⇒ 记在这里就够还原"谁答复了什么" ✓。
+    if (resolve) diagnostic('export-dialog', 'review-answered', accepted ? 'accepted' : 'refused');
     resolve?.(accepted);
   };
   closeRef.current = () => {
@@ -113,7 +116,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   useEffect(() => {
     if (!isOpen) {
       reviewDismissed.current = true;
-      if (reviewResolver.current) finishReview(false);
+      // 关掉时确认正等着答复 ⇒ ⇒ 记一笔 ✓（偶发的那条竞态就靠它还原 ✓）。
+      if (reviewResolver.current) {
+        diagnostic('export-dialog', 'closed-with-review-pending');
+        finishReview(false);
+      }
     }
   }, [isOpen]);
   useEffect(() => {
@@ -121,6 +128,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     return () => {
       openRef.current = false;
       reviewDismissed.current = true;
+      // 卸载时确认正等着答复 ⇒ ⇒ 记一笔 ✓：它与"关闭"是**两条不同的路径** ✓，
+      // 偶发的那条竞态正出在这两者之间 ✓。
+      if (reviewResolver.current) diagnostic('export-dialog', 'unmounted-with-review-pending');
       reviewResolver.current?.(false);
       reviewResolver.current = null;
     };
@@ -225,35 +235,52 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     reviewDismissed.current = false;
     setIsExporting(true);
     setDocxIssues([]);
+    diagnostic('export-dialog', 'run-started', selectedFormat);
     try {
       const result = await chosen.run(
         {document: doc, format: selectedFormat, fileName, mathMode, allowRemoteAssets},
         {
           confirmDocx: (issues) => {
-            if (!openRef.current || reviewDismissed.current) return Promise.resolve(false);
+            if (!openRef.current || reviewDismissed.current) {
+              // 弹窗已经不在（或这次确认已被驳回）⇒ ⇒ 直接答复否 ✓
+              // ⇒ ⇒ 这一支**不问用户** ✓ ⇒ ⇒ 但记一笔 ✓：竞态就出在这里 ✓。
+              diagnostic('export-dialog', 'review-skipped', issues.length);
+              return Promise.resolve(false);
+            }
             setDocxIssues(issues);
             setAllowSourceFallback(false);
             setReviewing(true);
+            diagnostic('export-dialog', 'review-opened', issues.length);
             return new Promise<boolean>((resolve) => {
               reviewResolver.current = resolve;
             });
           },
         },
       );
+      // 这次运行的结果 ✓ ⇒ ⇒ 与上面的顺序一起，就是那条竞态的完整时间线 ✓。
+      // 结束时**服务是否还忙** ✓ ⇒ ⇒ 那条偶发红断言的就是它 ✓ ⇒ ⇒ 一起记下来 ✓。
+      diagnostic(
+        'export-dialog',
+        'run-finished',
+        result.status + '/' + (chosen.busy ? 'busy' : 'idle'),
+      );
       if (result.status !== 'busy' && result.issues) setDocxIssues(result.issues);
       // The print dialog and the save picker are system windows: the outcome is reported outside this dialog.
       // 失败 ⇒ **带机器码走那个出口** ✓ ⇒ ⇒ 通知、日志、控制台一次到位 ✓ ⇒ ⇒ 原文不进用户面 ✓。
+      // 诊断轨迹附在报告的 detail 里 ✓ ⇒ ⇒ 出问题时日志里就有那段时间线 ✓
+      // ⇒ ⇒ 不必再复现一遍 ✓（这条竞态偶发才难复现 ✓）。
+      const trace = diagnosticTrace();
       if (result.status === 'failed')
         await reportFailure({
           category: 'export-failed',
           message: result.message,
-          detail: result.message,
+          detail: result.message + '\n' + trace,
         });
       else if (result.status === 'blocked')
         await reportFailure({
           category: 'export-blocked',
           message: result.message,
-          detail: result.message,
+          detail: result.message + '\n' + trace,
           tone: 'warning',
         });
       else if (result.status !== 'busy')

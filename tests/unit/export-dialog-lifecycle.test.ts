@@ -4,6 +4,7 @@ import {createRoot} from 'react-dom/client';
 const state = vi.hoisted(() => ({prepare: vi.fn()}));
 vi.mock('../../src/core/export/exportContent', () => ({prepareExportContent: state.prepare}));
 import {ExportModal} from '../../src/components/export/ExportModal';
+import {diagnosticTrace} from '../../src/core/platform/web/diagnostics';
 import {webExportService} from '../../src/core/platform/web/exportService';
 import {createNewDocument} from '../../src/core/storage/storage';
 import {htmlArtifact} from './export-fixtures';
@@ -58,7 +59,7 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
     await act(async () => {
       button('立即导出并保存').click();
     });
-    expect(webExportService.busy).toBe(true);
+    expect(webExportService.busy, 'export trace:\n' + diagnosticTrace()).toBe(true);
     await act(async () => {
       root.unmount();
       mounted = false;
@@ -72,7 +73,7 @@ it('does not leave export busy if the dialog unmounts before preparation asks fo
       );
       await settle(() => !webExportService.busy);
     });
-    expect(webExportService.busy).toBe(false);
+    expect(webExportService.busy, 'export trace:\n' + diagnosticTrace()).toBe(false);
   } finally {
     if (mounted) await act(async () => root.unmount());
     host.remove();
@@ -127,8 +128,11 @@ it('does not revive a dismissed confirmation when the dialog is reopened during 
       );
       await settle(() => !webExportService.busy);
     });
-    expect(webExportService.busy).toBe(false);
-    expect(document.body.querySelector('[data-export-overlay] #export-docx-consent')).toBeNull();
+    expect(webExportService.busy, 'export trace:\n' + diagnosticTrace()).toBe(false);
+    expect(
+      document.body.querySelector('[data-export-overlay] #export-docx-consent'),
+      'export trace:\n' + diagnosticTrace(),
+    ).toBeNull();
   } finally {
     await act(async () => {
       root.unmount();
