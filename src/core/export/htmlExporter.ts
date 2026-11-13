@@ -35,7 +35,7 @@ export async function generateExportHtml(
     escapeHtml(frozenOptions.title || input.meta.title || 'MarkFlow 文档') +
     '</title><style>' +
     input.presentation.css +
-    pageCss(input.presentation.page.margins) +
+    pageCss(input.presentation.page.margins, input.presentation.page.size) +
     '\nbody{margin:0;background:#f4f5f7}.mf-document-shell{max-width:960px;margin:32px auto}@media print{body{background:white}.mf-document-shell{margin:0;padding:0;max-width:none}.no-print{display:none}}</style></head><body><main class="mf-document-shell"><article class="mf-doc" style="' +
     variableStyleAttribute(input.presentation.variables) +
     '">' +

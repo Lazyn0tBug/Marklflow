@@ -56,7 +56,7 @@ export const HtmlToolbar: React.FC<HtmlToolbarProps> = ({
                 ? 'bg-neutral-800 text-teal-300 font-medium'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
-            title="分页：按 A4 纸张的物理规格分页仿真"
+            title="分页：按文档的纸张尺寸分页仿真"
           >
             分页
           </button>

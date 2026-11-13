@@ -24,6 +24,7 @@ import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {inspectDocx, groupDocxIssues} from './outputCapabilities';
 import {docxFormulaSource, planDocxFormula} from './mathmlToOoml';
 import {waitForLayout, withDeadline} from './documentPrint';
+import {PAPER_SIZES} from '../model/paperSizes';
 type Run = ParagraphChild;
 interface InlineContext {
   bookmarks: Map<string, string>;
@@ -233,7 +234,9 @@ export async function exportDocumentToDocx(
       const context: InlineContext = {
         bookmarks: new Map(),
         width: ((210 - m.left - m.right) * 96) / 25.4,
-        height: ((297 - m.top - m.bottom) * 96) / 25.4 - 20,
+        height:
+          ((PAPER_SIZES[input.presentation.page.size].heightMm - m.top - m.bottom) * 96) / 25.4 -
+          20,
       };
       // The section margins are the only margin here: the document padding belongs to the screen and HTML export.
       root.style.cssText +=
@@ -462,7 +465,10 @@ export async function exportDocumentToDocx(
           {
             properties: {
               page: {
-                size: {width: twips(210), height: twips(297)},
+                size: {
+                  width: twips(PAPER_SIZES[input.presentation.page.size].widthMm),
+                  height: twips(PAPER_SIZES[input.presentation.page.size].heightMm),
+                },
                 margin: {
                   top: twips(m.top),
                   right: twips(m.right),

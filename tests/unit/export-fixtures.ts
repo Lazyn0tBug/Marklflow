@@ -17,7 +17,7 @@ export function htmlArtifact(html: string, doc: DocumentRecord = createNewDocume
     presentation: {
       css: DOCUMENT_CSS,
       variables: documentStyle(doc.theme),
-      page: {size: 'A4', margins: doc.theme.margins},
+      page: {size: doc.theme.paperSize, margins: doc.theme.margins},
     },
     mathMode: 'svg',
     assets: [],

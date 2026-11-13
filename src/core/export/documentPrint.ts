@@ -2,7 +2,8 @@ import {pageCss} from '../render/pagePresentation';
 import type {DocumentRecord} from '../model/document';
 import {themeSchema} from '../model/themeSchema';
 export function printCss(doc: DocumentRecord): string {
-  return pageCss(themeSchema.parse(doc.theme).margins);
+  const theme = themeSchema.parse(doc.theme);
+  return pageCss(theme.margins, theme.paperSize);
 }
 export function withDeadline<T>(
   promise: Promise<T>,

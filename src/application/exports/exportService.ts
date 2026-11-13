@@ -3,6 +3,7 @@ import type {ExportHtmlArtifact} from '../../core/model/exportHtml';
 import type {OutputIssue} from '../../core/model/exportDiagnostics';
 import {documentSchema} from '../../core/model/documentSchema';
 import {exportFile, type ExportFile, type ExportFormat} from './exportFile';
+import type {PaperSize} from '../../core/model/paperSizes';
 export type {ExportFormat} from './exportFile';
 export interface ExportInput {
   document: DocumentRecord;
@@ -45,7 +46,10 @@ export interface ExportPorts {
     options: {allowSourceFallback: boolean},
   ): Promise<Blob>;
   selectSave(file: ExportFile): Promise<ByteSaveTarget | undefined>;
-  deliverPdf(html: string, file: ExportFile): Promise<PdfDeliveryReceipt>;
+  /**
+   * 打印交付 ✓：**纸张尺寸随去** ✓ ⇒ ⇒ 宿主窗口与文档同一张纸 ✓（设计 §7 ✓）。
+   */
+  deliverPdf(html: string, file: ExportFile, paperSize?: PaperSize): Promise<PdfDeliveryReceipt>;
 }
 export interface ExportReview {
   confirmDocx(issues: readonly OutputIssue[], sourceLabel: string): Promise<boolean>;
@@ -137,6 +141,7 @@ export class ExportService {
           const receipt = await this.ports.deliverPdf(
             await this.ports.generatePdfHtml(artifact, {title: file.baseName}),
             file,
+            artifact.presentation.page.size,
           );
           if (receipt === 'cancelled') return result('cancelled', '已取消保存');
           if (receipt === 'failed')

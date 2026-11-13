@@ -125,7 +125,8 @@
 
 /* Preview-only paper minimum; exported document styles keep their own geometry. */
 .mf-reading-document {
-  min-block-size: 297mm;
+  /* 纸张的最小高度 ✓：随文档的纸张设置走 ✓（--mf-paper-min-height 由主题给出 ✓）。 */
+  min-block-size: var(--mf-paper-min-height, 297mm);
 }
 
 .mf-source-inset {

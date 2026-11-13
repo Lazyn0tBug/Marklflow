@@ -6,6 +6,7 @@ import {pageCss} from './pagePresentation';
 import {waitForLayout} from '../export/documentPrint';
 import {sharedDom, type DomScheduling} from '../platform/web/sharedDom';
 import {throwIfAborted} from './renderCancellation';
+import {paperPixels} from '../model/paperSizes';
 export interface PaginatedDocument {
   html: string;
   css: string;
@@ -36,7 +37,9 @@ export function paginatePreparedContent(
         nativeStyle.remove();
       });
       stage.style.cssText =
-        'position:fixed;left:-20000px;top:0;width:794px;visibility:hidden;pointer-events:none';
+        'position:fixed;left:-20000px;top:0;width:' +
+        paperPixels(input.presentation.page.size).width +
+        'px;visibility:hidden;pointer-events:none';
       const source = document.createElement('div'),
         target = document.createElement('div');
       source.innerHTML =
@@ -51,7 +54,9 @@ export function paginatePreparedContent(
       // 分页样式只带页面几何：文档样式由 nativeStyle 提供一次。
       // 若把 presentation.css 也塞进分页样式，同一批规则会在导出 CSS 里出现两遍，
       // 而第二遍经 Paged.js 转换后缺 @container，层叠上反盖掉容器查询（两栏不塌成单栏）。
-      const printTree = parse(pageCss(input.presentation.page.margins));
+      const printTree = parse(
+        pageCss(input.presentation.page.margins, input.presentation.page.size),
+      );
       walk(printTree, {
         visit: 'Rule',
         enter(node, item, list) {

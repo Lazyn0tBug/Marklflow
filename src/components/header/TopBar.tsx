@@ -24,6 +24,7 @@ import {SYNC_STATUS_TEXTS} from '../../application/messages';
 import type {SyncStatus} from '../../application/workspace/documentFileContext';
 import type {SaveControlView} from '../../application/workspace/saveControl';
 import {SaveSplitButton} from './SaveSplitButton';
+import {PAPER_SIZE_NAMES, PAPER_SIZES, type PaperSize} from '../../core/model/paperSizes';
 
 export type ViewMode = 'split' | 'edit' | 'reading' | 'a4';
 
@@ -49,6 +50,9 @@ export interface TopBarProps {
   onSoftWrapChange: (enabled: boolean) => void;
   maxWidth: number | 'full';
   onMaxWidthChange: (width: number | 'full') => void;
+  /** 纸张尺寸 ✓：**当前文档的** ✓ ⇒ ⇒ 与预览、导出用同一张纸 ✓（设计 §7 ✓）。 */
+  paperSize: PaperSize;
+  onPaperSizeChange: (size: PaperSize) => void;
 
   isDark: boolean;
   onThemeToggle: () => void;
@@ -102,6 +106,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onSoftWrapChange,
   maxWidth,
   onMaxWidthChange,
+  paperSize,
+  onPaperSizeChange,
   isDark,
   onThemeToggle,
   isDirty,
@@ -281,6 +287,26 @@ export const TopBar: React.FC<TopBarProps> = ({
           <p className="text-xs text-neutral-400 mt-2">
             默认 1024px。仅影响工作台，不改变导出纸张。
           </p>
+          <h3 className="mt-6 text-sm font-medium text-neutral-300">当前文档</h3>
+          <label htmlFor="paper-size" className="block text-sm mt-2">
+            纸张大小
+          </label>
+          <select
+            id="paper-size"
+            value={paperSize}
+            onChange={(event) => onPaperSizeChange(event.target.value as PaperSize)}
+            className="w-full rounded border border-neutral-600 bg-neutral-950 p-2 text-sm"
+          >
+            {PAPER_SIZE_NAMES.map((name) => (
+              <option key={name} value={name}>
+                {name}（{PAPER_SIZES[name].widthMm}×{PAPER_SIZES[name].heightMm} mm）
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-neutral-400 mt-2">
+            这份文档的纸张尺寸：分页预览、HTML 导出、打印 PDF 与 DOCX 用同一张纸。
+          </p>
+
           <label className="mt-4 flex items-center gap-2 text-sm">
             <input
               type="checkbox"

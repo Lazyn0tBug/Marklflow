@@ -2,6 +2,7 @@ import css from '../../styles/document.css?raw';
 import {DEFAULT_THEME, type ThemeSpec} from '../model/document';
 import {themeSchema} from '../model/themeSchema';
 import {documentColor, escapeHtml} from '../policy/htmlRules';
+import {PAPER_SIZES} from '../model/paperSizes';
 export const DOCUMENT_CSS = css;
 export function documentStyle(theme: ThemeSpec = DEFAULT_THEME): Record<string, string> {
   const t = themeSchema.parse(theme);
@@ -23,6 +24,7 @@ export function documentStyle(theme: ThemeSpec = DEFAULT_THEME): Record<string, 
     '--mf-font': fonts[t.fontFamily],
     '--mf-paper': paper,
     '--mf-ink': t.paperTheme === 'dark-slate' ? '#f3f4f6' : '#1f2937',
+    '--mf-paper-min-height': PAPER_SIZES[t.paperSize].heightMm + 'mm',
   };
 }
 export function documentStyleAttribute(theme: ThemeSpec): string {

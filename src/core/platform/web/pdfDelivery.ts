@@ -1,5 +1,6 @@
 import {withDeadline, waitForLayout} from '../../export/documentPrint';
 import type {PdfDeliveryReceipt} from '../../../application/exports/exportService';
+import {paperPixels, type PaperSize} from '../../model/paperSizes';
 /** Web-only native PDF handoff. Input is complete frozen HTML, never source or PDF bytes. */
 /** The system spooler keeps reading after the print dialog closes; destroying the frame too early truncates the output. */
 export const FRAME_RELEASE_DELAY = 1500;
@@ -7,8 +8,17 @@ export const FRAME_RELEASE_DELAY = 1500;
  * The print host lives inside the viewport and is invisible there. A host parked outside the viewport is not
  * part of the rendered output, and printing a frame the browser never rendered yields an empty first print.
  */
-export const PRINT_FRAME_STYLE =
-  'position:fixed;left:0;top:0;width:794px;height:1123px;border:0;opacity:0;pointer-events:none';
+/** 打印宿主按**文档的纸张尺寸** ✓ ⇒ ⇒ 与分页预览同一张纸 ✓。 */
+export function printFrameStyle(paperSize: PaperSize = 'A4'): string {
+  const pixels = paperPixels(paperSize);
+  return (
+    'position:fixed;left:0;top:0;width:' +
+    pixels.width +
+    'px;height:' +
+    pixels.height +
+    'px;border:0;opacity:0;pointer-events:none'
+  );
+}
 let activeFrame: HTMLIFrameElement | null = null;
 
 function removeFrame(frame: HTMLIFrameElement): void {
@@ -21,13 +31,13 @@ function removeFrame(frame: HTMLIFrameElement): void {
 export function scheduleFrameRelease(frame: HTMLIFrameElement): void {
   setTimeout(() => removeFrame(frame), FRAME_RELEASE_DELAY);
 }
-async function preparePrintFrame(html: string): Promise<HTMLIFrameElement> {
+async function preparePrintFrame(html: string, paperSize: PaperSize): Promise<HTMLIFrameElement> {
   if (activeFrame) removeFrame(activeFrame);
   const frame = document.createElement('iframe');
   frame.title = 'PDF导出文档';
   frame.setAttribute('aria-hidden', 'true');
   frame.setAttribute('sandbox', 'allow-same-origin allow-modals');
-  frame.style.cssText = PRINT_FRAME_STYLE;
+  frame.style.cssText = printFrameStyle(paperSize);
   const loaded = new Promise<void>((resolve, reject) => {
     frame.onload = () => resolve();
     frame.onerror = () => reject(new Error('打印文档加载失败'));
@@ -57,8 +67,12 @@ async function preparePrintFrame(html: string): Promise<HTMLIFrameElement> {
     frame.onerror = null;
   }
 }
-export async function deliverPdfHtml(html: string): Promise<PdfDeliveryReceipt> {
-  const frame = await preparePrintFrame(html);
+export async function deliverPdfHtml(
+  html: string,
+  _file: unknown,
+  paperSize: PaperSize = 'A4',
+): Promise<PdfDeliveryReceipt> {
+  const frame = await preparePrintFrame(html, paperSize);
   const view = frame.contentWindow;
   if (!view) {
     removeFrame(frame);

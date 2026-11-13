@@ -2,7 +2,7 @@ import {it, expect, vi, afterEach} from 'vitest';
 import {
   deliverPdfHtml,
   FRAME_RELEASE_DELAY,
-  PRINT_FRAME_STYLE,
+  printFrameStyle,
   scheduleFrameRelease,
 } from '../../src/core/platform/web/pdfDelivery';
 
@@ -43,7 +43,7 @@ function fakeWindow(): {
 }
 /** Drives one real delivery: the host is a real iframe, only its browsing context is replaced. */
 async function deliver() {
-  const pending = deliverPdfHtml('<!doctype html><html><body>paged</body></html>');
+  const pending = deliverPdfHtml('<!doctype html><html><body>paged</body></html>', undefined);
   const frame = document.querySelector('iframe');
   if (!frame) throw new Error('print host was not created');
   const stub = fakeWindow();
@@ -65,12 +65,18 @@ it('keeps the print host alive long enough for the spooler to flush', () => {
 
 it('keeps the print host inside the viewport so the browser can render it', () => {
   // A host parked outside the viewport is never rendered, and printing it yields an empty first print.
-  expect(PRINT_FRAME_STYLE).toContain('left:0');
-  expect(PRINT_FRAME_STYLE).toContain('top:0');
-  expect(PRINT_FRAME_STYLE).not.toMatch(/left:-/);
-  expect(PRINT_FRAME_STYLE).not.toMatch(/top:-/);
-  expect(PRINT_FRAME_STYLE).toContain('opacity:0');
-  expect(PRINT_FRAME_STYLE).toContain('pointer-events:none');
+  const style = printFrameStyle();
+  expect(style).toContain('left:0');
+  expect(style).toContain('top:0');
+  expect(style).not.toMatch(/left:-/);
+  expect(style).not.toMatch(/top:-/);
+  expect(style).toContain('opacity:0');
+  expect(style).toContain('pointer-events:none');
+  // 打印宿主按**文档的纸张尺寸** ✓（设计 §7 ✓）。
+  expect(style).toContain('width:794px');
+  expect(style).toContain('height:1123px');
+  expect(printFrameStyle('A3')).toContain('width:1123px');
+  expect(printFrameStyle('B5')).toContain('height:945px');
 });
 
 it('prints only after the frozen document is ready', async () => {

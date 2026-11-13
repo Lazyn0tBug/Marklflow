@@ -25,7 +25,7 @@ export async function paginateDocument(
       presentation: {
         css: DOCUMENT_CSS,
         variables: documentStyle(doc.theme),
-        page: {size: 'A4', margins: doc.theme.margins},
+        page: {size: doc.theme.paperSize, margins: doc.theme.margins},
       },
     },
     signal,

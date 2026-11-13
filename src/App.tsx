@@ -1,7 +1,7 @@
 /**
  * MarkFlow (墨流) 核心应用容器
  * 遵循《Markdown 编辑器总体设计方案 V0.2.8》
- * 整合：三栏工作台、多文档与大纲、双模公式与图表、流式/A4物理预览、导出中心与 1.0 审查看板
+ * 整合：三栏工作台、多文档与大纲、双模公式与图表、流式/分页预览、导出中心与 1.0 审查看板
  */
 
 import {useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect, useId} from 'react';
@@ -10,7 +10,7 @@ import {TopBar} from './components/header/TopBar';
 import {Sidebar} from './components/workspace/Sidebar';
 import {Editor} from './components/editor/Editor';
 import {ReadingPreview} from './components/preview/ReadingPreview';
-import {A4PagePreview} from './components/preview/A4PagePreview';
+import {PagedPreview} from './components/preview/PagedPreview';
 import {HtmlToolbar} from './components/preview/HtmlToolbar';
 import {StatusBar} from './components/footer/StatusBar';
 import {ExportModal} from './components/export/ExportModal';
@@ -40,6 +40,7 @@ import {
 import {hereSource, markAppReady} from './core/platform/web/capture';
 import {ResizablePanes} from './components/workspace/ResizablePanes';
 import type {PaneGeometry} from './core/model/paneSplit';
+import type {PaperSize} from './core/model/paperSizes';
 import {readPaneGeometry} from './core/platform/web/paneGeometry';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
@@ -1438,6 +1439,17 @@ export default function App() {
     }
   };
 
+  /** 纸张尺寸：**改的是当前文档的主题** ✓ ⇒ ⇒ 预览与导出用同一张纸 ✓（设计 §7 ✓）。 */
+  const handlePaperSizeChange = (size: PaperSize) => {
+    if (!currentDoc || currentDoc.theme.paperSize === size) return;
+    const updatedDoc: DocumentRecord = {
+      ...currentDoc,
+      revision: currentDoc.revision + 1,
+      theme: {...currentDoc.theme, paperSize: size},
+    };
+    applyDocument(updatedDoc);
+  };
+
   // All three panes are independent; the final visible pane cannot be hidden.
   /**
    * **窄屏一次只显示一个视图** ✓ ⇒ ⇒ 视图没有被取消，只是���并排 ✓（设计 §6 ✓）。
@@ -1585,6 +1597,8 @@ export default function App() {
           capturePosition();
           setContentMaxWidth(value);
         }}
+        paperSize={currentDoc.theme.paperSize}
+        onPaperSizeChange={handlePaperSizeChange}
         isDark={isDark}
         onThemeToggle={() => setIsDark((prev) => !prev)}
         isDirty={isDirty}
@@ -1722,7 +1736,7 @@ export default function App() {
                       onScroll={handlePreviewScroll}
                     />
                   ) : (
-                    <A4PagePreview
+                    <PagedPreview
                       view={previewView}
                       containerRef={previewContainerRef}
                       onScroll={handlePreviewScroll}

@@ -56,7 +56,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
       version: '0.5',
       phase: 'P3 / H1',
       title: 'A4 物理分页与源载荷 HTML 闭环',
-      desc: '210×297mm 纸张排版、页码指示、单文件含源载荷可编辑 HTML 导出与 源载荷往返导入（按样例验证）。',
+      desc: '可配置纸张（A4 / A3 / B5，默认 A4）的物理排版、页码指示、单文件含源载荷可编辑 HTML 导出与 源载荷往返导入（按样例验证）。',
       status: 'verifying',
     },
     {
@@ -137,7 +137,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
     {
       id: 'g5',
       category: '排版物理保真',
-      item: 'A4 纸张仿真与打印 PDF',
+      item: '纸张仿真与打印 PDF',
       detail: '提供物理尺寸比例仿真预览，浏览器打印对话框一键保存 A4 PDF，保留矢量与可选文字。',
       verified: false,
     },

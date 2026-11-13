@@ -3,6 +3,7 @@
  * 依据《Markdown 编辑器总体设计方案 V0.2.8》第 5.1 节实现
  */
 import {DOCUMENT_TITLE_MAX} from './documentSchema';
+import type {PaperSize} from './paperSizes';
 
 export interface DocumentMeta {
   title: string;
@@ -18,7 +19,7 @@ export interface ThemeSpec {
   lineHeight: number; // 1.5 ~ 2.0
   primaryColor: string;
   paperTheme: 'clean-white' | 'warm-paper' | 'dark-slate';
-  paperSize: 'A4';
+  paperSize: PaperSize;
   margins: {
     top: number; // mm
     bottom: number;

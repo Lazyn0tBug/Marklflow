@@ -5,8 +5,8 @@ interface Props {
   containerRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: (ratio: number, top: number) => void;
 }
-/** A4 display consumes the same complete-artifact cache as flow display. */
-export function A4PagePreview({view, containerRef, onScroll}: Props) {
+/** 分页显示消耗与流式显示同一份完整产物缓存 ✓。 */
+export function PagedPreview({view, containerRef, onScroll}: Props) {
   const internal = useRef<HTMLDivElement>(null),
     pages = view.rendered;
   return (
@@ -17,7 +17,7 @@ export function A4PagePreview({view, containerRef, onScroll}: Props) {
       data-pagination-state={
         view.state === 'ready' ? 'ready' : view.state === 'error' ? 'error' : 'pending'
       }
-      aria-label="A4 分页预览"
+      aria-label="分页预览"
       onScroll={(event) => {
         const el = event.currentTarget;
         onScroll?.(el.scrollTop / Math.max(1, el.scrollHeight - el.clientHeight), el.scrollTop);

@@ -1,5 +1,25 @@
 import {test, expect} from './fixtures';
 import {pathToFileURL} from 'node:url';
+test('the paper size follows the document and changes the pagination', async ({page}) => {
+  await page.goto('/');
+  await expect(page.locator('textarea')).toBeVisible();
+  await page
+    .locator('textarea')
+    .fill('# 纸张\n\n' + '段落内容，要撑满好几页才看得出差别。'.repeat(200));
+  await page.getByRole('button', {name: '分页', exact: true}).click();
+  await expect(page.locator('[data-page-count]')).toBeVisible();
+  const a4 = Number(await page.locator('[data-page-count]').getAttribute('data-page-count'));
+  // 设置里换一张更小的纸 ⇒ ⇒ 页数变多 ✓（设计 §7 ✓）。
+  await page.getByRole('button', {name: '设置', exact: true}).click();
+  await page.getByLabel('纸张大小').selectOption('B5');
+  await page.getByRole('button', {name: '完成', exact: true}).click();
+  await expect
+    .poll(async () =>
+      Number(await page.locator('[data-page-count]').getAttribute('data-page-count')),
+    )
+    .toBeGreaterThan(a4);
+});
+
 test('keeps long table/code text and container layout in A4 pages', async ({
   page,
   context,

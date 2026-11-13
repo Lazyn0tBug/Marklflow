@@ -437,9 +437,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="font-medium text-xs text-neutral-100">PDF 文档（A4）</div>
+                  <div className="font-medium text-xs text-neutral-100">
+                    PDF 文档（{doc.theme.paperSize}）
+                  </div>
                   <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
-                    使用 A4 排版，保留可选取、可检索的正文。文件名由系统保存窗口最终确定。
+                    使用 {doc.theme.paperSize}{' '}
+                    排版，保留可选取、可检索的正文。文件名由系统保存窗口最终确定。
                   </p>
                 </div>
               </button>

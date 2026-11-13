@@ -17,6 +17,13 @@ it('builds A4 delivery from the accepted HTML with no source or rendering call',
     priority: 'export',
   });
   expect(result).toContain('@page{size:A4;margin:0}');
+  // 纸张尺寸取自文档 ✓ ⇒ ⇒ 换纸即换 @page ✓（设计 §7 ✓）。
+  const base = htmlArtifact('<p>HTML SOURCE</p>');
+  const a3 = {
+    ...base,
+    presentation: {...base.presentation, page: {...base.presentation.page, size: 'A3' as const}},
+  };
+  expect(await generatePdfHtml(a3, {title: 'x'})).toContain('@page{size:A3;margin:0}');
   expect(result).toContain('data-export-pages="1"');
   expect(result).toContain('&lt;Source&gt;');
   expect(result).toContain('FINAL');

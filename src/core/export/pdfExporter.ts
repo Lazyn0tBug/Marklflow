@@ -1,6 +1,7 @@
 import type {ExportHtmlArtifact} from '../model/exportHtml';
 import {paginatePreparedContent} from '../render/htmlPaginator';
 import {escapeHtml} from '../render/htmlPolicy';
+import {PAPER_SIZES} from '../model/paperSizes';
 /** A4 export is generated from frozen source, independent of workbench visibility or preview readiness. */
 export async function generatePdfHtml(
   input: ExportHtmlArtifact,
@@ -14,7 +15,9 @@ export async function generatePdfHtml(
     escapeHtml(title) +
     '</title><style>' +
     pages.css +
-    '\n@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#fff}.pagedjs_pages{display:block!important}.pagedjs_page{margin:0!important;box-shadow:none!important;break-after:page}.pagedjs_page:last-child{break-after:auto}</style></head><body class="mf-pagination" data-export-pages="' +
+    '\n@page{size:' +
+    input.presentation.page.size +
+    ';margin:0}html,body{margin:0;padding:0;background:#fff}.pagedjs_pages{display:block!important}.pagedjs_page{margin:0!important;box-shadow:none!important;break-after:page}.pagedjs_page:last-child{break-after:auto}</style></head><body class="mf-pagination" data-export-pages="' +
     pages.total +
     '">' +
     pages.html +

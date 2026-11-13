@@ -102,6 +102,7 @@ it('routes all content formats from the single HTML contract and reports only br
   expect(ports.deliverPdf).toHaveBeenCalledWith(
     '<html>frozen</html>',
     expect.objectContaining({name: 'original.pdf'}),
+    'A4',
   );
 });
 it('reports the PDF receipt from the platform and never turns a failure into a success', async () => {
@@ -247,6 +248,7 @@ it('holds the single accepted PDF operation through asynchronous platform handof
   expect(ports.deliverPdf).toHaveBeenCalledExactlyOnceWith(
     '<html>frozen</html>',
     expect.objectContaining({name: 'original.pdf'}),
+    'A4',
   );
   expect(service.busy).toBe(true);
   expect(await service.run(input())).toEqual({status: 'busy'});

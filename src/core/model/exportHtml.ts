@@ -1,6 +1,7 @@
 /** Canonical, serializable HTML export content. Source attachments are deliberately absent. */
 import {z} from 'zod';
 import {assetSchema} from './documentSchema';
+import {PAPER_SIZE_NAMES} from './paperSizes';
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const exportHtmlSchema = z
   .object({
@@ -29,7 +30,7 @@ export const exportHtmlSchema = z
         variables: z.record(z.string(), z.string()).readonly(),
         page: z
           .object({
-            size: z.literal('A4'),
+            size: z.enum(PAPER_SIZE_NAMES),
             margins: z
               .object({top: z.number(), right: z.number(), bottom: z.number(), left: z.number()})
               .readonly(),
