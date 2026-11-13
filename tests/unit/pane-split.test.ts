@@ -1,10 +1,5 @@
 import {afterEach, expect, it, vi} from 'vitest';
-import {
-  constrainSplit,
-  minimumPaneWidth,
-  splitBounds,
-  splitHandleWidth,
-} from '../../src/core/model/paneSplit';
+import {constrainSplit, splitBounds, type PaneGeometry} from '../../src/core/model/paneSplit';
 import {
   readSplitPreference,
   writeSplitPreference,
@@ -15,18 +10,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('keeps the preferred ratio inside 15–85% and 360px pane limits', () => {
-  expect(splitHandleWidth).toBe(8);
-  expect(minimumPaneWidth).toBe(360);
-  expect(splitBounds(1200)).toEqual({
+/** 宿主给的几何 ✓：单位是 px ✓，值来自 CSS 的 token ✓（设计 §6 ✓）。 */
+const geometry: PaneGeometry = {minimumPaneWidth: 360, splitHandleWidth: 8};
+
+it('keeps the preferred ratio inside 15–85% and the pane limits the host gave', () => {
+  expect(splitBounds(1200, geometry)).toEqual({
     minimum: 360 / 1192,
     maximum: 1 - 360 / 1192,
     available: 1192,
   });
-  expect(constrainSplit(0.15, 728)).toBeCloseTo(0.5);
-  expect(constrainSplit(0.9, 1200)).toBeCloseTo(splitBounds(1200).maximum);
-  expect(constrainSplit(Number.NaN, 1200)).toBe(0.5);
-  expect(splitBounds(500).available).toBe(720);
+  expect(constrainSplit(0.15, 728, geometry)).toBeCloseTo(0.5);
+  expect(constrainSplit(0.9, 1200, geometry)).toBeCloseTo(splitBounds(1200, geometry).maximum);
+  expect(constrainSplit(Number.NaN, 1200, geometry)).toBe(0.5);
+  expect(splitBounds(500, geometry).available).toBe(720);
+});
+
+it('follows the geometry it is given instead of a fixed pane width', () => {
+  /** 根字号放大 ⇒ ⇒ 面板下限跟着放大 ⇒ ⇒ 纯模块照着算 ✓。 */
+  const scaled: PaneGeometry = {minimumPaneWidth: 450, splitHandleWidth: 10};
+  expect(splitBounds(1200, scaled).available).toBe(1190);
+  expect(splitBounds(500, scaled).available).toBe(900);
+  expect(constrainSplit(0.9, 1200, scaled)).toBeCloseTo(splitBounds(1200, scaled).maximum);
 });
 
 it('imports only a valid same-origin legacy value without rewriting it', () => {

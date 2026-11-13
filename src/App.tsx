@@ -39,7 +39,8 @@ import {
 } from './core/platform/web/editorPreferences';
 import {hereSource, markAppReady} from './core/platform/web/capture';
 import {ResizablePanes} from './components/workspace/ResizablePanes';
-import {minimumPaneWidth, splitHandleWidth} from './core/model/paneSplit';
+import type {PaneGeometry} from './core/model/paneSplit';
+import {readPaneGeometry} from './core/platform/web/paneGeometry';
 import {DocumentTabs} from './components/workspace/DocumentTabs';
 import {DocumentSessions} from './application/sessions/documentSessions';
 import {saveSource} from './application/workspace/sourceSave';
@@ -290,6 +291,13 @@ export default function App() {
   const [narrowSidebarOpen, setNarrowSidebarOpen] = useState<boolean>(false);
   /** **焦点在哪一侧** ✓ ⇒ ⇒ 窄屏时显示那一侧 ✓（设计 §6 ✓）。 */
   const [focusedView, setFocusedView] = useState<'editor' | 'preview'>('editor');
+  /**
+   * 面板几何 ✓：**从 CSS 的 token 解析** ✓ ⇒ ⇒ 取值只有一处 ✓（原则 1.4 ✓）。
+   */
+  const [paneGeometry, setPaneGeometry] = useState<PaneGeometry>({
+    minimumPaneWidth: 0,
+    splitHandleWidth: 0,
+  });
   const [previewMode, setPreviewMode] = useState<'flow' | 'a4'>('flow');
   const [softWrap, setSoftWrap] = useState(readSoftWrapPreference);
   const [contentMaxWidth, setContentMaxWidth] = useState<number | 'full'>(1024);
@@ -336,8 +344,14 @@ export default function App() {
     workbenchObserver.current?.disconnect();
     workbenchObserver.current = null;
     if (!element) return;
-    const measure = () =>
-      setNarrow(element.getBoundingClientRect().width < minimumPaneWidth * 2 + splitHandleWidth);
+    const measure = () => {
+      const geometry = readPaneGeometry(element);
+      setPaneGeometry(geometry);
+      setNarrow(
+        element.getBoundingClientRect().width <
+          geometry.minimumPaneWidth * 2 + geometry.splitHandleWidth,
+      );
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -1648,8 +1662,9 @@ export default function App() {
                 ? 'none'
                 : undefined,
             minWidth:
-              (Number(effectiveShowEditor) + Number(effectiveShowPreview)) * minimumPaneWidth +
-              (effectiveShowEditor && effectiveShowPreview ? splitHandleWidth : 0),
+              (Number(effectiveShowEditor) + Number(effectiveShowPreview)) *
+                paneGeometry.minimumPaneWidth +
+              (effectiveShowEditor && effectiveShowPreview ? paneGeometry.splitHandleWidth : 0),
           }}
         >
           {/* Unified Workbench Toolbar across Editor & Preview */}
@@ -1667,6 +1682,7 @@ export default function App() {
           <ResizablePanes
             labelledBy={'tab-' + encodeURIComponent(currentDocId)}
             onBeforeResize={capturePosition}
+            geometry={paneGeometry}
             editor={
               effectiveShowEditor ? (
                 <>

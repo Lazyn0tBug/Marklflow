@@ -1,16 +1,13 @@
 import {useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode} from 'react';
-import {
-  constrainSplit,
-  splitBounds,
-  splitHandleWidth,
-  minimumPaneWidth,
-} from '../../core/model/paneSplit';
+import {constrainSplit, splitBounds, type PaneGeometry} from '../../core/model/paneSplit';
 import {readSplitPreference, writeSplitPreference} from '../../core/platform/web/splitPreferences';
 interface Props {
   editor: ReactNode;
   preview: ReactNode;
   labelledBy: string;
   onBeforeResize: () => void;
+  /** 面板几何 ✓：宿主从 CSS 的 token 解析后给这里 ✓（原则 1.4 ✓）。 */
+  geometry: PaneGeometry;
 }
 interface Drag {
   pointerId: number;
@@ -20,7 +17,7 @@ interface Drag {
   latestX: number;
   moved: boolean;
 }
-export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Props) {
+export function ResizablePanes({editor, preview, labelledBy, onBeforeResize, geometry}: Props) {
   const container = useRef<HTMLDivElement>(null),
     handle = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | undefined>(undefined),
@@ -28,8 +25,8 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
   const [ratio, setRatio] = useState(readSplitPreference),
     [width, setWidth] = useState(0);
   const enabled = Boolean(editor && preview),
-    bounds = splitBounds(width),
-    effective = constrainSplit(ratio, width);
+    bounds = splitBounds(width, geometry),
+    effective = constrainSplit(ratio, width, geometry);
   const stop = useCallback((restore: boolean) => {
     const active = drag.current;
     drag.current = undefined;
@@ -77,8 +74,10 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
     const rect = container.current?.getBoundingClientRect();
     if (!rect) return effective;
     const next = constrainSplit(
-      (clientX - rect.left - splitHandleWidth / 2) / splitBounds(rect.width).available,
+      (clientX - rect.left - geometry.splitHandleWidth / 2) /
+        splitBounds(rect.width, geometry).available,
       rect.width,
+      geometry,
     );
     setRatio(next);
     return next;
@@ -94,7 +93,11 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
     stop(false);
   };
   const change = (next: number, reset = false) => {
-    const value = constrainSplit(next, container.current?.getBoundingClientRect().width ?? width);
+    const value = constrainSplit(
+      next,
+      container.current?.getBoundingClientRect().width ?? width,
+      geometry,
+    );
     if (!reset && Math.abs(value - effective) < 0.000001) return;
     stop(false);
     onBeforeResize();
@@ -108,7 +111,7 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
       role="tabpanel"
       aria-labelledby={labelledBy}
       className="flex-1 flex overflow-hidden min-h-0"
-      style={{minWidth: enabled ? minimumPaneWidth * 2 + splitHandleWidth : 0}}
+      style={{minWidth: enabled ? geometry.minimumPaneWidth * 2 + geometry.splitHandleWidth : 0}}
     >
       {editor && (
         <div
@@ -117,7 +120,7 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
           className="mf-pane h-full min-w-0 flex flex-col"
           style={{
             flex: enabled ? effective + ' 0 0' : '1 1 0',
-            minWidth: enabled ? minimumPaneWidth : 0,
+            minWidth: enabled ? geometry.minimumPaneWidth : 0,
           }}
         >
           {editor}
@@ -210,7 +213,7 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
           className="mf-pane h-full min-w-0 flex flex-col"
           style={{
             flex: enabled ? 1 - effective + ' 0 0' : '1 1 0',
-            minWidth: enabled ? minimumPaneWidth : 0,
+            minWidth: enabled ? geometry.minimumPaneWidth : 0,
           }}
         >
           {preview}
