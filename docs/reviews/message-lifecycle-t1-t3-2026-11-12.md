@@ -39,7 +39,7 @@ Luna 定向检查本轮差异与相关调用方，未发现阻断生产问题；
 
 - 历史独立实验：[审查记录](message-waapi-probe-2026-11-12.md)、[事件证据](../acceptance/message-waapi-probe-2026-11-12.json)。其 hash 对应独立探针，不对应当前 Hook。
 - 当前可复现夹具：tests/fixtures/messages/message-lifecycle.html 及 message-lifecycle-client.tsx，配套 tests/e2e/message-lifecycle.spec.ts；运行需项目开发服务器，使用既有 Playwright 配置。
-- 真实工作台截图：[桌面深色](../acceptance/message-lifecycle-2026-11-12/workbench-message-desktop-dark.png)、[桌面浅色](../acceptance/message-lifecycle-2026-11-12/workbench-message-desktop-light.png)、[360px 长文案](../acceptance/message-lifecycle-2026-11-12/workbench-message-mobile-360x740.png)。窄窗区域无横向溢出，卡片未明显遮挡底部状态栏。
+- 真实工作台已在桌面深色、桌面浅色与 360px 长文案三档查看（截图属测试产物，不入库 ✓）：窄窗区域无横向溢出，卡片未明显遮挡底部状态栏。
 - Windows WebView2、macOS/Linux WebView、读屏与跨平台发行验收待补。Firefox/WebKit 测试浏览器未安装，没有扩大安装。自动测试和浏览器截图不能代替 Tauri 系统验收。
 
 手动验收使用重启后的当前 Tauri 开发构建，记录操作系统、WebView 版本和实际构建提交：按[设计 §10.7](../design/message-surface-2026-11-07.md)检查普通/待确认消息、真实导入、编辑与关闭焦点、Tab、深浅主题/窄窗/减少动态效果。无需人工卡在退出动画时间窗制造竞态。该部分当前未执行，不据此宣称 T3 全平台收口或发行通过。
@@ -49,6 +49,6 @@ Luna 定向检查本轮差异与相关调用方，未发现阻断生产问题；
 
 Luna 定向审查通过；隔离快照的 bun run check 通过（112 文件／823 项单测及构建），message-region、message-presentation、export-dialog、export-confirmation 四组 Chromium E2E 共 25 项通过。原有未跟踪 PDF 试验保持不变并排除于快照，不宣称原工作区连同试验全量通过。首次失败为旧单测只查原 host，随后查询未显式收窄为按钮类型；修正后门禁通过。生产逻辑没有进一步修改以绕过测试。
 
-已实际查看 [1600×1000](../acceptance/message-portal-2026-11-12/portal-export-1600x1000.png) 与 [800×840](../acceptance/message-portal-2026-11-12/portal-export-800x840.png) 截图。窄窗消息可读但会盖住部分按钮，需先关闭通知，这是用户选择 A+B 的可见性取舍。两尺寸专项验证层级、命中、点击不穿透、保留窗口与输入、Escape 关闭及入口焦点；其他相关用例验证主题、正反 Tab、连续关闭和自动消失焦点，不声称全部行为在两尺寸逐项重跑。
+已实际查看 1600×1000 与 800×840 两档（截图属测试产物，不入库 ✓）。窄窗消息可读但会盖住部分按钮，需先关闭通知，这是用户选择 A+B 的可见性取舍。两尺寸专项验证层级、命中、点击不穿透、保留窗口与输入、Escape 关闭及入口焦点；其他相关用例验证主题、正反 Tab、连续关闭和自动消失焦点，不声称全部行为在两尺寸逐项重跑。
 
 用户于 2026-11-12 明确确认 Tauri 测试成功，记录为用户回报的本轮 A+B 手验通过；未提供 WebView 版本、分辨率及逐项轨迹。不追认真实读屏、其他操作系统、原生 PDF 文件内容或原 T1–T3 所有系统验收通过。按授权仅本地提交，不推送；A4 最小预览、导出配置及 PDF 试验等其他未提交内容保留。

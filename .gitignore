@@ -33,3 +33,6 @@ desktop-artifacts/
 # 免得一次 `git add -A` 就把它卷进来。
 .ctxindex/
 .claude/ctxguard/
+
+# 截图是测试产物 ✓ ⇒ ⇒ 不入库 ✓；要留证据，就把**结论**写进文档 ✓。
+docs/acceptance/**/*.png

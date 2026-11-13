@@ -28,7 +28,7 @@ HTML隐藏期间编辑器继续滚动，再显示HTML时按当前源码位置定
 
 最终bun run check通过：四份严格配置覆盖153个受管源/配置，43文件285项单元通过，源策略、模块边界、lint及生产构建通过。完整Chromium61项通过（新增4项），包含既有普通HTTP/Worker、公式/图表/分页、导出及Tab回归。Impeccable对App/sourceScroll及Sidebar的机械检测均无发现；实际检查1440×960桌面和684×900窄屏截图，物理A4页保持原宽度，可在预览内横滚。保留既有构建大分块、Vite配置加载、hash.js导入及NO_COLOR提示。
 
-最终验证结果及文件指纹见[验证JSON](architecture-u6f-evidence-2026-10-26.json)。截图见[A4源码同步](../acceptance/architecture-u6f-a4-source-sync.png)、[窄屏三视图](../acceptance/architecture-u6f-a4-three-panes-narrow.png)。严格类型、源策略、模块边界、lint、单元、生产构建和完整Chromium均以本步实际执行结果为准，不复用U6e结果。Impeccable机械检查及真实截图检查分开记录。
+最终验证结果及文件指纹见[验证JSON](architecture-u6f-evidence-2026-10-26.json)。实际检查过 A4 源码同步与窄屏三视图两档（截图属测试产物，不入库 ✓）。严格类型、源策略、模块边界、lint、单元、生产构建和完整Chromium均以本步实际执行结果为准，不复用U6e结果。Impeccable机械检查及真实截图检查分开记录。
 
 ## 范围边界
 

@@ -32,7 +32,7 @@ saveSource在第一次await前通过既有schema复制完整源文及资产，�
 
 最终bun run check通过：四份严格配置覆盖158个受管源/配置，44文件297项单元通过，源策略、模块边界、lint及生产构建通过。完整Chromium67项通过（2.5分钟），新增6项导入用例全部通过；普通HTTP、旧数据恢复及三视图/Tab/输出回归均保留。Impeccable机械检查无发现，实际检查1280×720导入busy截图；没有单独完成本步手机视觉验收。保留既有Vite配置、大分块、hash.js导入及NO_COLOR提示。
 
-最终门禁、计数、日志和文件指纹见[验证JSON](architecture-p1-evidence-2026-10-26.json)，实际导入busy界面见[截图](../acceptance/architecture-p1-import-busy.png)。仅声明本步实际检查的浏览器与界面；不将源保存通过当作文件系统交付或Tauri已实现。
+最终门禁、计数、日志和文件指纹见[验证JSON](architecture-p1-evidence-2026-10-26.json)，实际导入busy界面已查看（截图属测试产物，不入库 ✓）。仅声明本步实际检查的浏览器与界面；不将源保存通过当作文件系统交付或Tauri已实现。
 
 ## 范围约束
 
