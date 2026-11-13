@@ -242,7 +242,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
 
   return (
     <TooltipContext.Provider value={{showTooltip, hideTooltip}}>
-      <div className="w-full min-h-[38px] px-3 bg-neutral-900/95 border-b border-neutral-800 flex items-center justify-between text-neutral-200 select-none shrink-0 no-print z-20">
+      <div className="w-full min-h-[2.375rem] px-3 bg-neutral-900/95 border-b border-neutral-800 flex items-center justify-between text-neutral-200 select-none shrink-0 no-print z-20">
         {/* Left Formatting Tools */}
         <div className="flex items-center gap-0.5 overflow-x-auto py-1 scrollbar-none">
           {/* Headings: H1~H3 Direct + Micro Dropdown for H4~H6 */}
@@ -371,7 +371,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             syntax="$ ... $"
             accent="teal"
           >
-            <span className="font-mono text-[11px] font-semibold text-teal-400 leading-none">
+            <span className="font-mono text-[0.6875rem] font-semibold text-teal-400 leading-none">
               $x$
             </span>
           </ToolbarButton>
@@ -484,7 +484,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             >
               <Heading4 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
               <span className="flex-1 font-medium">四级标题</span>
-              <span className="text-[10px] text-neutral-400 font-mono">####</span>
+              <span className="text-[0.625rem] text-neutral-400 font-mono">####</span>
             </button>
             <button
               type="button"
@@ -496,7 +496,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             >
               <Heading5 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
               <span className="flex-1 font-medium">五级标题</span>
-              <span className="text-[10px] text-neutral-400 font-mono">#####</span>
+              <span className="text-[0.625rem] text-neutral-400 font-mono">#####</span>
             </button>
             <button
               type="button"
@@ -508,7 +508,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             >
               <Heading6 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
               <span className="flex-1 font-medium">六级标题</span>
-              <span className="text-[10px] text-neutral-400 font-mono">######</span>
+              <span className="text-[0.625rem] text-neutral-400 font-mono">######</span>
             </button>
           </div>,
           document.body,
@@ -529,7 +529,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
           >
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-800 text-xs">
               <span className="font-medium text-neutral-200">插入表格</span>
-              <span className="px-1.5 py-0.5 rounded bg-teal-950/90 border border-teal-700/70 text-teal-300 font-mono text-[11px] font-semibold">
+              <span className="px-1.5 py-0.5 rounded bg-teal-950/90 border border-teal-700/70 text-teal-300 font-mono text-[0.6875rem] font-semibold">
                 {hoveredGrid.cols} 列 × {hoveredGrid.rows} 行
               </span>
             </div>
@@ -566,7 +566,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             </div>
 
             {/* Quick Presets & Shortcuts */}
-            <div className="flex items-center justify-between pt-1 border-t border-neutral-800/70 text-[11px]">
+            <div className="flex items-center justify-between pt-1 border-t border-neutral-800/70 text-[0.6875rem]">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -589,7 +589,7 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
                   4×4 数据
                 </button>
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono" title="快捷键">
+              <span className="text-[0.625rem] text-neutral-400 font-mono" title="快捷键">
                 Alt+T
               </span>
             </div>
@@ -616,22 +616,22 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
             <div className="w-2 h-2 -mb-1 bg-neutral-900 border-t border-l border-neutral-700/80 rotate-45 z-10" />
 
             {/* Tooltip Content Badge */}
-            <div className="flex flex-col items-center gap-1 px-2.5 py-1.5 bg-neutral-900/98 backdrop-blur-md text-neutral-100 text-xs rounded-md shadow-2xl border border-neutral-700/90 max-w-[min(320px,90vw)]">
+            <div className="flex flex-col items-center gap-1 px-2.5 py-1.5 bg-neutral-900/98 backdrop-blur-md text-neutral-100 text-xs rounded-md shadow-2xl border border-neutral-700/90 max-w-[min(20rem,90vw)]">
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="font-medium text-neutral-200">{tooltip.title}</span>
                 {tooltip.syntax && (
-                  <span className="font-mono text-teal-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800 text-[10px]">
+                  <span className="font-mono text-teal-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800 text-[0.625rem]">
                     {tooltip.syntax}
                   </span>
                 )}
                 {tooltip.shortcut && (
-                  <kbd className="px-1.5 py-0.5 bg-neutral-800 text-neutral-300 rounded text-[10px] font-mono border border-neutral-700">
+                  <kbd className="px-1.5 py-0.5 bg-neutral-800 text-neutral-300 rounded text-[0.625rem] font-mono border border-neutral-700">
                     {tooltip.shortcut}
                   </kbd>
                 )}
               </div>
               {tooltip.description && (
-                <span className="text-[11px] leading-snug text-neutral-400 text-center">
+                <span className="text-[0.6875rem] leading-snug text-neutral-400 text-center">
                   {tooltip.description}
                 </span>
               )}

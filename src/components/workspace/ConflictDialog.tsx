@@ -54,7 +54,7 @@ export const ConflictDialog: React.FC<ConflictDialogProps> = ({displayName, onCh
             className="flex flex-col items-start gap-0.5 rounded-lg border border-neutral-700 px-3 py-2 text-left text-xs hover:bg-neutral-800"
           >
             <span className="font-medium">{CONFLICT_TEXTS.overwrite}</span>
-            <span className="text-[10px] text-neutral-400">{CONFLICT_TEXTS.overwriteHint}</span>
+            <span className="text-[0.625rem] text-neutral-400">{CONFLICT_TEXTS.overwriteHint}</span>
           </button>
           {/* **重载** ✓：文件胜出 ✓ ⇒ ⇒ **本地改动不保留** ✓ ⇒ ⇒ 说清它 ✓。 */}
           <button
@@ -63,7 +63,7 @@ export const ConflictDialog: React.FC<ConflictDialogProps> = ({displayName, onCh
             className="flex flex-col items-start gap-0.5 rounded-lg border border-neutral-700 px-3 py-2 text-left text-xs hover:bg-neutral-800"
           >
             <span className="font-medium">{CONFLICT_TEXTS.reload}</span>
-            <span className="text-[10px] text-amber-400">{CONFLICT_TEXTS.reloadHint}</span>
+            <span className="text-[0.625rem] text-amber-400">{CONFLICT_TEXTS.reloadHint}</span>
           </button>
           {/* **取消** ✓：两边都不动 ✓ ⇒ ⇒ 下次还会再问 ✓。 */}
           <button
@@ -72,7 +72,7 @@ export const ConflictDialog: React.FC<ConflictDialogProps> = ({displayName, onCh
             className="flex flex-col items-start gap-0.5 rounded-lg border border-neutral-700 px-3 py-2 text-left text-xs hover:bg-neutral-800"
           >
             <span className="font-medium">{CONFLICT_TEXTS.cancel}</span>
-            <span className="text-[10px] text-neutral-400">{CONFLICT_TEXTS.cancelHint}</span>
+            <span className="text-[0.625rem] text-neutral-400">{CONFLICT_TEXTS.cancelHint}</span>
           </button>
         </div>
       </div>

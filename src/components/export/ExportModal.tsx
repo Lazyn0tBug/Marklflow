@@ -410,11 +410,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <div>
                   <div className="flex items-center gap-1.5 font-medium text-xs text-neutral-100">
                     可编辑单文件 HTML
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-900/60 text-teal-300 font-mono">
+                    <span className="text-[0.625rem] px-1.5 py-0.2 rounded bg-teal-900/60 text-teal-300 font-mono">
                       推荐
                     </span>
                   </div>
-                  <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
+                  <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
                     独立自包含排版网页，同时内嵌 Base64
                     权威源载荷。双击可阅读，通过工作区导入可恢复原始 Markdown 与受支持元数据。
                   </p>
@@ -438,7 +438,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
                 <div>
                   <div className="font-medium text-xs text-neutral-100">PDF 文档（A4）</div>
-                  <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
+                  <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
                     使用 A4 排版，保留可选取、可检索的正文。文件名由系统保存窗口最终确定。
                   </p>
                 </div>
@@ -461,7 +461,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
                 <div>
                   <div className="font-medium text-xs text-neutral-100">Word 原生文档 (.docx)</div>
-                  <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
+                  <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
                     利用 docx 引擎生成真正 OpenXML
                     格式，原生标题、段落、列表与表格映射为原生对象；公式在结构可表达时输出为 Word
                     原生公式；Word/WPS 的显示效果需另行验证。
@@ -486,7 +486,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
                 <div>
                   <div className="font-medium text-xs text-neutral-100">纯净静态阅读 HTML</div>
-                  <p className="text-[11px] text-neutral-400 mt-1 leading-normal">
+                  <p className="text-[0.6875rem] text-neutral-400 mt-1 leading-normal">
                     不携带任何源数据，体积轻便紧凑，适合公开发布或交付第三方直接阅读。
                   </p>
                 </div>
@@ -513,7 +513,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <AlertTriangle className="w-3.5 h-3.5 text-teal-400" />
               <span>当前格式排版特性与能力矩阵诊断</span>
             </div>
-            <div className="text-[11px] text-neutral-400 space-y-0.5">
+            <div className="text-[0.6875rem] text-neutral-400 space-y-0.5">
               {selectedFormat === 'markdown' && (
                 <div>• 仅导出源文；图片等资源可选择 Markdown 资源包。</div>
               )}

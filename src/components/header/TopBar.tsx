@@ -179,7 +179,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
           {syncStatus === 'unsynced' && (
             <span
-              className="shrink-0 rounded border border-amber-500/60 px-1 py-px text-[10px] text-amber-300"
+              className="shrink-0 rounded border border-amber-500/60 px-1 py-px text-[0.625rem] text-amber-300"
               title="本地文件有未同步的修改（Ctrl/Cmd+S）"
             >
               {SYNC_STATUS_TEXTS.unsynced}
@@ -259,7 +259,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             setWidthMenuOpen(false);
             settingsButtonRef.current?.focus();
           }}
-          className="m-auto w-80 max-w-[calc(100vw-32px)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60"
+          className="m-auto w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-700 bg-neutral-900 p-5 text-neutral-100 backdrop:bg-black/60"
         >
           <h2 id="settings-title" className="text-base font-semibold mb-4">
             工作台设置

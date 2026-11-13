@@ -101,7 +101,7 @@ export const SaveSplitButton: React.FC<SaveSplitButtonProps> = ({view, onWriteBa
           >
             <span>{SAVE_CONTROL_TEXTS.writeBackMenu}</span>
             {!view.writeBackEnabled ? (
-              <span className="text-[10px] text-neutral-500">
+              <span className="text-[0.625rem] text-neutral-500">
                 {SAVE_CONTROL_TEXTS.noTargetHint}
               </span>
             ) : null}

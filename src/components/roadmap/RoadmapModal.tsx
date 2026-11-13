@@ -202,7 +202,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
                 <h2 className="text-base font-semibold text-neutral-100">
                   MarkFlow 版本规划与 1.0 验收审查看板
                 </h2>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-700/60">
+                <span className="text-[0.6875rem] font-mono px-2 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-700/60">
                   当前：{APP_VERSION} · HTML 兼容性修复
                 </span>
               </div>
@@ -288,33 +288,33 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
                           <span className="font-mono font-bold text-sm text-teal-400">
                             {m.version}
                           </span>
-                          <span className="text-[11px] font-medium text-neutral-400">
+                          <span className="text-[0.6875rem] font-medium text-neutral-400">
                             · {m.phase}
                           </span>
                         </div>
                         {isCurrent && (
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-teal-500 text-neutral-950 font-bold">
+                          <span className="text-[0.625rem] font-mono uppercase px-2 py-0.5 rounded bg-teal-500 text-neutral-950 font-bold">
                             Feature Freeze 0.9
                           </span>
                         )}
                         {isDone && (
-                          <span className="text-[10px] text-teal-400/90 flex items-center gap-1">
+                          <span className="text-[0.625rem] text-teal-400/90 flex items-center gap-1">
                             <CheckCircle2 className="w-3.5 h-3.5" /> 已就绪
                           </span>
                         )}
                         {m.status === 'verifying' && (
-                          <span className="text-[10px] text-amber-400/90 flex items-center gap-1">
+                          <span className="text-[0.625rem] text-amber-400/90 flex items-center gap-1">
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" /> 审查中
                           </span>
                         )}
                         {m.status === 'planned' && (
-                          <span className="text-[10px] text-sky-400/90 flex items-center gap-1 font-mono">
+                          <span className="text-[0.625rem] text-sky-400/90 flex items-center gap-1 font-mono">
                             <Sparkles className="w-3.5 h-3.5" /> 待办规划 (TODO)
                           </span>
                         )}
                       </div>
                       <div className="font-medium text-xs text-neutral-200 mb-1">{m.title}</div>
-                      <p className="text-[11px] text-neutral-400 leading-relaxed">{m.desc}</p>
+                      <p className="text-[0.6875rem] text-neutral-400 leading-relaxed">{m.desc}</p>
                     </div>
                   );
                 })}
@@ -338,13 +338,17 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
                     <div className="flex-1 text-xs">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="font-semibold text-neutral-200">{check.item}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400">
+                        <span className="text-[0.625rem] font-mono px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400">
                           {check.category}
                         </span>
                       </div>
-                      <p className="text-[11px] text-neutral-400 leading-normal">{check.detail}</p>
+                      <p className="text-[0.6875rem] text-neutral-400 leading-normal">
+                        {check.detail}
+                      </p>
                     </div>
-                    <span className="text-[10px] font-mono text-teal-400 shrink-0">待独立验收</span>
+                    <span className="text-[0.625rem] font-mono text-teal-400 shrink-0">
+                      待独立验收
+                    </span>
                   </div>
                 ))}
               </div>
@@ -359,7 +363,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
                     <div className="font-semibold text-neutral-200">
                       当前文档实时解析与就绪屏障测试
                     </div>
-                    <div className="text-[11px] text-neutral-400">
+                    <div className="text-[0.6875rem] text-neutral-400">
                       针对当前编辑中的文档实时运行
                       AST、大纲、公式与图表解析，检查当前样本渲染；不代替各输出格式验收。
                     </div>
@@ -375,7 +379,7 @@ export const RoadmapModal: React.FC<RoadmapModalProps> = ({isOpen, onClose, curr
                 </div>
 
                 {testLog.length > 0 ? (
-                  <div className="p-3 rounded bg-neutral-900 border border-neutral-800/80 font-mono text-[11px] text-teal-300 space-y-1 max-h-60 overflow-y-auto">
+                  <div className="p-3 rounded bg-neutral-900 border border-neutral-800/80 font-mono text-[0.6875rem] text-teal-300 space-y-1 max-h-60 overflow-y-auto">
                     {testLog.map((log, i) => (
                       <div key={i}>{log}</div>
                     ))}

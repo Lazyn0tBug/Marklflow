@@ -104,12 +104,12 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
       <div className="space-y-1">
         {view.rows.map((row, index) => {
           const {item, foldable, collapsed: isCollapsed, marked} = row;
-          const indent = (item.level - 1) * 10;
+          const indent = (item.level - 1) * 0.625;
           const isActive = item.id === activeHeadingId;
           return (
             <div
               key={row.key}
-              style={{paddingLeft: `${indent}px`}}
+              style={{paddingLeft: `${indent}rem`}}
               className={`flex items-center rounded transition-colors ${
                 isActive
                   ? 'bg-teal-950/80 border border-teal-500/60 shadow-sm ring-1 ring-teal-500/30'
@@ -148,7 +148,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                 aria-current={isActive ? 'location' : undefined}
                 ref={isActive ? activeItemRef : row.entry ? entryItemRef : null}
                 onClick={() => onJump(item.id, item.line)}
-                style={{paddingLeft: '8px'}}
+                style={{paddingLeft: '0.5rem'}}
                 className={`flex-1 min-w-0 text-left py-1.5 pr-2 rounded text-xs truncate transition-all flex items-center gap-1.5 ${
                   isActive ? 'text-teal-200 font-semibold' : 'text-neutral-400 hover:text-teal-300'
                 }`}
@@ -161,7 +161,7 @@ const OutlinePanel: React.FC<OutlinePanelProps> = ({
                   {item.text}
                 </span>
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0 ml-auto mr-1 shadow-[0_0_6px_rgba(45,212,191,0.8)] animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0 ml-auto mr-1 shadow-[0_0_0.375rem_rgba(45,212,191,0.8)] animate-pulse" />
                 )}
               </button>
             </div>
@@ -392,7 +392,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <div className="text-xs font-medium truncate leading-tight">
                         {doc.meta.title || '未命名文档'}
                       </div>
-                      <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
+                      <div className="text-[0.625rem] text-neutral-500 font-mono mt-0.5">
                         {new Date(doc.meta.updatedAt).toLocaleTimeString('zh-CN', {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -443,7 +443,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer System Info */}
-      <div className="p-2.5 border-t border-neutral-800 bg-neutral-950/40 text-[11px] text-neutral-500 flex items-center justify-between">
+      <div className="p-2.5 border-t border-neutral-800 bg-neutral-950/40 text-[0.6875rem] text-neutral-500 flex items-center justify-between">
         <span className="font-mono">MarkFlow Storage</span>
         <span className="text-teal-400">IndexedDB 本地</span>
       </div>

@@ -32,7 +32,7 @@ export const HtmlViewControls: React.FC<HtmlViewControlsProps> = ({
           type="button"
           onClick={() => onPreviewModeChange('flow')}
           aria-pressed={previewMode === 'flow'}
-          className={`px-2 py-0.5 rounded text-[11px] transition-colors ${
+          className={`px-2 py-0.5 rounded text-[0.6875rem] transition-colors ${
             previewMode === 'flow'
               ? 'bg-neutral-800 text-neutral-100 font-medium'
               : 'text-neutral-400 hover:text-neutral-200'
@@ -45,7 +45,7 @@ export const HtmlViewControls: React.FC<HtmlViewControlsProps> = ({
           type="button"
           onClick={() => onPreviewModeChange('a4')}
           aria-pressed={previewMode === 'a4'}
-          className={`px-2 py-0.5 rounded text-[11px] transition-colors flex items-center gap-1 ${
+          className={`px-2 py-0.5 rounded text-[0.6875rem] transition-colors flex items-center gap-1 ${
             previewMode === 'a4'
               ? 'bg-neutral-800 text-teal-300 font-medium'
               : 'text-neutral-400 hover:text-neutral-200'
@@ -73,13 +73,13 @@ export const HtmlViewControls: React.FC<HtmlViewControlsProps> = ({
           >
             <ArrowUpDown className="w-3.5 h-3.5" />
           </button>
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-950/80 border border-neutral-800 text-[11px] text-neutral-400">
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neutral-950/80 border border-neutral-800 text-[0.6875rem] text-neutral-400">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 syncScroll ? 'bg-teal-400 animate-pulse' : 'bg-neutral-600'
               }`}
             />
-            <span className="font-mono text-[10px]">
+            <span className="font-mono text-[0.625rem]">
               {syncScroll ? '编辑器 ⇋ 预览 同步' : '视图独立滚动'}
             </span>
           </div>

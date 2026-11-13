@@ -116,7 +116,7 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
           data-view="editor"
           className="mf-pane h-full min-w-0 flex flex-col"
           style={{
-            flex: enabled ? effective + ' 0 0px' : '1 1 0px',
+            flex: enabled ? effective + ' 0 0' : '1 1 0',
             minWidth: enabled ? minimumPaneWidth : 0,
           }}
         >
@@ -209,7 +209,7 @@ export function ResizablePanes({editor, preview, labelledBy, onBeforeResize}: Pr
           data-view="html"
           className="mf-pane h-full min-w-0 flex flex-col"
           style={{
-            flex: enabled ? 1 - effective + ' 0 0px' : '1 1 0px',
+            flex: enabled ? 1 - effective + ' 0 0' : '1 1 0',
             minWidth: enabled ? minimumPaneWidth : 0,
           }}
         >

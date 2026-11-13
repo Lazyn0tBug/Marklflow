@@ -48,7 +48,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   const estimatedReadingMinutes = Math.max(Math.ceil(charCount / 400), 1);
 
   return (
-    <footer className="h-9 bg-neutral-950 border-t border-neutral-800/80 px-3 flex items-center justify-between gap-3 overflow-hidden text-[11px] text-neutral-400 font-mono select-none shrink-0 no-print">
+    <footer className="h-9 bg-neutral-950 border-t border-neutral-800/80 px-3 flex items-center justify-between gap-3 overflow-hidden text-[0.6875rem] text-neutral-400 font-mono select-none shrink-0 no-print">
       {/* Left: 两个维度（草稿 / 同步）✓：各说各的 ✓（设计 §2.2 ✓、§8.4 ✓）✓ */}
       <div className="flex flex-col gap-0.5 leading-tight min-w-0 shrink">
         <div className="flex items-center gap-1.5">
