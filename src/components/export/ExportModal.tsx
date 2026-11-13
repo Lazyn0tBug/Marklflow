@@ -15,7 +15,11 @@ import {reportAsync, reportFailure} from '../../core/platform/failures';
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {X, Download, FileCode, FileText, Layers, Package} from 'lucide-react';
 import {DocumentRecord} from '../../core/model/document';
-import {diagnostic, diagnosticTrace} from '../../core/platform/web/diagnostics';
+import {
+  diagnostic,
+  diagnosticTrace,
+  resetDiagnosticTrace,
+} from '../../core/platform/web/diagnostics';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -235,6 +239,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     reviewDismissed.current = false;
     setIsExporting(true);
     setDocxIssues([]);
+    // 每次尝试从空轨迹开始 ✓ ⇒ ⇒ 失败时看到的是**这一次的**时间线 ✓。
+    resetDiagnosticTrace();
     diagnostic('export-dialog', 'run-started', selectedFormat);
     try {
       const result = await chosen.run(
