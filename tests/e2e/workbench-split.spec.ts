@@ -267,6 +267,29 @@ test('scales the pane limits and the narrow threshold with the root font size', 
   await expect(page.locator('[data-view=html]')).toBeHidden();
 });
 
+test('in narrow mode the displayed view follows the side the user last touched', async ({page}) => {
+  await page.goto('/');
+  await expect(page.locator('textarea')).toBeVisible();
+  // 宽窗下点预览 ⇒ ⇒ 焦点落在预览那一侧 ✓。
+  await page.locator('[data-view=html]').click({position: {x: 240, y: 200}});
+  await page.waitForTimeout(200);
+  // 窗口收窄 ⇒ ⇒ 只显示一个视图 ⇒ ⇒ 显示的是刚碰过的那一侧 ✓。
+  await page.setViewportSize({width: 600, height: 900});
+  await page.waitForTimeout(400);
+  await expect(page.locator('[data-view=html]')).toBeVisible();
+  await expect(page.locator('[data-view=editor]')).toBeHidden();
+
+  // 反过来：焦点在编辑器 ⇒ ⇒ 窄屏显示编辑器 ✓。
+  await page.setViewportSize({width: 1440, height: 900});
+  await page.waitForTimeout(300);
+  await page.locator('textarea').focus();
+  await page.waitForTimeout(200);
+  await page.setViewportSize({width: 600, height: 900});
+  await page.waitForTimeout(400);
+  await expect(page.locator('[data-view=editor]')).toBeVisible();
+  await expect(page.locator('[data-view=html]')).toBeHidden();
+});
+
 test('shows one content view on a narrow screen and restores both when the window widens', async ({
   page,
 }) => {
