@@ -126,7 +126,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   }, [widthMenuOpen]);
 
   return (
-    <header className="h-13 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-3 md:px-4 text-neutral-100 gap-3 select-none shrink-0 no-print z-40">
+    <header className="min-h-13 h-auto bg-neutral-900 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 md:px-4 text-neutral-100 select-none shrink-0 no-print z-40">
       {/* Zone 1: 侧栏侧边触发 + 品牌 & 当前文档 */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
@@ -182,9 +182,10 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       {/* Zone 2: 内容视图开关（编辑器 / HTML）、宽度配置、公式与审查看板 */}
-      <div className="flex items-center gap-2 overflow-x-auto py-1">
-        {/* 内容视图开关组 */}
-        <div className="flex items-center p-0.5 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-medium">
+      {/* 中段：**必要时换行** ✓ ⇒ ⇒ 窄窗时主操作另起一行，中段不被挤成几十像素 ✓（设计 §6 ✓）。 */}
+      <div className="flex items-center gap-2 overflow-x-auto py-1 min-w-[16rem] flex-1">
+        {/* 内容视图开关组：**不缩断** ✓ ⇒ ⇒ 窄窗时整组横向滚动，不压掉名字 ✓（设计 §6 ✓）。 */}
+        <div className="flex items-center shrink-0 p-0.5 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-medium">
           {/* 编辑器开关 */}
           <button
             disabled={showEditor && visibleCount === 1}
@@ -232,7 +233,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           ref={settingsButtonRef}
           type="button"
           onClick={() => setWidthMenuOpen(true)}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300 whitespace-nowrap"
+          className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300 whitespace-nowrap"
           aria-haspopup="dialog"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -295,7 +296,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* 公式引擎切换 (MathML vs SVG) */}
         <button
           onClick={onMathModeToggle}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-800 text-xs font-mono text-neutral-300 transition-colors whitespace-nowrap"
+          className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-800 text-xs font-mono text-neutral-300 transition-colors whitespace-nowrap"
           title={`当前公式输出模式: ${mathMode.toUpperCase()}。点击快速在原生 MathML 与 SVG 间切换。`}
         >
           <Sigma className="w-3.5 h-3.5 text-teal-400" />
@@ -306,7 +307,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         {onOpenMessages ? (
           <button
             onClick={onOpenMessages}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 transition-colors whitespace-nowrap"
             title="打开消息视觉页：点一个按钮，右下角就会出现那条消息"
           >
             <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
@@ -325,8 +326,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
       </div>
 
-      {/* Zone 3: 主操作动作 (主题、保存、导出) */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Zone 3: 主操作动作 (主题、保存、导出) —— **不缩断** ✓ ⇒ ⇒ 换行后仍右对齐 ✓（设计 §6 ✓）。 */}
+      <div className="flex items-center gap-2 shrink-0 ml-auto">
         <button
           onClick={onThemeToggle}
           className="p-1.5 rounded-lg border border-neutral-800 bg-neutral-950/70 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors"

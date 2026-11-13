@@ -129,7 +129,7 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
       onBlur={handleMouseLeave}
       disabled={disabled}
       aria-expanded={expanded}
-      className={`${className ?? 'w-7'} h-7 flex items-center justify-center rounded border border-transparent transition-colors ${getAccentStyles()}`}
+      className={`${className ?? 'w-7'} h-7 shrink-0 flex items-center justify-center rounded border border-transparent transition-colors ${getAccentStyles()}`}
       aria-label={title}
     >
       {children}

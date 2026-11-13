@@ -48,9 +48,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   const estimatedReadingMinutes = Math.max(Math.ceil(charCount / 400), 1);
 
   return (
-    <footer className="h-9 bg-neutral-950 border-t border-neutral-800/80 px-3 flex items-center justify-between text-[11px] text-neutral-400 font-mono select-none shrink-0 no-print">
+    <footer className="h-9 bg-neutral-950 border-t border-neutral-800/80 px-3 flex items-center justify-between gap-3 overflow-hidden text-[11px] text-neutral-400 font-mono select-none shrink-0 no-print">
       {/* Left: 两个维度（草稿 / 同步）✓：各说各的 ✓（设计 §2.2 ✓、§8.4 ✓）✓ */}
-      <div className="flex flex-col gap-0.5 leading-tight">
+      <div className="flex flex-col gap-0.5 leading-tight min-w-0 shrink">
         <div className="flex items-center gap-1.5">
           <div className="flex items-center gap-1.5">
             <Database className="w-3 h-3 text-teal-400" />
@@ -111,9 +111,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <span>预估阅读 {estimatedReadingMinutes} 分钟</span>
       </div>
 
-      {/* Right: Text Stats, Math Mode, Revision */}
-      <div className="flex items-center gap-3 text-neutral-400">
-        <div className="flex items-center gap-1">
+      {/* Right: Text Stats, Math Mode, Revision —— **每项一行不折** ✓ ⇒ ⇒ 窄窗时省略次要项，不竖排 ✓（设计 §4、§6 ✓）。 */}
+      <div className="flex items-center gap-3 text-neutral-400 shrink-0">
+        <div
+          className="flex items-center gap-1 whitespace-nowrap"
+          title={`${charCount} 字符 · ${wordCount} 词 · ${lineCount} 行`}
+        >
           <span>{charCount} 字符</span>
           <span className="text-neutral-600">·</span>
           <span>{wordCount} 词</span>
@@ -121,12 +124,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           <span>{lineCount} 行</span>
         </div>
 
-        <div className="flex items-center gap-1 text-teal-400">
+        <div className="hidden sm:flex items-center gap-1 text-teal-400 whitespace-nowrap">
           <Cpu className="w-3 h-3" />
           <span>{mathMode === 'mathml' ? 'MathML 原生' : 'SVG 矢量'}</span>
         </div>
 
-        <div className="text-neutral-500 font-mono">Rev {revision} · UTF-8</div>
+        <div className="hidden md:block text-neutral-500 font-mono whitespace-nowrap">
+          Rev {revision} · UTF-8
+        </div>
       </div>
     </footer>
   );
