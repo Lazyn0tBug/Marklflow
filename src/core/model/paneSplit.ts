@@ -17,7 +17,13 @@ export function splitBounds(
   geometry: PaneGeometry,
 ): {minimum: number; maximum: number; available: number} {
   const {minimumPaneWidth, splitHandleWidth} = geometry;
+  /**
+   * **下限 1** ✓ ⇒ ⇒ 几何还没读到（宿主给的是 0）时也不会 0/0 ⇒ ⇒ 比值不是 NaN ✓。
+   *
+   * 正常几何时这个下限不起作用 ✓（两个面板的最小宽度已经远大于它 ✓）。
+   */
   const available = Math.max(
+    1,
     minimumPaneWidth * 2,
     Number.isFinite(width) ? width - splitHandleWidth : 0,
   );

@@ -25,6 +25,14 @@ it('keeps the preferred ratio inside 15–85% and the pane limits the host gave'
   expect(splitBounds(500, geometry).available).toBe(720);
 });
 
+it('never divides by zero while the geometry has not been read yet', () => {
+  /** 宿主还没从 CSS 解析到 token 时给的是 0 ✓ ⇒ ⇒ 比值不能是 NaN ✓。 */
+  const pending: PaneGeometry = {minimumPaneWidth: 0, splitHandleWidth: 0};
+  expect(Number.isFinite(constrainSplit(0.5, 0, pending))).toBe(true);
+  expect(Number.isFinite(splitBounds(0, pending).minimum)).toBe(true);
+  expect(Number.isFinite(splitBounds(0, pending).maximum)).toBe(true);
+});
+
 it('follows the geometry it is given instead of a fixed pane width', () => {
   /** 根字号放大 ⇒ ⇒ 面板下限跟着放大 ⇒ ⇒ 纯模块照着算 ✓。 */
   const scaled: PaneGeometry = {minimumPaneWidth: 450, splitHandleWidth: 10};
