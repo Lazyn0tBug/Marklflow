@@ -244,213 +244,214 @@ export const WorkbenchToolbar: React.FC<WorkbenchToolbarProps> = ({
     <TooltipContext.Provider value={{showTooltip, hideTooltip}}>
       <div className="w-full min-h-[2.375rem] px-3 bg-neutral-900/95 border-b border-neutral-800 flex items-center justify-between text-neutral-200 select-none shrink-0 no-print z-20">
         {/* Left Formatting Tools */}
-        <div className="flex items-center gap-0.5 overflow-x-auto py-1 scrollbar-none">
-          {/* Headings: H1~H3 Direct + Micro Dropdown for H4~H6 */}
-          <ToolbarButton
-            onClick={() => onInsertText('# ', '', '一级标题')}
-            title="一级标题"
-            syntax="# "
-          >
-            <Heading1 className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('## ', '', '二级标题')}
-            title="二级标题"
-            syntax="## "
-          >
-            <Heading2 className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('### ', '', '三级标题')}
-            title="三级标题"
-            syntax="### "
-          >
-            <Heading3 className="w-3.5 h-3.5" />
-          </ToolbarButton>
-
-          {/* Micro dropdown for H4-H6 */}
-          <div className="relative inline-flex items-center" ref={moreHeadingsBtnRef}>
+        {
+          <div className="flex items-center gap-0.5 overflow-x-auto py-1 scrollbar-none">
+            {/* Headings: H1~H3 Direct + Micro Dropdown for H4~H6 */}
             <ToolbarButton
-              onClick={handleToggleMoreHeadings}
-              title="更多标题层级"
-              description="H4 到 H6"
-              syntax="#### ~ ######"
-              active={isMoreHeadingsOpen}
-              expanded={isMoreHeadingsOpen}
-              className="w-4.5 px-0.5"
+              onClick={() => onInsertText('# ', '', '一级标题')}
+              title="一级标题"
+              syntax="# "
             >
-              <ChevronDown
-                className={`w-3 h-3 transition-transform duration-150 ${isMoreHeadingsOpen ? 'rotate-180' : ''}`}
-              />
+              <Heading1 className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('## ', '', '二级标题')}
+              title="二级标题"
+              syntax="## "
+            >
+              <Heading2 className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('### ', '', '三级标题')}
+              title="三级标题"
+              syntax="### "
+            >
+              <Heading3 className="w-3.5 h-3.5" />
+            </ToolbarButton>
+
+            {/* Micro dropdown for H4-H6 */}
+            <div className="relative inline-flex items-center" ref={moreHeadingsBtnRef}>
+              <ToolbarButton
+                onClick={handleToggleMoreHeadings}
+                title="更多标题层级"
+                description="H4 到 H6"
+                syntax="#### ~ ######"
+                active={isMoreHeadingsOpen}
+                expanded={isMoreHeadingsOpen}
+                className="w-4.5 px-0.5"
+              >
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform duration-150 ${isMoreHeadingsOpen ? 'rotate-180' : ''}`}
+                />
+              </ToolbarButton>
+            </div>
+
+            <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
+
+            {/* Inline Formatting */}
+            <ToolbarButton
+              onClick={() => onInsertText('**', '**', '粗体文本')}
+              title="粗体"
+              syntax="**文本**"
+              shortcut="Ctrl+B"
+            >
+              <Bold className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('*', '*', '斜体文本')}
+              title="斜体"
+              syntax="*文本*"
+              shortcut="Ctrl+I"
+            >
+              <Italic className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('~~', '~~', '删除线文本')}
+              title="删除线"
+              syntax="~~文本~~"
+            >
+              <Strikethrough className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('`', '`', 'code')}
+              title="行内代码"
+              syntax="`code`"
+            >
+              <Code className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('> ', '', '引用说明文字')}
+              title="引用块"
+              syntax="> "
+            >
+              <Quote className="w-3.5 h-3.5" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
+
+            {/* Lists */}
+            <ToolbarButton
+              onClick={() => onInsertText('- ', '', '列表项')}
+              title="无序列表"
+              syntax="- 列表"
+            >
+              <List className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('1. ', '', '列表项')}
+              title="有序列表"
+              syntax="1. 列表"
+            >
+              <ListOrdered className="w-3.5 h-3.5" />
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => onInsertText('- [ ] ', '', '待办任务')}
+              title="任务清单"
+              syntax="- [ ]"
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
+
+            {/* Math Formulas */}
+            <ToolbarButton
+              onClick={() =>
+                onInsertText('$$\n\\frac{d\\rho}{dt} = -\\frac{i}{\\hbar}[H, \\rho]\n$$\n', '', '')
+              }
+              title="独立数学公式块"
+              syntax="$$ ... $$"
+              accent="teal"
+            >
+              <Sigma className="w-3.5 h-3.5 text-teal-400" />
+            </ToolbarButton>
+
+            <ToolbarButton
+              onClick={() => onInsertText('$', '$', 'E = mc^2')}
+              title="行内数学公式"
+              syntax="$ ... $"
+              accent="teal"
+            >
+              <span className="font-mono text-[0.6875rem] font-semibold text-teal-400 leading-none">
+                $x$
+              </span>
+            </ToolbarButton>
+
+            <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
+
+            {/* Diagrams & Visuals */}
+            <ToolbarButton
+              onClick={() =>
+                onInsertText(
+                  '```mermaid\nsequenceDiagram\n    autonumber\n    Client->>Server: 发送请求\n    Server-->>Client: 返回响应结果\n```\n',
+                  '',
+                  '',
+                )
+              }
+              title="Mermaid 架构/时序图"
+              syntax="```mermaid"
+              accent="sky"
+            >
+              <GitFork className="w-3.5 h-3.5 text-sky-400" />
+            </ToolbarButton>
+
+            <ToolbarButton
+              onClick={() =>
+                onInsertText(
+                  '```dot\ndigraph Topology {\n    rankdir=LR;\n    NodeA -> NodeB [label="数据通道"];\n}\n```\n',
+                  '',
+                  '',
+                )
+              }
+              title="Graphviz DOT 拓扑图"
+              syntax="```dot"
+              accent="indigo"
+            >
+              <FileCode className="w-3.5 h-3.5 text-indigo-400" />
+            </ToolbarButton>
+
+            {/* Interactive Table Matrix Dropdown & Link */}
+            <div className="relative inline-flex items-center" ref={tableButtonRef}>
+              <ToolbarButton
+                onClick={handleToggleTablePicker}
+                title="插入表格"
+                description="选行列数，插入一个表格"
+                syntax="| 列1 | 列2 |"
+                shortcut="Alt+T"
+                active={isTablePickerOpen}
+                expanded={isTablePickerOpen}
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+              </ToolbarButton>
+            </div>
+
+            <ToolbarButton
+              onClick={() => onInsertText('[', '](https://example.com)', '链接描述')}
+              title="插入超链接"
+              syntax="[文字](url)"
+            >
+              <Link className="w-3.5 h-3.5" />
+            </ToolbarButton>
+
+            <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
+
+            {/* 分页符：图标是"一页被横线分开" ✓ ⇒ ⇒ 不再读成裁剪 ✓（设计 §4 ✓）。 */}
+            <ToolbarButton
+              onClick={() => onInsertText('\n---pagebreak---\n', '', '')}
+              title="分页符"
+              description="在此处插入分页符（A4 硬分页）"
+              syntax="---pagebreak---"
+              accent="amber"
+            >
+              <Rows2 className="w-3.5 h-3.5 text-amber-400" />
             </ToolbarButton>
           </div>
+        }
 
-          <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
-
-          {/* Inline Formatting */}
-          <ToolbarButton
-            onClick={() => onInsertText('**', '**', '粗体文本')}
-            title="粗体"
-            syntax="**文本**"
-            shortcut="Ctrl+B"
-          >
-            <Bold className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('*', '*', '斜体文本')}
-            title="斜体"
-            syntax="*文本*"
-            shortcut="Ctrl+I"
-          >
-            <Italic className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('~~', '~~', '删除线文本')}
-            title="删除线"
-            syntax="~~文本~~"
-          >
-            <Strikethrough className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('`', '`', 'code')}
-            title="行内代码"
-            syntax="`code`"
-          >
-            <Code className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('> ', '', '引用说明文字')}
-            title="引用块"
-            syntax="> "
-          >
-            <Quote className="w-3.5 h-3.5" />
-          </ToolbarButton>
-
-          <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
-
-          {/* Lists */}
-          <ToolbarButton
-            onClick={() => onInsertText('- ', '', '列表项')}
-            title="无序列表"
-            syntax="- 列表"
-          >
-            <List className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('1. ', '', '列表项')}
-            title="有序列表"
-            syntax="1. 列表"
-          >
-            <ListOrdered className="w-3.5 h-3.5" />
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => onInsertText('- [ ] ', '', '待办任务')}
-            title="任务清单"
-            syntax="- [ ]"
-          >
-            <CheckSquare className="w-3.5 h-3.5" />
-          </ToolbarButton>
-
-          <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
-
-          {/* Math Formulas */}
-          <ToolbarButton
-            onClick={() =>
-              onInsertText('$$\n\\frac{d\\rho}{dt} = -\\frac{i}{\\hbar}[H, \\rho]\n$$\n', '', '')
-            }
-            title="独立数学公式块"
-            syntax="$$ ... $$"
-            accent="teal"
-          >
-            <Sigma className="w-3.5 h-3.5 text-teal-400" />
-          </ToolbarButton>
-
-          <ToolbarButton
-            onClick={() => onInsertText('$', '$', 'E = mc^2')}
-            title="行内数学公式"
-            syntax="$ ... $"
-            accent="teal"
-          >
-            <span className="font-mono text-[0.6875rem] font-semibold text-teal-400 leading-none">
-              $x$
-            </span>
-          </ToolbarButton>
-
-          <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
-
-          {/* Diagrams & Visuals */}
-          <ToolbarButton
-            onClick={() =>
-              onInsertText(
-                '```mermaid\nsequenceDiagram\n    autonumber\n    Client->>Server: 发送请求\n    Server-->>Client: 返回响应结果\n```\n',
-                '',
-                '',
-              )
-            }
-            title="Mermaid 架构/时序图"
-            syntax="```mermaid"
-            accent="sky"
-          >
-            <GitFork className="w-3.5 h-3.5 text-sky-400" />
-          </ToolbarButton>
-
-          <ToolbarButton
-            onClick={() =>
-              onInsertText(
-                '```dot\ndigraph Topology {\n    rankdir=LR;\n    NodeA -> NodeB [label="数据通道"];\n}\n```\n',
-                '',
-                '',
-              )
-            }
-            title="Graphviz DOT 拓扑图"
-            syntax="```dot"
-            accent="indigo"
-          >
-            <FileCode className="w-3.5 h-3.5 text-indigo-400" />
-          </ToolbarButton>
-
-          {/* Interactive Table Matrix Dropdown & Link */}
-          <div className="relative inline-flex items-center" ref={tableButtonRef}>
-            <ToolbarButton
-              onClick={handleToggleTablePicker}
-              title="插入表格"
-              description="选行列数，插入一个表格"
-              syntax="| 列1 | 列2 |"
-              shortcut="Alt+T"
-              active={isTablePickerOpen}
-              expanded={isTablePickerOpen}
-            >
-              <TableIcon className="w-3.5 h-3.5" />
-            </ToolbarButton>
-          </div>
-
-          <ToolbarButton
-            onClick={() => onInsertText('[', '](https://example.com)', '链接描述')}
-            title="插入超链接"
-            syntax="[文字](url)"
-          >
-            <Link className="w-3.5 h-3.5" />
-          </ToolbarButton>
-
-          <div className="w-[1px] h-3.5 bg-neutral-800 mx-1 shrink-0" />
-
-          {/* 分页符：图标是"一页被横线分开" ✓ ⇒ ⇒ 不再读成裁剪 ✓（设计 §4 ✓）。 */}
-          <ToolbarButton
-            onClick={() => onInsertText('\n---pagebreak---\n', '', '')}
-            title="分页符"
-            description="在此处插入分页符（A4 硬分页）"
-            syntax="---pagebreak---"
-            accent="amber"
-          >
-            <Rows2 className="w-3.5 h-3.5 text-amber-400" />
-          </ToolbarButton>
-        </div>
-
-        {/* Right Controls: Undo / Redo（同步联动归 HTML 视图那一侧的控件条 ✓）。 */}
+        {/* Right Controls: Undo / Redo（编辑器的动作 ✓）。 */}
         <div className="flex items-center gap-1.5 shrink-0 pl-2">
           <div className="w-[1px] h-3.5 bg-neutral-800 mx-0.5 shrink-0" />
 
-          {/* Undo / Redo */}
           <ToolbarButton onClick={onUndo} disabled={!canUndo} title="撤销" shortcut="Ctrl+Z">
             <RotateCcw className="w-3.5 h-3.5" />
           </ToolbarButton>

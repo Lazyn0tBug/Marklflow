@@ -11,7 +11,7 @@ import {Sidebar} from './components/workspace/Sidebar';
 import {Editor} from './components/editor/Editor';
 import {ReadingPreview} from './components/preview/ReadingPreview';
 import {A4PagePreview} from './components/preview/A4PagePreview';
-import {HtmlViewControls} from './components/preview/HtmlViewControls';
+import {HtmlToolbar} from './components/preview/HtmlToolbar';
 import {StatusBar} from './components/footer/StatusBar';
 import {ExportModal} from './components/export/ExportModal';
 import {NoticeList} from './components/notice/NoticeList';
@@ -1583,8 +1583,6 @@ export default function App() {
           capturePosition();
           setContentMaxWidth(value);
         }}
-        mathMode={mathMode}
-        onMathModeToggle={handleMathModeToggle}
         isDark={isDark}
         onThemeToggle={() => setIsDark((prev) => !prev)}
         isDirty={isDirty}
@@ -1667,17 +1665,6 @@ export default function App() {
               (effectiveShowEditor && effectiveShowPreview ? paneGeometry.splitHandleWidth : 0),
           }}
         >
-          {/* Unified Workbench Toolbar across Editor & Preview */}
-          {effectiveShowEditor && (
-            <WorkbenchToolbar
-              onInsertText={handleInsertText}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              canUndo={currentSession?.canUndo ?? false}
-              canRedo={currentSession?.canRedo ?? false}
-            />
-          )}
-
           {/* Resizing changes workbench geometry only; content max-width remains independent. */}
           <ResizablePanes
             labelledBy={'tab-' + encodeURIComponent(currentDocId)}
@@ -1686,6 +1673,14 @@ export default function App() {
             editor={
               effectiveShowEditor ? (
                 <>
+                  {/* 编辑器工具栏：**左置于编辑器这一列** ✓ ⇒ ⇒ 与 HTML 工具栏平齐 ✓。 */}
+                  <WorkbenchToolbar
+                    onInsertText={handleInsertText}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
+                    canUndo={currentSession?.canUndo ?? false}
+                    canRedo={currentSession?.canRedo ?? false}
+                  />
                   <Editor
                     sessionId={currentDoc.id}
                     softWrap={softWrap}
@@ -1706,13 +1701,15 @@ export default function App() {
             preview={
               effectiveShowPreview ? (
                 <>
-                  {/* 控件条：模式与同步都归 HTML 视图这一侧 ✓（设计 §2 ✓）。 */}
-                  <HtmlViewControls
+                  {/* HTML 工具栏：**左置工具、右置状态** ✓ ⇒ ⇒ 与编辑器工具栏平齐 ✓。 */}
+                  <HtmlToolbar
                     previewMode={previewMode}
                     onPreviewModeChange={changePreviewMode}
+                    mathMode={mathMode}
+                    onMathModeToggle={handleMathModeToggle}
+                    showSync={effectiveShowEditor}
                     syncScroll={syncScroll}
                     onToggleSyncScroll={() => setSyncScroll((prev) => !prev)}
-                    showSync={effectiveShowEditor}
                   />
                   {previewMode === 'flow' ? (
                     <ReadingPreview

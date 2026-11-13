@@ -266,7 +266,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="w-full h-full flex flex-col bg-neutral-900 border-r border-neutral-800 text-neutral-200 select-none no-print relative shrink-0">
-      {/* 操作行：**在页签上方** ✓ ⇒ ⇒ 切换文档 / 大纲时位置稳定 ✓（设计 §3 ✓）。 */}
+      {/*
+       * 操作行：**在页签上方** ✓ ⇒ ⇒ 切换文档 / 大纲时位置稳定 ✓（设计 §3 ✓）。
+       *
+       * 整条动作条一起上移 ✓ ⇒ ⇒ 新建与打开仍然并排 ✓ ⇒ ⇒ 不多出一行 ✓。
+       */}
       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-neutral-800 bg-neutral-950/60">
         <button
           disabled={importBusy}
@@ -277,8 +281,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Plus className="w-3.5 h-3.5" />
           新建文档
         </button>
-        {/* 平台没有这个能力时不凭布局新增入口 ✓ ⇒ ⇒ Web 不渲染这一项 ✓（设计 §3 ✓）。 */}
-        {onOpenNative && (
+        {/* 平台没有这个能力时不凭布局新增入口 ✓ ⇒ ⇒ Web 换成浏览器选择器 ✓（设计 §3 ✓）。 */}
+        {onOpenNative ? (
           <button
             disabled={importBusy}
             aria-busy={importBusy}
@@ -288,6 +292,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <FolderOpen className="w-3.5 h-3.5" />
             打开
+          </button>
+        ) : (
+          <button
+            disabled={importBusy}
+            aria-busy={importBusy}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            title="打开本地文件（浏览器选择器）：载入工作区副本"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {importBusy ? '处理中…' : '打开文件'}
           </button>
         )}
       </div>
@@ -342,32 +357,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div ref={listRef} className="flex-1 overflow-y-auto p-2">
         {activeTab === 'docs' ? (
           <div className="space-y-1">
-            {/* 导入入口：**留在文档页签里** ✓ ⇒ ⇒ 不重排导入流程 ✓（设计 §3 ✓）。 */}
-            <div className="flex items-center gap-1.5 mb-2 px-1">
-              <button
-                disabled={importBusy}
-                aria-busy={importBusy}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
-                title={
-                  onOpenNative
-                    ? '导入含自包含载荷的可编辑 .html'
-                    : '打开本地文件（浏览器选择器）：载入工作区副本'
-                }
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {importBusy ? '处理中…' : onOpenNative ? '导入' : '打开文件'}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                disabled={importBusy}
-                multiple
-                accept={onOpenNative ? '.html,.htm' : '.md,.markdown,.txt,.html,.htm'}
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
+            {/* 导入入口：**桌面端才有** ✓ ⇒ ⇒ Web 的打开已在操作行里 ✓ ⇒ ⇒ 这里不再多出一行 ✓。 */}
+            {onOpenNative && (
+              <div className="flex items-center gap-1.5 mb-2 px-1">
+                <button
+                  disabled={importBusy}
+                  aria-busy={importBusy}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs transition-colors"
+                  title="导入含自包含载荷的可编辑 .html"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {importBusy ? '处理中…' : '导入'}
+                </button>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              disabled={importBusy}
+              multiple
+              accept={onOpenNative ? '.html,.htm' : '.md,.markdown,.txt,.html,.htm'}
+              onChange={handleFileChange}
+              className="hidden"
+            />
 
             {/* Document Items List */}
             {documents.map((doc) => {
